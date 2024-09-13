@@ -13,7 +13,7 @@ class StrapiGraphql():
     def __init__(self, **kwargs):
         
         # define run environment
-        if config.strapi.stage=='dev':
+        if config.strapi.stage.startswith('dev'):
             run_stage =  kwargs.get('run_stage',config.strapi.stage)
         else:
             run_stage = config.strapi.stage
@@ -568,6 +568,7 @@ class StrapiGraphql():
             }
             }        
         '''   
+        logger.good(f"Using run_stage: {self.run_stage}")
         variables = {"id": id, "analysis": analysis, 
                      "analysed": analysed, "remark": remark}
         try:

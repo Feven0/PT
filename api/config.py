@@ -41,7 +41,6 @@ logger.divider(f'using STRAPI_STAGE={strapi_stage}')
 #
 cdir = os.path.dirname(os.path.realpath(__file__))
 efs_path = '/mnt/efs/leap-frog'
-stage = os.environ.get('STAGE', 'dev')
 inaws = os.path.exists(efs_path)
 
 #
@@ -54,7 +53,7 @@ rootdir = os.path.dirname(apipath)
 datadir = f'{rootdir}/data'
 
 if os.path.exists(efs_path):
-    model_path = f'{efs_path}/{stage}/'
+    model_path = f'{efs_path}/{strapi_stage}/'
 else:
     model_path = f'{apipath}'
     

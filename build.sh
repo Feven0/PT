@@ -15,11 +15,11 @@ export branch_name=${branch_name:-HEAD}
 if [ $branch_name == "prod" ]; then
     branch_name="prod"
     echo "******Running Production Frog Backend Environment******"
-    export STRAPI_STAGE="prod"   
+    export STRAPI_STAGE="apply"   
 else
     branch_name="dev"
     echo "******Running Development Environment******"
-    export STRAPI_STAGE="dev"  
+    export STRAPI_STAGE="devapply"  
 fi
 
 source api/env_setup.sh

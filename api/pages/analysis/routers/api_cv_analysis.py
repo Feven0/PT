@@ -98,6 +98,11 @@ async def upload_files(background_tasks: BackgroundTasks,
         try:  
             analysis = await zauto.resume_sfia_analysis(resume_text, 
                                                         target_sfia=target_sfia)
+            # if isinstance(analysis, dict):
+            #     print(json.dumps(analysis, indent=2))
+            # else:                
+            #     print(f"EMPTY analysis returned: {analysis}")
+                
             logger.good(f"Competency generation completed")                                            
             #                    
             if not test_mode:        
