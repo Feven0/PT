@@ -34,7 +34,7 @@ module_dir = os.path.dirname(__file__)
 prompt_path = os.path.join(module_dir, "prompts")
 
 
-class AutoApplyModel:
+class CVAnalysisModel:
     """
     A class that represents an Auto Apply Model for job applications.
 

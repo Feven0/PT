@@ -1,0 +1,90 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Deploy to ECS HR-Persona Backend Production Version
+
+permissions:
+  id-token: write # required to use OIDC authentication
+  contents: read # required to checkout the code from the repo
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [prod]
+  #pull_request:
+  #  branches: [ main, dev ]
+
+env:
+  #ECS cluster name
+  clustername: ecs-hragent-cluster
+  #ECS service name used in clustername
+  servicename: ecs-hragent-service
+  #ECS task name used in servicename
+  taskname: ecs-hragent-task
+  #ECS container name in taskname
+  containername: hragent-container
+  #ECR repo name
+  ecrreponame: hragent
+  #Docker tag
+  tag: latest
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v1
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::070096167435:role/github_actions_role
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.ecrreponame }}
+          IMAGE_TAG: ${{ env.tag }}
+        run: |
+          branch_name="${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}"
+          bash build.sh
+          #
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: Download task definition
+        env:
+          TASK_NAME: ${{ env.taskname }}
+        run: |
+          aws ecs describe-task-definition --task-definition $TASK_NAME --query taskDefinition > task-definition.json
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.containername }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        id: service-def
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.servicename }}
+          cluster: ${{ env.clustername }}
+          wait-for-service-stability: false

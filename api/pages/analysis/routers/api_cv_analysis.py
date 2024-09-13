@@ -82,7 +82,7 @@ async def upload_files(background_tasks: BackgroundTasks,
         return camodel.AnalysisResponse(**output)
     
     #    
-    zauto = cv_analysis.AutoApplyModel()
+    zauto = cv_analysis.CVAnalysisModel()
                 
     # background task to generate competency
     async def bkfunc(resume_text, target_sfia):   
