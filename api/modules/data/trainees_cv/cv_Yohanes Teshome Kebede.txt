@@ -1,0 +1,65 @@
+Professional Summary
+I am an energetic and self-motivated Data Scientist with expertise in Computer Vision and Natural Language Processing. As a
+TensorFlow Certified developer, I bring a year of professional experience contributing to diverse projects. I am passionate
+about leveraging data to drive insights and innovation in real-world applications.
+Skills
+Technical Skills
+Python (libraries: Pandas, NumPy, Scikit-learn,
+TensorFlow)
+Machine Learning (Regression, Classification, Clustering,
+Deep Learning: Computer Vision, NLP)
+Data Visualization (matplotlib, seaborn)
+SQL, MongoDB
+Software Tools
+TensorFlow (Certified) , Power-BI, Other Tools ( Git, Version
+Control Systems)
+Work Experience
+Data Scientist - Gebeya - Ethiopia (Addis Ababa) - March 2023 - Present
+●
+Partnering with clients, I unlock hidden data insights to fuel business growth. My key contributions:
+○
+Bridged the gap between data and business, ensuring projects exceeded expectations.
+○
+Built strong relationships, consistently exceeding client expectations..
+Machine Learning Engineer - Omdena - Kenya (Nairobi) - February 2023 - September 2023
+●
+Spearheaded the end-to-end execution of projects, focusing on:
+○
+Predicting urban rental and Airbnb pricing in Kenya.
+●
+Played a pivotal role in the data collection phase for Airbnb prices in Kenya, ensuring comprehensive and accurate
+datasets.
+●
+Contributed significantly to a project centered on predictive modeling for urban growth in key African cities:
+○
+Took charge of data collection, pre-processing, and modeling phases, ensuring the project's success through
+meticulous attention to detail and expertise.
+Data Scientist Intern - Hamoye - Nigeria (Lagos) - February 2023 - September 2023
+●
+Led the development of a demand forecasting model for Brazilian logistic firms, utilizing their data to predict daily
+treatment order volume.
+●
+Analyzed historical data and built a machine learning model to estimate the probability of conflict in African nations,
+contributing to conflict prevention efforts.
+Projects
+Project Title: Fabric-Defect-Detection
+●
+The Fabric-Defect-Detection project focuses on real-time fabric defect segmentation using YOLOv8, a
+state-of-the-art object detection algorithm. By leveraging deep learning techniques, specifically YOLOv8, the project
+aims to accurately identify and segment defects in fabric images in real-time, allowing for efficient quality control
+processes in manufacturing settings. The implementation utilizes the power of convolutional neural networks to
+achieve high accuracy and speed in defect detection, ensuring timely and reliable identification of defects in fabric
+materials.
+●
+Link to Project: Fabric-Defect-Detection
+Education
+Electrical Engineering - Addis Ababa Science and Technology University - Ethiopia - September 2017 – March 2020
+●
+Accumulated 149 credits towards Electrical Engineering degree..
+Data Scientist
+YOHANES TESHOME KEBEDE
+Phone: (+251)925315232 | Email: (johnteshe13@gmail.com)
+Github: github.com/Yohanes213
+Linkedin: linkedin.com/in/yohanes-teshome/
+Address: Addis Ababa, Ethiopia
+

@@ -1,0 +1,78 @@
+Abraham Gizaw
+software developer
+About Me
+Professional Experience
+Certifications
+During my tenure at Debol Engineering PLC, I have got
+good experience in software development, focusing on
+frontend technologies such as React and TypeScript, and
+backend development using the Django framework.
+Additionally, I’ve also worked with MySQL, PostgreSQL,
+Node.js, and HTML/CSS/JavaScript languages
+Skill
+Django (python)  
+machine learning 
+Html , css and javascript
+react.js 
+typescript.js
+node.js 
+sql,
+mysql
+Education Background
+HIgher Education -- Adama Science and
+Technology University(ASTU)
+BSc Degree in Computer Science and
+Engineering
+Completed in dec 17,2020
+CISCO center Adama branch
+CCNA Certification
+Completed in dec, 2020
+Google bootcamp
+Deep learning specialization and Intorduction
+to tensorflow
+completed in .dec, 2022
+My Contact
+abresh.agit@gmail.com
+Bole , Addis Ababa
++251911275176
+www.linkedin.com/in/abraham-gizaw
+senior developer at debol Engineering company.
+07- 10/2018
+third ECPC (Ethiopian colligiate
+programming contest)
+data encoder | NEBE(national election board of Ethiopia
+IT support | Hub digital telecom
+05/ 2022 – Present
+02/2021 – 06/2021
+04/2021 – 10/2022
+frontend development using bootstrap, react and typescript.
+Backend development using python Django.
+Key responsibilities:
+Registering new candidates or representatives of parties 
+Digitalizing data's of electors registered at kebele level 
+Key responsibilities:
+Contact person: Antenyismu Yirsaw
+Contact Phone: +251924599500
+helping and guiding agents of EVD, SIM and Tele birr.
+supporting agents and supervising temporary sales.
+Key responsibilities:
+08- 12/2020
+ACPC(Africa and Arab collegiate
+programming championship)
+Languages
+ICPC CERTIFICATE
+DEEP LEARNING SPECIALIZATION CERTIFICATE
+08- 12/2022
+Coursera certificate of completion of
+deep learning specialization given by
+google bootcamp.
+English  -  full profetional proficiency
+Amharic   -  Native or bilingual proficiency
+Afan Oromo  -  Native or bilingual proficiency
+elementary school -- Goh elementary school
+secondary school -- Asella Andinet secondary
+school
+Preparatory school -- Asella Preparatory
+school
+CGPA - 3.38
+

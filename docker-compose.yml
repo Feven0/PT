@@ -1,0 +1,29 @@
+version: "3"
+services:
+  ipersona:
+    container_name: ipersona
+    build: .
+    image: ipersona:latest
+    restart: unless-stopped
+    environment:
+      - STRAPI_STAGE=dev
+      - PORT=4500
+      - APP_MODULE=app:app
+      - WORKERS_PER_CORE=0.5
+      - TIMEOUT=120
+      - KEEP_ALIVE=60
+      - LOG_LEVEL=info      - 
+    networks:
+      - ipersona_network    
+    # volumes:
+    #   - /mnt/efs:/mnt/efs
+    expose:
+      - 4500 
+    ports:
+      - "4500:4500"
+
+networks:
+    ipersona_network:
+        name: ipersona
+        driver: bridge      
+

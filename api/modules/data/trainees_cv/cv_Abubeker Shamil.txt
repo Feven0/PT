@@ -1,0 +1,70 @@
+Abubeker Shamil
+Software Engineer | Data Analyst
+PROFESSIONAL SUMMARY
+Abubeker is a Software Engineer with 2 years of professional experience. Also a
+Systems Thinker with proven experience in analyzing different data and
+deploying them. Skilled in python, javascript, data analysis frameworks. He is a
+committed, good communicator, willing to assume responsibility with a
+problem-solving mindset and collaborative attitude
+EXPERIENCE
+CTO - KeseEvents— Addis Ababa, Ethiopia
+MAY 2023 - PRESENT
+Launched apps on the Play Store, surpassing 100+ downloads.
+Drove notable increase in user engagement via innovative app features.
+Achieved engagement growth by 61% by increasing the online presence.
+Lead Software Engineer, Ozoro Tech—Addis Ababa, Ethiopia
+SEPT 2022 - MAY 2023
+Designed and implemented a scalable education web app as a software
+engineer, creating robust infrastructure, efficient APIs, and optimizing
+performance and security, resulting in a seamless online learning and
+collaboration platform.
+PROJECTS
+Interactive And Engaging Form — Detail
+Created a bespoke alternative to Typeform for a renowned Fox event company,
+aiming to enhance user satisfaction and engagement. contributed to fostering a
+more engaging and interactive experience for participants, aligning with the
+company's commitment to excellence in event management and attendee
+satisfaction.
+Tutor-Parent-Company Communication — Detail
+developed a comprehensive full-stack application for administrative purposes
+and a Telegram bot for "Kelem," a tutoring company. It streamlined
+interactions among tutors, parents, and the company, resulting in a notable
+15% increase in overall productivity.
+CONTACT
+Addis Ababa, Ethiopia
+LinkedIn:
+linkedin.com/in/abubeker-shamil/
+Github:
+github.com/dev-abuke
+Medium:
+medium.com/@abubekershamil
+(+251) 912-1213-88
+abubekershamil123@gmail.com
+TOOLS
+Trello, Figma, Vscode, Azure,
+Firebase
+TECHNICAL SKILLS
+​
+Java, Javascript, Python, SQL,
+Python, Git, React, TensorFlow,
+CI/CD pipeline
+EDUCATION
+Computer Engineer
+Hawassa University — Hawassa,
+Ethiopia - JUNE 2016 - SEPT 2021
+Courses Taken
+●
+Low Level Programming
+(Assembly Language)
+●
+Embedded Systems
+●
+Operating Systems
+●
+Database
+●
+Data Structure
+●
+OOP (Object oriented
+programming)
+
