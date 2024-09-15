@@ -1,3 +1,17 @@
 .analyse-box {
     margin: 0px 200px 0px 200px;
 }
+
+.percentage-result {
+    display: flex;
+    column-gap: 1rem;
+    color: red;
+    font-size: 0.9rem;
+    text-align: center;
+    justify-content: center;
+    background-color: white;
+}
+
+.percentage-result > h2 {
+    margin-top: 1.2em;
+}

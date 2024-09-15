@@ -1,6 +1,6 @@
 import { useCallback, useContext, useState } from 'react';
 import { Button, Typography, Card } from 'antd';
-import { InterviewChat } from './index';
+import { InterviewChat, PercentageCard } from './index';
 import useMiddleSocket from '../hooks/useMiddleSocket';
 import { ProviderContext } from '../context/context';
 import '../styles/InterviewChat/interviewchat.css'; 
@@ -39,12 +39,7 @@ const InterviewPrep = () => {
       {open === 'ready' && 
       <div className='interview-box'>
           <InterviewChat />
-          <Card className='card_box' title='Performance'>
-            <Card type="inner">
-              <Title>Good Job!</Title>
-              <Text className='interview_percent'>70%</Text>
-            </Card>
-          </Card>
+          <PercentageCard/>
       </div>
       
       }

@@ -1,7 +1,7 @@
 import { useState, useContext, useEffect } from 'react';
 import { Button, Typography, Card } from 'antd';
 import Api from '../Services/Services';
-import { AnalyseDetail, AnalyseChat } from './index';
+import { AnalyseDetail, AnalyseChat, PercentageCard } from './index';
 import { useParams } from 'react-router-dom';
 import { ProviderContext } from '../context/context';
 import { WechatWorkOutlined } from '@ant-design/icons';
@@ -36,7 +36,7 @@ const AnalyseDoc = () => {
   return (
     <div style={{ height: '80vh', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       {open && (
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: 'center', width: '30rem' }} >
           <Text style={{ fontSize: '24px', color: 'gray' }}>
             Want to see how fit you are for the role?
           </Text>
@@ -53,7 +53,11 @@ const AnalyseDoc = () => {
       )}
 
       <div style={{ marginTop: '-60px' }}>
-        {latestanalysis !== undefined && <AnalyseDetail analysis={latestanalysis} />}
+        {latestanalysis !== undefined && 
+        <div >
+            <AnalyseDetail analysis={latestanalysis} />
+        </div>
+        }
       </div>
 
       <div className="chat-container" style={{ position: 'absolute', right: '20px', bottom: '30px' }}>
