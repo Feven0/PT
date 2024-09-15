@@ -1,0 +1,96 @@
+.profile-image {
+    height: 40px;
+    width: 40px;
+    border-radius: 100%;
+}
+
+.messageassistant {
+    margin-top: 2rem;
+}
+
+.interview-box {
+    display: flex;
+    gap: 2rem;
+}
+
+.card_box {
+    background-color: red;
+    max-height: 17rem;
+}
+
+.interview_percent {
+    font-size: 1.6rem;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+}
+
+.interview-chat-container {
+    width: 50rem;
+    /* margin-top: 16px; */
+    margin: 16px 160px 0px 160px;
+}
+
+.btn-hide {
+    margin-bottom: 3rem;
+}
+
+.btn-hide .ant-btn {
+    background-color: rgb(241, 241, 233) !important; 
+    border-color: antiquewhite !important; 
+    color: black;
+}
+
+.btn-hide .ant-btn:hover {
+    background-color: #f0ebe6;
+    color: black;
+}
+
+.chat-box {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.message {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.candidate .profile-image, .assistant .profile-image {
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.message-text {
+    background-color: #f0f0f0;
+    padding: 8px;
+    border-radius: 8px;
+    max-width: 70%;
+}
+
+.message-response {
+    background-color: #ffffff;
+    padding: 8px;
+    border-radius: 8px;
+    max-width: 70%;
+}
+
+.input-container {
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    margin-top: 16px;
+}
+
+.input-area {
+    resize: none;
+}
+
+.actions {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px;
+}

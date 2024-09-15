@@ -1,0 +1,14 @@
+.ant-layout-header {
+    position: fixed;
+    z-index: 1;
+    width: 100%;
+}
+
+.pdf {
+    color: red;
+    font-size: large;
+}
+
+.ant-layout-sider {
+    background: #fff;
+}
