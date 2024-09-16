@@ -47,14 +47,14 @@ aai.settings.api_key = "49e5f82458584a70b847f477a035ce48"
 transcriber = aai.Transcriber()
 
 
-router = APIRouter()
-
+# router = APIRouter()
+routes = FastAPI(openapi_prefix="/api")
 
 module_dir= os.path.dirname(__file__)
 data_path = lambda x: os.path.join(module_dir, "folders", x)
 
 
-@router.post("/upload")
+@routes.post("/upload")
 async def upload_files(
     file: UploadFile = File(...),
     userId: str = Form(...),
@@ -88,7 +88,7 @@ async def upload_files(
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
 
 
-@router.post("/audio_upload")
+@routes.post("/audio_upload")
 async def speech_to_text(file: UploadFile = File(...)):
     try:
         start_time_1 = time.time() 
@@ -122,7 +122,7 @@ async def speech_to_text(file: UploadFile = File(...)):
         print(f"Time taken for audio upload processing: {elapsed_time:.2f} seconds")
 
 
-@router.post("/analyse_cv")
+@routes.post("/analyse_cv")
 async def analyse_cv_job(recieved: pemodel.AnalyseJobRequestRecieved): 
     start_time = time.time()    
     try: 

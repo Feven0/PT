@@ -1,12 +1,4 @@
-from fastapi import FastAPI, status, File, UploadFile, Form
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
-import uvicorn
-from api.llm.ipersona.ipersona_agent import agents
 import socketio, ast
-from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Dict
-from dotenv import dotenv_values
 # import utils.db as database
 import api.modules.ipersona_utils as util
 
@@ -34,7 +26,7 @@ async def analysis_endpoint(sid, data):
     try:
         print("socket_analysis", data['message'])        
         response = await util.analysis_chat_response(data)
-        print("podes", response)
+
         message = [
                 {
                 "role": "user",
@@ -81,6 +73,4 @@ async def interview_endpoint(sid, data):
     except Exception as e:
         return f'Error: {str(e)}'
 
- 
-if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+
