@@ -7,9 +7,9 @@ if path not in sys.path:
     sys.path.append(path)
 #
 
-from api import config
-from api.services.strapi_graphql import StrapiGraphql
-_ = config.load_dotenv()
+# from api import config
+# from api.services.strapi_graphql import StrapiGraphql
+# _ = config.load_dotenv()
 
 
 import ast
@@ -36,19 +36,19 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 #
-from api.services.secret import get_auth, is_lambda
+# from api.services.secret import get_auth, is_lambda
 from api.pages.base import api_router as pages_router
-from api.utils.logger import LLPackerLogger
+# from api.utils.logger import LLPackerLogger
 
-logger = LLPackerLogger(__file__)
+# logger = LLPackerLogger(__file__)
 
 print('done importing modules!')    
 ###############################################################################
 
 #
-folders = config.folders
-settings = config.settings
-origins = config.fastapi.origins
+# folders = config.folders
+# settings = config.settings
+# origins = config.fastapi.origins
 
 
 def number_of_workers():
@@ -56,6 +56,7 @@ def number_of_workers():
 
 def include_router(app):
     app.include_router(pages_router)
+    pass
 
 
 def configure_static(app):
@@ -72,10 +73,13 @@ def configure_cors(app, origins=["*"]):
     
 
 def start_application():
-    app = FastAPI(title=settings.PROJECT_NAME,
-                  description=settings.PROJECT_DESCRIPTION,
-                  version=settings.PROJECT_VERSION,
-                  debug=False)    
+    app = FastAPI(
+        # title=settings.PROJECT_NAME,
+        # description=settings.PROJECT_DESCRIPTION,
+        # version=settings.PROJECT_VERSION,
+        # debug=False
+        )
+        
          
     configure_cors(app)
     include_router(app)
@@ -118,10 +122,12 @@ class StandaloneApplication(BaseApplication):
 
 #app = start_application()
 print('start app..')
-app = FastAPI(title=settings.PROJECT_NAME,
-                description=settings.PROJECT_DESCRIPTION,
-                version=settings.PROJECT_VERSION,
-                debug=False)
+app = FastAPI(
+    # title=settings.PROJECT_NAME,
+    # description=settings.PROJECT_DESCRIPTION,
+    # version=settings.PROJECT_VERSION,
+    # debug=False
+    )
 
 print('add middleware..')
 app.add_middleware(
@@ -138,27 +144,30 @@ def check_permission(method, api, token, run_stage):
     
     
     if method == 'GET' and api[1:] in ['docs', 'openapi.json', 'favicon.ico']:
-        logger.good(f'method={method}, api={api}, permission=True')
+        # logger.good(f'method={method}, api={api}, permission=True')
         return True
     else:
-        logger.info(f'method={method}, api={api}, permission=Checking ...', fg='pink')
+        # logger.info(f'method={method}, api={api}, permission=Checking ...', fg='pink')
+        pass
         
+        
+        ##############################################################
     # check validity of token
-    sg = StrapiGraphql(run_stage=run_stage, token=token)
-    user_info = sg.get_user_info() 
+    # sg = StrapiGraphql(run_stage=run_stage, token=token)
+    # user_info = sg.get_user_info() 
             
-    if all([user_info.get(x) for x in ['role', 'username', 'email']]):
-        logger.good(f'Got valid token: user_info={user_info}')
-        return True
-    else:
-        logger.warn(f'Valid token not found in request headers. Permission denied!')
-        return False
-    
+    # if all([user_info.get(x) for x in ['role', 'username', 'email']]):
+    #     logger.good(f'Got valid token: user_info={user_info}')
+    #     return True
+    # else:
+    #     logger.warn(f'Valid token not found in request headers. Permission denied!')
+    #     return False
+        ##############################################################
 
 #@app.middleware("http")
 async def check_authentication(request: Request, call_next): 
     origin = request.headers.get('referer', "") 
-    logger.good(f'Origin: {origin}')
+    # logger.good(f'Origin: {origin}')
     
     # get token
     access_token = request.headers.get("Authorization", "").split()
@@ -202,11 +211,13 @@ async def check_authentication(request: Request, call_next):
 
   
 def startup_event():
-    logger.info("Starting up...")
-    _ = config.pre_app_test()
+    pass
+    # logger.info("Starting up...")
+    # _ = config.pre_app_test()
 
 def shutdown_event():
-    logger.info("Shutting down...")
+    pass
+    # logger.info("Shutting down...")
     
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -221,7 +232,8 @@ app.include_router(pages_router)
 
 @app.get("/")
 async def root():
-    return config.return_text(settings.PROJECT_NAME)
+    # return config.return_text(settings.PROJECT_NAME)
+    pass
 
 
 @app.get("/test")
@@ -231,10 +243,12 @@ def read_root( request: Request ):
         print(f'Test endpoint requested from client_ip/host = {client_host}')
         print('** Other request.client info are:')
         print(request.client)
-        return config.return_json({"client_host": client_host})
+        # return config.return_json({"client_host": client_host})
+        return {"client_host": client_host}
     except Exception as e:
         print(e)
-        return config.return_json({"error_message":str(e)})
+        return {"error_message":str(e)}
+        # return config.return_json({"error_message":str(e)})
     
 #auth_scheme = HTTPBearer()
 
@@ -279,7 +293,7 @@ if __name__ == "__main__":
     #     StandaloneApplication(app, options).run()
     # else:
     
-    logger.divider(f"Starting FastAPI server on port {port} with 1 worker")
+    # logger.divider(f"Starting FastAPI server on port {port} with 1 worker")
     uvicorn.run("app:app", host="0.0.0.0", port=port)
           
 
