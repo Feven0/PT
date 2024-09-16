@@ -15,7 +15,7 @@ const AnalyseDoc = () => {
   const [open, setOpen] = useState(true);
   const [show, setShow] = useState(false);
   const [analysis, setAnalysis] = useState([]);
-  console.log("lady", latestanalysis)
+ 
 
   useEffect(() => {
     setJobId(id)

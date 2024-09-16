@@ -39,6 +39,7 @@ from fastapi.staticfiles import StaticFiles
 # from api.services.secret import get_auth, is_lambda
 from api.pages.base import api_router as pages_router
 from api.pages.ipersona.routers.api_ipersona import routes
+from api.pages.ipersona.routers.weaviate_db_routes import route_weaviate
 from api.pages.ipersona.socket.ipersona_socket import socket_app
 # from api.utils.logger import LLPackerLogger
 
@@ -144,7 +145,18 @@ routes.add_middleware(
     allow_headers=["*"],
 )
 
+route_weaviate.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 app.mount("/api", routes)
+app.mount("/wv", route_weaviate)
+
 
 print('start socket')
 app.mount("/", socket_app)

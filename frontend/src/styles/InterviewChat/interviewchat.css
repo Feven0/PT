@@ -1,3 +1,18 @@
+.chat_contain {
+    font-size: 1rem;
+    font-family: 'Times New Roman', Times, serif;
+    text-justify: auto;
+}
+
+.messagecandidate {
+    margin-bottom: 1.8rem;
+    margin-left: 2rem;
+}
+
+.messageassistant {
+    margin-bottom: 1rem;
+}
+
 .chat_container {
     display: flex;
     justify-content: space-around;
@@ -19,12 +34,13 @@
 
 .interview-box {
     display: flex;
-    gap: 2rem;
+    gap: 1rem;
 }
 
 .card_box {
     background-color: red;
-    max-height: 17rem;
+    width: 50rem;
+    /* max-height: 7rem; */
 }
 
 .interview_percent {
@@ -35,7 +51,7 @@
 }
 
 .interview-chat-container {
-    width: 50rem;
+    position: relative;    
     /* margin-top: 16px; */
     margin: 16px 160px 0px 160px;
 }

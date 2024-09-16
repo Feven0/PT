@@ -7,6 +7,7 @@ import { CgProfile } from 'react-icons/cg'
 import ReactMarkdown from 'react-markdown';
 import { AudioRecorder } from './index';
 import { ProviderContext } from '../../context/context';
+import "../../styles/InterviewChat/interviewchat.css"
 
 const { Text } = Typography;
 
@@ -55,7 +56,7 @@ const InterviewChat = () => {
     const MarkdownContent = ({ content }) => {
         const formattedContent = content.replace(/---/g, ' ');
         return (
-            <div className="markdown-content">
+            <div className="markdown-content" style={{width: '40rem'}}>
                 <ReactMarkdown>{formattedContent}</ReactMarkdown>
             </div>
         );
@@ -63,7 +64,7 @@ const InterviewChat = () => {
 
     return (
         <div className="interview-chat-container">
-            <Card className="chat-box" style={{ maxHeight: '30rem', overflowY: 'auto' }}>
+            <Card className="chat-box" style={{ height: '25rem', width: '45rem', overflowY: 'auto' }}>
                 <div className="btn-hide">
                     <Button 
                         onClick={() => setShow(!view)} 
@@ -76,7 +77,7 @@ const InterviewChat = () => {
                 {view && (
                     <div>
                         {initialChatInterview?.map((message, index) => (
-                            <div key={index}>
+                            <div className='chat_contain' key={index}>
                                 {message.role === "candidate" && (
                                     <div className='messagecandidate'>
                                         <CgProfile  size={40}/>
@@ -97,18 +98,18 @@ const InterviewChat = () => {
                 )}
 
                 {interview?.map((message, index) => (
-                    <div key={index}>
+                    <div className='chat_contain' key={index}>
                         {message.role === "candidate" && (
-                            <div className='message candidate'>
+                            <div className='messagecandidate'>
                                  <CgProfile  size={40}/>
                                 <Text className="message-text">{message?.response}</Text>
                             </div>
                         )}
                         {message.role === "assistant" && (
-                            <div className='message assistant'>
+                            <div className='messageassistant'>
                                 <img src={hr} alt="" className='profile-image' />
                                 <div className="message-response">
-                                    <MarkdownContent content={message?.response} />
+                                    <MarkdownContent content={message?.response} />                                   
                                 </div>
                             </div>
                         )}

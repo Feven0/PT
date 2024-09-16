@@ -5,11 +5,11 @@ const { Text, Title } = Typography;
 const PercentageCard = () => {
   return (
     <>
-        <Card className='card_box' title='Performance'>
-            <Card type="inner">
-                <Title>Good Job!</Title>
+        <Card title='Performance' style={{height: '16rem'}}>
+            <div>
+                <h1>Good Job!</h1>
                 <Text className='interview_percent'>70%</Text>
-            </Card>
+            </div>
         </Card>
     </>
   )

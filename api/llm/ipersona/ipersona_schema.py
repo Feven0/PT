@@ -1,12 +1,14 @@
-import weaviate
+import weaviate, os
 from dotenv import dotenv_values
 import datetime
-env_vars = dotenv_values('./.env')
+from dotenv import load_dotenv
+load_dotenv("../../.env")
 
-
+WEAVIATE_URL="https://z4crjyuqsr6sgo87nujlta.c0.us-east1.gcp.weaviate.cloud"
+WEAVIATE_API_KEY="tHvAYZHC9Q8OzUXsL6wVFkhDViT0YKNKBwL9"
 client = weaviate.Client(
-    url=env_vars.get("WEAVIATE_URL"),
-    auth_client_secret=weaviate.AuthApiKey(api_key=env_vars.get("WEAVIATE_API_KEY")),
+    url=WEAVIATE_URL,
+    auth_client_secret=weaviate.AuthApiKey(api_key=WEAVIATE_API_KEY),
 )
 
 schema = {

@@ -1,5 +1,5 @@
 import socketio, ast
-# import utils.db as database
+import api.llm.ipersona.ipersona_db as database
 import api.modules.ipersona_utils as util
 
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
@@ -38,7 +38,7 @@ async def analysis_endpoint(sid, data):
                 }
                 ]
         
-        # await database.analyse_chat_to_db(data, message)       
+        await database.analyse_chat_to_db(data, message)       
             
         # print(f"Analysis response: {message}")
         await sio.emit("analyse", message, room=sid)
@@ -65,7 +65,7 @@ async def interview_endpoint(sid, data):
                 ]
         
                
-        # await database.interview_chat_to_db(data, message)
+        await database.interview_chat_to_db(data, message)
             
         # print(f"Interview response: {message}")
         await sio.emit("interview chat", message, room=sid)

@@ -36,7 +36,7 @@ const JobDetail = () => {
     
     
       return (
-        <Layout >
+        <Layout>
           <Content style={{ padding: '2px' }}>
                     <Link to="/jobs">
                         <Text className='header'>Ipersona</Text>
@@ -52,7 +52,7 @@ const JobDetail = () => {
                         defaultActiveKey="resume"
                         activeKey={selectedTab}
                         onChange={setSelectedTab}
-                        style={{ marginTop: '20px' }}
+                        style={{ marginTop: '2px' }}
                         >
                         <TabPane tab="Resume" key="resume" />
                         <TabPane tab="Analyze Document" key="analyze" />

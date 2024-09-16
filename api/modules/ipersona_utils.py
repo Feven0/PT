@@ -8,9 +8,15 @@ from collections import defaultdict
 from api.llm.ipersona.ipersona_agent import agents
 
 from dotenv import load_dotenv
-# load_dotenv("../.env")
+load_dotenv(os.path.abspath("../.env"))
+print("Not a thing girl")
+print(os.getenv('OPENAI_API_KEY'))
+
+
 OPENAI_API_KEY = "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"
+# openai.api_key = os.environ.get('OPENAI_API_KEY')
 openai_client = openai.OpenAI(api_key = OPENAI_API_KEY)
+
 
 module_dir= os.path.dirname(__file__)
 prompt_path = lambda x: os.path.join(module_dir, "prompts", x)
@@ -65,7 +71,11 @@ async def analysing_vitae(recieved,  jbPath):
                 
         response = await hr_agent.send_message_analyser(msg)    
         response = extract_json(response, quite=False)
-        return response
+        data ={
+            "generated_persona": generated_persona,
+            "response": response
+        }
+        return data
     
     except Exception as e:
         return f'Error: {str(e)}' 

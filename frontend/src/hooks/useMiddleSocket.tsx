@@ -16,7 +16,7 @@ interface AnalysisResponse {
 
 
 const useMiddleSocket = () => {
-  const [socket, messages, setMessages, analysis, setChatAnalysis, interview, setChatInterview, upload, setUpload, cvanalysis, setCVAnalysis] = useWebSocket('http://0.0.0.0:8000');
+  const [socket, messages, setMessages, analysis, setChatAnalysis, interview, setChatInterview, upload, setUpload, cvanalysis, setCVAnalysis] = useWebSocket('http://0.0.0.0:5500');
   const [loading, setLoading] = useState(false);
   const [isloading, setIsLoading] = useState(false);
   const [latestAnalyseResponse, setLatestAnalyseResponse] = useState<AnalysisResponse | null>(null);

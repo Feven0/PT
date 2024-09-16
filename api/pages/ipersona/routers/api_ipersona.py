@@ -22,8 +22,8 @@ from fastapi import FastAPI
 import time
 from fastapi import UploadFile, Form
 from typing import List
-# import api.llm.ipersona.ipersona_schema as db
-# import api.llm.ipersona.ipersona_db as database
+import api.llm.ipersona.ipersona_schema as db
+import api.llm.ipersona.ipersona_db as database
 from api.llm.ipersona.ipersona_agent import agents
 from dotenv import load_dotenv
 import api.pages.ipersona.models.model_persona as pemodel
@@ -80,7 +80,7 @@ async def upload_files(
         }
                 
          
-        # res = await db.create_schema(data)
+        res = await db.create_schema(data)
         return {"filenames": f"uploaded successfully: {data}"}
     
     except Exception as e:
@@ -129,22 +129,22 @@ async def analyse_cv_job(recieved: pemodel.AnalyseJobRequestRecieved):
         global hr_agent
         jbPath = recieved.jbPath
         jbPath = data_path('txt_files/job.txt')
-        # cvPath = data_path('txt_files/CV.txt')
+        cvPath = data_path('txt_files/CV.txt')
 
         global persona        
                      
              
-        # job_session_id = await database.save_to_db(recieved, jbPath)
-        response = await util.analysing_vitae(recieved, jbPath)
+        job_session_id = await database.save_to_db(recieved, jbPath)
+        result = await util.analysing_vitae(recieved, jbPath)
             
-        # data = {
-        #     "id": job_session_id,
-        #     "persona": generated_persona,
-        #     "analysis": response,
-        # }    
+        data = {
+            "id": job_session_id,
+            "persona": result['generated_persona'],
+            "analysis": result['response'],
+        }    
          
-        # res = await db.update_ipersona_data_new(data, fields_to_update=['persona', 'analysis'])
-        return response
+        res = await db.update_ipersona_data_new(data, fields_to_update=['persona', 'analysis'])
+        return result['response']
     
     except Exception as e:
         print(f"Error processing files: {e}")

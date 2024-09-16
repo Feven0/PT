@@ -1,11 +1,14 @@
 import autogen
 import openai, os
 
-# from dotenv import load_dotenv
-# load_dotenv("../../.env")
+from dotenv import load_dotenv
+load_dotenv(os.path.abspath("../../.env"))
+# print("Not a thing")
+# print(os.getenv('OPENAI_API_KEY'))
 
 # openai.api_key = os.getenv('OPENAI_API_KEY')
 OPENAI_API_KEY = "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"
+# openai.api_key = os.environ.get('OPENAI_API_KEY')
 openai_client = openai.OpenAI(api_key=OPENAI_API_KEY )
 
 
