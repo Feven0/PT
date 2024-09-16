@@ -1,9 +1,9 @@
-import {DisplayResume, AnalyseDoc, InterviewPrep} from '../components/index'
+import {DisplayResume, AnalyseDoc, InterviewPrep} from '../components/main/index'
 import { useState, useContext } from 'react';
 import { Layout, Menu, Row, Col, Typography, Tabs } from 'antd';
 import { ProviderContext } from '../context/context';
 import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import '../styles/jobdetail/jobdetail.css'
 
 const { Header, Content } = Layout;
@@ -37,7 +37,10 @@ const JobDetail = () => {
     
       return (
         <Layout >
-          <Content style={{ padding: '20px' }}>
+          <Content style={{ padding: '2px' }}>
+                    <Link to="/jobs">
+                        <Text className='header'>Ipersona</Text>
+                    </Link>
                 <Row>
                     <Text className='pdf'>{latestsession?.fileName}</Text>
                 </Row>

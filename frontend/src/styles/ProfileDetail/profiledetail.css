@@ -1,0 +1,42 @@
+.cv-dropdown {
+    background-color: white;
+    border: none;
+    max-height: 300px;
+    max-width: 500px;
+    overflow-y: auto
+}
+
+.profile-container {
+    padding: 20px;
+    background: #f5f5f5;
+}
+
+.cv-button {
+    background-color: #ece3e3; 
+    color: white;
+    border: none;
+    margin-bottom: 2rem;
+}
+
+.cv-item-list {
+    background-color: antiquewhite;
+}
+
+
+.cv-item {
+    width: 100%;
+    text-align: left;
+}
+
+.cv-item:hover {
+    background-color: #f5f5f5;
+}
+
+.job-card {
+    border-radius: 8px;
+    transition: box-shadow 0.3s;
+}
+
+.job-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); /* Add shadow on hover */
+}

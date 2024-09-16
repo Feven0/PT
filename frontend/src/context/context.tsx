@@ -54,6 +54,7 @@ export const PersonaContext = ({ children }) => {
   
         return () => clearInterval(intervalId); 
       }
+      //start, latestsession
     }, [start, latestsession]);
     
       return (

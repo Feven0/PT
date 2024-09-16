@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { FaMicrophoneAlt } from 'react-icons/fa'; 
-import Api from '../Services/Services';
+import Api from '../../Services/Services';
 
 const AudioRecorder = ({ sendDataParent, sendDataToParent }) => {
     const [isRecording, setIsRecording] = useState(false);

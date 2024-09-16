@@ -1,12 +1,30 @@
 import { useEffect, useState, useContext } from 'react';
-import {Job, MyInterview, MyAnalyseChat, MyJobAnalyse} from "../index"
-import { IoChatbubbleEllipses } from "react-icons/io5";
+import { MyInterview, MyAnalyseChat, MyJobAnalyse} from "./index"
+import {DisplayResume} from '../main/index'
+import { Layout, Menu, Row, Col, Typography, Tabs } from 'antd';
 import { Link, useParams } from 'react-router-dom';
 import Api from '../../Services/Services';
 import { ProviderContext } from '../../context/context';
 
+const { Header, Content } = Layout;
+const { Title, Text } = Typography;
+const { TabPane } = Tabs;
+
 const MainActivity = () => {
-    const { latestanalysis, userData, latestUserData } = useContext(ProviderContext);
+    const { latestsession } = useContext(ProviderContext)
+    const [selectedTab, setSelectedTab] = useState('resume');
+
+    const renderContent = () => {
+    switch (selectedTab) {
+        case 'analyze':
+        return <MyJobAnalyse data={analysis !== undefined && (analysis)}  chatanalysis={chatanalysis}/>;
+        case 'interview':
+        return <MyInterview chat={chatinterview}/>;
+        default:
+        return null; 
+    }
+    };
+
     const [refresh, setRefresh] = useState(0);
     const [activeComponent, setActiveComponent] = useState('A');
     const [show, setShow] = useState(false)
@@ -42,59 +60,27 @@ const MainActivity = () => {
     };
 
   return (
-    <div className='mx-12'>
-        <div className='flex '>
-            <nav className='bg-[red] w-44 py-3 rounded gap-3 mx-20 mt-10 max-h-52 flex flex-col'>
-                <button onClick={() => handleMenuClick('A')} 
-            className={`mx-1 p-2 flex justify-start  ${activeComponent === 'A' ? 'bg-white' : ''} text-gray-900  rounded px-1`}>
-                    Job
-                </button>
+    <Layout >
+          <Content style={{ padding: '2px' }}>
+                <Row>
+                    <Col span={24}>
+                        <Tabs
+                        defaultActiveKey="resume"
+                        activeKey={selectedTab}
+                        onChange={setSelectedTab}
+                        style={{ marginTop: '20px' }}
+                        >
+                        <TabPane tab="Resume" key="resume" />
+                        <TabPane tab="Analyze Document" key="analyze" />
+                        <TabPane tab="Interview Prep" key="interview" />
+                        </Tabs>
+                        {renderContent()} 
 
-                <button onClick={() => handleMenuClick('B')} 
-                className={`mx-1 p-2 flex justify-start ${activeComponent === 'B' ? 'bg-white' : ''} text-gray-900 rounded px-1`}>
-                    Analysis
-                </button>
-
-                <button onClick={() => handleMenuClick('C')} 
-                className={`mx-1 p-2 flex justify-start  ${activeComponent === 'C' ? 'bg-white' : ''} text-gray-900 rounded px-1`}>
-                    Interview
-                </button>
-
-                <Link to="/profile_detail">
-                    <button className='mx-1 p-2 flex justify-start text-gray-900 rounded px-1'>
-                        Back
-                    </button>
-                </Link>
-
-            </nav>
-
-            <div className='mx-20'>
-                {activeComponent === 'A' && <Job />}
-                {activeComponent === 'B' && <MyJobAnalyse data={analysis !== undefined && (analysis)} />}
-                {activeComponent === 'C' && <MyInterview chat={chatinterview} />}
-            </div>
-        </div>
-
-        <div className='absolute inline-block right-0 bottom-0 mb-14 mr-5 bg-white'>
-            {activeComponent === 'B' && 
-                <div className='relative h-full'> 
-                    {show ? <MyAnalyseChat chat={chatanalysis}/> : null}
-                
-                    <div className='absolute right-0'>
-                        <div 
-                            className='my-2 bg-red-500 cursor-pointer rounded-full h-10 w-10 flex justify-center items-center'
-                            onClick={() => setShow(!show)}
-                        > 
-                            <IoChatbubbleEllipses 
-                                className='text-white' 
-                                size={30}
-                            />
-                        </div> 
-                    </div>
-                </div>    
-            }         
-        </div>
-    </div>
+                        {selectedTab === 'resume' && <DisplayResume />}
+                    </Col>
+                </Row>
+          </Content>
+        </Layout>
   )
 }
 

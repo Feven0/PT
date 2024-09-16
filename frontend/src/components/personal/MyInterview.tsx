@@ -1,7 +1,10 @@
 import {useState, useEffect} from 'react'
-import '../../styles/chatbox.css'
-import { MyInterviewChat } from '../index'
+import { MyInterviewChat } from './index'
+import { PercentageCard } from '../main/index';
 import useMiddleSocket from '../../hooks/useMiddleSocket';
+// import '../../styles/InterviewChat/interviewchat.css'; 
+import { Button, Typography, Card, Row } from 'antd';
+
 
 const MyInterview = ({chat}) => {
   const { handleInterview, interview, loading,  latestInterviewResponse } = useMiddleSocket();
@@ -10,25 +13,34 @@ const MyInterview = ({chat}) => {
     setOpen(component);
   };
 
+  const { Text, Title } = Typography;
+
   return (
-    <div style={{ width: '100vh' }} className="relative ">
+    <div className="relative">
      {open === 'none' &&
-      <div className='flex flex-col text-center text-3xl font-roboto'>
-          <p className='text-gray-600'>Want to get ready for the job?</p>
-          <small className='text-gray-400 text-lg'>how about having an interview?</small>
+      <Card className="interview-card" style={{ margin: 'auto', textAlign: 'center' }}>
+        <Title level={3}>Want to get ready for the job?</Title>
+        <Text className="text-gray-400" style={{ display: 'block', marginBottom: '16px' }}>
+          How about having an interview?
+        </Text>
+        <Button 
+          type="primary" 
+          onClick={() => handleReadyClick('ready')} 
+          className="interview-button"
+          style={{ backgroundColor: '#f5222d', borderColor: '#f5222d' }}
+        >
+          Sure
+        </Button>
+      </Card>
+      }
 
-          <div className='flex justify-center mt-4'>
-              <button 
-                onClick={() => handleReadyClick('ready')} 
-                className='bg-red-600 text-white p-2 text-xl rounded-full px-10'>
-                  Sure
-              </button>
-          </div>
-      </div>}
-
-      <div className='flex justify-center items-center'>
-            {open === 'ready' &&<MyInterviewChat chat={chat}/>}
-      </div>
+      
+      {open === 'ready' &&
+        <Row className='chat_container'>
+          <MyInterviewChat chat={chat}/>
+          <PercentageCard/>
+        </Row>
+      } 
     </div>
   )
 }

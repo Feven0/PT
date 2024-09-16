@@ -1,18 +1,18 @@
 import { useState, useContext, useEffect } from 'react';
 import { Button, Typography, Card } from 'antd';
-import Api from '../Services/Services';
-import { AnalyseDetail, AnalyseChat, PercentageCard } from './index';
+import Api from '../../Services/Services';
+import { AnalyseDetail, AnalyseChat } from './index';
 import { useParams } from 'react-router-dom';
-import { ProviderContext } from '../context/context';
+import { ProviderContext } from '../../context/context';
 import { WechatWorkOutlined } from '@ant-design/icons';
-import '../styles/AnalyseChat/chat.css'
+import '../../styles/AnalyseChat/chat.css'
 
 const { Text, Title } = Typography;
 
 const AnalyseDoc = () => {
   const { latestsession, latestanalysischat, latestUserData ,latestanalysis, setJobId } = useContext(ProviderContext)
   const { id } = useParams()
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [show, setShow] = useState(true);
   const [analysis, setAnalysis] = useState([]);
   console.log("lady", latestanalysis)
@@ -60,7 +60,7 @@ const AnalyseDoc = () => {
         }
       </div>
 
-      <div className="chat-container" style={{ position: 'absolute', right: '20px', bottom: '30px' }}>
+      <div className="chat-container" style={{ position: 'absolute', right: '20px', bottom: '0px' }}>
         <div className="chat-relative">
           {show && (
             <AnalyseChat latestanalysischat={latestanalysischat} latestUserData={latestUserData} />

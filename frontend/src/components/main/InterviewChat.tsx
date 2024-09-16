@@ -1,12 +1,12 @@
 import { useState, useEffect, useContext } from 'react';
 import { Card, Input, Button, Spin, Typography } from 'antd';
-import fade from '../assets/fade-circles.svg';
-import useMiddleSocket from '../hooks/useMiddleSocket';
-import hr from '../assets/hr.jpg';
+import fade from '../../assets/fade-circles.svg';
+import useMiddleSocket from '../../hooks/useMiddleSocket';
+import hr from '../../assets/hr.jpg';
 import { CgProfile } from 'react-icons/cg'
 import ReactMarkdown from 'react-markdown';
 import { AudioRecorder } from './index';
-import { ProviderContext } from '../context/context';
+import { ProviderContext } from '../../context/context';
 
 const { Text } = Typography;
 

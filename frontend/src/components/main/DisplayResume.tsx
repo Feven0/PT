@@ -1,6 +1,6 @@
 import { Card, Row, Col, Typography } from 'antd';
-import resumeData from '../assets/resume.json'
-import '../styles/DisplayResume/displayresume.css'
+import resumeData from '../../assets/resume.json'
+import '../../styles/DisplayResume/displayresume.css'
 
 const { Title, Text } = Typography;
 const DisplayResume = () => {

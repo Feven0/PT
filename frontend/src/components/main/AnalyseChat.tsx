@@ -1,8 +1,8 @@
 import { useState, useEffect, useContext } from 'react';
 import { Input, Button, Card, Typography, Spin, Row } from 'antd';
-import fade from '../assets/fade-circles.svg';
-import useMiddleSocket from '../hooks/useMiddleSocket';
-import { ProviderContext } from '../context/context';
+import fade from '../../assets/fade-circles.svg';
+import useMiddleSocket from '../../hooks/useMiddleSocket';
+import { ProviderContext } from '../../context/context';
 import ReactMarkdown from 'react-markdown';
 
 const { Text, Title, Paragraph } = Typography;

@@ -1,5 +1,5 @@
 import { Card } from 'antd'
-import '../styles/jobcard/jobcard.css'
+import '../../styles/jobcard/jobcard.css'
 
 const JobCard = ({item}) => {
   return (

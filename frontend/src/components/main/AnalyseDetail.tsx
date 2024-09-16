@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Card, Typography } from 'antd';
-import "../styles/AnalyseDetail/analysedetail.css"
+import "../../styles/AnalyseDetail/analysedetail.css"
 
 const { Title, Text } = Typography;
 

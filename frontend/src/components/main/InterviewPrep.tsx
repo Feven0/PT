@@ -1,9 +1,9 @@
 import { useCallback, useContext, useState } from 'react';
 import { Button, Typography, Card } from 'antd';
 import { InterviewChat, PercentageCard } from './index';
-import useMiddleSocket from '../hooks/useMiddleSocket';
-import { ProviderContext } from '../context/context';
-import '../styles/InterviewChat/interviewchat.css'; 
+import useMiddleSocket from '../../hooks/useMiddleSocket';
+import { ProviderContext } from '../../context/context';
+import '../../styles/InterviewChat/interviewchat.css'; 
 const { Text, Title } = Typography;
 
 const InterviewPrep = () => {

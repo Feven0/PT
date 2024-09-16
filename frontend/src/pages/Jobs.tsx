@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Input, Row, Col } from "antd";
-import { JobCard } from '../components/index';
+import { JobCard } from '../components/main/index';
 import '../styles/jobs/jobs.css';
 
 const Jobs = () => {

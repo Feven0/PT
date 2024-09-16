@@ -1,29 +1,53 @@
 import {useState} from 'react'
-import {MyJobAnalysisDetail} from '../index'
+import {MyJobAnalysisDetail, MyAnalyseChat} from './index'
+import '../../styles/AnalyseDetail/analysedetail.css'
+import { WechatWorkOutlined } from '@ant-design/icons';
+import { Button, Typography, Card } from 'antd';
 
-const MyJobAnalyse = ({data}) => {
+const { Text, Title } = Typography;
+
+const MyJobAnalyse = ({data, chatanalysis}) => {
   const [open, setOpen] = useState('none');
+  const [show, setShow] = useState(false)
   const handleReadyClick = (component: any) => {
     setOpen(component);
   };
 
   return (
-    <div style={{ width: "100vh"}} className="relative">
-     {open === 'none' &&
-      <div className='flex flex-col text-center text-3xl font-roboto'>
-          <p className='text-gray-600'>Want to see how fit you are for the role?</p>
-          <div className='flex justify-center mt-4'>
-              <button 
-                onClick={() => handleReadyClick('analyse')} 
-                className='bg-red-600 text-white p-1 text-xl rounded-full px-10'>
-                  {data.length !==0 ? 'Sure': 'Nothing to show, select a cv first!!!'}
-              </button>
+    <div>
+       {open === 'none' &&
+        <div className="analyse-box" style={{ textAlign: 'center', width: '30rem' }} >
+          <Text style={{ fontSize: '24px', color: 'gray' }}>
+            Want to see how fit you are for the role?
+          </Text>
+          <div style={{ marginTop: '16px' }}>
+            <Button 
+              type="primary" 
+              onClick={() => handleReadyClick('analyse')} 
+              style={{ backgroundColor: '#ff4d4f', borderColor: '#ff4d4f' }}
+            >
+              Sure
+            </Button>
           </div>
-      </div>}
+        </div>
+      }
 
-      <div className='my-20'>
-            {open === 'analyse' && data !== undefined  && (<MyJobAnalysisDetail analysis={data}/>)}
+      <div className=''>
+          {open === 'analyse' && data !== undefined  && (<MyJobAnalysisDetail analysis={data}/>)}
       </div>
+
+      {open === 'analyse' && data !== undefined  && (
+        <div className="chat-container" style={{ position: 'absolute', right: '20px', bottom: '50px' }}>
+          <div className="chat-relative">
+            {show && (
+              <MyAnalyseChat chat={chatanalysis} />
+            )}
+            <div className="chat-icon" onClick={() => setShow(!show)} style={{ position: 'absolute', right: '0px' }}>
+              <WechatWorkOutlined className='text-white' size={30} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
