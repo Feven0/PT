@@ -18,35 +18,52 @@ Your evaluation should be structured in the following single JSON format:
 
 {
     "evaluation": {
-        "percentage": "put here a percentage value to indicate how well the candidate performed in the interview, e.g., 60%",
-        "message": "put here a one-word message to indicate how well the candidate did, e.g., Good",
-        "confidence_level": "put here a percentage value indicating the candidate's confidence during the interview, e.g., 70%",
-        "clarity': "here put the candidate response clarity in percentage eg: 70%",
-        "relevance": "here put the candidate response relevance to the asked in percentage eg: 59%",
+        "performance_message": "provide a short word message to indicate candidate interview performance eg. Excellent"
+        
+        "performance_percent": "put here a percentage value to indicate how well the candidate performed in the interview, eg. 60%",
+        
+        "confidence_level": "put here a qualitative descriptors (e.g., High, Moderate, Low) indicating the candidate's confidence during the interview, eg. Moderate",
+        
+        "answer_relevance": {
+            "relevant_answers": "here put the overall candidate responses relevance to the asked questions in percentage eg: 59%",
+            "irrelevant_answers: "here put the overall candidate responses irrelevance to the asked questions in percentage eg: 39%",
+        }
+        
+        "communication_skills": {
+            "clarity": "put here a descriptors (Clear, Somewhat Clear, Unclear) for clarity of communication, e.g., Somewhat Clear",
+            "engagement": "put here a descriptors (Engaged, Somewhat Engaged, Disengaged) for showing candidate engagement in the whole held interview, e.g., Disengaged"
+        },
+        
+        "time_management": {
+            "adherence": "put here a percentage indicating how well the candidate managed their time for the entire interview questions, eg: 85%",
+
+            "time_taken": {
+                "pass": "put here the question count where the time_taken doesn't exceeds the time limit of the question, only focus on the questions the time taken is available from the info you have access too to prove a value eg: 4",
+                "failed": "put here the question count where the time_taken exceeds the given time limit of the question, only focus on the questions the time taken is available from the info you have access too to prove a value eg: 1,
+            }
+            
+            "status": "put here the question where the infos about time_taken and time limit is found in the mock interview with the candidate. include the time_taken and time limit in your response and show the calculation eg: time_taken < time_limit for question no 1 or 2 so the candidate in question number two take didn't exceeds from the given time or not"
+            
+        },
+        
         "areas_of_improvement": [
             {
-                "skill": "skill name they should improve on",
+                "skill": "skill name they should improve on, give a specific skill name they should improve based on the info you have about the candidate interview to qualify for the job role. example: RAG",
+                
                 "description": "what exactly they should improve on the skill"
             }
         ],
+        
         "strengths": [
             {
-                "skill": "skill name that was demonstrated well",
+                "skill": "skill name that was demonstrated well, give a specific skill name they should improve based on the info you have about the candidate interview to qualify for the job role. example: Communication Skill",
+                
                 "description": "what was done well regarding this skill"
             }
         ],
-        "communication_skills": {
-            "clarity": "put here a percentage for clarity of communication, e.g., 80%",
-            "engagement": "put here a percentage for candidate engagement, e.g., 75%"
-        },
-        "time_management": {
-            "adherence": "put here a percentage indicating how well the candidate managed their time for the entire interview questions, e.g., 85%",
-            "correctness": "put here number of questions, where the time taken did not exceeds the time limit, e.g: 3"
-            "fault": "put here number of questions, where the time taken exceeds the time limit, e.g: 2"
-            "suggestions": "put here any suggestions for improving time management"
-        },
+        
         "overall_performance": {
-            "rating": "put here a rating scale value, e.g., 1-5 stars",
+            "rating": "put here a rating scale value, eg: 1-5 stars",
             "comments": "put here any additional comments or observations"
         }
     }

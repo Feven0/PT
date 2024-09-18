@@ -15,7 +15,7 @@ interface AnalysisResponse {
 
 
 const useMiddleSocket = () => {
-  const [socket, analysis, setChatAnalysis, interview, setChatInterview, cvanalysis, setCVAnalysis] = useWebSocket('http://0.0.0.0:5500');
+  const [socket, analysis, setChatAnalysis, interview, setChatInterview, cvanalysis, setCVAnalysis, interview_metrics, setEvaluationMetrics] = useWebSocket('http://0.0.0.0:5500');
   const [loading, setLoading] = useState(false);
   const [isloading, setIsLoading] = useState(false);
   const [latestAnalyseResponse, setLatestAnalyseResponse] = useState<AnalysisResponse | null>(null);
@@ -65,13 +65,15 @@ const useMiddleSocket = () => {
 
   useEffect(() => {
     if (socket) {
-      socket.on('interview chat', (message: any) => {
-        setChatInterview((prevMessages: any) => {
-          if (!prevMessages.some((m: any) => m.query === message.query)) {
-            return [...prevMessages, ...message];
-          }
-          return prevMessages;
-        });
+        socket.on('interview chat', ({ message, response_metrics }) => {
+            setChatInterview((prevMessages) => {
+                const newMessages = [...prevMessages, ...message];
+                return newMessages;
+            });
+            setEvaluationMetrics((prevMessages) => {
+              const newMessages = [...prevMessages, response_metrics];
+              return newMessages;
+          });
         setLatestInterviewResponse(message);
           reset(); 
         setLoading(false);
@@ -140,8 +142,8 @@ const useMiddleSocket = () => {
     pause,
     reset,
     isStarted, setIsStarted,
-    setCount
-
+    setCount,
+    interview_metrics, setEvaluationMetrics
   };
 };
 

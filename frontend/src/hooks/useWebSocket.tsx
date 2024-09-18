@@ -8,6 +8,8 @@ const useWebSocket = (url: any) => {
   const [analysis, setChatAnalysis] = useState<any[]>([]);
   const [interview, setChatInterview] = useState<any[]>([]);
   const [cvanalysis, setCVAnalysis] = useState<any[]>([]);
+  const [interview_metrics, setEvaluationMetrics] = useState<any[]>([]);
+
   
   useEffect(() => {
     const newSocket = io(url);
@@ -22,9 +24,10 @@ const useWebSocket = (url: any) => {
       setChatAnalysis((prevMessages) => [...prevMessages, ...message]);
     });
 
-    newSocket.on('interview chat', (message) => {
+    newSocket.on('interview chat', ({ message, response_metrics }) => {
       console.log(`Received response: ${message}`);
       setChatInterview((prevMessages) => [...prevMessages, ...message]);
+      setEvaluationMetrics((prevMessages) => [...prevMessages, response_metrics]);
     });
 
     newSocket.on('disconnect', () => {
@@ -36,7 +39,7 @@ const useWebSocket = (url: any) => {
     };
   }, [url]);
 
-  return [socket,analysis, setChatAnalysis, interview, setChatInterview, cvanalysis, setCVAnalysis];
+  return [socket,analysis, setChatAnalysis, interview, setChatInterview, cvanalysis, setCVAnalysis, interview_metrics, setEvaluationMetrics];
 };
 
 export default useWebSocket;

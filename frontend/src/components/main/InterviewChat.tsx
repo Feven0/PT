@@ -6,6 +6,7 @@ import hr from '../../assets/hr.jpg';
 import { CgProfile } from 'react-icons/cg'
 import ReactMarkdown from 'react-markdown';
 import { AudioRecorder } from './index';
+import { Link } from 'react-router-dom';
 import { ProviderContext } from '../../context/context';
 import "../../styles/InterviewChat/interviewchat.css"
 
@@ -13,7 +14,7 @@ const { Text } = Typography;
 
 const InterviewChat = () => {
 
-    const { handleInterview, interview, loading, latestInterviewResponse, seconds, minutes, pause, setCount } = useMiddleSocket();
+    const { handleInterview, interview, loading, latestInterviewResponse, seconds, minutes, pause, setCount, interview_metrics } = useMiddleSocket();
     const { latestinterviewchat, latestUserData, latestsession, setStart } = useContext(ProviderContext);
     const [counter, setCounter] = useState(0);
     const [input, setInput] = useState("");
@@ -21,7 +22,8 @@ const InterviewChat = () => {
     const [initialChatInterview, setInitialChatInterview] = useState(latestinterviewchat);
     const [view, setShow] = useState(false);
     const [lastTimerValue, setLastTimerValue] = useState('00:00'); 
-  
+    
+    console.log("anthony", interview_metrics)
     useEffect(() => {
         setStart(false);
     }, [setStart]);
@@ -147,6 +149,12 @@ const InterviewChat = () => {
                             <AudioRecorder sendDataParent={handleDataAudio} sendDataToParent={handleDataFromAudio} />
                             {dataFromAudio && <Spin indicator={<img src={fade} alt="" className='actions-load' />} />}
                         </div>
+                    </div>
+
+                    <div className='progress-btn'>
+                        <Link to="/personal_dashboard">
+                             <Button>check progress</Button>
+                        </Link>
                     </div>
                 </div>
             </div>

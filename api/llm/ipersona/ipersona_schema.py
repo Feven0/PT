@@ -4,8 +4,8 @@ import datetime
 from dotenv import load_dotenv
 load_dotenv("../../.env")
 
-WEAVIATE_URL="https://z4crjyuqsr6sgo87nujlta.c0.us-east1.gcp.weaviate.cloud"
-WEAVIATE_API_KEY="tHvAYZHC9Q8OzUXsL6wVFkhDViT0YKNKBwL9"
+WEAVIATE_URL="https://up0v9qksqukevg74gj1tfg.c0.us-east1.gcp.weaviate.cloud"
+WEAVIATE_API_KEY="1Kp0aYKgxFFE3VlmrRN6Ni8W23LE1KlmAqr4"
 client = weaviate.Client(
     url=WEAVIATE_URL,
     auth_client_secret=weaviate.AuthApiKey(api_key=WEAVIATE_API_KEY),
@@ -86,6 +86,98 @@ schema = {
                     "dataType": ["string"],  
                     "default": "null"
                 },
+                {
+                    "name": "createdAt", 
+                    "dataType": ["date"]
+                },
+                {
+                    "name": "updatedAt", 
+                    "dataType": ["date"]
+                }
+            ],
+            "vectorizer": "none"
+        },
+        {
+            "class": "iPersonaInterviewMetrics",
+            "properties": [
+                {
+                    "name": "sessionId", 
+                    "dataType": ["string"]
+                },
+                {
+                    "name": "jbId", 
+                    "dataType": ["string"]
+                },
+                {
+                    "name": "performance_message", 
+                    "dataType": ["string"], 
+                    "default": "null"
+                },
+                {
+                    "name": "performance_percent",
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "confidence_level",
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "relevant_answers",
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "irrelevant_answers",
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "clarity", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "engagement", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "adherence", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "timer_pass", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "timer_failed", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "improvement", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "strength", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "rating", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "comments", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },                
                 {
                     "name": "createdAt", 
                     "dataType": ["date"]

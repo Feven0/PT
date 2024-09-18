@@ -126,13 +126,13 @@ async def interview_chat_response(data):
         return f'Error: {str(e)}' 
     
 
-async def interview_chat_response_metrics(data):
+async def interview_chat_response_metrics(data, previous_conversation):
     try:        
         hr_agent.assistant.update_system_message(data['user']['persona'])
       
         message = file_reader(prompt_path("ipersona/interview_metrics.txt"))
         context = str(message)
-        history_str = '\n'.join(str(item) for item in data['history'])
+        history_str = '\n'.join(str(item) for item in previous_conversation)
         msg=context\
             .replace("{jd}", file_reader(data['user']['jbPath']))\
             .replace("{cv}", file_reader(data['cvPath']))\
