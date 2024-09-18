@@ -1,3 +1,5 @@
+import { useContext } from "react";
+import { ProviderContext } from "../../context/context";
 import { Card, Typography } from "antd"
 
 const { Text, Title } = Typography;

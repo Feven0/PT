@@ -24,6 +24,10 @@ example:
             }
         ],
         "overall": "Summarize the overall fit of the candidate specifically for the role, i.e. If the user's CV aligns with the JD, state that they should apply; if not, advise against it. Do not give ambiguous analysis"
+    },
+    "evaluation": {
+        "percentage": "put here a percentage value, to indicate how fit is the CV with the JD eg: 60%",
+        "message": "put here a one word message to indicate where they should 'Apply', 'Consider', 'Not a fit' eg: Apply"
     }
 }
 Use non-gender-specific pronouns like 'you' and 'your' instead of gender-specific pronouns or names. 

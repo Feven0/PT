@@ -34,8 +34,8 @@ const AnalyseDetail = ({ analysis }) => {
       <div className='analyse-box' style={{ padding: '16px', border: '1px solid #ddd', borderRadius: '8px', overflow: 'auto' }}>
         <Title level={3} style={{ textAlign: 'center' }}>{analysis?.analysis?.header}</Title>
         <div className='percentage-result'>
-            <h1>Apply</h1>
-            <h2>69%</h2>
+            <h1>{analysis?.evaluation?.message}</h1>
+            <h2>{analysis?.evaluation?.percentage}</h2>
         </div>
         <div style={{ margin: '16px 0' }}>
           {Array.from({ length: totalSlides }).map((_, index) => (

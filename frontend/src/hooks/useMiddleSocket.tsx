@@ -1,9 +1,8 @@
 // useMiddleSocket.js
 import { useEffect, useState, useCallback, useContext } from 'react';
 import useWebSocket from './useWebSocket';
-import Cookies from "js-cookie";
-import { v4 as uuidv4 } from "uuid";
-import { ProviderContext } from '../context/context';
+import { useStopwatch } from 'react-timer-hook';
+
 
 interface AnalysisResponse {
   response: {
@@ -16,12 +15,16 @@ interface AnalysisResponse {
 
 
 const useMiddleSocket = () => {
-  const [socket, messages, setMessages, analysis, setChatAnalysis, interview, setChatInterview, upload, setUpload, cvanalysis, setCVAnalysis] = useWebSocket('http://0.0.0.0:5500');
+  const [socket, analysis, setChatAnalysis, interview, setChatInterview, cvanalysis, setCVAnalysis] = useWebSocket('http://0.0.0.0:5500');
   const [loading, setLoading] = useState(false);
   const [isloading, setIsLoading] = useState(false);
   const [latestAnalyseResponse, setLatestAnalyseResponse] = useState<AnalysisResponse | null>(null);
   const [latestInterviewResponse, setLatestInterviewResponse] = useState<AnalysisResponse | null>(null);
   const [sessionId, setSessionId] = useState<string>("");
+  const [isStarted, setIsStarted] = useState(false);  
+  const [count, setCount] = useState();
+  const { seconds, minutes, start, pause, reset } = useStopwatch({ autoStart: false});
+  // console.log("timer", "min:", minutes,"sec:", seconds)  
 
 
   useEffect(() => {
@@ -44,6 +47,7 @@ const useMiddleSocket = () => {
           }
           return prevMessages;
         });
+  
         setLatestAnalyseResponse(message); 
         setLoading(false);
       });
@@ -51,7 +55,7 @@ const useMiddleSocket = () => {
 
   }, [socket, analysis]);
 
-   const handleAnalyse = async (data: any) => {
+  const handleAnalyse = async (data: any) => {
     setLoading(true)
     await socket?.emit('analyse', {
       message: data.input, 
@@ -69,10 +73,16 @@ const useMiddleSocket = () => {
           return prevMessages;
         });
         setLatestInterviewResponse(message);
+          reset(); 
         setLoading(false);
+        console.log("count_inter", count === 4)  
+        if(count === 4) {
+          pause()
+        }
       });
     } 
   }, [socket, interview]);
+
 
   const handleInterview = async (data: any) => {
     setLoading(true)
@@ -81,8 +91,10 @@ const useMiddleSocket = () => {
       history: data.interview, 
       cvPath: data.cv_path,
       user: data.latestUserInfo,
-      question_counter: data.counter
+      question_counter: data.counter,
+      time_taken: data.timerValue
     });
+    setCount(data.counter)
   };
 
 
@@ -103,7 +115,6 @@ const useMiddleSocket = () => {
   }, [socket, setCVAnalysis]);
 
   const handleCVAnalyse = async (data: any) => {
-    console.log("id", data)
     setIsLoading(true)
     setLoading(true)
     await socket?.emit('cv analyse', { userId: data.id, message: data.input, sessionId: sessionId});
@@ -122,7 +133,15 @@ const useMiddleSocket = () => {
     cvanalysis,
     handleCVAnalyse,
     sessionId,
-    isloading
+    isloading,
+    seconds,
+    minutes,
+    start,
+    pause,
+    reset,
+    isStarted, setIsStarted,
+    setCount
+
   };
 };
 

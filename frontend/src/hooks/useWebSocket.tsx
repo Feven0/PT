@@ -5,11 +5,9 @@ import { v4 as uuidv4 } from "uuid";
 
 const useWebSocket = (url: any) => {
   const [socket, setSocket] = useState<any>(null);
-  const [messages, setMessages] = useState<string[]>([]);
   const [analysis, setChatAnalysis] = useState<any[]>([]);
   const [interview, setChatInterview] = useState<any[]>([]);
   const [cvanalysis, setCVAnalysis] = useState<any[]>([]);
-  const [upload, setUpload] = useState<any[]>([]);
   
   useEffect(() => {
     const newSocket = io(url);
@@ -38,7 +36,7 @@ const useWebSocket = (url: any) => {
     };
   }, [url]);
 
-  return [socket, messages, setMessages, analysis, setChatAnalysis, interview, setChatInterview, upload, setUpload, cvanalysis, setCVAnalysis];
+  return [socket,analysis, setChatAnalysis, interview, setChatInterview, cvanalysis, setCVAnalysis];
 };
 
 export default useWebSocket;

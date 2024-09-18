@@ -11,7 +11,7 @@ const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
 const JobDetail = () => {
-    const { latestsession } = useContext(ProviderContext)
+    const { latestsession, setStart } = useContext(ProviderContext)
     const { id } = useParams()
     const [selectedTab, setSelectedTab] = useState('resume');
 
@@ -32,6 +32,10 @@ const JobDetail = () => {
             localStorage.setItem("JobId", id)
         }
     },[id])
+
+    useEffect(() => {
+        setStart(true);
+    }, [setStart]);
     
     
     

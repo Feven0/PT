@@ -39,7 +39,6 @@ const InterviewPrep = () => {
       {open === 'ready' && 
       <div className='interview-box'>
           <InterviewChat />
-          <PercentageCard/>
       </div>
       
       }

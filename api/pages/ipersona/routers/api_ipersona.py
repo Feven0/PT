@@ -69,7 +69,6 @@ async def upload_files(
         output_file_path = os.path.join(data_path('txt_files'), output_file)
         util.pdf_to_txt(file_path, output_file_path)
         
-        
         #################### Save to DB #####################   
         data = {
             "email": email,
@@ -93,15 +92,14 @@ async def speech_to_text(file: UploadFile = File(...)):
     try:
         start_time_1 = time.time() 
         print("######## Audio Processing #######")
-        file_path = os.path.join(data_path('audio'), file.filename)
-        with open(file_path, "wb") as f:
+        audio_path  = os.path.join(data_path('audio'), file.filename)
+        with open(audio_path, "wb") as f:
             contents = await file.read()
             f.write(contents)
         
-        audio_path = data_path('audio') + file.filename 
         transcriber = aai.Transcriber()
         transcript = transcriber.transcribe(audio_path)
-        
+
         if transcript.status == aai.TranscriptStatus.error:
             print(transcript.error)
             return {"error": transcript.error}
@@ -110,6 +108,7 @@ async def speech_to_text(file: UploadFile = File(...)):
             return {"transcription": transcript.text}
     except Exception as e:
         # logger.exception(f"Query failed {str(e)}")
+        print("audio transcriptin failed", e)
         return JSONResponse(
             content={
                 "system": f"Something went wrong! {str(e)}",

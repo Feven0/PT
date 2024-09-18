@@ -24,7 +24,7 @@ async def disconnect(sid):
 @sio.on("analyse")
 async def analysis_endpoint(sid, data):
     try:
-        print("socket_analysis", data['message'])        
+        print("socket_analysis", data['cvPath'])        
         response = await util.analysis_chat_response(data)
 
         message = [
@@ -38,7 +38,7 @@ async def analysis_endpoint(sid, data):
                 }
                 ]
         
-        await database.analyse_chat_to_db(data, message)       
+        # await database.analyse_chat_to_db(data, message)       
             
         # print(f"Analysis response: {message}")
         await sio.emit("analyse", message, room=sid)
@@ -56,7 +56,8 @@ async def interview_endpoint(sid, data):
         message = [
                 {
                 "role": "candidate",
-                "response": data['response']
+                "response": data['response'],
+                "time_taken": data['time_taken'],
                 },
                 {
                 "role": "assistant",
@@ -64,11 +65,14 @@ async def interview_endpoint(sid, data):
                 }
                 ]
         
-               
-        await database.interview_chat_to_db(data, message)
+        if data['question_counter'] == 2:
+            response_metrics = await util.interview_chat_response_metrics(data)
+            print(f"Interview response: {response_metrics}")
+            await sio.emit("interview chat", message, room=sid)
+        else:    
+            # await database.interview_chat_to_db(data, message)
+            await sio.emit("interview chat", message, room=sid)         
             
-        # print(f"Interview response: {message}")
-        await sio.emit("interview chat", message, room=sid)
 
     except Exception as e:
         return f'Error: {str(e)}'

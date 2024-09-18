@@ -103,8 +103,7 @@ async def analysis_chat_response(data):
 
 async def interview_chat_response(data):
   
-    try:
-        
+    try:        
         hr_agent.assistant.update_system_message(data['user']['persona'])
       
         message = file_reader(prompt_path("ipersona/interview.txt"))
@@ -120,7 +119,27 @@ async def interview_chat_response(data):
         # give_agents_history(hr_agent.interviewer_proxy, hr_agent.assistant, data['history'])
 
         response = await hr_agent.send_message_interview(msg)
-        # response = extract_percentage(response)
+
+        return response
+    
+    except Exception as e:
+        return f'Error: {str(e)}' 
+    
+
+async def interview_chat_response_metrics(data):
+    try:        
+        hr_agent.assistant.update_system_message(data['user']['persona'])
+      
+        message = file_reader(prompt_path("ipersona/interview_metrics.txt"))
+        context = str(message)
+        history_str = '\n'.join(str(item) for item in data['history'])
+        msg=context\
+            .replace("{jd}", file_reader(data['user']['jbPath']))\
+            .replace("{cv}", file_reader(data['cvPath']))\
+            .replace("{history}", history_str)
+        
+        response = await hr_agent.send_message_interview(msg)
+
         return response
     
     except Exception as e:

@@ -52,7 +52,7 @@
 
 .interview-chat-container {
     position: relative;    
-    /* margin-top: 16px; */
+    display: flex;
     margin: 16px 160px 0px 160px;
 }
 
@@ -107,7 +107,7 @@
 .input-container {
     border: 1px solid #d9d9d9;
     border-radius: 8px;
-    margin-top: 16px;
+    margin-top: 10rem;
 }
 
 .input-area {
@@ -116,6 +116,10 @@
 
 .actions {
     display: flex;
-    justify-content: space-between;
-    padding: 8px;
+    cursor: pointer;
+}
+
+.actions-load {
+    height: 20px;
+    margin-top: 30px;
 }

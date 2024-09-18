@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { FaMicrophoneAlt } from 'react-icons/fa'; 
 import Api from '../../Services/Services';
+import "../../styles/AudioRecorder/audiorecorder.css"
 
 const AudioRecorder = ({ sendDataParent, sendDataToParent }) => {
     const [isRecording, setIsRecording] = useState(false);
@@ -56,16 +57,15 @@ const AudioRecorder = ({ sendDataParent, sendDataToParent }) => {
 
     return (
         <div className="">
-            <div className="flex items-center">
+            <div className="">
                 <FaMicrophoneAlt
                     size={30}
-                    className={`text-4xl cursor-pointer transition-colors ${
-                    isRecording ? 'text-red-500' : 'text-gray-500'
+                    className={`audio-pre ${
+                    isRecording ? 'audio-first' : 'audio-second'
                     }`}
                     onMouseDown={startRecording}
                     onMouseUp={stopRecording}
                 />
-                {/* <p className="ml-4">{data}</p> */}
             </div>
         </div>
     );

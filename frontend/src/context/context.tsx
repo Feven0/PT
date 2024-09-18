@@ -13,7 +13,7 @@ export const PersonaContext = ({ children }) => {
     const [session, setSession] = useState()
     const [latestsession, setLatestSession] = useState()
     const [refresh, setRefresh] = useState(0);
-    const [start, setStart] = useState(true)
+    const [start, setStart] = useState(false)
     const userId = 'a82d3efe-0289-4acf-a93b-fcc768355e5b'
     
     
@@ -38,6 +38,7 @@ export const PersonaContext = ({ children }) => {
           setLatestAnalysis(response.data.latest_analysis)
           setLatestAnalysisChat(response.data.latest_analysischat)
           setLatestInterviewChat(response.data.latest_interviewchat)
+          setStart(false);
         }
       }
     }
@@ -46,16 +47,17 @@ export const PersonaContext = ({ children }) => {
 
     useEffect(() => {
       if (start) {
+        
         sessionData();
         sessionJobData(); 
-        const intervalId = setInterval(() => {
-          setRefresh((prev) => prev + 1);
-        }, 500000);
+        // const intervalId = setInterval(() => {
+        //   setRefresh((prev) => prev + 1);
+        // }, 500000);
   
-        return () => clearInterval(intervalId); 
+        // return () => clearInterval(intervalId); 
       }
       //start, latestsession
-    }, [start, latestsession]);
+    });
     
       return (
         <ProviderContext.Provider

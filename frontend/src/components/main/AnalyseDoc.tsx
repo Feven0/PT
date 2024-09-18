@@ -60,7 +60,7 @@ const AnalyseDoc = () => {
         }
       </div>
 
-      <div className="chat-container" style={{ position: 'absolute', right: '20px', bottom: '0px' }}>
+      <div className="chat-container" style={{ position: 'absolute', right: '20px', bottom: '90px' }}>
         <div className="chat-relative">
           {show && (
             <AnalyseChat latestanalysischat={latestanalysischat} latestUserData={latestUserData} />
