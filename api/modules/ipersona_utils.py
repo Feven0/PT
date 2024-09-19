@@ -105,7 +105,24 @@ async def interview_chat_response(data):
   
     try:        
         hr_agent.assistant.update_system_message(data['user']['persona'])
-      
+        prompt_section = None
+        
+        if(data['question_counter'] < 4):
+            print("background question")
+            prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/background.txt"))
+        
+        elif(data['question_counter'] < 9):
+            print("skill assessment question")
+            prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/skill_assessment.txt"))
+            
+        elif(data['question_counter'] < 12):
+            print("behavioral question")
+            prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/behavioral.txt"))
+        
+        elif(data['question_counter'] < 15): 
+            print("ability question")
+            prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/ability.txt"))
+        
         message = file_reader(prompt_path("ipersona/interview.txt"))
         context = str(message)
         history_str = '\n'.join(str(item) for item in data['history'])
@@ -114,7 +131,8 @@ async def interview_chat_response(data):
             .replace("{cv}", file_reader(data['cvPath']))\
             .replace("{history}", history_str)\
             .replace("{candidate_response}", data['response'])\
-            .replace("{counter}", str(data['question_counter']))
+            .replace("{counter}", str(data['question_counter']))\
+            .replace("{section}", prompt_section)
         
         # give_agents_history(hr_agent.interviewer_proxy, hr_agent.assistant, data['history'])
 
@@ -126,19 +144,20 @@ async def interview_chat_response(data):
         return f'Error: {str(e)}' 
     
 
-async def interview_chat_response_metrics(data, previous_conversation):
+async def interview_chat_response_metrics(data):
     try:        
         hr_agent.assistant.update_system_message(data['user']['persona'])
       
         message = file_reader(prompt_path("ipersona/interview_metrics.txt"))
         context = str(message)
-        history_str = '\n'.join(str(item) for item in previous_conversation)
+        history_str = '\n'.join(str(item) for item in data['history'])
         msg=context\
             .replace("{jd}", file_reader(data['user']['jbPath']))\
             .replace("{cv}", file_reader(data['cvPath']))\
             .replace("{history}", history_str)
         
         response = await hr_agent.send_message_interview(msg)
+        response = extract_json(response, quite=False)
 
         return response
     

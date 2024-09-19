@@ -65,22 +65,24 @@ const useMiddleSocket = () => {
 
   useEffect(() => {
     if (socket) {
-        socket.on('interview chat', ({ message, response_metrics }) => {
-            setChatInterview((prevMessages) => {
-                const newMessages = [...prevMessages, ...message];
-                return newMessages;
+        socket.on('interview chat', (data) => {
+            const { message, response_metrics } = data
+            setChatInterview((prevMessages: any) => {
+              if (!prevMessages.some((m: any) => m.query === message.query)) {
+                return [...prevMessages, ...message];
+              }
+              return prevMessages;
             });
-            setEvaluationMetrics((prevMessages) => {
-              const newMessages = [...prevMessages, response_metrics];
-              return newMessages;
-          });
-        setLatestInterviewResponse(message);
-          reset(); 
-        setLoading(false);
-        console.log("count_inter", count === 4)  
-        if(count === 4) {
-          pause()
-        }
+
+            setEvaluationMetrics(response_metrics);
+
+            setLatestInterviewResponse(message);
+              reset(); 
+            setLoading(false);
+            console.log("count_inter", count === 4)  
+            if(count === 4) {
+              pause()
+            }
       });
     } 
   }, [socket, interview]);

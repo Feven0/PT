@@ -48,7 +48,7 @@ async def analysis_endpoint(sid, data):
 
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
-    print("interview_data", data['time_taken'], data['response'], data['user']['jbPath'], data['cvPath'])
+    print("interview_data", data['time_taken'], "counter:", data['question_counter'])
     try:
 
         response = await util.interview_chat_response(data)
@@ -67,9 +67,9 @@ async def interview_endpoint(sid, data):
         print("########check counter########")
         data['history'].extend(message)
         
-        if data['question_counter'] == 2:
-            response_metrics = await util.interview_chat_response_metrics(data, data['history'])
-            print(f"Interview response: {response_metrics}")
+        if data['question_counter'] == 14:
+            response_metrics = await util.interview_chat_response_metrics(data)
+            # print(f"Interview response: {response_metrics}")
             await sio.emit("interview chat", {
                 "message": message,
                 "response_metrics": response_metrics
@@ -80,7 +80,6 @@ async def interview_endpoint(sid, data):
             "message": message,
             "response_metrics": ""
             }, room=sid)   
-            
 
     except Exception as e:
         return f'Error: {str(e)}'

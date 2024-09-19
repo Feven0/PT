@@ -6,6 +6,7 @@ const { Title, Text } = Typography;
 
 const AnalyseDetail = ({ analysis }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
+
   const totalSlides = Math.ceil(analysis?.analysis?.section.length / 2) + 1;
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1 < totalSlides ? prev + 1 : prev));
@@ -54,7 +55,15 @@ const AnalyseDetail = ({ analysis }) => {
               <Title level={4} style={{ color: 'red' }}>Resources</Title>
               {analysis?.analysis?.recommendation.length >0 &&
                  (analysis?.analysis?.recommendation.map((item, index)=>(
-                    <div>{item.resource}</div>
+                  <div className='analysis-resource' key={index}>
+                  <div>
+                    <a href={`https://${item.link}`} target="_blank" rel="noopener noreferrer">
+                      {item.type}
+                    </a>
+                  </div>
+                  <div>{item.resource}</div>                  
+                </div>
+                    
               )))}              
             </Card>
           </div>

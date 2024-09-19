@@ -38,12 +38,11 @@ Your evaluation should be structured in the following single JSON format:
             "adherence": "put here a percentage indicating how well the candidate managed their time for the entire interview questions, eg: 85%",
 
             "time_taken": {
-                "pass": "put here the question count where the time_taken doesn't exceeds the time limit of the question, only focus on the questions the time taken is available from the info you have access too to prove a value eg: 4",
-                "failed": "put here the question count where the time_taken exceeds the given time limit of the question, only focus on the questions the time taken is available from the info you have access too to prove a value eg: 1,
+                "pass": "put here the question count where the time_taken doesn't exceeds the time limit of the question, only focus on the questions the time taken is available eg: 4",
+                "failed": "put here the question count where the time_taken exceeds the given time limit of the question, only focus on the questions the time taken is available eg: 1,
             }
             
             "status": "put here the question where the infos about time_taken and time limit is found in the mock interview with the candidate. include the time_taken and time limit in your response and show the calculation eg: time_taken < time_limit for question no 1 or 2 so the candidate in question number two take didn't exceeds from the given time or not"
-            
         },
         
         "areas_of_improvement": [

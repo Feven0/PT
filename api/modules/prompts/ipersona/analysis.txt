@@ -27,8 +27,11 @@ example:
         
         "recommendation": [
             {
-             "resource": "mention here a resource that links to (courses, books, community)sites to improve technical skills the cv holder lacks to be fitted with the job description for example you can mention in the format eg:
-                Online Course: "AWS Certified Solutions Architect - Associate" on platforms like Udemy or Coursera."
+             "resource": "mention here a resource that is a (courses, books, community)sites to improve technical skills the cv holder lacks to be fitted with the job description, list all the resource the candidate needs to improve there gaps for the JD for example: "AWS Certified Solutions Architect - Associate" on platforms like Coursera.",
+
+             "type": "type of the resource for example: Online Course",
+             
+             "link": "www.coursera.org"
             }
           
         ]

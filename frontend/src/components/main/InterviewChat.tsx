@@ -16,14 +16,15 @@ const InterviewChat = () => {
 
     const { handleInterview, interview, loading, latestInterviewResponse, seconds, minutes, pause, setCount, interview_metrics } = useMiddleSocket();
     const { latestinterviewchat, latestUserData, latestsession, setStart } = useContext(ProviderContext);
-    const [counter, setCounter] = useState(0);
+    const [counter, setCounter] = useState(1);
     const [input, setInput] = useState("");
     const [dataFromAudio, setDataFromAudio] = useState(false);
     const [initialChatInterview, setInitialChatInterview] = useState(latestinterviewchat);
     const [view, setShow] = useState(false);
     const [lastTimerValue, setLastTimerValue] = useState('00:00'); 
     
-    console.log("anthony", interview_metrics)
+    console.log("anthony", interview_metrics);
+
     useEffect(() => {
         setStart(false);
     }, [setStart]);
@@ -43,7 +44,7 @@ const InterviewChat = () => {
             timerValue
         });
         setInput('');
-        setCounter(counter < 5 ? counter + 1 : 0);
+        setCounter(counter < 14 ? counter + 1 : 1);
     };
 
     const handler = (event) => {
