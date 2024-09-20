@@ -3,14 +3,16 @@ import { Jobs, JobDetail, UploadCV, PersonalActivity } from '../pages/index';
 import Navbar from "../components/Navbar";
 import { MainActivity } from "../components/personal/index";
 import Test from '../pages/Test'
+import Trainee from '../pages/Trainee'
 
 
 const AppRoutes = () => (
   <div className="App">
     <Navbar/>
     <Routes>
-      <Route path="/" element={<UploadCV />} />
-      <Route path="/jobs" element={<Jobs />} />
+      <Route path="/upload" element={<UploadCV />} />
+      <Route path="/" element={<Trainee />} />
+      <Route path="/jobs/:userId" element={<Jobs />} />
       <Route path="/job_detail/:id" element={<JobDetail />} />
       <Route path="/personal_dashboard" element={<PersonalActivity/>}/>
       <Route path="/main_activity/:jbId/:sessionId" element={<MainActivity/>}/>

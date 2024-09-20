@@ -1,66 +1,44 @@
 import { Table, Collapse, Card, Progress, Typography, Row, Col, Dropdown, Menu } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { useState } from 'react';
+import { useState, useContext, useEffect } from 'react';
+import { ProviderContext } from '../../context/context';
+import Api from '../../Services/Services';
 import '../../styles/Status/status.css'
 
 const { Panel } = Collapse;
 
 const { Title, Text } = Typography;
 
-const data = {
-    "evaluation": {
-        "performance_message": "Needs Improvement",
-        "performance_percent": "50%",
-        "confidence_level": "Low",
-        "answer_relevance": {
-            "relevant_answers": "55%",
-            "irrelevant_answers": "45%"
-        },
-        "communication_skills": {
-            "clarity": "Somewhat Clear",
-            "engagement": "Somewhat Engaged"
-        },
-        "time_management": {
-            "adherence": "71%",
-            "time_taken": {
-                "pass": "2",
-                "failed": "1"
-            },
-            "status": "For question 1, time_taken (01:03) exceeds time_limit (2:00), for question 2, time_taken (00:31) is within time_limit (2:00), for question 3, time_taken (00:37) is within time_limit (2:00)."
-        },
-        "areas_of_improvement": [
-            {
-                "skill": "Detail Orientation",
-                "description": "The candidate should provide more detailed responses, especially when discussing their experiences and projects, to better illustrate their skills and contributions."
-            },
-            {
-                "skill": "Problem-Solving Articulation",
-                "description": "The candidate should improve on articulating specific challenges faced in previous roles and the steps taken to overcome them, which would demonstrate their problem-solving capabilities more effectively."
-            }
-        ],
-        "strengths": [
-            {
-                "skill": "Interest in AI",
-                "description": "The candidate showed a strong interest in AI, which is essential for the role and indicates a passion for the field."
-            }
-        ],
-        "overall_performance": {
-            "rating": "2 stars",
-            "comments": "The candidate has potential but needs to work on providing more comprehensive answers and demonstrating their skills more effectively during interviews."
-        }
-    }
-}
-
 const Status = () => {
-  const { evaluation } = data;
+    const { latestsession, latestUserData} = useContext(ProviderContext);
+    const [metrics, setEvalMetrics] = useState<any>();
+    // console.log("stef", latestsession?.userId, latestsession?.sessionId)
+    // console.log("dam", latestUserData?.jbId)
+    const evaluation = metrics || {};
+    
+    const fetchMetrics = async() => {
+        const dt = {
+            userId: latestsession?.userId,
+            sessionId: latestsession?.sessionId,
+            jbId: latestUserData?.jbId
+        }
+        const response = await Api.fetchEvaluationMetrics(dt)
+        // console.log("by the day", response.data)
+        setEvalMetrics(response?.data?.latest_evaluation_metrics)
+    }
+
+    useEffect(() =>{
+        fetchMetrics()
+    })
+    
 
   const convertPercentToNumber = (percentStr) => {
     return parseFloat(percentStr) || 0; 
   }
 
   const barData = [
-      { name: 'Relevant Answers', value: convertPercentToNumber(evaluation.answer_relevance.relevant_answers) },
-      { name: 'Irrelevant Answers', value: convertPercentToNumber(evaluation.answer_relevance.irrelevant_answers) }
+      { name: 'Relevant Answers', value: convertPercentToNumber(evaluation?.relevant_answers) },
+      { name: 'Irrelevant Answers', value: convertPercentToNumber(evaluation?.irrelevant_answers) }
   ];
 
   const [expandedImprovementKeys, setExpandedImprovementKeys] = useState([]);
@@ -93,13 +71,26 @@ const Status = () => {
       }
   ];
 
-  const improvementData = evaluation?.areas_of_improvement.map((item, index) => ({
+  const strength_columns = [
+    {
+        title: 'Skill',
+        dataIndex: 'skill',
+        key: 'skill',
+        render: (text, record) => (
+            <span onClick={() => onStrengthRowClick(record)} style={{ cursor: 'pointer', color: 'blue' }}>
+                {text}
+            </span>
+        )
+    }
+];
+
+  const improvementData = evaluation?.improvement?.map((item, index) => ({
       key: `improvement-${index}`,
       skill: item.skill,
       description: item.description
   })) || [];
 
-  const strengthData = evaluation?.strengths.map((item, index) => ({
+  const strengthData = evaluation?.strength?.map((item, index) => ({
       key: `strength-${index}`,
       skill: item.skill,
       description: item.description
@@ -113,18 +104,18 @@ const Status = () => {
           <Row gutter={16}>
               <Col span={12}>
                   <Card title="Performance Overview">
-                      <Text className="card-text">{evaluation.performance_message}</Text>
-                      <Progress percent={parseInt(evaluation.performance_percent)} />
-                      <Text strong className="card-text">Performance: {evaluation.performance_percent}</Text>
-                      <Text strong className="card-text">Confidence Level: {evaluation.confidence_level}</Text>
+                      <Text className="card-text">{evaluation?.performance_message}</Text>
+                      <Progress percent={parseInt(evaluation?.performance_percent)} />
+                      <Text strong className="card-text">Performance: {evaluation?.performance_percent}</Text>
+                      <Text strong className="card-text">Confidence Level: {evaluation?.confidence_level}</Text>
                       {/* <Text strong className="card-text">Answer Relevance: {evaluation.answer_relevance}</Text> */}
                   </Card>
               </Col>
               <Col span={12}>
                     <Card title="Time Management">
-                        <Text className="card-text">Adherence: {evaluation.time_management.adherence}</Text>
-                        <Text className="card-text">Questions Completed on Time: {evaluation.time_management.time_taken.pass}</Text>
-                        <Text className="card-text">Questions Not Completed on Time: {evaluation.time_management.time_taken.failed}</Text>
+                        <Text className="card-text">Adherence: {evaluation?.adherence}</Text>
+                        <Text className="card-text">Questions Completed on Time: {evaluation?.timer_pass}</Text>
+                        <Text className="card-text">Questions Not Completed on Time: {evaluation?.timer_failed}</Text>
                     </Card>
               </Col>
           </Row>
@@ -132,8 +123,8 @@ const Status = () => {
           <Row gutter={16} style={{ marginTop: '20px' }}>
               <Col span={12}>
                   <Card title="Communication-Skills">
-                      <Text className="card-text">Clarity: {evaluation.communication_skills.clarity}</Text>
-                      <Text className="card-text">Engagement: {evaluation.communication_skills.engagement}</Text>
+                      <Text className="card-text">Clarity: {evaluation?.clarity}</Text>
+                      <Text className="card-text">Engagement: {evaluation?.engagement}</Text>
                   </Card>
               </Col>
               <Col span={12}>
@@ -173,9 +164,9 @@ const Status = () => {
                 </Card>
               </Col>
               <Col span={12}>
-              <Card title="Strengths">
+              <Card title="Strength">
                     <Table
-                        columns={columns}
+                        columns={strength_columns}
                         dataSource={strengthData}
                         pagination={false}
                         expandedRowRender={record => (
@@ -201,9 +192,9 @@ const Status = () => {
                 <Card title="Overall Performance Rating">
                     <div className='analysis-rating' style={{ display: 'flex', alignItems: 'center' }}>
                         <Text style={{ fontSize: '24px', fontWeight: 'bold', color: '#ff4d4f', marginRight: '8px' }}>
-                            {evaluation.overall_performance.rating}
+                            {evaluation?.rating}
                         </Text>
-                        <Text>{evaluation.overall_performance.comments}</Text>
+                        <Text>{evaluation?.comments}</Text>
                     </div>
                 </Card>
             </Col>

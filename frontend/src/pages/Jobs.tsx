@@ -1,47 +1,56 @@
 import React, { useState } from 'react';
 import { Input, Row, Col } from "antd";
 import { JobCard } from '../components/main/index';
+import data from '../assets/mock-data/job_match.json';
+import jobs from '../assets/mock-data/job_profiles.json';
+import { useParams } from 'react-router-dom';
 import '../styles/jobs/jobs.css';
 
 const Jobs = () => {
-  const data = [
-    { id: "8cbd6090-800e-4535-95bd-466d96ce97b8", name: "AI Engineering Role", company: "wellfound" },
-    { id: "d8936b36-eddb-4fb2-aaeb-33b7d7535f42", name: "Data Engineering Role", company: "brainstorm"  },
-    { id: "8204d7df-5d15-4de6-968e-c49fde996000", name: "ML Engineering Role", company: "indeed"  },
-    { id: "9290280c-fcd5-4360-949f-6d2645df7bb9", name: "Software Engineering Role", company: "netflix"  }
-  ];
-
+  const {userId} = useParams()
+  
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredData = data.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
+  const filteredMatches = data.filter(match => match.user_profile_id === parseInt(userId as any));
+  console.log("class_userIdno", filteredMatches)
+  const jobProfileIds = filteredMatches.map(match => match.job_profile_id);
+  console.log("serIdno", jobProfileIds)
+  const filteredJobs = jobs.filter(job => jobProfileIds.includes(job.job_profile_id));
+  console.log("class_userId", filteredJobs)
   const { Search } = Input;
 
-  const onSearch = (value) => {
-    console.log(value);
-    setSearchQuery(value); // Update search query state
+  const matchDegrees = {};
+  filteredMatches.forEach(match => {
+    matchDegrees[match.job_profile_id] = match.match_attributes_overall_match_degree;
+  });
+
+  // Function to get match degree for a specific job
+  const getMatchDegree = (jobId) => {
+    const match = filteredMatches.find(match => match.job_profile_id === jobId);
+    return match ? match.match_attributes_overall_match_degree : null;
   };
+
 
   return (
     <>
-      <Row justify="end" className='search' style={{marginTop: '50px'}}>
+      <Row justify="end" className='search' style={{ marginTop: '50px' }}>
         <Col>
           <Search 
             placeholder="input search text" 
-            // onSearch={onSearch} 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             enterButton 
-            style={{width: '30rem'}}
+            style={{ width: '30rem' }}
           />
         </Col>
       </Row>
-      <Row gutter={16} style={{margin: '40px'}}>
-        {filteredData.map(item => (
-          <Col span={6} key={item.id}>
-            <JobCard item={item} />
+      <Row gutter={16} style={{ margin: '40px' }}>
+        {filteredJobs?.map(job => (
+          <Col span={6} key={job.job_profile_id}>
+            <JobCard 
+              item={job} 
+              matchDegree={getMatchDegree(job.job_profile_id)}
+            />
           </Col>
         ))}
       </Row>

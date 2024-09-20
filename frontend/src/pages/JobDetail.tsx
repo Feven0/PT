@@ -42,7 +42,7 @@ const JobDetail = () => {
       return (
         <Layout>
           <Content style={{ padding: '2px' }}>
-                    <Link to="/jobs">
+                    <Link to="/">
                         <Text className='header'>Ipersona</Text>
                     </Link>
                 <Row>
@@ -51,14 +51,14 @@ const JobDetail = () => {
 
                 <Row>
                     <Col span={24}>
-                        {selectedTab === 'resume' && <DisplayResume />} {/* Show the resume by default */}
+                        {/* {selectedTab === 'resume' && <DisplayResume />}  */}
                         <Tabs
                         defaultActiveKey="resume"
                         activeKey={selectedTab}
                         onChange={setSelectedTab}
                         style={{ marginTop: '2px' }}
                         >
-                        <TabPane tab="Resume" key="resume" />
+                        {/* <TabPane tab="Resume" key="resume" /> */}
                         <TabPane tab="Analyze Document" key="analyze" />
                         <TabPane tab="Interview Prep" key="interview" />
                         </Tabs>

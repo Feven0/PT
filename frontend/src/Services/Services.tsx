@@ -19,6 +19,8 @@ const Api = {
   analyseDoc: data => axios.post('http://0.0.0.0:5500/api/analyse_cv', data),
   fetchSession: data => axios.post('http://0.0.0.0:5500/wv/fetch_user_session', data),
   fetchSessionJob: data => axios.post('http://0.0.0.0:5500/wv/fetch_session_job', data),
+  fetchEvaluationMetrics: data => axios.post('http://0.0.0.0:5500/wv/fetch_inter_metrics', data),
+
 };
 
 

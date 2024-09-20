@@ -93,7 +93,7 @@ const useMiddleSocket = () => {
     await socket?.emit('interview chat', { 
       response: data.input, 
       history: data.interview, 
-      cvPath: data.cv_path,
+      user_session: data.user_session,
       user: data.latestUserInfo,
       question_counter: data.counter,
       time_taken: data.timerValue

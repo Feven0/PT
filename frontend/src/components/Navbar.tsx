@@ -13,7 +13,7 @@ const Navbar = () => {
                 <Link to="/personal_dashboard">Activity</Link>
             </Menu.Item>
             <Menu.Item key="3">
-                <Link to="/">Upload</Link>
+                <Link to="/upload">Upload</Link>
             </Menu.Item>
             <Menu.Item key="4">
                 <Link to="/">Logout</Link>

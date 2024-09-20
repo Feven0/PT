@@ -1,0 +1,107 @@
+[
+  {
+    "user_job_match_id": 1558,
+    "job_profile_id": 1035,
+    "user_profile_id": 197,
+    "match_attributes_overall_match_score": 95,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1557,
+    "job_profile_id": 1041,
+    "user_profile_id": 197,
+    "match_attributes_overall_match_score": 94,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1555,
+    "job_profile_id": 1086,
+    "user_profile_id": 197,
+    "match_attributes_overall_match_score": 96,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1490,
+    "job_profile_id": 808,
+    "user_profile_id": 167,
+    "match_attributes_overall_match_score": 99,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1487,
+    "job_profile_id": 929,
+    "user_profile_id": 167,
+    "match_attributes_overall_match_score": 93,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1379,
+    "job_profile_id": 616,
+    "user_profile_id": 167,
+    "match_attributes_overall_match_score": 90,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1418,
+    "job_profile_id": 190,
+    "user_profile_id": 176,
+    "match_attributes_overall_match_score": 96,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1417,
+    "job_profile_id": 191,
+    "user_profile_id": 176,
+    "match_attributes_overall_match_score": 94,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1259,
+    "job_profile_id": 49,
+    "user_profile_id": 176,
+    "match_attributes_overall_match_score": 90,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1408,
+    "job_profile_id": 190,
+    "user_profile_id": 183,
+    "match_attributes_overall_match_score": 96,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1407,
+    "job_profile_id": 191,
+    "user_profile_id": 183,
+    "match_attributes_overall_match_score": 94,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1401,
+    "job_profile_id": 197,
+    "user_profile_id": 183,
+    "match_attributes_overall_match_score": 92,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1335,
+    "job_profile_id": 618,
+    "user_profile_id": 189,
+    "match_attributes_overall_match_score": 90,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1327,
+    "job_profile_id": 621,
+    "user_profile_id": 189,
+    "match_attributes_overall_match_score": 90,
+    "match_attributes_overall_match_degree": "very high"
+  },
+  {
+    "user_job_match_id": 1270,
+    "job_profile_id": 52,
+    "user_profile_id": 189,
+    "match_attributes_overall_match_score": 92,
+    "match_attributes_overall_match_degree": "very high"
+  }
+]
