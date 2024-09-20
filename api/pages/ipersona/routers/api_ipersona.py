@@ -123,13 +123,13 @@ async def speech_to_text(file: UploadFile = File(...)):
 
 @routes.post("/analyse_cv")
 async def analyse_cv_job(recieved: pemodel.AnalyseJobRequestRecieved): 
+    # 
     start_time = time.time()    
     try: 
         global hr_agent
         jbPath = recieved.jbPath
         jbPath = data_path('txt_files/job.txt')
-        cvPath = data_path('txt_files/CV.txt')
-
+        # jbPath = "https://www.learn4good.com/jobs/online_remote/info_technology/3564420464/e/"
         global persona        
                      
              

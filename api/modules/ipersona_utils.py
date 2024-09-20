@@ -6,6 +6,8 @@ import os
 import json_repair
 from collections import defaultdict
 from api.llm.ipersona.ipersona_agent import agents
+import api.llm.ipersona.ipersona_db as database
+
 
 from dotenv import load_dotenv
 load_dotenv(os.path.abspath("../.env"))
@@ -107,19 +109,19 @@ async def interview_chat_response(data):
         hr_agent.assistant.update_system_message(data['user']['persona'])
         prompt_section = None
         
-        if(data['question_counter'] < 4):
+        if(data['question_counter'] < 2):
             print("background question")
             prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/background.txt"))
         
-        elif(data['question_counter'] < 9):
+        elif(data['question_counter'] < 4):
             print("skill assessment question")
             prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/skill_assessment.txt"))
             
-        elif(data['question_counter'] < 12):
+        elif(data['question_counter'] < 6):
             print("behavioral question")
             prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/behavioral.txt"))
         
-        elif(data['question_counter'] < 15): 
+        elif(data['question_counter'] < 9): 
             print("ability question")
             prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/ability.txt"))
         
@@ -128,7 +130,7 @@ async def interview_chat_response(data):
         history_str = '\n'.join(str(item) for item in data['history'])
         msg=context\
             .replace("{jd}", file_reader(data['user']['jbPath']))\
-            .replace("{cv}", file_reader(data['cvPath']))\
+            .replace("{cv}", file_reader(data['user_session']['cvPath']))\
             .replace("{history}", history_str)\
             .replace("{candidate_response}", data['response'])\
             .replace("{counter}", str(data['question_counter']))\
@@ -153,12 +155,12 @@ async def interview_chat_response_metrics(data):
         history_str = '\n'.join(str(item) for item in data['history'])
         msg=context\
             .replace("{jd}", file_reader(data['user']['jbPath']))\
-            .replace("{cv}", file_reader(data['cvPath']))\
+            .replace("{cv}", file_reader(data['user_session']['cvPath']))\
             .replace("{history}", history_str)
         
         response = await hr_agent.send_message_interview(msg)
         response = extract_json(response, quite=False)
-
+        await database.save_metrics_to_db(response, data)
         return response
     
     except Exception as e:

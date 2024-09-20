@@ -84,6 +84,7 @@ async def analyse_chat_to_db(data, message):
         res = await db.update_ipersona_data_new(data_to_db, fields_to_update=['analysischat'])
         # result = await fetch_analysis_chat(data['user']['userId'])
         
+        
 async def interview_chat_to_db(data, message):
     if 'interviewchat' in data['user'] and data["user"]['interviewchat'] != "":
             try:
@@ -104,3 +105,33 @@ async def interview_chat_to_db(data, message):
         res = await db.update_ipersona_data_new(data_to_db, fields_to_update=['interviewchat'])
         # result = await fetch_interview_chat(data['user']['userId'])
         # print(res)
+        
+        
+async def save_metrics_to_db(response, data):
+    try:
+       evaluation_metrics_data = {
+            "userId": data['user_session']['userId'],
+            "sessionId": data['user_session']['sessionId'],   
+            "jbId": data['user']["jbId"],
+            "performance_message": response["evaluation"]["performance_message"],
+            "performance_percent": response["evaluation"]["performance_percent"],
+            "confidence_level": response["evaluation"]["confidence_level"],
+            "relevant_answers": response["evaluation"]["answer_relevance"]["relevant_answers"],
+            "irrelevant_answers": response["evaluation"]["answer_relevance"]["irrelevant_answers"],
+            "clarity": response["evaluation"]["communication_skills"]["clarity"],
+            "engagement": response["evaluation"]["communication_skills"]["engagement"],
+            "adherence": response["evaluation"]["time_management"]["adherence"],
+            "timer_pass": response["evaluation"]["time_management"]["time_taken"]["pass"],
+            "timer_failed": response["evaluation"]["time_management"]["time_taken"]["failed"],
+            "improvement": response["evaluation"]["areas_of_improvement"],
+            "strength": response["evaluation"]["strength"],
+            "rating": response["evaluation"]["overall_performance"]["rating"],
+            "comments": response["evaluation"]["overall_performance"]["comments"],
+        }
+       print("save to metrics", evaluation_metrics_data)
+       
+       res= await db.Add_session_interview_metrics_data(evaluation_metrics_data)
+       print("#########sucess########")
+       print(res)
+    except (ValueError, SyntaxError) as e:
+            print(f"Error saving metrics: {e}")

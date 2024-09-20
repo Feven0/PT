@@ -1,5 +1,4 @@
 import socketio, ast
-import api.llm.ipersona.ipersona_db as database
 import api.modules.ipersona_utils as util
 
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
@@ -67,7 +66,7 @@ async def interview_endpoint(sid, data):
         print("########check counter########")
         data['history'].extend(message)
         
-        if data['question_counter'] == 14:
+        if data['question_counter'] == 8:
             response_metrics = await util.interview_chat_response_metrics(data)
             # print(f"Interview response: {response_metrics}")
             await sio.emit("interview chat", {

@@ -54,6 +54,10 @@ schema = {
             "class": "iPersonaSessionJob",
             "properties": [
                 {
+                    "name": "userId", 
+                    "dataType": ["string"]
+                },
+                {
                     "name": "sessionId", 
                     "dataType": ["string"]
                 },
@@ -100,6 +104,10 @@ schema = {
         {
             "class": "iPersonaInterviewMetrics",
             "properties": [
+                {
+                    "name": "userId", 
+                    "dataType": ["string"]
+                },
                 {
                     "name": "sessionId", 
                     "dataType": ["string"]
@@ -264,6 +272,72 @@ async def Add_session_Job_schema_data(data):
     except Exception as e:
         return f'Error: {str(e)}' 
 
+
+async def Add_session_interview_metrics_data(data):
+    print("say what")
+    print("cure", data['userId'], data['sessionId'], data["jbId"])
+    try:
+        evaluation_metrics_data = {
+        "userId": data['userId'],
+        "sessionId": data['sessionId'],   
+        "jbId": data["jbId"],
+        "performance_message": data["performance_message"],
+        "performance_percent": data["performance_percent"],
+        "confidence_level": data["confidence_level"],
+        "relevant_answers": data["relevant_answers"],
+        "irrelevant_answers": data["irrelevant_answers"],
+        "clarity": data["clarity"],
+        "engagement": data["engagement"],
+        "adherence": data["adherence"],
+        "timer_pass": data["timer_pass"],
+        "timer_failed": data["timer_failed"],
+        "improvement": str(data.get('improvement', '')),
+        "strength": str(data.get('strength', '')),
+        "rating": data["rating"],
+        "comments": data["comments"],
+        "createdAt": get_current_time(),
+        "updatedAt": get_current_time()
+        }
+
+        evaluation_metrics = client.data_object.create(
+            data_object=evaluation_metrics_data,
+            class_name="iPersonaInterviewMetrics"
+        )
+        print("#########is it working###########")
+        print(evaluation_metrics)
+        return evaluation_metrics
+    except Exception as e:
+        return f'Error: {str(e)}' 
+
+
+async def update_ipersona_data_new(data, fields_to_update):
+    print("Updating data for ID:", data['id'])
+    update_data = {}
+    
+    if 'persona' in fields_to_update:
+        update_data['persona'] = str(data.get('persona', ''))
+    if 'analysis' in fields_to_update:
+        update_data['analysis'] = str(data.get('analysis', ''))
+    if 'analysischat' in fields_to_update:
+        update_data['analysischat'] = str(data.get('analysischat', ''))
+    if 'interviewchat' in fields_to_update:
+        update_data['interviewchat'] = str(data.get('interviewchat', ''))
+    if 'jbId' in fields_to_update:
+        update_data['jbId'] = str(data.get('jbId', ''))
+    if 'jbPath' in fields_to_update:
+        update_data['jbPath'] = str(data.get('jbPath', ''))
+    
+    try:
+        result = client.data_object.update(
+            uuid=data['id'],
+            data_object=update_data,
+            class_name='iPersonaSessionJob'
+        )
+        return True
+    
+    except Exception as e:
+        return f'Error: {str(e)}'
+
  
 async def fetch_session(userId):
     try:
@@ -271,6 +345,7 @@ async def fetch_session(userId):
             class_name="iPersonaSession",
             properties=[
                 "email",
+                "userId",
                 "sessionId",
                 "cvPath",
                 "fileName",
@@ -332,30 +407,58 @@ async def fetch_job(sessionId, jbId):
         print("Error fetching Sessions:", e)
         
 
-async def update_ipersona_data_new(data, fields_to_update):
-    print("Updating data for ID:", data['id'])
-    update_data = {}
-    
-    if 'persona' in fields_to_update:
-        update_data['persona'] = str(data.get('persona', ''))
-    if 'analysis' in fields_to_update:
-        update_data['analysis'] = str(data.get('analysis', ''))
-    if 'analysischat' in fields_to_update:
-        update_data['analysischat'] = str(data.get('analysischat', ''))
-    if 'interviewchat' in fields_to_update:
-        update_data['interviewchat'] = str(data.get('interviewchat', ''))
-    if 'jbId' in fields_to_update:
-        update_data['jbId'] = str(data.get('jbId', ''))
-    if 'jbPath' in fields_to_update:
-        update_data['jbPath'] = str(data.get('jbPath', ''))
-    
+async def fetch_evaluation_metrics(userId, sessionId, jbId):
     try:
-        result = client.data_object.update(
-            uuid=data['id'],
-            data_object=update_data,
-            class_name='iPersonaSessionJob'
-        )
-        return True
-    
+        inter_metrics_with_user_id = client.query.get(
+            class_name="iPersonaInterviewMetrics",
+            properties=[
+                    "userId",
+                    "sessionId",   
+                    "jbId",
+                    "performance_message",
+                    "performance_percent",
+                    "confidence_level",
+                    "relevant_answers",
+                    "irrelevant_answers",
+                    "clarity",
+                    "engagement",
+                    "adherence",
+                    "timer_pass",
+                    "timer_failed",
+                    "improvement",
+                    "strength",
+                    "rating",
+                    "comments",
+            ] 
+        ).with_where({
+            "operator": "And", 
+            "operands": [
+                {
+                    "path": ["userId"],
+                    "operator": "Equal",
+                    "valueString": userId   
+                },
+                {
+                    "path": ["sessionId"],
+                    "operator": "Equal",
+                    "valueString": sessionId
+                },
+                {
+                    "path": ["jbId"],
+                    "operator": "Equal",
+                    "valueString": jbId
+                }
+            ]
+        }).with_additional("id").do()
+        
+        length = len(inter_metrics_with_user_id['data']['Get']['IPersonaInterviewMetrics'])
+        index = length - 1
+        result = inter_metrics_with_user_id['data']['Get']['IPersonaInterviewMetrics'][index]
+        data= {
+            "all_user_metrics": inter_metrics_with_user_id['data']['Get']['IPersonaInterviewMetrics'],
+            "latest_user_metrics": result
+        }
+        return data
     except Exception as e:
-        return f'Error: {str(e)}'
+        print("Error fetching Sessions:", e)
+        

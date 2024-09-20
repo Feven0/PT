@@ -24,9 +24,12 @@ class SessionJobRequestRecieved(BaseModel):
     jbId: str
     
 class AnalyseJobRequestRecieved(BaseModel):
-    # id: str
     sessionId: str
     jbId: str
     cvPath: str
     jbPath: str
     
+class MetricsRequestRecieved(BaseModel):
+    userId: str
+    sessionId: str
+    jbId: str

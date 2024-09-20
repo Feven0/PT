@@ -53,7 +53,7 @@ Your evaluation should be structured in the following single JSON format:
             }
         ],
         
-        "strengths": [
+        "strength": [
             {
                 "skill": "skill name that was demonstrated well, give a specific skill name they should improve based on the info you have about the candidate interview to qualify for the job role. example: Communication Skill",
                 

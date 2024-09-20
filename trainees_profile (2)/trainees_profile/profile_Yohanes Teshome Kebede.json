@@ -1,4 +1,4 @@
-{
+3{
   "name": "user_profile",
   "awards": {
     "code": "awards",
@@ -16,14 +16,14 @@
     "template": "form",
     "attributes": [
       {
-        "role": "Generative AI | Software Engineering | Machine Learning | LLM | RAG pipeline| MERN stack | Flutter",
-        "uuid": "370f2fc5-d469-4751-9abe-f929d05a4562",
-        "email": "mistirnigusse0@gmail.com",
+        "role": "",
+        "uuid": "7023cefa-1ed0-4845-b1c6-67e6d3f1ad98",
+        "email": "johnteshe13@gmail.com",
         "image": "",
         "media": [
           {
             "icon": "",
-            "link": "https://www.linkedin.com/in/mistir-nigusse/",
+            "link": "https://www.linkedin.com/in/yohanes-teshome/",
             "name": "LinkedIn"
           }
         ],
@@ -34,15 +34,15 @@
           "city": "",
           "icon": "https://th.bing.com/th/id/OIP.Vr0IsnNZaY3cxmBtOtSqqAHaNN?w=2555&h=4557&rs=1&pid=ImgDetMain",
           "region": "",
-          "address": "Addis Ababa, Ethiopia",
-          "country": "US",
+          "address": "",
+          "country": "",
           "postal_code": ""
         },
-        "full_name": "Mistir  Nigusse ",
+        "full_name": "",
         "name_title": "",
         "verified_by": "",
         "requested_by": "",
-        "personal_statement": "I am a Junior Generative AI Engineer with a solid foundation in Software Engineering (MERN stack), I specialize in utilizing the power of AI to solve complex problems and drive solutions. My expertise spans fine-tuning large language models (LLMs), building Retrieval-Augmented Generation (RAG) pipelines, and developing advanced chatbots.\n\nStarting from a software engineering background, I have rapidly grown my skills in generative AI, becoming adept at evaluating, optimizing, and enhancing AI workflows. I thrive on the intersection of technology and creativity, constantly pushing the boundaries of what AI can achieve.\n\nIn addition to my technical skills, I am deeply passionate about the potential of AI to create positive change, particularly in education. I envision utilizing Generative AI to provide high-quality education and solve real-world problems, making a tangible impact on society.\n\nLet's connect and see how we can collaborate to advance the field of AI and create innovative solutions for the future."
+        "personal_statement": ""
       }
     ],
     "description": "Basic information about the user",
@@ -56,32 +56,59 @@
     "template": "form",
     "attributes": [
       {
-        "url": "None",
-        "uuid": "ed27398d-a1ee-46bd-b09e-387956e73325",
-        "title": "Amharic news Classifier",
-        "tools": [],
+        "url": "https://github.com/Yohanes213/Scalable-Backtesting-Infrastructure",
+        "uuid": "1cfa3bc3-4362-466a-bcd1-adeed5774db5",
+        "title": "Scalable Backtesting Infrastructure",
+        "tools": [
+          "DVC",
+          "Apache Kafka",
+          "Python",
+          "Backtrader",
+          "mlflow",
+          "docker"
+        ],
         "status": "approved",
-        "history": [],
-        "summary": "an AI chatbot that is capable of classifying Amharic news data into categories such as Sport, Business, Entertainment, Politics, International and local news. Implemented using BERT-small-Amharic model, React js with Tailwind CSS, Flask API and Amharic news dataset from Kaggle, labeled by category",
-        "end_date": "",
+        "history": [
+          {
+            "blob": "",
+            "user": "2249",
+            "status": "approved",
+            "timestamp": "2024-08-05T02:25:06.758486"
+          }
+        ],
+        "summary": "This project aims to design and build a reliable, large-scale trading data pipeline for a startup called Mela, which wants to make it simple for everyone to enter the world of cryptocurrencies. The pipeline will enable investors to run backtests that simulate current and past particular situations as well as their trend over time.",
+        "end_date": "2024-06-24",
         "focus_area": "",
         "highlights": [],
-        "start_date": "",
+        "start_date": "2024-06-17",
         "verified_by": "",
         "requested_by": ""
       },
       {
-        "url": "None",
-        "uuid": "f3d2afeb-6084-4418-975b-c76e6844a1ed",
-        "title": "Legal contract advisor RAG",
-        "tools": [],
+        "url": "https://github.com/Yohanes213/Precision-RAG",
+        "uuid": "f8c8a29d-761d-4070-af3f-076ab61b9693",
+        "title": "Automatic Prompt Generation RAG",
+        "tools": [
+          "RAG",
+          "LLM",
+          "Prompt Engineering",
+          "Gen AI",
+          "streamlit"
+        ],
         "status": "approved",
-        "history": [],
-        "summary": "A Retrieval-Augmented Generation (RAG) system for contract Q&A, enabling users to pose questions and receive relevant answers. Implemented using langchain, chroma db, GPT-4 model and RAGAS for evaluating performance.",
-        "end_date": "",
+        "history": [
+          {
+            "blob": "",
+            "user": "2249",
+            "status": "approved",
+            "timestamp": "2024-08-05T02:25:06.758542"
+          }
+        ],
+        "summary": "Precision RAG is a project focused on building enterprise-grade Retrieval-Augmented Generation (RAG) systems with a strong emphasis on prompt tuning. This repository provides tools and scripts to facilitate data generation, prompt tuning, evaluation, and deployment of RAG systems.",
+        "end_date": "2024-06-08",
         "focus_area": "",
         "highlights": [],
-        "start_date": "",
+        "start_date": "2024-06-02",
         "verified_by": "",
         "requested_by": ""
       }
@@ -94,59 +121,7 @@
     "name": "education",
     "display": "Education",
     "template": "form",
-    "attributes": [
-      {
-        "uuid": "52cb779b-4387-4751-97e9-b1710e0f73b9",
-        "score": "",
-        "remark": "",
-        "status": "approved",
-        "country": "",
-        "courses": [],
-        "history": [],
-        "end_date": "",
-        "start_date": "",
-        "study_area": "Generative AI, Machine Learning",
-        "study_type": "Certificate",
-        "verified_by": "",
-        "requested_by": "",
-        "institution_url": "",
-        "institution_name": "10 Academy"
-      },
-      {
-        "uuid": "e2a3aa1f-5e02-4ad9-9c33-f61bfd93d14b",
-        "score": "",
-        "remark": "",
-        "status": "approved",
-        "country": "",
-        "courses": [],
-        "history": [],
-        "end_date": "",
-        "start_date": "",
-        "study_area": "Software Engineering, Backend devlopement, soft skills",
-        "study_type": "Foundation degree",
-        "verified_by": "",
-        "requested_by": "",
-        "institution_url": "",
-        "institution_name": "ALX Africa"
-      },
-      {
-        "uuid": "5e6a00a8-02b8-42d7-aa4c-b18387d5cd85",
-        "score": "",
-        "remark": "",
-        "status": "approved",
-        "country": "",
-        "courses": [],
-        "history": [],
-        "end_date": "2023-12-31",
-        "start_date": "2018-12-31",
-        "study_area": "Computer Software Engineering",
-        "study_type": "Software engineering ",
-        "verified_by": "",
-        "requested_by": "",
-        "institution_url": "",
-        "institution_name": "Bahir Dar University"
-      }
-    ],
+    "attributes": [],
     "description": "Educational background of the user",
     "profile_type": "education"
   },
@@ -164,17 +139,7 @@
     "name": "languages",
     "display": "Languages",
     "template": "form",
-    "attributes": [
-      {
-        "uuid": "d6de43db-3a2b-4a6a-aa8a-119011d007fd",
-        "status": "approved",
-        "fluency": "Native Speaker",
-        "history": [],
-        "language": "English",
-        "verified_by": "",
-        "requested_by": ""
-      }
-    ],
+    "attributes": [],
     "description": "Languages spoken by the user",
     "profile_type": "languages"
   },
@@ -192,7 +157,28 @@
     "name": "references",
     "display": "References",
     "template": "form",
-    "attributes": [],
+    "attributes": [
+      {
+        "uuid": "200ebe96-89a3-41da-9dad-1f6bd639e02a",
+        "status": "approved",
+        "contact": [],
+        "history": [],
+        "priority": 1,
+        "verified_by": "",
+        "requested_by": "",
+        "reference_text": "I've had the pleasure of knowing Yohannes as a highly skilled and dedicated Machine Learning/ Data Engineer. With a unique blend of technical expertise and innovative thinking, Yohannes has consistently impressed me with his ability to design and implement complex data-driven solutions. His passion for staying up-to-date with the latest advancements in machine learning and data engineering is contagious, and his expertise has been invaluable in driving business growth and improvement. I've witnessed Yohannes tackle challenging projects with ease, leveraging his exceptional problem-solving skills and collaborative spirit to deliver high-quality results. If you're looking for a talented and driven Machine Learning/ Data Engineer who can drive business impact through data-driven insights, I highly recommend Yohannes."
+      },
+      {
+        "uuid": "5b04cbab-c263-4de9-ac20-4d27ceb3c7f6",
+        "status": "approved",
+        "contact": [],
+        "history": [],
+        "priority": 1,
+        "verified_by": "",
+        "requested_by": "",
+        "reference_text": "I have worked some projects with Yohanes Teshome, He is so energetic and detail oriented developer. He is so exiting how he understood the project ideas and come up with working solutions, I recommend everyone to work with him, anyone who can get a chance working with him will be so happy and fruitful."
+      }
+    ],
     "description": "References of the user",
     "profile_type": "references"
   },
@@ -211,7 +197,44 @@
     "name": "certificates",
     "display": "Certificates",
     "template": "form",
-    "attributes": [],
+    "attributes": [
+      {
+        "url": "",
+        "date": "2022-11-22",
+        "name": "",
+        "uuid": "665dd951-cc1a-4415-b979-27475a59f3fd",
+        "issuer": "Tensorflow Certificate Program",
+        "status": "approved",
+        "history": [
+          {
+            "blob": "",
+            "user": "2249",
+            "status": "approved",
+            "timestamp": "2024-08-05T02:25:06.758594"
+          }
+        ],
+        "verified_by": "",
+        "requested_by": ""
+      },
+      {
+        "url": "",
+        "date": "2022-10-22",
+        "name": "",
+        "uuid": "8bc69e29-0372-4617-9c47-ec5d69f7825b",
+        "issuer": "Coursera",
+        "status": "approved",
+        "history": [
+          {
+            "blob": "",
+            "user": "2249",
+            "status": "approved",
+            "timestamp": "2024-08-05T02:25:06.758630"
+          }
+        ],
+        "verified_by": "",
+        "requested_by": ""
+      }
+    ],
     "description": "Certificates and awards of the user",
     "profile_type": "certificates"
   },
@@ -223,7 +246,7 @@
     "attributes": [
       {
         "name": "programming language",
-        "uuid": "bca7a881-3f80-4be8-930f-af2c36d47d29",
+        "uuid": "e218948e-9465-483b-b9c5-71f8bb1a8170",
         "others": [],
         "skills": [
           "python",
@@ -235,9 +258,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.556529"
+            "timestamp": "2024-08-05T02:25:06.758862"
           }
         ],
         "attitude": [],
@@ -261,8 +284,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has sound generic, domain, and specialist knowledge necessary for effective performance, typically gained from recognized bodies of knowledge and organizational information. Understands and effectively applies appropriate methods, tools, applications, and processes. Demonstrates judgment and a systematic approach to work, applies a methodical approach to routine and moderately complex issue definition and resolution, may oversee others or make decisions impacting routine work assigned to individuals or project stages, and works under general direction with specific guidance and milestone reviews.",
-        "sfia_level": "3",
+        "rationale": "Possesses thorough understanding of recognized generic industry bodies of knowledge and specialist bodies of knowledge as needed. Demonstrates an awareness of risk and takes an analytical approach to work. Maximizes the capabilities of applications for their role, evaluates, and supports the use of new technologies and digital tools. Engages in a broad range of complex technical or professional activities in various contexts, makes decisions influencing project and team success, and works under general direction within a clear framework of accountability.",
+        "sfia_level": "4",
         "description": "A programming language is a way for programmers (developers) to communicate with computers. Programming languages consist of a set of rules that allows string values to be converted into various ways of generating machine code, or, in the case of visual programming languages, graphical elements.",
         "verified_by": "",
         "requested_by": "",
@@ -271,7 +294,7 @@
       },
       {
         "name": "data engineering",
-        "uuid": "d85357a6-7ac3-4fb2-ba56-8ed2defda2bb",
+        "uuid": "a8640d3f-11dc-4779-a37e-f27ceabea2d4",
         "others": [],
         "skills": [
           "big data",
@@ -306,9 +329,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.556873"
+            "timestamp": "2024-08-05T02:25:06.759080"
           }
         ],
         "attitude": [],
@@ -348,8 +371,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has gained basic domain knowledge and demonstrates application of essential generic knowledge typically found in industry bodies of knowledge. Absorbs new information when presented systematically and applies it effectively. Understands and uses appropriate methods, tools, applications, and processes. Shows a rational and organized approach to work, performs a range of activities in varied environments, interacts with and may influence immediate colleagues, and uses limited discretion in resolving issues or inquiries.",
-        "sfia_level": "2",
+        "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+        "sfia_level": "1",
         "description": "Data engineering is the process of designing and building systems that let people collect and analyze raw data from multiple sources and formats.",
         "verified_by": "",
         "requested_by": "",
@@ -358,7 +381,7 @@
       },
       {
         "name": "analytics engineering",
-        "uuid": "65e918f3-8c52-4364-adf1-b650d3e9ff8d",
+        "uuid": "bc94b6b0-b64b-4885-840c-4e3bc0959a8e",
         "others": [],
         "skills": [
           "dbt",
@@ -375,9 +398,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.557109"
+            "timestamp": "2024-08-05T02:25:06.759291"
           }
         ],
         "attitude": [],
@@ -417,8 +440,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has gained basic domain knowledge and demonstrates application of essential generic knowledge typically found in industry bodies of knowledge. Absorbs new information when presented systematically and applies it effectively. Understands and uses appropriate methods, tools, applications, and processes. Shows a rational and organized approach to work, performs a range of activities in varied environments, interacts with and may influence immediate colleagues, and uses limited discretion in resolving issues or inquiries.",
-        "sfia_level": "2",
+        "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+        "sfia_level": "1",
         "description": "Analytics engineering is a discipline that focuses on designing, constructing, and maintaining data infrastructure and data pipelines. Analytics engineers bridge the gap between data science and data engineering by transforming raw data into clean, reliable datasets that can be easily analyzed by data analysts and data scientists",
         "verified_by": "",
         "requested_by": "",
@@ -427,7 +450,7 @@
       },
       {
         "name": "automation ",
-        "uuid": "fb4d8cbc-8c63-4522-9e05-62b71293ecd8",
+        "uuid": "2c12ea94-8974-408d-a9b7-1d3646dc0283",
         "others": [],
         "skills": [
           "devops",
@@ -462,9 +485,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.557324"
+            "timestamp": "2024-08-05T02:25:06.759496"
           }
         ],
         "attitude": [],
@@ -504,8 +527,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has sound generic, domain, and specialist knowledge necessary for effective performance, typically gained from recognized bodies of knowledge and organizational information. Understands and effectively applies appropriate methods, tools, applications, and processes. Demonstrates judgment and a systematic approach to work, applies a methodical approach to routine and moderately complex issue definition and resolution, may oversee others or make decisions impacting routine work assigned to individuals or project stages, and works under general direction with specific guidance and milestone reviews.",
-        "sfia_level": "3",
+        "rationale": "Possesses thorough understanding of recognized generic industry bodies of knowledge and specialist bodies of knowledge as needed. Demonstrates an awareness of risk and takes an analytical approach to work. Maximizes the capabilities of applications for their role, evaluates, and supports the use of new technologies and digital tools. Engages in a broad range of complex technical or professional activities in various contexts, makes decisions influencing project and team success, and works under general direction within a clear framework of accountability.",
+        "sfia_level": "4",
         "description": " Automation in machine learning (ML) and data engineering involves using tools and processes to streamline, simplify and enhance the development, deployment, and maintenance of ML models and data pipelines. This automation aims to improve efficiency, reduce errors, and enable scalability",
         "verified_by": "",
         "requested_by": "",
@@ -514,7 +537,7 @@
       },
       {
         "name": "mathematics",
-        "uuid": "c78cb9c7-d5a7-4ba4-bf68-f284c66738ef",
+        "uuid": "45b1d372-f675-4f69-990d-8a408b47fda6",
         "others": [],
         "skills": [
           "algorithm",
@@ -527,9 +550,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.557551"
+            "timestamp": "2024-08-05T02:25:06.759699"
           }
         ],
         "attitude": [],
@@ -569,8 +592,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has gained basic domain knowledge and demonstrates application of essential generic knowledge typically found in industry bodies of knowledge. Absorbs new information when presented systematically and applies it effectively. Understands and uses appropriate methods, tools, applications, and processes. Shows a rational and organized approach to work, performs a range of activities in varied environments, interacts with and may influence immediate colleagues, and uses limited discretion in resolving issues or inquiries.",
-        "sfia_level": "2",
+        "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+        "sfia_level": "1",
         "description": "Mathematics plays a foundational role in machine learning (ML). It provides the theoretical underpinnings that enable the development of algorithms, models, and methods for learning from data.",
         "verified_by": "",
         "requested_by": "",
@@ -579,7 +602,7 @@
       },
       {
         "name": "statistics",
-        "uuid": "ee30bb7d-553d-418d-98d6-8ab413fc50a0",
+        "uuid": "281d816f-886f-4595-992f-fbe49553199c",
         "others": [],
         "skills": [
           "data analysis",
@@ -594,9 +617,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.557760"
+            "timestamp": "2024-08-05T02:25:06.759898"
           }
         ],
         "attitude": [],
@@ -636,8 +659,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has gained basic domain knowledge and demonstrates application of essential generic knowledge typically found in industry bodies of knowledge. Absorbs new information when presented systematically and applies it effectively. Understands and uses appropriate methods, tools, applications, and processes. Shows a rational and organized approach to work, performs a range of activities in varied environments, interacts with and may influence immediate colleagues, and uses limited discretion in resolving issues or inquiries.",
-        "sfia_level": "2",
+        "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+        "sfia_level": "1",
         "description": "Statistics is integral to machine learning (ML), providing the framework and tools for analyzing and interpreting data, modeling uncertainty, and making predictions. Statistics is integral to machine learning (ML), providing the framework and tools for analyzing and interpreting data, modeling uncertainty, and making predictions. ",
         "verified_by": "",
         "requested_by": "",
@@ -646,7 +669,7 @@
       },
       {
         "name": "deep learning",
-        "uuid": "a67d2bb2-603b-4b0c-b68b-f415dbc39957",
+        "uuid": "27aa1722-a145-47dc-a672-78f0ee80ba87",
         "others": [],
         "skills": [
           "deep learning",
@@ -666,9 +689,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.557968"
+            "timestamp": "2024-08-05T02:25:06.760096"
           }
         ],
         "attitude": [],
@@ -708,8 +731,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has sound generic, domain, and specialist knowledge necessary for effective performance, typically gained from recognized bodies of knowledge and organizational information. Understands and effectively applies appropriate methods, tools, applications, and processes. Demonstrates judgment and a systematic approach to work, applies a methodical approach to routine and moderately complex issue definition and resolution, may oversee others or make decisions impacting routine work assigned to individuals or project stages, and works under general direction with specific guidance and milestone reviews.",
-        "sfia_level": "3",
+        "rationale": "Has gained basic domain knowledge and demonstrates application of essential generic knowledge typically found in industry bodies of knowledge. Absorbs new information when presented systematically and applies it effectively. Understands and uses appropriate methods, tools, applications, and processes. Shows a rational and organized approach to work, performs a range of activities in varied environments, interacts with and may influence immediate colleagues, and uses limited discretion in resolving issues or inquiries.",
+        "sfia_level": "2",
         "description": "Deep learning is a subfield of machine learning that focuses on using neural networks with many layers to model and solve complex problems. It is inspired by the structure and function of the human brain, consisting of neurons and synapses.",
         "verified_by": "",
         "requested_by": "",
@@ -718,7 +741,7 @@
       },
       {
         "name": "machine learning",
-        "uuid": "f0843d8f-9376-43bd-a416-4b706f443d73",
+        "uuid": "210ddf0f-4d7d-40be-b47b-50c3a45f810e",
         "others": [],
         "skills": [
           "algorithm",
@@ -756,86 +779,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.558177"
-          }
-        ],
-        "attitude": [],
-        "evidence": [
-          {
-            "remark": "",
-            "source": {
-              "link": "",
-              "name": "github"
-            },
-            "status": "verified",
-            "sentiment": " ",
-            "verified_by": "staff",
-            "requested_by": "",
-            "confidence_degree": " ",
-            "sfia_level_approved": "",
-            "sfia_level_requested": "",
-            "sfia_dimensions_approved": [],
-            "sfia_dimensions_requested": []
-          },
-          {
-            "remark": "",
-            "source": {
-              "link": "",
-              "name": "grade"
-            },
-            "status": "verified",
-            "sentiment": " ",
-            "verified_by": "staff",
-            "requested_by": "",
-            "confidence_degree": " ",
-            "sfia_level_approved": "",
-            "sfia_level_requested": "",
-            "sfia_dimensions_approved": [],
-            "sfia_dimensions_requested": []
-          }
-        ],
-        "abilities": [],
-        "knowledge": [],
-        "rationale": "Has sound generic, domain, and specialist knowledge necessary for effective performance, typically gained from recognized bodies of knowledge and organizational information. Understands and effectively applies appropriate methods, tools, applications, and processes. Demonstrates judgment and a systematic approach to work, applies a methodical approach to routine and moderately complex issue definition and resolution, may oversee others or make decisions impacting routine work assigned to individuals or project stages, and works under general direction with specific guidance and milestone reviews.",
-        "sfia_level": "3",
-        "description": "Machine learning is the use and development of computer systems that are able to learn and adapt without following explicit instructions, by using algorithms and statistical models to analyze and draw inferences from patterns in data.",
-        "verified_by": "",
-        "requested_by": "",
-        "experience_level": "",
-        "sfia_estimation_method": "observed"
-      },
-      {
-        "name": "database",
-        "uuid": "6047283a-64e8-40aa-9305-1c987d69ef10",
-        "others": [],
-        "skills": [
-          "database",
-          "big data",
-          "dbt",
-          "presto",
-          "neo4j",
-          "nosql",
-          "sql",
-          "postgres",
-          "big query",
-          "superset",
-          "mysql",
-          "amazon dynamodb",
-          "aws aurora",
-          "mongodb",
-          "amazon redshift",
-          "pyspark"
-        ],
-        "status": "approved",
-        "display": "Database",
-        "history": [
-          {
-            "blob": "",
-            "user": "2217",
-            "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.558387"
+            "timestamp": "2024-08-05T02:25:06.760303"
           }
         ],
         "attitude": [],
@@ -877,41 +823,42 @@
         "knowledge": [],
         "rationale": "Has gained basic domain knowledge and demonstrates application of essential generic knowledge typically found in industry bodies of knowledge. Absorbs new information when presented systematically and applies it effectively. Understands and uses appropriate methods, tools, applications, and processes. Shows a rational and organized approach to work, performs a range of activities in varied environments, interacts with and may influence immediate colleagues, and uses limited discretion in resolving issues or inquiries.",
         "sfia_level": "2",
-        "description": "A database is an organized collection of structured information, or data, typically stored electronically in a computer system. Databases are managed by database management systems (DBMS), which provide tools and interfaces to help users store, modify, and query the data.",
+        "description": "Machine learning is the use and development of computer systems that are able to learn and adapt without following explicit instructions, by using algorithms and statistical models to analyze and draw inferences from patterns in data.",
         "verified_by": "",
         "requested_by": "",
         "experience_level": "",
         "sfia_estimation_method": "observed"
       },
       {
-        "name": "software development",
-        "uuid": "4a70c864-dd20-4189-96bd-43e4385ca45d",
+        "name": "database",
+        "uuid": "454ec76e-1ab1-4c8c-8992-697eac6f68e8",
         "others": [],
         "skills": [
-          "cicd",
-          "ml pipeline",
-          "unit testng",
-          "linux",
-          "docker",
-          "kubernetes",
-          "hadoop",
-          "git",
-          "jenkins",
-          "jira",
-          "mlflow",
-          "dvc",
-          "cml",
-          "bash",
-          "restful"
+          "database",
+          "big data",
+          "dbt",
+          "presto",
+          "neo4j",
+          "nosql",
+          "sql",
+          "postgres",
+          "big query",
+          "superset",
+          "mysql",
+          "amazon dynamodb",
+          "aws aurora",
+          "mongodb",
+          "amazon redshift",
+          "pyspark"
         ],
         "status": "approved",
-        "display": "Software Development",
+        "display": "Database",
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.558596"
+            "timestamp": "2024-08-05T02:25:06.760510"
           }
         ],
         "attitude": [],
@@ -951,8 +898,84 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has sound generic, domain, and specialist knowledge necessary for effective performance, typically gained from recognized bodies of knowledge and organizational information. Understands and effectively applies appropriate methods, tools, applications, and processes. Demonstrates judgment and a systematic approach to work, applies a methodical approach to routine and moderately complex issue definition and resolution, may oversee others or make decisions impacting routine work assigned to individuals or project stages, and works under general direction with specific guidance and milestone reviews.",
-        "sfia_level": "3",
+        "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+        "sfia_level": "1",
+        "description": "A database is an organized collection of structured information, or data, typically stored electronically in a computer system. Databases are managed by database management systems (DBMS), which provide tools and interfaces to help users store, modify, and query the data.",
+        "verified_by": "",
+        "requested_by": "",
+        "experience_level": "",
+        "sfia_estimation_method": "observed"
+      },
+      {
+        "name": "software development",
+        "uuid": "b359a669-a575-45c3-898b-349e5ae7b31b",
+        "others": [],
+        "skills": [
+          "cicd",
+          "ml pipeline",
+          "unit testng",
+          "linux",
+          "docker",
+          "kubernetes",
+          "hadoop",
+          "git",
+          "jenkins",
+          "jira",
+          "mlflow",
+          "dvc",
+          "cml",
+          "bash",
+          "restful"
+        ],
+        "status": "approved",
+        "display": "Software Development",
+        "history": [
+          {
+            "blob": "",
+            "user": "2249",
+            "status": "approved",
+            "timestamp": "2024-08-05T02:25:06.760923"
+          }
+        ],
+        "attitude": [],
+        "evidence": [
+          {
+            "remark": "",
+            "source": {
+              "link": "",
+              "name": "github"
+            },
+            "status": "verified",
+            "sentiment": " ",
+            "verified_by": "staff",
+            "requested_by": "",
+            "confidence_degree": " ",
+            "sfia_level_approved": "",
+            "sfia_level_requested": "",
+            "sfia_dimensions_approved": [],
+            "sfia_dimensions_requested": []
+          },
+          {
+            "remark": "",
+            "source": {
+              "link": "",
+              "name": "grade"
+            },
+            "status": "verified",
+            "sentiment": " ",
+            "verified_by": "staff",
+            "requested_by": "",
+            "confidence_degree": " ",
+            "sfia_level_approved": "",
+            "sfia_level_requested": "",
+            "sfia_dimensions_approved": [],
+            "sfia_dimensions_requested": []
+          }
+        ],
+        "abilities": [],
+        "knowledge": [],
+        "rationale": "Possesses thorough understanding of recognized generic industry bodies of knowledge and specialist bodies of knowledge as needed. Demonstrates an awareness of risk and takes an analytical approach to work. Maximizes the capabilities of applications for their role, evaluates, and supports the use of new technologies and digital tools. Engages in a broad range of complex technical or professional activities in various contexts, makes decisions influencing project and team success, and works under general direction within a clear framework of accountability.",
+        "sfia_level": "4",
         "description": " Software development is the process of designing, creating, deploying, and maintaining software applications and systems. It involves a series of steps or phases that include the conception of the software idea, planning, coding, testing, deployment, and maintenance.",
         "verified_by": "",
         "requested_by": "",
@@ -961,7 +984,7 @@
       },
       {
         "name": "python programming",
-        "uuid": "a1831fb3-017a-4658-a8c4-31479ab2c10b",
+        "uuid": "739eb6c4-1df3-4d25-8418-b7cc0267822b",
         "others": [],
         "skills": [
           "ml pipeline",
@@ -1006,9 +1029,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.558800"
+            "timestamp": "2024-08-05T02:25:06.761144"
           }
         ],
         "attitude": [],
@@ -1048,8 +1071,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has sound generic, domain, and specialist knowledge necessary for effective performance, typically gained from recognized bodies of knowledge and organizational information. Understands and effectively applies appropriate methods, tools, applications, and processes. Demonstrates judgment and a systematic approach to work, applies a methodical approach to routine and moderately complex issue definition and resolution, may oversee others or make decisions impacting routine work assigned to individuals or project stages, and works under general direction with specific guidance and milestone reviews.",
-        "sfia_level": "3",
+        "rationale": "Possesses thorough understanding of recognized generic industry bodies of knowledge and specialist bodies of knowledge as needed. Demonstrates an awareness of risk and takes an analytical approach to work. Maximizes the capabilities of applications for their role, evaluates, and supports the use of new technologies and digital tools. Engages in a broad range of complex technical or professional activities in various contexts, makes decisions influencing project and team success, and works under general direction within a clear framework of accountability.",
+        "sfia_level": "4",
         "description": " Python is a high-level, interpreted programming language known for its readability, simplicity, and versatility. It supports multiple programming paradigms, including procedural, object-oriented, and functional programming.",
         "verified_by": "",
         "requested_by": "",
@@ -1058,7 +1081,7 @@
       },
       {
         "name": "bi analytics",
-        "uuid": "febd826e-cc5f-4b58-8d68-e5dac8e50fc9",
+        "uuid": "d5bac5d5-3339-4ad2-b2cc-bd322ee90c12",
         "others": [],
         "skills": [
           "big data",
@@ -1103,9 +1126,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.559011"
+            "timestamp": "2024-08-05T02:25:06.761344"
           }
         ],
         "attitude": [],
@@ -1145,8 +1168,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has sound generic, domain, and specialist knowledge necessary for effective performance, typically gained from recognized bodies of knowledge and organizational information. Understands and effectively applies appropriate methods, tools, applications, and processes. Demonstrates judgment and a systematic approach to work, applies a methodical approach to routine and moderately complex issue definition and resolution, may oversee others or make decisions impacting routine work assigned to individuals or project stages, and works under general direction with specific guidance and milestone reviews.",
-        "sfia_level": "3",
+        "rationale": "Possesses thorough understanding of recognized generic industry bodies of knowledge and specialist bodies of knowledge as needed. Demonstrates an awareness of risk and takes an analytical approach to work. Maximizes the capabilities of applications for their role, evaluates, and supports the use of new technologies and digital tools. Engages in a broad range of complex technical or professional activities in various contexts, makes decisions influencing project and team success, and works under general direction within a clear framework of accountability.",
+        "sfia_level": "4",
         "description": "Business Intelligence (BI) Analytics is the process of analyzing data to help organizations make informed business decisions. It involves the use of various tools, technologies, and methodologies to collect, process, and present data in a way that reveals actionable insights.",
         "verified_by": "",
         "requested_by": "",
@@ -1155,7 +1178,7 @@
       },
       {
         "name": "frontend development",
-        "uuid": "32d68bc0-b0d1-4e34-8d10-21385dd68beb",
+        "uuid": "951962c3-0e6d-4a10-bc9f-344ab491f4bf",
         "others": [],
         "skills": [
           "react",
@@ -1169,9 +1192,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.559420"
+            "timestamp": "2024-08-05T02:25:06.761558"
           }
         ],
         "attitude": [],
@@ -1211,8 +1234,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has sound generic, domain, and specialist knowledge necessary for effective performance, typically gained from recognized bodies of knowledge and organizational information. Understands and effectively applies appropriate methods, tools, applications, and processes. Demonstrates judgment and a systematic approach to work, applies a methodical approach to routine and moderately complex issue definition and resolution, may oversee others or make decisions impacting routine work assigned to individuals or project stages, and works under general direction with specific guidance and milestone reviews.",
-        "sfia_level": "3",
+        "rationale": "Possesses thorough understanding of recognized generic industry bodies of knowledge and specialist bodies of knowledge as needed. Demonstrates an awareness of risk and takes an analytical approach to work. Maximizes the capabilities of applications for their role, evaluates, and supports the use of new technologies and digital tools. Engages in a broad range of complex technical or professional activities in various contexts, makes decisions influencing project and team success, and works under general direction within a clear framework of accountability.",
+        "sfia_level": "4",
         "description": "Frontend development refers to the practice of creating the user interface (UI) and user experience (UX) of a web application or website.",
         "verified_by": "",
         "requested_by": "",
@@ -1221,7 +1244,7 @@
       },
       {
         "name": "backend development",
-        "uuid": "46e8b115-7e49-4427-9df2-b479fd15037d",
+        "uuid": "a3465694-1f93-48e4-8364-7f982c72de3d",
         "others": [],
         "skills": [
           "cicd",
@@ -1260,9 +1283,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.559630"
+            "timestamp": "2024-08-05T02:25:06.761758"
           }
         ],
         "attitude": [],
@@ -1302,8 +1325,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has sound generic, domain, and specialist knowledge necessary for effective performance, typically gained from recognized bodies of knowledge and organizational information. Understands and effectively applies appropriate methods, tools, applications, and processes. Demonstrates judgment and a systematic approach to work, applies a methodical approach to routine and moderately complex issue definition and resolution, may oversee others or make decisions impacting routine work assigned to individuals or project stages, and works under general direction with specific guidance and milestone reviews.",
-        "sfia_level": "3",
+        "rationale": "Possesses thorough understanding of recognized generic industry bodies of knowledge and specialist bodies of knowledge as needed. Demonstrates an awareness of risk and takes an analytical approach to work. Maximizes the capabilities of applications for their role, evaluates, and supports the use of new technologies and digital tools. Engages in a broad range of complex technical or professional activities in various contexts, makes decisions influencing project and team success, and works under general direction within a clear framework of accountability.",
+        "sfia_level": "4",
         "description": " Backend development refers to the server-side development of web applications, focusing on the logic, database interactions, authentication, server configuration, and other aspects that enable the frontend (client-side) to function properly.",
         "verified_by": "",
         "requested_by": "",
@@ -1312,7 +1335,7 @@
       },
       {
         "name": "full stack development",
-        "uuid": "c2857b2c-18ef-4783-a2ea-fab3470f2174",
+        "uuid": "57550402-16fa-44c4-99c5-57ab5eab8507",
         "others": [],
         "skills": [
           "python",
@@ -1326,9 +1349,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.559828"
+            "timestamp": "2024-08-05T02:25:06.761949"
           }
         ],
         "attitude": [],
@@ -1368,8 +1391,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has sound generic, domain, and specialist knowledge necessary for effective performance, typically gained from recognized bodies of knowledge and organizational information. Understands and effectively applies appropriate methods, tools, applications, and processes. Demonstrates judgment and a systematic approach to work, applies a methodical approach to routine and moderately complex issue definition and resolution, may oversee others or make decisions impacting routine work assigned to individuals or project stages, and works under general direction with specific guidance and milestone reviews.",
-        "sfia_level": "3",
+        "rationale": "Possesses thorough understanding of recognized generic industry bodies of knowledge and specialist bodies of knowledge as needed. Demonstrates an awareness of risk and takes an analytical approach to work. Maximizes the capabilities of applications for their role, evaluates, and supports the use of new technologies and digital tools. Engages in a broad range of complex technical or professional activities in various contexts, makes decisions influencing project and team success, and works under general direction within a clear framework of accountability.",
+        "sfia_level": "4",
         "description": "Full stack development refers to the practice of developing both the frontend (client-side) and backend (server-side) portions of a web application or software product.",
         "verified_by": "",
         "requested_by": "",
@@ -1378,7 +1401,7 @@
       },
       {
         "name": "web3",
-        "uuid": "3d46796a-6f90-42a8-9156-6efe264af37c",
+        "uuid": "cbc49cb7-0088-4b13-b6df-507d6cadad88",
         "others": [],
         "skills": [
           "algorithm",
@@ -1419,9 +1442,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.560022"
+            "timestamp": "2024-08-05T02:25:06.762140"
           }
         ],
         "attitude": [],
@@ -1461,8 +1484,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has sound generic, domain, and specialist knowledge necessary for effective performance, typically gained from recognized bodies of knowledge and organizational information. Understands and effectively applies appropriate methods, tools, applications, and processes. Demonstrates judgment and a systematic approach to work, applies a methodical approach to routine and moderately complex issue definition and resolution, may oversee others or make decisions impacting routine work assigned to individuals or project stages, and works under general direction with specific guidance and milestone reviews.",
-        "sfia_level": "3",
+        "rationale": "Possesses thorough understanding of recognized generic industry bodies of knowledge and specialist bodies of knowledge as needed. Demonstrates an awareness of risk and takes an analytical approach to work. Maximizes the capabilities of applications for their role, evaluates, and supports the use of new technologies and digital tools. Engages in a broad range of complex technical or professional activities in various contexts, makes decisions influencing project and team success, and works under general direction within a clear framework of accountability.",
+        "sfia_level": "4",
         "description": " Web3 refers to the third iteration of the internet, focusing on decentralization, blockchain technology, and peer-to-peer interactions. It represents a vision where the internet is not controlled by central authorities but rather operates on decentralized protocols, allowing users to interact directly with each other and with digital assets through cryptographic principles.",
         "verified_by": "",
         "requested_by": "",
@@ -1471,7 +1494,7 @@
       },
       {
         "name": "deploying genai systems",
-        "uuid": "68b5a2e2-dec7-479e-bd89-3ba2a558aded",
+        "uuid": "315b94df-83e3-48dc-9c94-26c9b97e4aa3",
         "others": [],
         "skills": [
           "cicd",
@@ -1490,9 +1513,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.560213"
+            "timestamp": "2024-08-05T02:25:06.762329"
           }
         ],
         "attitude": [],
@@ -1532,8 +1555,8 @@
         ],
         "abilities": [],
         "knowledge": [],
-        "rationale": "Has gained basic domain knowledge and demonstrates application of essential generic knowledge typically found in industry bodies of knowledge. Absorbs new information when presented systematically and applies it effectively. Understands and uses appropriate methods, tools, applications, and processes. Shows a rational and organized approach to work, performs a range of activities in varied environments, interacts with and may influence immediate colleagues, and uses limited discretion in resolving issues or inquiries.",
-        "sfia_level": "2",
+        "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+        "sfia_level": "1",
         "description": "Deploying General Artificial Intelligence (GenAI) systems refers to the process of making artificial intelligence (AI) systems operational and available for use in various applications and environments. GenAI systems typically refer to AI models or systems that are designed to exhibit human-level intelligence across a broad range of tasks, rather than specialized AI models focused on specific tasks or domains.",
         "verified_by": "",
         "requested_by": "",
@@ -1542,7 +1565,7 @@
       },
       {
         "name": "collaboration",
-        "uuid": "877d2337-17e0-4081-aba0-fdc3586a5588",
+        "uuid": "dfb92555-a92d-43eb-ab13-d8a533b02068",
         "others": [],
         "skills": [
           "google calendar",
@@ -1559,9 +1582,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.560401"
+            "timestamp": "2024-08-05T02:25:06.762518"
           }
         ],
         "attitude": [],
@@ -1611,7 +1634,7 @@
       },
       {
         "name": "communication",
-        "uuid": "51978944-0379-4f5b-80fd-3abbb729dd02",
+        "uuid": "35dfef54-8403-4516-9c26-8e278d18bffa",
         "others": [],
         "skills": [
           "oral presentation",
@@ -1631,9 +1654,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.560589"
+            "timestamp": "2024-08-05T02:25:06.762707"
           }
         ],
         "attitude": [],
@@ -1683,7 +1706,7 @@
       },
       {
         "name": "management",
-        "uuid": "9c01dfd0-33c2-4583-a80a-98b36ebc0078",
+        "uuid": "2cf13904-0d2c-4931-b678-a23483c4ed24",
         "others": [],
         "skills": [
           "time management",
@@ -1700,9 +1723,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.560778"
+            "timestamp": "2024-08-05T02:25:06.762895"
           }
         ],
         "attitude": [],
@@ -1752,7 +1775,7 @@
       },
       {
         "name": "professionalism",
-        "uuid": "ac7153bd-8b5f-4e68-8f36-307bc56b884e",
+        "uuid": "7179a605-3fa4-450c-a8c7-36bec58759ad",
         "others": [],
         "skills": [
           "decision making",
@@ -1800,9 +1823,9 @@
         "history": [
           {
             "blob": "",
-            "user": "2217",
+            "user": "2249",
             "status": "approved",
-            "timestamp": "2024-08-05T02:25:18.560979"
+            "timestamp": "2024-08-05T02:25:06.763083"
           }
         ],
         "attitude": [],
@@ -1871,62 +1894,46 @@
     "template": "form",
     "attributes": [
       {
-        "role": "Software Engineer",
-        "uuid": "04d46b00-b046-453c-a0d3-d324ff5719a3",
+        "role": "Machine Learning Engineer",
+        "uuid": "7323f7ef-adfe-400b-9eea-f630b62cc951",
         "status": "approved",
-        "company": "Hisense TransTech",
-        "history": [],
-        "summary": "Responsible for managing implementation phase of an Intelligent Transportation Software System\ndeveloped for Addis Ababa City Bus Authority. The system is a huge lOT based software used for smart\nbus dispatching and monitoring. My responsibilities are to manage the training and evaluation dispatcher\nto use the system effectively, Execute test plans to ensure reliability and performance, keep log and\nreport of software defects, prepare manual and technical documentations, give the appropriate technical\nand business demonstration of the system as necessary. As of now I’ve successfully managed the pilot\nimplementation phase on 177 routes.",
-        "end_date": "",
-        "location": "Addis Ababa, Ethiopia",
+        "company": "Omdena",
+        "history": [
+          {
+            "blob": "",
+            "user": "2249",
+            "status": "approved",
+            "timestamp": "2024-08-05T02:25:06.763142"
+          }
+        ],
+        "summary": "Developed predictive models for urbanization in major African cities and Airbnb pricing in Kenya. Utilized Python and Pandas for data collection, preprocessing, and modeling, ensuring data quality and model robustness through careful attention to detail.",
+        "end_date": "2023-09-01",
+        "location": "",
         "highlights": [],
-        "start_date": "2024-01-31",
-        "company_url": "https://www.linkedin.com/company/71055712",
-        "verified_by": "",
-        "requested_by": ""
-      },
-      {
-        "role": "Trainee Generative AI Engineer",
-        "uuid": "b06ebf88-43cd-4a31-8b5f-11fc6eb92258",
-        "status": "approved",
-        "company": "10 Academy",
-        "history": [],
-        "summary": "Trained under intensive project based learning environment, contributing to over 10 projects spanning machine learning, generative AI and data engineering  domains.\nDeveloped hands-on proficiency in fine-tuning and prompt engineering techniques, leveraging diverse LLM models to optimize AI performance.\nMastered data engineering workflows using Airflow, facilitating efficient data processing and pipeline management.\nGained practical experience in constructing RAG pipelines, enhancing AI systems' ability to access and process information from various sources.\nExplored and utilized different Machine learning models.",
-        "end_date": "",
-        "location": "Remote",
-        "highlights": [],
-        "start_date": "2024-04-30",
-        "company_url": "https://www.linkedin.com/company/11207069",
-        "verified_by": "",
-        "requested_by": ""
-      },
-      {
-        "role": "Junior Software Engineer",
-        "uuid": "cbd154d2-b5e6-4e7b-b2c3-5eb8f530c9bf",
-        "status": "approved",
-        "company": "Platform technologies",
-        "history": [],
-        "summary": "Web dashboard planning, designing and prototype development using Flutter web, BLOC, Node/Express\nand MongoDB. The company has another service provider system that was on work, however it was\nvery difficult to manage the clients and the revenue generated. I managed to design and develop a\nworking prototype dashboard to effectively manage transaction and client management data, which\nresulted in positive impact on the company’s sales and revenue.",
-        "end_date": "2024-04-30",
-        "location": "Addis Ababa, Ethiopia",
-        "highlights": [],
-        "start_date": "2023-11-30",
+        "start_date": "2023-02-01",
         "company_url": "",
         "verified_by": "",
         "requested_by": ""
       },
       {
-        "role": "Mobile Application Developer",
-        "uuid": "6eeb44d3-a7aa-4e7e-af18-33afb064bdfd",
+        "role": "Data Scientist Intern",
+        "uuid": "42c5d12e-ebd2-4958-adf6-7d1e04253002",
         "status": "approved",
-        "company": "RCNDC",
-        "history": [],
-        "summary": "Mobile application development, testing and maintenance using Flutter/Dart, GetX, GraphQL api. My\nresponsibility was to add new features, fix bugs and refactor a mobile application code base. I was able to achieve a more cleaner, testable and maintainable code structure, which leads to minimized bugs and scaled\nby new features\nFront-End Web application development using React.js, Tailwind CSS and Redux library. I developed an\ne-commerce like website for a company, which was later customized a little and reused to develop\nsimilar platform.",
-        "end_date": "2023-11-30",
-        "location": "None",
+        "company": "Hamoye",
+        "history": [
+          {
+            "blob": "",
+            "user": "2249",
+            "status": "approved",
+            "timestamp": "2024-08-05T02:25:06.763185"
+          }
+        ],
+        "summary": "Led the development of a demand forecasting model for Brazilian logistics firms, predicting daily order volumes using logistic data. Analyzed historical data to build a machine learning model estimating conflict probabilities in African nations.",
+        "end_date": "2023-09-02",
+        "location": "",
         "highlights": [],
-        "start_date": "2022-06-30",
-        "company_url": "https://www.linkedin.com/company/71688340",
+        "start_date": "2023-02-01",
+        "company_url": "",
         "verified_by": "",
         "requested_by": ""
       }
