@@ -12,8 +12,7 @@ const { Title, Text } = Typography;
 const Status = () => {
     const { latestsession, latestUserData} = useContext(ProviderContext);
     const [metrics, setEvalMetrics] = useState<any>();
-    // console.log("stef", latestsession?.userId, latestsession?.sessionId)
-    // console.log("dam", latestUserData?.jbId)
+    const [refresh, setRefresh] = useState(1);
     const evaluation = metrics || {};
     
     const fetchMetrics = async() => {
@@ -23,13 +22,20 @@ const Status = () => {
             jbId: latestUserData?.jbId
         }
         const response = await Api.fetchEvaluationMetrics(dt)
-        // console.log("by the day", response.data)
         setEvalMetrics(response?.data?.latest_evaluation_metrics)
     }
 
     useEffect(() =>{
-        fetchMetrics()
-    })
+        if (refresh) {
+            fetchMetrics()
+
+            const timer = setTimeout(() => {
+                setRefresh(null);
+            }, 6000);
+
+            return () => clearTimeout(timer);
+        }
+    },[refresh])
     
 
   const convertPercentToNumber = (percentStr) => {

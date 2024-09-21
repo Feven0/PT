@@ -2,7 +2,8 @@
 import { useEffect, useState, useCallback, useContext } from 'react';
 import useWebSocket from './useWebSocket';
 import { useStopwatch } from 'react-timer-hook';
-
+import { ProviderContext } from '../context/context';
+import Api from '../Services/Services';
 
 interface AnalysisResponse {
   response: {
@@ -16,6 +17,7 @@ interface AnalysisResponse {
 
 const useMiddleSocket = () => {
   const [socket, analysis, setChatAnalysis, interview, setChatInterview, cvanalysis, setCVAnalysis, interview_metrics, setEvaluationMetrics] = useWebSocket('http://0.0.0.0:5500');
+  const { latestinterviewchat, latestUserData, latestsession, setStart } = useContext(ProviderContext);
   const [loading, setLoading] = useState(false);
   const [isloading, setIsLoading] = useState(false);
   const [latestAnalyseResponse, setLatestAnalyseResponse] = useState<AnalysisResponse | null>(null);
@@ -24,7 +26,6 @@ const useMiddleSocket = () => {
   const [isStarted, setIsStarted] = useState(false);  
   const [count, setCount] = useState();
   const { seconds, minutes, start, pause, reset } = useStopwatch({ autoStart: false});
-  // console.log("timer", "min:", minutes,"sec:", seconds)  
 
 
   useEffect(() => {
@@ -63,6 +64,21 @@ const useMiddleSocket = () => {
       user: data.latestUserInfo});
   };
 
+  const save_metrics_to_db = async(response_metrics) => {
+    if(interview_metrics !== "") {
+      const data = {
+        user_session: latestsession,
+        user: latestUserData,
+      }
+      const combinedData = {
+        response: response_metrics,
+        data: data,
+      };
+      const response = await Api.saveEvaluationMetrics(combinedData)
+    }
+
+  }
+
   useEffect(() => {
     if (socket) {
         socket.on('interview chat', (data) => {
@@ -75,7 +91,12 @@ const useMiddleSocket = () => {
             });
 
             setEvaluationMetrics(response_metrics);
-
+            if (response_metrics !== "") {
+              save_metrics_to_db(response_metrics)
+            } else {
+              console.log("not saving metrics to db")
+            }
+            
             setLatestInterviewResponse(message);
               reset(); 
             setLoading(false);

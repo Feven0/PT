@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Dict, Any, Optional
 class UserRequestRecieved(BaseModel):
     userId: str
     
@@ -33,3 +34,11 @@ class MetricsRequestRecieved(BaseModel):
     userId: str
     sessionId: str
     jbId: str
+    
+    
+class SaveMetricsRequestRecieved(BaseModel):
+    response: Optional[Dict[str, Any]]
+    data: Optional[Dict[str, Any]]
+    # Optional[Dict] = {}
+    
+

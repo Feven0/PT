@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Jobs, JobDetail, UploadCV, PersonalActivity } from '../pages/index';
+import { Jobs, JobDetail, UploadCV, PersonalActivity, EvaluationStatus } from '../pages/index';
 import Navbar from "../components/Navbar";
 import { MainActivity } from "../components/personal/index";
 import Test from '../pages/Test'
@@ -16,6 +16,7 @@ const AppRoutes = () => (
       <Route path="/job_detail/:id" element={<JobDetail />} />
       <Route path="/personal_dashboard" element={<PersonalActivity/>}/>
       <Route path="/main_activity/:jbId/:sessionId" element={<MainActivity/>}/>
+      <Route path="/evaluation_status/:bool" element={<EvaluationStatus/>}/>
       <Route path="/test" element={<Test/>}/>
     </Routes>
   </div>

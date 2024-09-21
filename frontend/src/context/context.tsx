@@ -20,7 +20,7 @@ export const PersonaContext = ({ children }) => {
 
     const sessionData = async () => {
       const response = await Api.fetchSession({userId})
-      console.log("responding second...", response.data)
+      // console.log("responding second...", response.data)
       setSession(response.data.all_user_data)
       setLatestSession(response.data.latest_user_data)
     }
@@ -29,7 +29,6 @@ export const PersonaContext = ({ children }) => {
       if(start){
         if(latestsession !== undefined){
           const job_id = localStorage.getItem("JobId")
-          console.log("job Id..", job_id)
           const data = {sessionId: latestsession?.sessionId, jbId: job_id}
           const response = await Api.fetchSessionJob(data)
           console.log("responding session job...", response.data)
@@ -43,8 +42,6 @@ export const PersonaContext = ({ children }) => {
       }
     }
     
-    console.log("record", start)
-
     useEffect(() => {
       if (start) {
         

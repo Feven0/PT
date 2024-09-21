@@ -116,3 +116,17 @@ async def fetch_evaluation_metrics(recieved: pemodel.MetricsRequestRecieved):
     except Exception as e:
         print(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
+    
+    
+@route_weaviate.post("/save_metrics_to_db")
+async def save_metrics_to_db(recieved: pemodel.SaveMetricsRequestRecieved):
+    response = recieved.response
+    data = recieved.data
+   
+    try:
+        metrics_data_saved = await database.save_metrics_to_db(response, data)
+        return metrics_data_saved
+    
+    except Exception as e:
+        print(f"Error processing files: {e}")
+        return JSONResponse(status_code=500, content={"error": "Error processing files"})

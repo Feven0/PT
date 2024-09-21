@@ -16,14 +16,13 @@ const InterviewChat = () => {
 
     const { handleInterview, interview, loading, latestInterviewResponse, seconds, minutes, pause, setCount, interview_metrics } = useMiddleSocket();
     const { latestinterviewchat, latestUserData, latestsession, setStart } = useContext(ProviderContext);
-    const [counter, setCounter] = useState(0);
+    const [counter, setCounter] = useState(1);
     const [input, setInput] = useState("");
     const [dataFromAudio, setDataFromAudio] = useState(false);
     const [initialChatInterview, setInitialChatInterview] = useState(latestinterviewchat);
     const [view, setShow] = useState(false);
     const [lastTimerValue, setLastTimerValue] = useState('00:00'); 
-    
-    // console.log("anthony", latestsession);
+    const bool = true;
 
     useEffect(() => {
         setStart(false);
@@ -44,7 +43,7 @@ const InterviewChat = () => {
             timerValue
         });
         setInput('');
-        setCounter(counter < 8 ? counter + 1 : 1);
+        setCounter(counter < 5 ? counter + 1 : 1);
     };
 
     const handler = (event) => {
@@ -132,7 +131,7 @@ const InterviewChat = () => {
                     {loading && <Spin indicator={<img src={fade} alt="" className='h-10' />} />}
                 </Card>
                 
-                <div>
+                <div className='chat-timer-box'>
                     <div style={{ fontSize: '50px', textAlign: 'center' }}>
                         {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
                     </div>
@@ -153,9 +152,11 @@ const InterviewChat = () => {
                     </div>
 
                     <div className='progress-btn'>
-                        <Link to="/personal_dashboard">
-                             <Button>check progress</Button>
-                        </Link>
+                        {counter === 1 && (
+                            <Link to={`/evaluation_status/${bool}`}>
+                                <Button className='progress-button'>check progress</Button>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>

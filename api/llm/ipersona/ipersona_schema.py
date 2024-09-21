@@ -274,8 +274,6 @@ async def Add_session_Job_schema_data(data):
 
 
 async def Add_session_interview_metrics_data(data):
-    print("say what")
-    print("cure", data['userId'], data['sessionId'], data["jbId"])
     try:
         evaluation_metrics_data = {
         "userId": data['userId'],
@@ -303,7 +301,7 @@ async def Add_session_interview_metrics_data(data):
             data_object=evaluation_metrics_data,
             class_name="iPersonaInterviewMetrics"
         )
-        print("#########is it working###########")
+        print("#########Saving Metrics Successfully###########")
         print(evaluation_metrics)
         return evaluation_metrics
     except Exception as e:

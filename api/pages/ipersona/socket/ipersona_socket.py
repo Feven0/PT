@@ -51,7 +51,7 @@ async def interview_endpoint(sid, data):
     try:
 
         response = await util.interview_chat_response(data)
-           
+        print("response coming", response)
         message = [
                 {
                 "role": "candidate",
@@ -63,10 +63,11 @@ async def interview_endpoint(sid, data):
                 "response": response
                 }
                 ]
+        print("response message coming", message)
         print("########check counter########")
         data['history'].extend(message)
         
-        if data['question_counter'] == 8:
+        if data['question_counter'] == 5:
             response_metrics = await util.interview_chat_response_metrics(data)
             # print(f"Interview response: {response_metrics}")
             await sio.emit("interview chat", {

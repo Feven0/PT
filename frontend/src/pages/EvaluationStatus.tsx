@@ -1,15 +1,13 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Breadcrumb, Layout, Menu, theme } from 'antd';
 import '../styles/PersonalActivity/personalactivity.css'
-import { Status, ProfileDetail } from '../components/personal/index';
+import { Status, AllStatus } from '../components/main/index';
 import { ProviderContext } from '../context/context';
 const { Header, Content, Footer } = Layout;
 
-// // Placeholder components for Status and Activity
-// const Status: React.FC = () => <div>Status Content</div>;
-// const Activity: React.FC = () => <div>Activity Content</div>;
 
-const PersonalActivity: React.FC = () => {
+
+const EvaluationStatus: React.FC = () => {
   const {setStart} = useContext(ProviderContext)
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -26,7 +24,8 @@ const PersonalActivity: React.FC = () => {
   };
 
   const menuItems = [
-    { key: 'activity', label: 'Activity' },
+    { key: 'status', label: 'Current Metrics' },
+    { key: 'allstatus', label: 'All Metrics Progress' },
   ];
 
   return (
@@ -49,11 +48,11 @@ const PersonalActivity: React.FC = () => {
             borderRadius: borderRadiusLG,
           }}
         >
-          {selectedKey === 'activity' && (<ProfileDetail />)}
+          {selectedKey === 'status' ? <Status /> : <AllStatus />}
         </div>
       </Content>
     </Layout>
   );
 };
 
-export default PersonalActivity;
+export default EvaluationStatus;

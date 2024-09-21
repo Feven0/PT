@@ -128,10 +128,8 @@ async def save_metrics_to_db(response, data):
             "rating": response["evaluation"]["overall_performance"]["rating"],
             "comments": response["evaluation"]["overall_performance"]["comments"],
         }
-       print("save to metrics", evaluation_metrics_data)
        
-       res= await db.Add_session_interview_metrics_data(evaluation_metrics_data)
-       print("#########sucess########")
-       print(res)
+       await db.Add_session_interview_metrics_data(evaluation_metrics_data)
+
     except (ValueError, SyntaxError) as e:
             print(f"Error saving metrics: {e}")

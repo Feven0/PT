@@ -113,15 +113,15 @@ async def interview_chat_response(data):
             print("background question")
             prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/background.txt"))
         
-        elif(data['question_counter'] < 4):
+        elif(data['question_counter'] < 3):
             print("skill assessment question")
             prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/skill_assessment.txt"))
             
-        elif(data['question_counter'] < 6):
+        elif(data['question_counter'] < 4):
             print("behavioral question")
             prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/behavioral.txt"))
         
-        elif(data['question_counter'] < 9): 
+        elif(data['question_counter'] < 6): 
             print("ability question")
             prompt_section = file_reader(prompt_path("ipersona/interview_section_prompts/ability.txt"))
         
@@ -160,7 +160,7 @@ async def interview_chat_response_metrics(data):
         
         response = await hr_agent.send_message_interview(msg)
         response = extract_json(response, quite=False)
-        await database.save_metrics_to_db(response, data)
+        # await database.save_metrics_to_db(response, data)
         return response
     
     except Exception as e:
