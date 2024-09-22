@@ -170,3 +170,22 @@ async def analyse_cv_job(recieved: pemodel.AnalyseJobRequestRecieved):
         end_time = time.time() 
         elapsed_time = end_time - start_time 
         print(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
+        
+        
+@routes.post("/all_metrics")
+async def analyse_all_metrics(): 
+    # 
+    start_time = time.time()    
+    try:                      
+        result = await util.analysing_all_metrics()            
+       
+        return result
+    
+    except Exception as e:
+        print(f"Error processing files: {e}")
+        return JSONResponse(status_code=500, content={"error": "Error processing files"})
+
+    finally:
+        end_time = time.time() 
+        elapsed_time = end_time - start_time 
+        print(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")

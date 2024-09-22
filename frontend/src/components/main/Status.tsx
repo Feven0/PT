@@ -2,41 +2,14 @@ import { Table, Collapse, Card, Progress, Typography, Row, Col, Dropdown, Menu }
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useState, useContext, useEffect } from 'react';
 import { ProviderContext } from '../../context/context';
-import Api from '../../Services/Services';
 import '../../styles/Status/status.css'
 
 const { Panel } = Collapse;
 
 const { Title, Text } = Typography;
 
-const Status = () => {
-    const { latestsession, latestUserData} = useContext(ProviderContext);
-    const [metrics, setEvalMetrics] = useState<any>();
-    const [refresh, setRefresh] = useState(1);
-    const evaluation = metrics || {};
-    
-    const fetchMetrics = async() => {
-        const dt = {
-            userId: latestsession?.userId,
-            sessionId: latestsession?.sessionId,
-            jbId: latestUserData?.jbId
-        }
-        const response = await Api.fetchEvaluationMetrics(dt)
-        setEvalMetrics(response?.data?.latest_evaluation_metrics)
-    }
-
-    useEffect(() =>{
-        if (refresh) {
-            fetchMetrics()
-
-            const timer = setTimeout(() => {
-                setRefresh(null);
-            }, 6000);
-
-            return () => clearTimeout(timer);
-        }
-    },[refresh])
-    
+const Status = ({metrics}) => {
+    const evaluation = metrics || {};    
 
   const convertPercentToNumber = (percentStr) => {
     return parseFloat(percentStr) || 0; 

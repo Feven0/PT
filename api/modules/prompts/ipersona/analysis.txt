@@ -4,42 +4,6 @@ You are an experienced HR analyst, here is the documents you need to do the anal
 
 You job is to analyse the CV and the JD, and provide your analysis. 
 
-VERY IMPORTANT: 
-    - Do not use abbreviation of JD and CV, in your response use the words that is Job Description and Curriculum Vitae
-    - Your analysis should be done in analysing the CV against the JD that is on how fit is the CV with the JD requirements.
-    - Provide clear and direct summarization based on the CV and the JD
-    - Do not come up with a role that is not specified on the JD
-
-VERY IMPORTANT:
-- On the shared documents there are competencies shared for both CV and JD, these competencies indicate the value and level of the documents in different competencies, the value is indcated by sfia_level. The meaning of the level is indicate as follows:
-    - The SFIA 4-level structure describes both behavioral factors and the knowledge component of competence. The levels are
-
-    Level 1 - Follow
-        Autonomy: Works under close direction. Uses little discretion in attending to enquiries.
-        Influence: Minimal influence.
-        Complexity: Performs routine activities in a structured environment. Requires assistance in resolving unexpected problems.
-        Business skills: Has sufficient oral and written communication skills for effective engagement with immediate colleagues. Demonstrates an organised approach to work.
-        knowledge: Has a basic generic knowledge appropriate to area of work.
-    Level 2 - Assist
-        Autonomy: Works under routine direction. Uses limited discretion in resolving issues or enquiries.
-        Influence: Interacts with and may influence immediate colleagues.
-        Complexity: Performs a range of work activities in varied environments. May contribute to routine issue resolution.
-        Business skills: Has sufficient oral and written communication skills for effective engagement with colleagues and internal users/customers. Demonstrates a rational and organised approach to work.
-        knowledge: Has gained a basic domain knowledge. Demonstrates application of essential generic knowledge typically found in industry bodies of knowledge.
-    Level 3 - Apply
-        Autonomy: Works under general direction. Receives specific direction, accepts guidance and has work reviewed at agreed milestones.
-        Influence: Interacts with and influences colleagues.
-        Complexity: Performs a range of work, sometimes complex and non-routine, in a variety of environments. Applies a methodical approach to routine and moderately complex issue definition and resolution.
-        Business skills: Demonstrates effective oral and written communication skills when engaging on issues with colleagues, users/customers, suppliers and partners. Demonstrates judgement and a systematic approach to work.
-        knowledge: Has sound generic, domain and specialist knowledge necessary to perform effectively in the organisation typically gained from recognised bodies of knowledge and organisational information.
-    Level 4 - Enable
-        Autonomy: Works under general direction within a clear framework of accountability. Exercises substantial personal responsibility and autonomy.
-        Influence: Influences customers, suppliers and partners at account level. Makes decisions which influence the success of projects and team objectives. 
-        Complexity: Work includes a broad range of complex technical or professional activities, in a variety of contexts. Investigates, defines and resolves complex issues.
-        Business skills: Communicates fluently, orally and in writing, and can present complex information to both technical and non-technical audiences when engaging with colleagues, users/customers, suppliers and partners. Demonstrates an awareness of risk and takes an analytical approach to work.
-        knowledge: Has a thorough understanding of recognised generic industry bodies of knowledge and specialist bodies of knowledge as necessary. Has gained a thorough knowledge of the domain of the organisation. 
-
-
 Your task is to analyze both the CV and JD, and provide your analysis in the following JSON format. Ensure that the output contains only the specified analysis, and do not include any additional information outside of the provided structure. One JSON output is expected, nothing more.
 
 example: 
@@ -59,6 +23,8 @@ example:
         },        
         "recommendation": [
             {
+             "title": "Resources", 
+
              "resource": "mention here a resource that is a (courses, books, community)sites to improve technical skills the cv holder lacks to be fitted with the job description, list all the resource the candidate needs to improve there gaps for the JD for example: "AWS Certified Solutions Architect - Associate" on platforms like Coursera.",
 
              "type": "type of the resource for example: Online Course",

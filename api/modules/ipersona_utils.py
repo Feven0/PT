@@ -7,6 +7,7 @@ import json_repair
 from collections import defaultdict
 from api.llm.ipersona.ipersona_agent import agents
 import api.llm.ipersona.ipersona_db as database
+from api.modules.prompts.ipersona.hr_persona import hr_persona
 
 
 from dotenv import load_dotenv
@@ -156,8 +157,8 @@ async def interview_chat_response_metrics(data):
         context = str(message)
         history_str = '\n'.join(str(item) for item in data['history'])
         msg=context\
-            .replace("{jd}", file_reader(data['user']['jbPath']))\
-            .replace("{cv}", file_reader(data['user_session']['cvPath']))\
+            .replace("{jd}", str(data['user']['jbPath']))\
+            .replace("{cv}", str(data['user_session']['cvPath']))\
             .replace("{history}", history_str)
         
         response = await hr_agent.send_message_interview(msg)
@@ -168,6 +169,61 @@ async def interview_chat_response_metrics(data):
     except Exception as e:
         return f'Error: {str(e)}' 
     
+datas = [
+    {
+        "adherence": "100%",
+        "clarity": "Somewhat Clear",
+        "comments": "The candidate needs to improve their technical knowledge related to the role and provide more detailed answers to demonstrate their qualifications.",
+        "confidence_level": "Low",
+        "engagement": "Disengaged",
+        "improvement": "[{'skill': 'Computer Vision Knowledge', 'description': 'The candidate should gain experience or knowledge in computer vision techniques and algorithms, as this is crucial for the role.'}, {'skill': 'Detail Orientation', 'description': 'The candidate should provide more detailed responses to questions, particularly regarding past experiences and challenges faced.'}]",
+        "irrelevant_answers": "60%",
+        "jbId": "1068",
+        "performance_message": "Needs Improvement",
+        "performance_percent": "45%",
+        "rating": "2 stars",
+        "relevant_answers": "40%",
+        "sessionId": "73d8beb5-8805-4a2e-929c-23ea99e82ade",
+        "strength": "[{'skill': 'Self-Awareness', 'description': 'The candidate demonstrated self-awareness by acknowledging weaknesses and the need for improvement.'}]",
+        "timer_failed": "0",
+        "timer_pass": "4",
+        "userId": "13"
+    },
+    {
+        "adherence": "100%",
+        "clarity": "Somewhat Clear",
+        "comments": "The candidate needs to improve their technical knowledge related to the role and provide more detailed answers to demonstrate their qualifications.",
+        "confidence_level": "High",
+        "engagement": "Somewhat Engaged",
+        "improvement": "[{'skill': 'Technical Knowledge in Computer Vision', 'description': 'The candidate should gain experience or knowledge in computer vision techniques and algorithms, as this is crucial for the role.'}, {'skill': 'Detail Orientation', 'description': 'The candidate should provide more detailed responses to questions, particularly regarding past experiences and challenges faced.'}]",
+        "irrelevant_answers": "55%",
+        "jbId": "1068",
+        "performance_message": "Needs Improvement",
+        "performance_percent": "50%",
+        "rating": "3 stars",
+        "relevant_answers": "45%",
+        "sessionId": "73d8beb5-8805-4a2e-929c-23ea99e82ade",
+        "strength": "[{'skill': 'Self-Awareness', 'description': 'The candidate demonstrated self-awareness by acknowledging weaknesses and the need for improvement.'}]",
+        "timer_failed": "0",
+        "timer_pass": "5",
+        "userId": "13"
+    }
+]
+ 
+async def analysing_all_metrics():
+    try:
+        hr_agent.assistant.update_system_message(hr_persona)
+        message = file_reader(prompt_path("ipersona/interview_all_metrics_analysis.txt"))
+        context = str(message)
+        msg=context.replace("{previous_evaluation}", str(datas))
+        print("$$$$$$$$$$$$$")
+        # print(msg)
+        response = await hr_agent.send_message_interview(msg)
+        response = extract_json(response, quite=False)
+        return response
+    
+    except Exception as e:
+        return f'Error: {str(e)}'   
 
 def file_reader(path: str) -> str:
     

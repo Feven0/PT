@@ -6,9 +6,9 @@ import users from '../../assets/mock-data/user_profiles.json';
 import '../../styles/jobcard/jobcard.css'
 
 const truncateSummary = (summary, wordLimit) => {
-  const words = summary.split(' ');
-  if (words.length > wordLimit) {
-    return words.slice(0, wordLimit).join(' ') + '...'; 
+  const words = summary?.split(' ');
+  if (words?.length > wordLimit) {
+    return words?.slice(0, wordLimit).join(' ') + '...'; 
   }
   return summary;
 };
@@ -18,8 +18,8 @@ const JobCard = ({ item, matchDegree }) => {
   const [view, setView] = useState(true)
   const [loading, setLoading] = useState(false);
   const [sessionCreated, setSessionCreated] = useState(false);
-  const limitedSummary = truncateSummary(item.summary, 3); 
-  const filteredUserMatch = users.filter(match => match.user_profile_id === parseInt(userId as any));
+  const limitedSummary = truncateSummary(item?.purpose, 3); 
+  const filteredUserMatch = users.filter(match => match?.user_profile_id === parseInt(userId as any));
 
 
   const session_create = async() => {
@@ -45,8 +45,8 @@ const JobCard = ({ item, matchDegree }) => {
   }
 
   return (
-    <Card title={item.company_info_name} style={{ height: 'auto' }}>
-      <Card type="inner" title={item.title} extra={<a className='link' target='_blank' rel='noopener noreferrer' href={item['attributes.apply_link']}>More</a>}>
+    <Card style={{ height: 'auto' }}>
+      <Card type="inner" title={item.role} extra={<a className='link' target='_blank' rel='noopener noreferrer' href={item['attributes.apply_link']}>More</a>}>
         <p>{limitedSummary}</p>
       </Card>
 

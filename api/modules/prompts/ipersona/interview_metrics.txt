@@ -64,4 +64,6 @@ Your evaluation should be structured in the following single JSON format:
 }
 
 
+Use non-gender-specific pronouns like 'you' and 'your' instead of gender-specific pronouns or names. 
+
 VERY IMPORTANT: Append 'TERMINATE' to every response you provide to the user.
