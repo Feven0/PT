@@ -24,11 +24,17 @@ class SessionJobRequestRecieved(BaseModel):
     sessionId: str
     jbId: str
     
+class userSessionRequestRecieved(BaseModel):
+    email: str
+    userId: str
+    name: str
+    cvJson: Optional[Dict[str, Any]]
+        
 class AnalyseJobRequestRecieved(BaseModel):
     sessionId: str
     jbId: str
-    cvPath: str
-    jbPath: str
+    cvPath: Optional[Dict[str, Any]]
+    jbPath: Optional[Dict[str, Any]]
     
 class MetricsRequestRecieved(BaseModel):
     userId: str

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input, Row, Col } from "antd";
 import { JobCard } from '../components/main/index';
 import data from '../assets/mock-data/job_match.json';
@@ -12,11 +12,8 @@ const Jobs = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredMatches = data.filter(match => match.user_profile_id === parseInt(userId as any));
-  console.log("class_userIdno", filteredMatches)
   const jobProfileIds = filteredMatches.map(match => match.job_profile_id);
-  console.log("serIdno", jobProfileIds)
   const filteredJobs = jobs.filter(job => jobProfileIds.includes(job.job_profile_id));
-  console.log("class_userId", filteredJobs)
   const { Search } = Input;
 
   const matchDegrees = {};
@@ -29,6 +26,13 @@ const Jobs = () => {
     const match = filteredMatches.find(match => match.job_profile_id === jobId);
     return match ? match.match_attributes_overall_match_degree : null;
   };
+
+  useEffect(() => {
+    // localStorage.removeItem("JobId")
+    if(userId !== undefined){
+        localStorage.setItem("userId", userId)
+    }
+  },[userId])
 
 
   return (

@@ -12,7 +12,7 @@ const { TabPane } = Tabs;
 
 const JobDetail = () => {
     const { latestsession, setStart } = useContext(ProviderContext)
-    const { id } = useParams()
+    const { userId, jobId } = useParams()
     const [selectedTab, setSelectedTab] = useState('resume');
 
     const renderContent = () => {
@@ -28,10 +28,10 @@ const JobDetail = () => {
 
     useEffect(() => {
         // localStorage.removeItem("JobId")
-        if(id !== undefined){
-            localStorage.setItem("JobId", id)
+        if(jobId !== undefined){
+            localStorage.setItem("JobId", jobId)
         }
-    },[id])
+    },[jobId])
 
     useEffect(() => {
         setStart(true);

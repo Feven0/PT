@@ -16,6 +16,7 @@ const Api = {
   analyse: data => axios.post('http://0.0.0.0:5500/analyse/',data),
   interview: data => axios.post('http://0.0.0.0:5500/interview/',data),
   audioUpload: data => axios.post('http://0.0.0.0:5500/api/audio_upload',data),
+  sessionCreate: data => axios.post('http://0.0.0.0:5500/api/create_user_session', data),
   analyseDoc: data => axios.post('http://0.0.0.0:5500/api/analyse_cv', data),
   fetchSession: data => axios.post('http://0.0.0.0:5500/wv/fetch_user_session', data),
   fetchSessionJob: data => axios.post('http://0.0.0.0:5500/wv/fetch_session_job', data),

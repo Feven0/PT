@@ -60,7 +60,7 @@ const useMiddleSocket = () => {
     setLoading(true)
     await socket?.emit('analyse', {
       message: data.input, 
-      cvPath: data.cv_path,
+      cvPath: data.profile,
       user: data.latestUserInfo});
   };
 

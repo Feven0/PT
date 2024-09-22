@@ -234,7 +234,7 @@ async def Add_session_schema_data(data):
         "userId": data['userId'], #'a82d3efe-0289-4acf-a93b-fcc768355e5b',
         "sessionId": data['sessionId'],        
         "fileName": data['fileName'],
-        "cvPath": data['cvPath'],
+        "cvPath": str(data.get('cvPath', '')),
         "createdAt": get_current_time(),
         "updatedAt": get_current_time()
         }
@@ -254,7 +254,7 @@ async def Add_session_Job_schema_data(data):
         ipersona_data = {
         "sessionId": data['sessionId'], 
         "jbId": data['jbId'],
-        "jbPath": data['jbPath'],
+        "jbPath": str(data['jbPath']),
         "persona": data['persona'],
         "analysis": str(data['analysis']), 
         "analysischat": str(data['analysischat']),
@@ -308,7 +308,7 @@ async def Add_session_interview_metrics_data(data):
         return f'Error: {str(e)}' 
 
 
-async def update_ipersona_data_new(data, fields_to_update):
+async def update_ipersona_data_new(data, fields_to_update):    
     print("Updating data for ID:", data['id'])
     update_data = {}
     
@@ -331,10 +331,12 @@ async def update_ipersona_data_new(data, fields_to_update):
             data_object=update_data,
             class_name='iPersonaSessionJob'
         )
+        
+        print("Updating Successful:", True)
         return True
     
     except Exception as e:
-        return f'Error: {str(e)}'
+        return f'Error During Update: {str(e)}'
 
  
 async def fetch_session(userId):

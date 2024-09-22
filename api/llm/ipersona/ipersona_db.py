@@ -2,12 +2,12 @@ import api.llm.ipersona.ipersona_schema as db
 import ast
 
 
-async def save_to_db(recieved, jbPath):
+async def save_to_db(recieved):
     try:
         data = {
             "sessionId": recieved.sessionId,
             "jbId": recieved.jbId,
-            "jbPath": jbPath,
+            "jbPath": recieved.jbPath,
             "persona": "",
             "analysis": "",
             "analysischat": "",

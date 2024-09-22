@@ -23,7 +23,7 @@ async def disconnect(sid):
 @sio.on("analyse")
 async def analysis_endpoint(sid, data):
     try:
-        print("socket_analysis", data['cvPath'])        
+        # print("socket_analysis", data['cvPath'])        
         response = await util.analysis_chat_response(data)
 
         message = [
@@ -39,7 +39,7 @@ async def analysis_endpoint(sid, data):
         
         # await database.analyse_chat_to_db(data, message)       
             
-        # print(f"Analysis response: {message}")
+        print(f"Analysis response: {message}")
         await sio.emit("analyse", message, room=sid)
     except Exception as e:
         return f'Error: {str(e)}'

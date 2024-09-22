@@ -59,17 +59,18 @@ def create_persona(sample_jd):
             return f'Error: {str(e)}' 
         
         
-async def analysing_vitae(recieved,  jbPath):
+async def analysing_vitae(recieved):
     try:
-        created_persona = create_persona(jbPath)
+        created_persona = create_persona(recieved.jbPath)
         prompt_text = file_reader(prompt_path('ipersona/persona.txt'))
         generated_persona = prompt_text.replace("{hr_persona}", created_persona)   
         hr_agent.assistant.update_system_message(generated_persona)
         message = file_reader(prompt_path('ipersona/analysis.txt'))
         context = str(message)
+        
         msg = context\
-                .replace("{jd}", file_reader(jbPath))\
-                .replace("{cv}", file_reader(recieved.cvPath))
+                .replace("{jd}", str(recieved.jbPath))\
+                .replace("{cv}", str(recieved.cvPath))
                 
         response = await hr_agent.send_message_analyser(msg)    
         response = extract_json(response, quite=False)
@@ -91,9 +92,10 @@ async def analysis_chat_response(data):
 
         message = file_reader(prompt_path('ipersona/chat_analysis_prompt.txt'))
         context = str(message)
+        
         msg=context\
-            .replace("{jd}", file_reader(data['user']['jbPath']))\
-            .replace("{cv}", file_reader(data['cvPath']))\
+            .replace("{jd}", str(data['user']['jbPath']))\
+            .replace("{cv}", str(data['cvPath']))\
             .replace("{question}", data['message'])
         
         response = await hr_agent.send_message_analyser(msg)

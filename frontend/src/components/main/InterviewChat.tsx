@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 import { ProviderContext } from '../../context/context';
 import "../../styles/InterviewChat/interviewchat.css"
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 
 const InterviewChat = () => {
 
@@ -28,6 +28,7 @@ const InterviewChat = () => {
         setStart(false);
     }, [setStart]);
 
+    console.log('counter Value:', counter);
 
     const onSendMessage = (timerValue: any) => {
         const latestUserInfo = latestUserData;
@@ -68,7 +69,7 @@ const InterviewChat = () => {
     const MarkdownContent = ({ content }) => {
         const formattedContent = content.replace(/---/g, ' ');
         return (
-            <div className="markdown-content" style={{width: '40rem'}}>
+            <div className="markdown-content" style={{width: '100%'}}>
                 <ReactMarkdown>{formattedContent}</ReactMarkdown>
             </div>
         );
@@ -90,19 +91,22 @@ const InterviewChat = () => {
                     {view && (
                         <div>
                             {initialChatInterview?.map((message, index) => (
-                                <div className='chat_contain' key={index}>
+                                <div className='' key={index}>
                                     {message.role === "candidate" && (
                                         <div className='messagecandidate'>
-                                            <CgProfile  size={40}/>
-                                            <Text className="message-text">{message?.response}</Text>
+                                            <Paragraph style={{ margin: 0}}>
+                                                <CgProfile  size={40}/>
+                                                <p className="message-text">{message?.response}</p>
+                                            </Paragraph>
                                         </div>
                                     )}
+                                    <br />
                                     {message.role === "assistant" && (
                                         <div className='messageassistant'>
                                             <img src={hr} alt="" className='profile-image' />
-                                            <div className="message-response">
+                                            <Paragraph style={{ margin: 0, textAlign:'justify', color: '#606060' }}>
                                                 <MarkdownContent content={message?.response} />
-                                            </div>
+                                            </Paragraph>
                                         </div>
                                     )}
                                 </div>
@@ -114,16 +118,18 @@ const InterviewChat = () => {
                         <div className='chat_contain' key={index}>
                             {message.role === "candidate" && (
                                 <div className='messagecandidate'>
-                                    <CgProfile  size={40}/>
-                                    <Text className="message-text">{message?.response}</Text>
+                                    <Paragraph style={{ margin: 0}}>
+                                        <CgProfile  size={40}/>
+                                        <Text className="message-text">{message?.response}</Text>
+                                    </Paragraph>
                                 </div>
                             )}
                             {message.role === "assistant" && (
                                 <div className='messageassistant'>
                                     <img src={hr} alt="" className='profile-image' />
-                                    <div className="message-response">
+                                    <Paragraph style={{ margin: 0, textAlign:'justify', color: '#606060' }}>
                                         <MarkdownContent content={message?.response} />                                   
-                                    </div>
+                                    </Paragraph>
                                 </div>
                             )}
                         </div>

@@ -14,11 +14,11 @@ export const PersonaContext = ({ children }) => {
     const [latestsession, setLatestSession] = useState()
     const [refresh, setRefresh] = useState(0);
     const [start, setStart] = useState(false)
-    const userId = '176'
     
     
 
     const sessionData = async () => {
+      const userId= localStorage.getItem("userId")
       const response = await Api.fetchSession({userId})
       // console.log("responding second...", response.data)
       setSession(response.data.all_user_data)

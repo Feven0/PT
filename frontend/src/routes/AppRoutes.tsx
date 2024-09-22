@@ -13,7 +13,7 @@ const AppRoutes = () => (
       <Route path="/upload" element={<UploadCV />} />
       <Route path="/" element={<Trainee />} />
       <Route path="/jobs/:userId" element={<Jobs />} />
-      <Route path="/job_detail/:id" element={<JobDetail />} />
+      <Route path="/job_detail/:userId/:jobId" element={<JobDetail />} />
       <Route path="/personal_dashboard" element={<PersonalActivity/>}/>
       <Route path="/main_activity/:jbId/:sessionId" element={<MainActivity/>}/>
       <Route path="/evaluation_status/:bool" element={<EvaluationStatus/>}/>

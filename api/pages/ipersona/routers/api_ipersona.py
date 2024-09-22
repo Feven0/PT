@@ -86,7 +86,6 @@ async def upload_files(
         print(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
 
-
 @routes.post("/audio_upload")
 async def speech_to_text(file: UploadFile = File(...)):
     try:
@@ -120,6 +119,26 @@ async def speech_to_text(file: UploadFile = File(...)):
         elapsed_time = end_time - start_time_1  
         print(f"Time taken for audio upload processing: {elapsed_time:.2f} seconds")
 
+@routes.post("/create_user_session")
+async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
+    try:
+        #################### Save to DB #####################   
+        data = {
+            "email": recieved.email,
+            "userId": recieved.userId,
+            "sessionId": str(uuid.uuid4()),
+            "fileName": recieved.name,
+            "cvPath": recieved.cvJson
+        }
+                
+   
+        res = await db.create_schema(data)
+        return {"filenames": f"uploaded successfully: {res}"}
+    
+    except Exception as e:
+        print(f"Error processing files: {e}")
+        return JSONResponse(status_code=500, content={"error": "Error processing files"})
+
 
 @routes.post("/analyse_cv")
 async def analyse_cv_job(recieved: pemodel.AnalyseJobRequestRecieved): 
@@ -127,19 +146,17 @@ async def analyse_cv_job(recieved: pemodel.AnalyseJobRequestRecieved):
     start_time = time.time()    
     try: 
         global hr_agent
-        jbPath = recieved.jbPath
-        jbPath = data_path('txt_files/job.txt')
-        # jbPath = "https://www.learn4good.com/jobs/online_remote/info_technology/3564420464/e/"
+        # jbPath = data_path('txt_files/job.txt')
         global persona        
                      
              
-        job_session_id = await database.save_to_db(recieved, jbPath)
-        result = await util.analysing_vitae(recieved, jbPath)
+        job_session_id = await database.save_to_db(recieved)
+        result = await util.analysing_vitae(recieved)
             
         data = {
             "id": job_session_id,
             "persona": result['generated_persona'],
-            "analysis": result['response'],
+            "analysis": result['response']
         }    
          
         res = await db.update_ipersona_data_new(data, fields_to_update=['persona', 'analysis'])

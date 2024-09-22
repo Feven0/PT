@@ -7,13 +7,13 @@ import ReactMarkdown from 'react-markdown';
 
 const { Text, Title, Paragraph } = Typography;
 
-const AnalyseChat = ({ latestanalysischat, latestUserData }) => {
+const AnalyseChat = ({ latestanalysischat, latestUserData, profile, job }) => {
   const { loading, analysis, handleAnalyse } = useMiddleSocket();
   const { latestsession, setStart } = useContext(ProviderContext);
   const [input, setInput] = useState('');
   const [show, setShow] = useState(false);
   const [previousChatAnalysis, setInitialChatAnalysis] = useState(latestanalysischat);
-
+  
   useEffect(() => {
     setStart(false);
   }, []);
@@ -21,7 +21,7 @@ const AnalyseChat = ({ latestanalysischat, latestUserData }) => {
   const onSendMessage = () => {
     const latestUserInfo = latestUserData;
     const cv_path = latestsession?.cvPath;
-    handleAnalyse({ input, cv_path, latestUserInfo });
+    handleAnalyse({ input, profile, latestUserInfo });
     setInput('');
   };
 
@@ -42,15 +42,14 @@ const AnalyseChat = ({ latestanalysischat, latestUserData }) => {
 
   return (
     <>
-        <Row>
-            <button 
-            onClick={() => setShow(!show)}
-            className='btn-load'>
-                {!show? 'Previous' : 'Hide'}
-            </button>
-        </Row>
-
         <Card style={{ maxHeight: '40rem', maxWidth: '35rem', overflowY: 'auto' }}>
+          <Row>
+              <button 
+              onClick={() => setShow(!show)}
+              className='btn-load'>
+                  {!show? 'Previous' : 'Hide'}
+              </button>
+          </Row>
             {show ?
                 <div style={{ marginBottom: '16px' }}>
                 {previousChatAnalysis?.map((message, index) => (
