@@ -25,6 +25,7 @@ from typing import List
 import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_db as database
 from api.llm.ipersona.ipersona_agent import agents
+from api.config import get_openapi_token
 from dotenv import load_dotenv
 import api.pages.ipersona.models.model_persona as pemodel
 import assemblyai as aai
@@ -42,8 +43,11 @@ uploaded_files = []
 hr_persona = []
 
 # load_dotenv("../.env")
+
+key_json = get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
+ASSEMBLYAI_API_KEY = key_json['ASSEMBLYAI_API_KEY']
 # ASSEMBLYAI_API_KEY= os.getenv("ASSEMBLYAI_API_KEY")
-aai.settings.api_key = "49e5f82458584a70b847f477a035ce48"
+aai.settings.api_key = ASSEMBLYAI_API_KEY 
 transcriber = aai.Transcriber()
 
 

@@ -2,8 +2,15 @@ import weaviate, os
 from dotenv import dotenv_values
 import datetime
 from dotenv import load_dotenv
-load_dotenv("../../.env")
+from api.config import get_openapi_token
 
+
+
+# get Weaviate credentials
+key_json  =  get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
+
+# WEAVIATE_URL= key_json ['WEAVIATE_URL']
+# WEAVIATE_API_KEY= key_json ['WEAVIATE_API_KEY']
 WEAVIATE_URL="https://up0v9qksqukevg74gj1tfg.c0.us-east1.gcp.weaviate.cloud"
 WEAVIATE_API_KEY="1Kp0aYKgxFFE3VlmrRN6Ni8W23LE1KlmAqr4"
 client = weaviate.Client(
@@ -109,15 +116,15 @@ schema = {
                     "dataType": ["string"]
                 },
                 {
-                    "name": "sessionId", 
+                    "name": "sessionId",  ## Auto generated session id for the session
                     "dataType": ["string"]
                 },
                 {
-                    "name": "jbId", 
+                    "name": "jbId", # Job description id for the session
                     "dataType": ["string"]
                 },
                 {
-                    "name": "performance_message", 
+                    "name": "performance_message", # Metrics evaluation from interview
                     "dataType": ["string"], 
                     "default": "null"
                 },

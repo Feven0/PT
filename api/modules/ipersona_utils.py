@@ -1,24 +1,32 @@
 
-import openai
+from openai import OpenAI
 import json, os, re, ast
 import pdfplumber
 import os
 import json_repair
+
 from collections import defaultdict
 from api.llm.ipersona.ipersona_agent import agents
 import api.llm.ipersona.ipersona_db as database
 from api.modules.prompts.ipersona.hr_persona import hr_persona
 
+from api.config import get_openapi_token
+
 
 from dotenv import load_dotenv
-load_dotenv(os.path.abspath("../.env"))
-print("Not a thing girl")
-print(os.getenv('OPENAI_API_KEY'))
+# load_dotenv(os.path.abspath("../.env"))
 
 
-OPENAI_API_KEY = "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"
-# openai.api_key = os.environ.get('OPENAI_API_KEY')
-openai_client = openai.OpenAI(api_key = OPENAI_API_KEY)
+
+
+# print("Not a thing girl")
+# print(os.getenv('OPENAI_API_KEY'))
+
+########
+keys_json  = get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
+OPENAI_API_KEY = keys_json['OPENAI_PARROT_API_KEY']
+
+openai_client = OpenAI(api_key = OPENAI_API_KEY)
 
 
 module_dir= os.path.dirname(__file__)
