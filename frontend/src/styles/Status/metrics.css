@@ -1,0 +1,11 @@
+.star-rating {
+    font-size: 36px;
+}
+
+.star {
+    color: rgba(51, 50, 50, 0.37); 
+}
+
+.star.filled {
+    color: rgb(245, 160, 3); 
+}

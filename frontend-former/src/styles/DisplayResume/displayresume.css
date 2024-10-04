@@ -1,0 +1,37 @@
+.resume-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f2f5; 
+}
+
+.resume-card {
+    width: 80%;
+    max-width: 800px;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow-y: auto; 
+    overflow-x: hidden;
+    margin-top: -5rem;
+}
+
+.resume-name {
+    margin-bottom: 0;
+}
+
+.resume-overview {
+    display: block;
+    margin-bottom: 20px;
+}
+
+ul {
+    list-style-type: disc;
+    padding-left: 20px;
+}
+
+.resume-call-to-action {
+    display: block;
+    margin-top: 20px;
+    font-weight: bold;
+}

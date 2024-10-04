@@ -1,0 +1,8 @@
+export {default as ProfileDetail} from './ProfileDetail'
+export {default as MainActivity} from './MainActivity'
+export {default as MyAnalyseChat} from './MyAnalyseChat'
+export {default as MyInterview} from './MyInterview'
+export {default as MyInterviewChat} from './MyInterviewChat'
+export {default as MyJobAnalyse} from './MyJobAnalyse'
+export {default as MyJobAnalysisDetail} from './MyJobAnalysisDetail'
+export {default as MyJobCard} from './MyJobCard'

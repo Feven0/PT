@@ -1,10 +1,13 @@
 import { CgProfile } from 'react-icons/cg';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useContext } from 'react';
+import { Dropdown, Menu, Button, Typography } from 'antd';
+import { ProviderContext } from '../context/context';
 import '../styles/Navbar/navbar.css'
-import { Dropdown, Menu, Button } from 'antd';
+const { Text } = Typography;
 
 const Navbar = () => {
+    const {latestsession} = useContext(ProviderContext)
     const [open, setOpen] = useState(false);
 
     const menu = (
@@ -25,6 +28,14 @@ const Navbar = () => {
         <div className="navbar-container">
             <div className="navbar-background"></div>
             <div className="navbar-content">
+                <div>
+                    <Link to="/">
+                        <Text className='header'>Ipersona</Text>
+                    </Link>
+                    <span>
+                        <Text style={{fontSize: '0.9rem'}} className='pdf'>{latestsession?.username}</Text>
+                    </span>
+                </div>
                 <Dropdown overlay={menu} trigger={['click']}>
                     <Button 
                         onClick={(e) => e.preventDefault()} 

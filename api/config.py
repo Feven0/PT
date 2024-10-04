@@ -13,14 +13,14 @@ import hashlib
 from dataclasses import dataclass, astuple, asdict
 from dotenv import load_dotenv
 import boto3
-try:
-    from deepdiff import DeepDiff  # For Deep Difference of 2 objects
-    from deepdiff import Delta  # For creating delta of objects that can be applied later to other objects.
-except:
-    def DeepDiff(obj1, obj2, **kwargs):
-        return obj2
-    def Delta(obj1, **kwargs):
-        return obj1
+# try:
+#     from deepdiff import DeepDiff  # For Deep Difference of 2 objects
+#     from deepdiff import Delta  # For creating delta of objects that can be applied later to other objects.
+# except:
+#     def DeepDiff(obj1, obj2, **kwargs):
+#         return obj2
+#     def Delta(obj1, **kwargs):
+#         return obj1
     
 #
 import time
@@ -58,12 +58,12 @@ if os.path.exists(efs_path):
 else:
     model_path = f'{apipath}'
     
-def object_diff_delta(obj1, obj2, blob=True):
-    ddiff = DeepDiff(obj1, obj2, ignore_order=True)
-    delta = Delta(ddiff)
-    if blob:
-        delta = json.dumps(delta, indent=2) 
-    return delta
+# def object_diff_delta(obj1, obj2, blob=True):
+#     ddiff = DeepDiff(obj1, obj2, ignore_order=True)
+#     delta = Delta(ddiff)
+#     if blob:
+#         delta = json.dumps(delta, indent=2) 
+#     return delta
 
 def data_file_name(file_name, **kwargs):
     folder = kwargs.get('folder', '')

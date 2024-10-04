@@ -8,7 +8,7 @@ const { Panel } = Collapse;
 
 const AnalyseDetail = ({ realtimeanalysis, dblatestanalysis }) => {
   const analysis = realtimeanalysis?.length !== 0 ? realtimeanalysis : dblatestanalysis;
-  console.log("anlsy", realtimeanalysis?.length !== 0 || dblatestanalysis?.length !== 0, realtimeanalysis?.length !== 0 , dblatestanalysis?.length !== 0, realtimeanalysis, dblatestanalysis)
+
   return (
     <>
       {(realtimeanalysis?.length !== 0 || dblatestanalysis?.length !== 0) &&(

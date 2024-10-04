@@ -1,4 +1,4 @@
-import {DisplayResume, AnalyseDoc, InterviewPrep} from '../components/main/index'
+import {DisplayResume, AnalyseDoc, InterviewPrep, AllStatus} from '../components/main/index'
 import { useState, useContext } from 'react';
 import { Layout, Menu, Row, Col, Typography, Tabs } from 'antd';
 import { ProviderContext } from '../context/context';
@@ -17,8 +17,8 @@ const JobDetail = () => {
 
     const renderContent = () => {
     switch (selectedTab) {
-        case 'analyze':
-        return <AnalyseDoc />;
+        case 'overall-progress':
+        return <AllStatus />;
         case 'interview':
         return <InterviewPrep />;
         default:
@@ -42,13 +42,6 @@ const JobDetail = () => {
       return (
         <Layout>
           <Content style={{ padding: '2px' }}>
-                    <Link to="/">
-                        <Text className='header'>Ipersona</Text>
-                    </Link>
-                <Row>
-                    <Text className='pdf'>{latestsession?.fileName}</Text>
-                </Row>
-
                 <Row>
                     <Col span={24}>
                         {/* {selectedTab === 'resume' && <DisplayResume />}  */}
@@ -59,7 +52,8 @@ const JobDetail = () => {
                         style={{ marginTop: '2px' }}
                         >
                         {/* <TabPane tab="Resume" key="resume" /> */}
-                        <TabPane tab="Analyze Document" key="analyze" />
+                        {/* <TabPane tab="Analyze Document" key="analyze" /> */}
+                        <TabPane tab="Overall Progress" key="overall-progress"/>
                         <TabPane tab="Interview Prep" key="interview" />
                         </Tabs>
                         {renderContent()} 

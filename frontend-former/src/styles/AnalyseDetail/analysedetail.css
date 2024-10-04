@@ -1,0 +1,30 @@
+.analyse-box {
+    margin: 0px 200px 0px 200px;
+}
+
+.percentage-result {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    column-gap: 3rem;
+    color: red;
+    font-size: 0.9rem;
+    text-align: center;
+    justify-content: center;
+    background-color: white;
+}
+
+.small {
+    font-size: 13px;
+    color: black;
+}
+
+.percentage-result > h2 {
+    margin-top: 1.2em;
+}
+
+.analysis-resource {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 0.6rem;
+}

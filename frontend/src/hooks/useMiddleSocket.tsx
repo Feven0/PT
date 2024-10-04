@@ -16,8 +16,7 @@ interface AnalysisResponse {
 
 
 const useMiddleSocket = () => {
-  const [socket, analysis, setChatAnalysis, interview, setChatInterview, cvanalysis, setCVAnalysis, interview_metrics, setEvaluationMetrics] = useWebSocket('http://0.0.0.0:5500');
-  const { latestinterviewchat, latestUserData, latestsession, setStart } = useContext(ProviderContext);
+  const [socket, analysis, setChatAnalysis, interview, setChatInterview, cvanalysis, setCVAnalysis, interview_metrics, setEvaluationMetrics] = useWebSocket('http://0.0.0.0:5900');
   const [loading, setLoading] = useState(false);
   const [isloading, setIsLoading] = useState(false);
   const [latestAnalyseResponse, setLatestAnalyseResponse] = useState<AnalysisResponse | null>(null);
@@ -64,44 +63,23 @@ const useMiddleSocket = () => {
       user: data.latestUserInfo});
   };
 
-  const save_metrics_to_db = async(response_metrics) => {
-    if(interview_metrics !== "") {
-      const data = {
-        user_session: latestsession,
-        user: latestUserData,
-      }
-      const combinedData = {
-        response: response_metrics,
-        data: data,
-      };
-      const response = await Api.saveEvaluationMetrics(combinedData)
-    }
-
-  }
 
   useEffect(() => {
     if (socket) {
-        socket.on('interview chat', (data) => {
-            const { message, response_metrics } = data
+        socket.on('interview chat', (message) => {
+            // if(data['question_counter'] == 1) {setChatInterview([])}
             setChatInterview((prevMessages: any) => {
               if (!prevMessages.some((m: any) => m.query === message.query)) {
                 return [...prevMessages, ...message];
               }
               return prevMessages;
             });
-
-            setEvaluationMetrics(response_metrics);
-            if (response_metrics !== "") {
-              save_metrics_to_db(response_metrics)
-            } else {
-              console.log("not saving metrics to db")
-            }
             
             setLatestInterviewResponse(message);
               reset(); 
             setLoading(false);
-            console.log("count_inter", count === 4)  
-            if(count === 4) {
+            console.log("count_inter_bool", count === 8)  
+            if(count === 8) {
               pause()
             }
       });
@@ -115,9 +93,10 @@ const useMiddleSocket = () => {
       response: data.input, 
       history: data.interview, 
       user_session: data.user_session,
-      user: data.latestUserInfo,
+      // user: data.latestUserInfo,
       question_counter: data.counter,
-      time_taken: data.timerValue
+      time_taken: data.timerValue,
+      previous_question: data.previous_question
     });
     setCount(data.counter)
   };

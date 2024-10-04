@@ -2,17 +2,10 @@ import weaviate, os
 from dotenv import dotenv_values
 import datetime
 from dotenv import load_dotenv
-from api.config import get_openapi_token
+load_dotenv("../../.env")
 
-
-
-# get Weaviate credentials
-key_json  =  get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
-
-# WEAVIATE_URL= key_json ['WEAVIATE_URL']
-# WEAVIATE_API_KEY= key_json ['WEAVIATE_API_KEY']
-WEAVIATE_URL="https://up0v9qksqukevg74gj1tfg.c0.us-east1.gcp.weaviate.cloud"
-WEAVIATE_API_KEY="1Kp0aYKgxFFE3VlmrRN6Ni8W23LE1KlmAqr4"
+WEAVIATE_URL="https://e6kekvphscq3b73q4sybda.c0.us-east1.gcp.weaviate.cloud"
+WEAVIATE_API_KEY="VdjnBgP8twfjgPSpejpCyuWVGjdpBgdaEaGR"
 client = weaviate.Client(
     url=WEAVIATE_URL,
     auth_client_secret=weaviate.AuthApiKey(api_key=WEAVIATE_API_KEY),
@@ -24,11 +17,6 @@ schema = {
             "class": "iPersonaSession",
             "properties": [
                 {
-                    "name": "email", 
-                    "dataType": ["string"], 
-                    "indexInverted": True
-                },
-                {
                     "name": "userId", 
                     "dataType": ["string"]
                 },
@@ -37,63 +25,31 @@ schema = {
                     "dataType": ["string"]
                 },
                 {
-                    "name": "fileName", 
+                    "name": "username", 
                     "dataType": ["string"], 
                     "default": "null"
                 },
                 {
-                    "name": "cvPath", 
+                    "name": "user_profile", 
                     "dataType": ["string"], 
                     "default": "null"
                 },
                 {
-                    "name": "createdAt", 
-                    "dataType": ["date"]
-                },
-                {
-                    "name": "updatedAt", 
-                    "dataType": ["date"]
-                }
-            ],
-            "vectorizer": "none"
-        },
-        {
-            "class": "iPersonaSessionJob",
-            "properties": [
-                {
-                    "name": "userId", 
+                    "name": "jobId", 
                     "dataType": ["string"]
                 },
                 {
-                    "name": "sessionId", 
-                    "dataType": ["string"]
-                },
-                {
-                    "name": "jbId", 
-                    "dataType": ["string"]
-                },
-                {
-                    "name": "jbPath", 
+                    "name": "job_desc", 
                     "dataType": ["string"], 
                     "default": "null"
-                },
+                },                
                 {
                     "name": "persona",
                     "dataType": ["string"],  
                     "default": "null"
                 },
                 {
-                    "name": "analysis",
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "analysischat",
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "interviewchat", 
+                    "name": "generated_questions",
                     "dataType": ["string"],  
                     "default": "null"
                 },
@@ -109,90 +65,25 @@ schema = {
             "vectorizer": "none"
         },
         {
-            "class": "iPersonaInterviewMetrics",
+            "class": "iPersonaInterviewHistory",
             "properties": [
                 {
                     "name": "userId", 
                     "dataType": ["string"]
                 },
                 {
-                    "name": "sessionId",  ## Auto generated session id for the session
+                    "name": "sessionId", 
                     "dataType": ["string"]
                 },
                 {
-                    "name": "jbId", # Job description id for the session
+                    "name": "jobId", 
                     "dataType": ["string"]
                 },
                 {
-                    "name": "performance_message", # Metrics evaluation from interview
-                    "dataType": ["string"], 
-                    "default": "null"
-                },
-                {
-                    "name": "performance_percent",
+                    "name": "chathistory", 
                     "dataType": ["string"],  
                     "default": "null"
                 },
-                {
-                    "name": "confidence_level",
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "relevant_answers",
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "irrelevant_answers",
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "clarity", 
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "engagement", 
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "adherence", 
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "timer_pass", 
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "timer_failed", 
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "improvement", 
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "strength", 
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "rating", 
-                    "dataType": ["string"],  
-                    "default": "null"
-                },
-                {
-                    "name": "comments", 
-                    "dataType": ["string"],  
-                    "default": "null"
-                },                
                 {
                     "name": "createdAt", 
                     "dataType": ["date"]
@@ -203,7 +94,7 @@ schema = {
                 }
             ],
             "vectorizer": "none"
-        }
+        }            
     ]
 }
 
@@ -216,9 +107,9 @@ async def create_schema(data):
     try:
         existing_schema = client.schema.get()
         persona_session_exists = any(cls['class'] == "IPersonaSession" for cls in existing_schema['classes'])
-        persona_session_job_exists = any(cls['class'] == "IPersonaSessionJob" for cls in existing_schema['classes'])
+        persona_interview_history_exists = any(cls['class'] == "iPersonaInterviewHistory" for cls in existing_schema['classes'])
      
-        if not persona_session_exists and not persona_session_job_exists:
+        if not persona_session_exists and not persona_interview_history_exists:
             client.schema.create(schema)  
             uploaded_uuid = await Add_session_schema_data(data)
             print("Classes 'iPersonaSession' and 'iPersonaSessionJob' created successfully.")
@@ -237,11 +128,14 @@ async def create_schema(data):
 async def Add_session_schema_data(data):
     try:
         ipersona_data = {
-        "email": data['email'],
-        "userId": data['userId'], #'a82d3efe-0289-4acf-a93b-fcc768355e5b',
+        "userId": data['userId'], 
         "sessionId": data['sessionId'],        
-        "fileName": data['fileName'],
-        "cvPath": str(data.get('cvPath', '')),
+        "username": data['username'],
+        "user_profile": str(data.get('user_profile', '')),
+        "jobId": data['jobId'], 
+        "job_desc": str(data.get('job_desc', '')),
+        "persona": data['persona'],
+        "generated_questions": str(data.get('generated_questions', '')),
         "createdAt": get_current_time(),
         "updatedAt": get_current_time()
         }
@@ -256,61 +150,23 @@ async def Add_session_schema_data(data):
         return f'Error: {str(e)}' 
     
     
-async def Add_session_Job_schema_data(data):
+async def Add_Interview_History(data):
     try:
-        ipersona_data = {
+        ipersona_chat_data = {
+        "userId": data['userId'], 
         "sessionId": data['sessionId'], 
-        "jbId": data['jbId'],
-        "jbPath": str(data['jbPath']),
-        "persona": data['persona'],
-        "analysis": str(data['analysis']), 
-        "analysischat": str(data['analysischat']),
-        "interviewchat": str(data['interviewchat']),
+        "jobId": data['jobId'],
+        "chathistory": str(data['chathistory']),
         "createdAt": get_current_time(),
         "updatedAt": get_current_time()
         }
 
-        ipersona_upload = client.data_object.create(
-            data_object=ipersona_data,
-            class_name="iPersonaSessionJob"
+        ipersona_upload_history = client.data_object.create(
+            data_object=ipersona_chat_data,
+            class_name="iPersonaInterviewHistory"
         )
         
-        return ipersona_upload
-    except Exception as e:
-        return f'Error: {str(e)}' 
-
-
-async def Add_session_interview_metrics_data(data):
-    try:
-        evaluation_metrics_data = {
-        "userId": data['userId'],
-        "sessionId": data['sessionId'],   
-        "jbId": data["jbId"],
-        "performance_message": data["performance_message"],
-        "performance_percent": data["performance_percent"],
-        "confidence_level": data["confidence_level"],
-        "relevant_answers": data["relevant_answers"],
-        "irrelevant_answers": data["irrelevant_answers"],
-        "clarity": data["clarity"],
-        "engagement": data["engagement"],
-        "adherence": data["adherence"],
-        "timer_pass": data["timer_pass"],
-        "timer_failed": data["timer_failed"],
-        "improvement": str(data.get('improvement', '')),
-        "strength": str(data.get('strength', '')),
-        "rating": data["rating"],
-        "comments": data["comments"],
-        "createdAt": get_current_time(),
-        "updatedAt": get_current_time()
-        }
-
-        evaluation_metrics = client.data_object.create(
-            data_object=evaluation_metrics_data,
-            class_name="iPersonaInterviewMetrics"
-        )
-        print("#########Saving Metrics Successfully###########")
-        print(evaluation_metrics)
-        return evaluation_metrics
+        return ipersona_upload_history
     except Exception as e:
         return f'Error: {str(e)}' 
 
@@ -319,24 +175,13 @@ async def update_ipersona_data_new(data, fields_to_update):
     print("Updating data for ID:", data['id'])
     update_data = {}
     
-    if 'persona' in fields_to_update:
-        update_data['persona'] = str(data.get('persona', ''))
-    if 'analysis' in fields_to_update:
-        update_data['analysis'] = str(data.get('analysis', ''))
-    if 'analysischat' in fields_to_update:
-        update_data['analysischat'] = str(data.get('analysischat', ''))
-    if 'interviewchat' in fields_to_update:
-        update_data['interviewchat'] = str(data.get('interviewchat', ''))
-    if 'jbId' in fields_to_update:
-        update_data['jbId'] = str(data.get('jbId', ''))
-    if 'jbPath' in fields_to_update:
-        update_data['jbPath'] = str(data.get('jbPath', ''))
-    
+    if 'chathistory' in fields_to_update:
+        update_data['chathistory'] = str(data.get('chathistory', ''))    
     try:
         result = client.data_object.update(
             uuid=data['id'],
             data_object=update_data,
-            class_name='iPersonaSessionJob'
+            class_name='iPersonaInterviewHistory'
         )
         
         print("Updating Successful:", True)
@@ -351,11 +196,14 @@ async def fetch_session(userId):
         sessions_with_user_id = client.query.get(
             class_name="iPersonaSession",
             properties=[
-                "email",
                 "userId",
-                "sessionId",
-                "cvPath",
-                "fileName",
+                "sessionId",                
+                "username",
+                "user_profile",
+                "jobId",
+                "job_desc",
+                "persona",
+                "generated_questions"
             ] 
         ).with_where({
             "path": ["userId"],
@@ -375,75 +223,20 @@ async def fetch_session(userId):
         print("Error fetching Sessions:", e)
         
 
-async def fetch_job(sessionId, jbId):
-    print("Fetching job data:", jbId)
+async def fetch_chat_history(userId, sessionId, jobId):
     try:
         job_with_session_id = client.query.get(
-            class_name="iPersonaSessionJob",
+            class_name="iPersonaInterviewHistory",
             properties=[
-                "sessionId",
-                "jbId",
-                "jbPath",
-                "persona",
-                "analysis", 
-                "analysischat",
-                "interviewchat"
+                "chathistory"
                 ]  
-        ).with_where({
-            "operator": "And", 
-            "operands": [
-                {
-                    "path": ["sessionId"],
-                    "operator": "Equal",
-                    "valueString": sessionId
-                },
-                {
-                    "path": ["jbId"],
-                    "operator": "Equal",
-                    "valueString": jbId
-                }
-            ]
-        }).with_additional("id").do()
-        
-        length = len(job_with_session_id['data']['Get']['IPersonaSessionJob'])
-        index = length - 1
-        result = job_with_session_id['data']['Get']['IPersonaSessionJob'][index]
-        
-        return result
-    except Exception as e:
-        print("Error fetching Sessions:", e)
-        
-
-async def fetch_evaluation_metrics(userId, sessionId, jbId):
-    try:
-        inter_metrics_with_user_id = client.query.get(
-            class_name="iPersonaInterviewMetrics",
-            properties=[
-                    "userId",
-                    "sessionId",   
-                    "jbId",
-                    "performance_message",
-                    "performance_percent",
-                    "confidence_level",
-                    "relevant_answers",
-                    "irrelevant_answers",
-                    "clarity",
-                    "engagement",
-                    "adherence",
-                    "timer_pass",
-                    "timer_failed",
-                    "improvement",
-                    "strength",
-                    "rating",
-                    "comments",
-            ] 
         ).with_where({
             "operator": "And", 
             "operands": [
                 {
                     "path": ["userId"],
                     "operator": "Equal",
-                    "valueString": userId   
+                    "valueString": userId
                 },
                 {
                     "path": ["sessionId"],
@@ -451,21 +244,17 @@ async def fetch_evaluation_metrics(userId, sessionId, jbId):
                     "valueString": sessionId
                 },
                 {
-                    "path": ["jbId"],
+                    "path": ["jobId"],
                     "operator": "Equal",
-                    "valueString": jbId
+                    "valueString": jobId
                 }
             ]
         }).with_additional("id").do()
         
-        length = len(inter_metrics_with_user_id['data']['Get']['IPersonaInterviewMetrics'])
-        index = length - 1
-        result = inter_metrics_with_user_id['data']['Get']['IPersonaInterviewMetrics'][index]
-        data= {
-            "all_user_metrics": inter_metrics_with_user_id['data']['Get']['IPersonaInterviewMetrics'],
-            "latest_user_metrics": result
-        }
-        return data
+        result = job_with_session_id['data']['Get']['IPersonaInterviewHistory']
+
+        return result
     except Exception as e:
         print("Error fetching Sessions:", e)
         
+ 

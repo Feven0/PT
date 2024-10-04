@@ -13,8 +13,7 @@ class AnalyseRequestRecieved(BaseModel):
     jbId: str
     cvPath: str
     jbPath: str
-    persona: str
-    
+    persona: str    
     
 
 class SessionRequestRecieved(BaseModel):
@@ -25,10 +24,16 @@ class SessionJobRequestRecieved(BaseModel):
     jbId: str
     
 class userSessionRequestRecieved(BaseModel):
-    email: str
-    userId: str
+    jobId: int
+    userId: int
     name: str
     cvJson: Optional[Dict[str, Any]]
+    jbJson: Optional[Dict[str, Any]]
+    
+class ChatHistoryRequestRecieved(BaseModel):
+    userId: str
+    sessionId: str
+    jobId: str
         
 class AnalyseJobRequestRecieved(BaseModel):
     sessionId: str
@@ -47,4 +52,8 @@ class SaveMetricsRequestRecieved(BaseModel):
     data: Optional[Dict[str, Any]]
     # Optional[Dict] = {}
     
+    
+class ClarificationRequestRecieved(BaseModel):
+    question: str
+
 

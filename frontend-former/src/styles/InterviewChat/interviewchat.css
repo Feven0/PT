@@ -1,0 +1,154 @@
+.chat_contain {
+    font-size: 1rem;
+    font-family: 'Times New Roman', Times, serif;
+    text-justify: auto;
+}
+
+.messagecandidate {
+    margin-bottom: 2rem;
+    display: flex;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 1.8rem;
+    margin-left: 2rem;
+    text-align: justify;
+}
+
+.messageassistant {
+    background-color: #f7f7f7;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 10px;
+}
+
+.chat_container {
+    display: flex;
+    justify-content: space-around;
+}
+
+.container-chat {
+    width: 60rem;
+}
+
+.profile-image {
+    height: 40px;
+    width: 40px;
+    border-radius: 100%;
+}
+
+.interview-box {
+    display: flex;
+    gap: 1rem;
+}
+
+.card_box {
+    background-color: red;
+    width: 50rem;
+    /* max-height: 7rem; */
+}
+
+.interview_percent {
+    font-size: 1.6rem;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+}
+
+.interview-chat-container {
+    position: relative;    
+    display: flex;
+    margin: 16px 160px 0px 160px;
+}
+
+.btn-hide {
+    margin-bottom: 3rem;
+}
+
+.btn-hide .ant-btn {
+    background-color: rgb(241, 241, 233) !important; 
+    border-color: antiquewhite !important; 
+    color: black;
+}
+
+.btn-hide .ant-btn:hover {
+    background-color: #f0ebe6;
+    color: black;
+}
+
+.chat-box {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.message {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.candidate .profile-image, .assistant .profile-image {
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.message-text {
+    max-width: 70%;
+    text-align: justify;
+    margin-bottom: '34rem';
+}
+
+.message-response {
+    background-color: #ffffff;
+    padding: 8px;
+    border-radius: 8px;
+    max-width: 70%;
+}
+
+.input-container {
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+ 
+    margin: 1rem;
+}
+
+.input-area {
+    resize: none;
+}
+
+.actions {
+    display: flex;
+    cursor: pointer;
+}
+
+.actions-load {
+    height: 20px;
+    margin-top: 30px;
+}
+
+.chat-timer-box {
+    margin-top: 5rem;
+}
+
+.progress-btn {
+    display: flex;
+    justify-content: center;
+    margin-top: 6rem;
+}
+
+.progress-button {
+    color: white;
+    font-weight: bolder;
+    padding: 1.2rem;
+    font-size: 1rem;
+}
+
+.progress-button:hover {
+    font-weight: bolder;
+    color: white;
+}

@@ -24,10 +24,9 @@ const useWebSocket = (url: any) => {
       setChatAnalysis((prevMessages) => [...prevMessages, ...message]);
     });
 
-    newSocket.on('interview chat', ({ message, response_metrics }) => {
+    newSocket.on('interview chat', (message) => {
       console.log(`Received response: ${message}`);
       setChatInterview((prevMessages) => [...prevMessages, ...message]);
-      setEvaluationMetrics(response_metrics);
     });
 
     newSocket.on('disconnect', () => {

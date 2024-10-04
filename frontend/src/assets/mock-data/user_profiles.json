@@ -1,42 +1,245 @@
 [
-  {
-    "name": "Abraham Teka",
-    "user_profile_id": 16,
-    "basics.attributes": "[{'role': 'Generative AI Engineer | Software Engineer | Machine Learning | Cloud Solutions (Azure, AWS) | Advocate for Continuous Improvement', 'uuid': 'e0eab10e-67ca-47c1-b89d-cd38f78037bc', 'email': 'aberhamyirsaw@gmail.com', 'image': '', 'media': [], 'phone': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2151', 'status': 'approved', 'timestamp': '2024-08-15T05:55:43.666429'}], 'location': {'city': '', 'icon': 'https://th.bing.com/th/id/OIP.Vr0IsnNZaY3cxmBtOtSqqAHaNN?w=2555&h=4557&rs=1&pid=ImgDetMain', 'region': '', 'address': 'Ethiopia', 'country': 'US', 'postal_code': ''}, 'full_name': 'Abraham Teka', 'name_title': '', 'verified_by': '', 'requested_by': '', 'personal_statement': \"Abraham Teka here, ambitious about advancing software solutions through Generative AI and cloud computing. With certifications in Azure and AWS, I specialize in RAG systems, prompt engineering, and LLM fine-tuning. I aim to innovate and drive technological advancements in AI and software engineering. Let's connect and build intelligent solutions that make technology beneficial to everyone!\"}]",
-    "projects.attributes": "[{'url': 'None', 'uuid': 'c4adfcce-acac-486b-b4d4-07955fb16e0f', 'title': 'Automated Storyboard Synthesis for Digital Advertising', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2151', 'status': 'approved', 'timestamp': '2024-08-05T02:25:36.083421'}], 'summary': 'Developed a machine learning solution to automate the conversion of textual advertisement concepts into detailed visual storyboards. Utilized advanced deep learning frameworks, image segmentation, and LLM-based agents for asset analysis, generation, and composition, streamlining the ad creation process for digital advertising campaigns.', 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}, {'url': 'None', 'uuid': 'd80ab376-13a6-47b2-bebf-7cb6e031e3e2', 'title': 'LLM Finetuning: Enabling Quality Embedding and Text Generation for Amharic Language', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2151', 'status': 'approved', 'timestamp': '2024-08-05T02:25:36.083479'}], 'summary': 'Enhanced NLP for Amharic by fine-tuning LLaMA-2. Key steps included implementing model quantization, preprocessing data and finetuning the model. Initial results showed promise in text generation and question answering. Future improvements will focus on  enhancing the fine-tuning process for better performance.', 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}, {'url': 'None', 'uuid': 'e8033426-399d-4a61-84d8-20c2074cc1dd', 'title': 'Precision RAG: Prompt Tuning For Building Enterprise Grade RAG Systems', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2151', 'status': 'approved', 'timestamp': '2024-08-05T02:25:36.083529'}], 'summary': \"The Prompt Generation System is an automated tool designed to assist users in generating multiple prompt options based on their input descriptions of tasks, objectives, and scenarios. The system employs sophisticated algorithms and evaluation metrics to ensure that the generated prompts align with the user's requirements.\", 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}]",
-    "education.attributes": "[{'uuid': 'a7537ae7-18ae-4fd4-b253-0204a681e437', 'score': '', 'remark': '', 'status': 'approved', 'country': '', 'courses': [], 'history': [{'blob': '', 'user': '2151', 'status': 'approved', 'timestamp': '2024-08-05T02:25:36.083597'}], 'end_date': '2024-07-31', 'start_date': '2024-04-30', 'study_area': '', 'study_type': 'Generative AI, Data Engineering & Machine Learning', 'verified_by': '', 'requested_by': '', 'institution_url': '', 'institution_name': '10 Academy'}, {'uuid': 'f58152c2-32a3-40f4-bd15-038a65cf0931', 'score': '3.4', 'remark': '', 'status': 'approved', 'country': '', 'courses': [], 'history': [{'blob': '', 'user': '2151', 'status': 'approved', 'timestamp': '2024-08-05T02:25:36.083649'}], 'end_date': '2022-06-30', 'start_date': '2017-09-30', 'study_area': 'Software Engineering', 'study_type': \"Bachelor's degree\", 'verified_by': '', 'requested_by': '', 'institution_url': '', 'institution_name': 'Bahir Dar University'}]",
-    "work_experience.attributes": "[{'role': 'Full-stack Developer', 'uuid': '32388504-5a12-4041-a453-3fea4ba5fcac', 'status': 'approved', 'company': 'Custor Computing PLC', 'history': [{'blob': '', 'user': '2151', 'status': 'approved', 'timestamp': '2024-08-05T02:25:36.088233'}], 'summary': 'Rebuilt  Addis Ababa’s legacy vehicles licensing & control system that had been operational for over 20 years across 10 + sites \\n ● Transformed it into a modern, centralized web-based system, increasing efficiency by 35% and serving more than one million people annually.\\n ● Utilized C# .NET Core, Entity Framework ORM, and SQL Server for backend, and Angular, Material Design, DevExpress, and Tailwind CSS for the UI development.', 'end_date': '', 'location': 'Addis Ababa, Ethiopia', 'highlights': [], 'start_date': '2023-12-31', 'company_url': '', 'verified_by': '', 'requested_by': ''}, {'role': 'Junior Cloud Consultant', 'uuid': 'cadbb707-f799-4a7e-8f9b-e8867a8c718c', 'status': 'approved', 'company': 'Nedamco Africa', 'history': [{'blob': '', 'user': '2151', 'status': 'approved', 'timestamp': '2024-08-05T02:25:36.088279'}], 'summary': 'Built a carbon footprint calculator project using C# and WebForms and deployed it on Microsoft Azure.\\n  ● Configuring and deploying requirements on Amazon AWS S3, EC2, Lambda, VPC, RDS, elastic beanstalk and load balancing.\\n  ● Configuring and deploying given assignments on Azure VMs, Virtual networks, Active Directory, DB and Functions.', 'end_date': '2024-03-31', 'location': 'None', 'highlights': [], 'start_date': '2023-12-31', 'company_url': 'https://www.linkedin.com/company/90827015', 'verified_by': '', 'requested_by': ''}, {'role': 'Software Engineer', 'uuid': '5731d775-9660-4546-946b-88f18f3b9768', 'status': 'approved', 'company': 'eTech S.C.', 'history': [{'blob': '', 'user': '2151', 'status': 'approved', 'timestamp': '2024-08-05T02:25:36.088323'}], 'summary': 'Full stack developer for a comprehensive CRM and insurance solution at Zemen Insurance, used by over 20 branches.The live system can be accessed at https://portal.zemeninsurance.com/.\\n ● Systematized fire and motor insurance  premium calculations, proposal submission, and policy generation, improving efficiency by 40%.\\n ● Developed document generation features, enhancing accuracy by 30%, and implemented SMS & email services, boosting customer engagement by 25%.', 'end_date': '2023-12-31', 'location': 'None', 'highlights': [], 'start_date': '2022-11-30', 'company_url': 'https://www.linkedin.com/company/74263034', 'verified_by': '', 'requested_by': ''}, {'role': 'Graduate Trainee ', 'uuid': '371da1d6-2d1c-4166-a67a-7d1efb4fe2eb', 'status': 'approved', 'company': 'eTech S.C.', 'history': [{'blob': '', 'user': '2151', 'status': 'approved', 'timestamp': '2024-08-05T02:25:36.088367'}], 'summary': 'None', 'end_date': '2022-10-31', 'location': 'Addis Ababa, Ethiopia', 'highlights': [], 'start_date': '2022-09-30', 'company_url': 'https://www.linkedin.com/company/74263034', 'verified_by': '', 'requested_by': ''}, {'role': 'Intern', 'uuid': '227c1843-85ee-4d06-a85b-fdde424beec3', 'status': 'approved', 'company': 'eTech S.C.', 'history': [{'blob': '', 'user': '2151', 'status': 'approved', 'timestamp': '2024-08-05T02:25:36.088410'}], 'summary': 'Mobile application developer, opensource OKR software introduction and implementation,  graphics designing.', 'end_date': '2021-08-31', 'location': 'Addis Ababa, Ethiopia', 'highlights': [], 'start_date': '2021-05-31', 'company_url': 'https://www.linkedin.com/company/74263034', 'verified_by': '', 'requested_by': ''}]"
-  }, 
-  {
-    "name": "Abubeker Shamil",
-    "user_profile_id": 23,
-    "basics.attributes": "[{'role': 'Generative AI & ML Engineer | CTO | Computer & Software Engineer | Entrepreneur | RAG Systems | Data Warehouse Professional', 'uuid': '48df28a6-5d04-4a78-9d39-fb304ade1cf9', 'email': 'abubekershamil123@gmail.com', 'image': '', 'media': [{'icon': '', 'link': 'https://www.linkedin.com/in/abubeker-shamil/', 'name': 'LinkedIn'}, {'icon': '', 'link': 'https://github.com/dev-abuke', 'name': 'GitHub'}, {'icon': '', 'link': 'https://medium.com/@abubekershamil', 'name': 'Medium'}, {'icon': '', 'link': 'https://abubekershamil.com', 'name': 'Website'}], 'phone': [{'icon': 'https://pngimg.com/uploads/phone/phone_PNG48988.png', 'name': 'Main', 'value': '+251912121388'}], 'status': 'approved', 'history': [{'blob': '', 'user': '1974', 'status': 'approved', 'timestamp': '2024-08-17T08:55:50.435440'}], 'location': {'city': 'Addis Ababa', 'icon': 'https://th.bing.com/th/id/OIP.Vr0IsnNZaY3cxmBtOtSqqAHaNN?w=2555&h=4557&rs=1&pid=ImgDetMain', 'region': '', 'address': 'Addis Ababa', 'country': 'Ethiopia', 'postal_code': ''}, 'full_name': 'Abubeker Shamil', 'name_title': 'Mr', 'verified_by': '', 'requested_by': '', 'personal_statement': 'Abubeker Shamil is a dedicated Software Engineer with proven leadership skills. Proficient in Python, JavaScript, fine-tuning LLMs, RAG systems, prompt engineering, Langchain, and various frameworks. Known for a problem-solving mindset, effective communication skills, and a collaborative attitude. Passionate about Generative AI and Technology, with experience in developing advanced NLP systems and optimizing data workflows.'}]",
-    "projects.attributes": "[{'url': 'None', 'uuid': '112426f3-a383-41e4-9528-aaa596e55894', 'title': 'Building an Efficient Retrieval Augmented Generation (RAG) System for Legal Document — Q&A Chatbot', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '1974', 'status': 'approved', 'timestamp': '2024-08-05T02:25:49.713847'}], 'summary': 'Built a RAG system tailored for answering questions about legal documents. We covered the end-to-end workflow, from setting up the backend with FastAPI and Frontend with React to evaluating different configurations using RAGAS.', 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}, {'url': 'None', 'uuid': 'ca255cae-2ff6-4c9a-82a3-6b16ff9c8cd2', 'title': 'Redash LLM Chatbot for Advanced Data Analytics, Visualization, and Insight Extraction', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '1974', 'status': 'approved', 'timestamp': '2024-08-05T02:25:49.713902'}], 'summary': 'Forget complex SQL queries; ask plain English questions. Whether it’s “What were the top-performing videos in June?” or “Compare viewer engagement between Q1 and Q2,” the LLM handles it all.', 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}]",
-    "education.attributes": "[{'uuid': 'ef0c12e5-752f-4b87-9434-6ac6ba3a1dcf', 'score': 'Distinction', 'remark': '', 'status': 'approved', 'country': '', 'courses': [], 'history': [{'blob': '', 'user': '1974', 'status': 'approved', 'timestamp': '2024-08-05T02:25:49.713973'}], 'end_date': '2024-09-30', 'start_date': '2024-04-30', 'study_area': 'Generative AI, Machine learning and Data Engineering', 'study_type': '', 'verified_by': '', 'requested_by': '', 'institution_url': '', 'institution_name': '10 Academy'}, {'uuid': '4c38dab1-8869-451c-a46d-6dc1f79b4bf9', 'score': '', 'remark': '', 'status': 'approved', 'country': '', 'courses': [], 'history': [{'blob': '', 'user': '1974', 'status': 'approved', 'timestamp': '2024-08-05T02:25:49.714027'}], 'end_date': '2023-11-30', 'start_date': '2023-08-31', 'study_area': 'Entrepreneurial and Business Operations', 'study_type': '', 'verified_by': '', 'requested_by': '', 'institution_url': '', 'institution_name': 'Jasiri4Africa'}, {'uuid': '5565cf7a-d4d6-469b-9426-6ae908784b27', 'score': '3.74 (Highest)', 'remark': '', 'status': 'approved', 'country': '', 'courses': [], 'history': [{'blob': '', 'user': '1974', 'status': 'approved', 'timestamp': '2024-08-05T02:25:49.714077'}], 'end_date': '2021-09-30', 'start_date': '2016-09-30', 'study_area': 'Computer Engineering', 'study_type': 'Computer Engineering', 'verified_by': '', 'requested_by': '', 'institution_url': '', 'institution_name': 'Hawassa University'}]",
-    "work_experience.attributes": "[{'role': 'DevOps Engineer', 'uuid': 'e2c7bb25-6ded-4a25-8324-ecda40739063', 'status': 'approved', 'company': 'Fox Events ', 'history': [{'blob': '', 'user': '1974', 'status': 'approved', 'timestamp': '2024-08-05T02:25:49.718968'}], 'summary': \"Implemented an Interactive Form - Designed and developed a user-friendly, interactive form that significantly improved the user experience for customers and vendors. \\n\\nReduced form abandonment rates and increased submission completion rates by designing Interactive and visually appealing forms that aligns with the brand promise.\\n\\nAutomated Email Delivery System - Built an email delivery system to automate the receipt of vendor requirements and registrations.\\n\\nStreamlined internal processes, improving efficiency by 35%.\\n\\nCost and Time Savings - Eliminated the need for paid form services such as Typeform and Google Forms, resulting in annual savings of approximately $850.\\n\\nReduced manual processing time of Excel sheets by 20%, saving the internal team an estimated 10 hours per week.\\n\\nEfficiency Improvements - Enhanced the internal team's ability to manage vendor and customer interactions, leading to a 35% increase in overall operational efficiency.\", 'end_date': '', 'location': 'Addis Ababa, Ethiopia', 'highlights': [], 'start_date': '2024-01-31', 'company_url': 'https://www.linkedin.com/company/80104709', 'verified_by': '', 'requested_by': ''}, {'role': 'Chief Technology Officer - CTO', 'uuid': '7ae33115-df10-413e-a764-a556e2ffdb1d', 'status': 'approved', 'company': 'Kese events', 'history': [{'blob': '', 'user': '1974', 'status': 'approved', 'timestamp': '2024-08-05T02:25:49.719012'}], 'summary': 'Launched apps on the Play Store, surpassing 100+ downloads, which drove\\nnotable increase in user engagement via innovative app features while also\\nachieving engagement growth by 61% by increasing the online presence.\\nLed a team 3 engineers to develop a livestreaming feature integrated into the app.', 'end_date': '2024-01-31', 'location': 'Addis Ababa, Ethiopia', 'highlights': [], 'start_date': '2023-05-31', 'company_url': 'https://www.linkedin.com/company/79785804', 'verified_by': '', 'requested_by': ''}, {'role': 'Sofware Development Manager', 'uuid': '494c831b-3e47-486d-9cba-c5730c4cfbd3', 'status': 'approved', 'company': 'Ozoro Tech and Consulting', 'history': [{'blob': '', 'user': '1974', 'status': 'approved', 'timestamp': '2024-08-05T02:25:49.719055'}], 'summary': 'Managed software development projects from initiation to completion.\\nLed UI/UX design improvements for enterprise resource planning systems.\\nDeveloped and executed strategic plans to enhance project outcomes.\\nCoordinated cross-functional teams to ensure timely project delivery.', 'end_date': '2023-05-31', 'location': 'Addis Ababa, Ethiopia', 'highlights': [], 'start_date': '2023-02-28', 'company_url': 'https://www.linkedin.com/company/90639716', 'verified_by': '', 'requested_by': ''}, {'role': 'Software Developer', 'uuid': '9017854a-c674-449c-8b0e-7f716c278c48', 'status': 'approved', 'company': 'Ozoro Tech and Consulting', 'history': [{'blob': '', 'user': '1974', 'status': 'approved', 'timestamp': '2024-08-05T02:25:49.719095'}], 'summary': 'Developed and maintained software applications using JavaScript and Python.\\nImplemented design patterns to enhance code efficiency and maintainability.\\nContributed to Android application development projects and backend systems.', 'end_date': '2023-02-28', 'location': 'Addis Ababa, Ethiopia', 'highlights': [], 'start_date': '2022-12-31', 'company_url': 'https://www.linkedin.com/company/90639716', 'verified_by': '', 'requested_by': ''}]"
-  },
-  {
-    "name": "Bethelhem Mebratu",
-    "user_profile_id": 29,
-    "basics.attributes": "[{'role': 'Generative AI Engineer | Machine learning| Data engineering |Electrical engineer | Electrical lighting designer', 'uuid': 'a6c41abe-bf4b-4d20-ae7c-c9db8c7afcd6', 'email': 'bethelhem.mebratu.123@gmail.com', 'image': '', 'media': [], 'phone': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2098', 'status': 'approved', 'timestamp': '2024-08-16T08:26:29.277183'}], 'location': {'city': '', 'icon': 'https://th.bing.com/th/id/OIP.Vr0IsnNZaY3cxmBtOtSqqAHaNN?w=2555&h=4557&rs=1&pid=ImgDetMain', 'region': '', 'address': 'Ethiopia', 'country': 'US', 'postal_code': ''}, 'full_name': 'Bethelhem Mebratu', 'name_title': '', 'verified_by': '', 'requested_by': '', 'personal_statement': 'I am a junior Generative AI Engineer with a programming foundation and committed to advancing my skills in AI and technology . My expertise lies in Python, SQL and vector databases. I have hands on experience in building and fine-tuning Generative AI models,LLMs implementing RAG systems, and developing chatbots. Additionally, I am skilled in various data-related tasks such as analysis, processing, visualization, and building data warehouses.'}]",
-    "projects.attributes": "[{'url': 'None', 'uuid': 'f46879c8-53db-4ec8-ac50-b30ed87118f2', 'title': 'Precision RAG', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2098', 'status': 'approved', 'timestamp': '2024-08-05T02:25:43.881761'}], 'summary': 'None', 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}, {'url': 'None', 'uuid': 'cb1790bb-b191-458c-8bb0-220004fd6a66', 'title': 'Redash chatbot LLM', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2098', 'status': 'approved', 'timestamp': '2024-08-05T02:25:43.881820'}], 'summary': \"I have worked on a project called  Redash Chatbot LLM ,which is an innovative integration that brings the power of OpenAI's ChatGPT model to Redash dashboard. This integration allows users to interact with their Redash dashboards using natural language queries, making data exploration and analysis more intuitive and user-friendly. The Redash Chatbot LLM plugin provides conversational query capabilities, automated data visualization, and seamless integration with Redash\", 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}, {'url': 'None', 'uuid': 'caad8da7-b842-433c-8d29-f518560ddab8', 'title': 'Scalable backtesting infrastructure', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2098', 'status': 'approved', 'timestamp': '2024-08-05T02:25:43.881871'}], 'summary': \"I have worked on a project revolving around utilizing LLM (Language Model) forecasting to simulate and analyze current and historical financial market situations. While acknowledging that past performance doesn't guarantee future outcomes, conducting backtests helps understand trends and patterns over time. The focus lies on gaining a comprehensive understanding of the financial system and stock market trading.\", 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}]",
-    "education.attributes": "[{'uuid': 'c2760fd6-8239-42e4-930a-d991275e5540', 'score': '', 'remark': '', 'status': 'approved', 'country': '', 'courses': [], 'history': [{'blob': '', 'user': '2098', 'status': 'approved', 'timestamp': '2024-08-05T02:25:43.881938'}], 'end_date': '2024-07-31', 'start_date': '2024-04-30', 'study_area': '', 'study_type': '', 'verified_by': '', 'requested_by': '', 'institution_url': '', 'institution_name': '10 Academy'}, {'uuid': '7230ac71-e7cf-4f3c-b02a-172cbb312761', 'score': '', 'remark': '', 'status': 'approved', 'country': '', 'courses': [], 'history': [{'blob': '', 'user': '2098', 'status': 'approved', 'timestamp': '2024-08-05T02:25:43.881989'}], 'end_date': '2020-12-31', 'start_date': '2015-12-31', 'study_area': 'Electrical and Computer engineering (Industrial control)', 'study_type': \"Bachelor's degree\", 'verified_by': '', 'requested_by': '', 'institution_url': '', 'institution_name': 'Addis Ababa University'}]",
-    "work_experience.attributes": "[{'role': 'Generative AI,ML and Data Engineer Trainee', 'uuid': '332a7ce5-ff96-4443-b71e-fd6e26564f10', 'status': 'approved', 'company': '10 Academy', 'history': [{'blob': '', 'user': '2098', 'status': 'approved', 'timestamp': '2024-08-05T02:25:43.886575'}], 'summary': 'I designed project workflows to streamline processes and enhance efficiency, ensuring smooth project execution. I worked on machine learning projects to develop and implement advanced algorithms , driving innovation and achieving project goals.Additionally, I fine-tuned large language models to improve their performance , enhancing their accuracy and capabilities. I improved models using Retrieval-Augmented Generation (RAG) techniques to boost their effectiveness , providing valuable \\ninsights and solutions.', 'end_date': '', 'location': '1450 El Camino Real Santa Clara, CA 95050 USA ·', 'highlights': [], 'start_date': '2024-07-31', 'company_url': 'https://www.linkedin.com/company/11207069', 'verified_by': '', 'requested_by': ''}, {'role': '-Electrical Lighting Designer', 'uuid': '1463a488-6641-4518-9079-b85ef13d8da1', 'status': 'approved', 'company': '-Jafer electromechanical engineering', 'history': [{'blob': '', 'user': '2098', 'status': 'approved', 'timestamp': '2024-08-05T02:25:43.886617'}], 'summary': \"I designed lighting systems  for residential, apartment, and mixed-purpose buildings  to meet clients' specific needs and preferences using Autocad. I collaborated closely with team members of three or more people to identify and solve complex issues, ensuring seamless project execution. Additionally, I actively engaged with customers  to understand their requirements  and developed \\n      tailored lighting solutions  that exceeded their expectations. I utilized design models and report templates  to understand and  create reports , ensuring accuracy and clarity in project documentation. I was also responsible for designing electrical lighting  systems  and managing projects , ensuring timely and successful completion .\", 'end_date': '2024-03-31', 'location': 'Addis Ababa, Ethiopia', 'highlights': [], 'start_date': '2021-03-31', 'company_url': '', 'verified_by': '', 'requested_by': ''}]"
-  },
-  {
-    "name": "Hillary Kipkemoi",
-    "user_profile_id": 13,
-    "basics.attributes": "[{'role': 'Generative AI Engineer | Machine Learning | Software Engineer | Data Engineering', 'uuid': '69a9a5f2-fd0f-4355-8a3a-b09191913e5e', 'email': 'hillary6k@gmail.com', 'image': '', 'media': [], 'phone': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2187', 'status': 'approved', 'timestamp': '2024-08-05T02:25:24.391717'}], 'location': {'city': '', 'icon': 'https://th.bing.com/th/id/OIP.Vr0IsnNZaY3cxmBtOtSqqAHaNN?w=2555&h=4557&rs=1&pid=ImgDetMain', 'region': '', 'address': 'Kenya', 'country': 'US', 'postal_code': ''}, 'full_name': 'Hillary Kipkemoi', 'name_title': '', 'verified_by': '', 'requested_by': '', 'personal_statement': \"I am Generative AI Engineer with solid foundation in mathematics and full-stack development. I'm skilled in building RAG systems, fine-tuning LLMs, prompt engineering, and building chatbot applications. I'm also proficient in Python, React, and MLOps tools & practices such as Kafka, Airflow and Github Actions.\\n\\nI am committed to continuous learning and research in the field of Artificial intelligence and actively exploring the latest advancements in NLP, generative AI to create impactful solutions.\"}]",
-    "projects.attributes": "[{'url': 'None', 'uuid': 'cd2ff12a-89e5-4cf1-a595-272feb89cf8d', 'title': 'Contract Analysis RAG: A Retrieval-Augmented Generation (RAG) Approach to Legal Q&A', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2187', 'status': 'approved', 'timestamp': '2024-08-05T02:25:24.391806'}], 'summary': 'Developed a Retrieval-Augmented Generation (RAG) system for precise contract analysis, improving accuracy and efficiency in answering legal queries. Implemented text chunking, semantic search, and tested different embedding models to enhance retrieval and response generation. Evaluated the system using RAGAS metrics, ensuring accuracy and precision in the system.', 'end_date': '2024-07-31', 'focus_area': '', 'highlights': [], 'start_date': '2024-07-31', 'verified_by': '', 'requested_by': ''}, {'url': 'None', 'uuid': '973720fc-9b75-4326-8990-98df7b2892d5', 'title': 'RAG Optimization techniques', 'tools': [], 'status': 'approved'}]",
-    "education.attributes": "[{'uuid': 'b1b35c1c-6156-4df6-8ca8-daf7bd39c94c', 'score': '', 'remark': '', 'status': 'approved', 'country': '', 'courses': [], 'history': [{'blob': '', 'user': '2187', 'status': 'approved', 'timestamp': '2024-08-05T02:25:24.391989'}], 'end_date': '2024-06-30', 'start_date': '2020-09-30', 'study_area': 'Mathematics and Computer Science', 'study_type': 'Bachelor of Science', 'verified_by': '', 'requested_by': '', 'institution_url': '', 'institution_name': 'Kenyatta University'}]",
-    "work_experience.attributes": "[{'role': 'Generative AI, Machine Learning, Data Engineer Trainee ', 'uuid': '43a39fb9-a40c-4adc-a656-6056320ce7fb', 'status': 'approved', 'company': '10 Academy', 'history': [{'blob': '', 'user': '2187', 'status': 'approved', 'timestamp': '2024-08-05T02:25:24.396949'}], 'summary': '- Designed and implemented generative AI models using LLMs and transformers, generating text intended for the user with a focus on creativity and accuracy.\\n- Performed exploratory data analysis (EDA) and feature engineering to improve model performance and optimize data pipelines.\\n- Built and maintained data pipelines using Kafka, Airflow, dbt, PostgreSQL to efficiently process and transform large-scale datasets for machine learning tasks.\\n- Conducted comprehensive experiments and hyperparameter tuning to enhance model accuracy and robustness.', 'end_date': '', 'location': 'Nairobi County, Kenya', 'highlights': [], 'start_date': '2024-04-30', 'company_url': 'https://www.linkedin.com/company/11207069', 'verified_by': '', 'requested_by': ''}]"
-  },
-  {
-    "name": "Mahbubah Abdulhakim",
-    "user_profile_id": 25,
-    "basics.attributes": "[{'role': 'Generative AI Engineer | Machine Learning | Data Engineering | Application Support Engineer at ZamZam Bank', 'uuid': '573d1e46-b7c7-4c77-8aa9-b44f838bf535', 'email': 'mahbubah.abdulhakim12@gmail.com', 'image': '', 'media': [], 'phone': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.965493'}], 'location': {'city': '', 'icon': 'https://th.bing.com/th/id/OIP.Vr0IsnNZaY3cxmBtOtSqqAHaNN?w=2555&h=4557&rs=1&pid=ImgDetMain', 'region': '', 'address': 'Ethiopia', 'country': 'US', 'postal_code': ''}, 'full_name': 'Mahbubah Abdulhakim', 'name_title': '', 'verified_by': '', 'requested_by': '', 'personal_statement': 'A junior generative AI Engineer with 3+ year experience in IT Industry, committed to advancing my skills in AI and technology. Proficient in Python, SQL, and vector databases. Specialized in fine-tuning LLMs, building RAG systems, prompt engineering and AI Chatbot development, with a strong foundation in neural networks and natural language processing (NLP). Demonstrated expertise through hands-on project work in these areas.'}]",
-    "projects.attributes": "[{'url': 'None', 'uuid': '33aca2d2-8b9d-48aa-8010-280b7b335dc5', 'title': 'Backtesting-Infrastructure-CryptoTrading', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.965580'}], 'summary': 'This project is a robust trading and backtesting infrastructure designed to support the evaluation of various trading strategies on financial instruments like stocks and cryptocurrencies. It leverages a microservices architecture with Docker for flexibility and scalability, using tools like Airflow, Kafka, FastAPI, and PostgreSQL.', 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}, {'url': 'None', 'uuid': '92327683-c7d4-4595-ba81-dda9497b81da', 'title': 'Contract-Advisor-RAG', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.965636'}], 'summary': 'This project is on build, evaluate and improve a RAG system for Contract Q&A (chatting with a contract and asking questions about the contract). Building simple Q&A pipeline with RAG using Langchain , Improving RAG systems by using different approaches, and building a RAG evaluation pipeline with RAGAS', 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}, {'url': 'None', 'uuid': '511f87ec-6030-4995-a8d7-0b2ff86f7a2f', 'title': 'Prompt-Tuning-Precision-RAG', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.965684'}], 'summary': 'The need for this project is to revolutionize how businesses interact with LLMs, making the technology more accessible, efficient, and effective by addressing the challenges of prompt engineering. The following 3 components are necessary to achieve this goal\\n- Automatic Prompt Generation Component\\n- Automatic Evaluation Data Generation Service\\n- Prompt Testing and Ranking Service', 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}, {'url': 'None', 'uuid': 'b37b492c-eff7-4f03-bb9b-a4f9c9c0488d', 'title': 'data-warehouse-for-llm-finetuning', 'tools': [], 'status': 'approved', 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.965731'}], 'summary': 'This project aims to create a scalable data warehouse for Language Model (LLM) fine-tuning. The data warehouse will store and manage the data collected in the specified language, in this case Amharic, which will be used for training and fine-tuning LLM. Docker has been used to ensure a seamless setup and deployment process.', 'end_date': '', 'focus_area': '', 'highlights': [], 'start_date': '', 'verified_by': '', 'requested_by': ''}]",
-    "education.attributes": "[{'uuid': '59c78458-2ab9-4987-99f2-43f765d53ca7', 'score': '', 'remark': '', 'status': 'approved', 'country': '', 'courses': [], 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.965797'}], 'end_date': '', 'start_date': '2024-04-30', 'study_area': 'ML Engineering, Data Engineering, Generative AI', 'study_type': '', 'verified_by': '', 'requested_by': '', 'institution_url': '', 'institution_name': '10 Academy'}, {'uuid': '364b085b-8086-4ce9-9390-517aeeee7543', 'score': '', 'remark': '', 'status': 'approved', 'country': '', 'courses': [], 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.965847'}], 'end_date': '2020-12-31', 'start_date': '2015-09-30', 'study_area': 'Computer Software Engineering', 'study_type': \"Bachelor's degree\", 'verified_by': '', 'requested_by': '', 'institution_url': '', 'institution_name': 'Addis Ababa University'}, {'uuid': '7779d82c-0e2f-4480-a962-093f4c7a4051', 'score': '', 'remark': '', 'status': 'approved', 'country': '', 'courses': [], 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.965894'}], 'end_date': '2020-09-30', 'start_date': '2016-09-30', 'study_area': 'Managment', 'study_type': \"Bachelor's degree\", 'verified_by': '', 'requested_by': '', 'institution_url': '', 'institution_name': 'Bahir Dar University'}]",
-    "work_experience.attributes": "[{'role': 'Trainee Generative AI Engineer | Machine Learning | Data Engineering', 'uuid': '42eeb92d-a5af-4b82-a513-da312c260550', 'status': 'approved', 'company': '10 Academy', 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.970308'}], 'summary': 'Build Q&A pipeline with RAG using Langchain , Improving RAG systems by using different approaches, and building a RAG evaluation pipeline with RAGAS.\\nUsing Pillow to combine multiple image elements into a single ad frame.\\nConducting Exploratory Data Analysis (EDA) on large datasets to explore, analyze, and develop models for further insights and understanding.\\nI have specialized in developing Hugging Face APIs and optimizing AI models to excel in multilingual capabilities.\\nUsing Python for programming, and maximizing performance with GPU acceleration.\\nI designed and engineered prompts tailored for evaluating the effectiveness of GPT-4 and GPT-3.5. \\nImproved trading strategies using financial market data from Yahoo Finance on Cryptocurrencies. This focused on understanding market trends, testing trading strategies such as back testing and creating efficient data systems using Python, SQL, data management, machine learning operations and web development.\\nI utilized the Redash chatbot add-on, an LLM that revolutionizes on data exploration using Natural Language Processing (NLP) for extracting insights from Redash dashboards and databases.\\nBuilt scalable data infrastructure for NLP projects using transformer models, Python, and GPUs.', 'end_date': '', 'location': 'None', 'highlights': [], 'start_date': '2024-04-30', 'company_url': 'https://www.linkedin.com/company/11207069', 'verified_by': '', 'requested_by': ''}, {'role': 'Application Support Engineer', 'uuid': '0a0db46c-29da-4af7-909d-89a8e88af7fe', 'status': 'approved', 'company': 'ZamZam Bank S.C', 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.970353'}], 'summary': '- Accomplished efficient database querying, reducing query execution time by 30% \\n- Developed comprehensive reports utilizing advanced data models and templates, enhancing \\nreporting accuracy and efficiency \\n- Provided effective technical support on the entire application to teams within the organization, ensuring uninterrupted operations and minimizing downtime \\n- Performed end-of-day (EOD) operations, maintenance, customization, and troubleshooting on applications, ensuring smooth functionality and resolving issues promptly  \\n- Escalated and communicated with vendors to resolve higher-level issues, ensuring effective solutions and minimal disruption to operations', 'end_date': '', 'location': 'Addis Ababa, Ethiopia', 'highlights': [], 'start_date': '2024-04-30', 'company_url': 'https://www.linkedin.com/company/72305822', 'verified_by': '', 'requested_by': ''}, {'role': 'Junior Application Support Engineer', 'uuid': '0de9bb8a-76f3-40fb-97c4-3e1850500073', 'status': 'approved', 'company': 'ZamZam Bank S.C', 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.970397'}], 'summary': '- Writing optimized queries, Developing reports using data models and report Templates\\n- Providing effective technical support on the entire application to teams within the organization \\n- EOD operations \\n- Maintainace operation and troubleshoot on Applications\\n- Customization\\n- Resolving open issues\\n- Controlling some servers like checking their availability\\n- When there are higher issues that should be escalated communicating with vendors and providing solutions', 'end_date': '2024-04-30', 'location': 'Addis Ababa, Ethiopia', 'highlights': [], 'start_date': '2022-10-31', 'company_url': 'https://www.linkedin.com/company/72305822', 'verified_by': '', 'requested_by': ''}, {'role': 'Information Technology Officer', 'uuid': '4a1a01c5-1dba-41c6-a113-0f36d0115b4e', 'status': 'approved', 'company': 'Peds plc', 'history': [{'blob': '', 'user': '2116', 'status': 'approved', 'timestamp': '2024-08-05T02:25:39.970439'}], 'summary': '- Customizing the Applications developed by reviewing the user requirements\\n- Fixing problems on the software and database, giving appropriate training to the customer', 'end_date': '2022-03-31', 'location': 'Addis Ababa, Ethiopia', 'highlights': [], 'start_date': '2021-04-30', 'company_url': '', 'verified_by': '', 'requested_by': ''}]"
-  }
-]
+    {
+      "name": "Abraham Teka",
+      "user_profile_id": 16,
+      "basics.attributes": [
+        {
+          "role": "Generative AI Engineer | Software Engineer | Machine Learning | Cloud Solutions (Azure, AWS) | Advocate for Continuous Improvement",
+          "personal_statement": "Abraham Teka here, ambitious about advancing software solutions through Generative AI and cloud computing. With certifications in Azure and AWS, I specialize in RAG systems, prompt engineering, and LLM fine-tuning. I aim to innovate and drive technological advancements in AI and software engineering. Lets connect and build intelligent solutions that make technology beneficial to everyone!"
+        }
+      ],
+      "projects.attributes": [
+        {
+          "title": "Automated Storyboard Synthesis for Digital Advertising",
+          "summary": "Developed a machine learning solution to automate the conversion of textual advertisement concepts into detailed visual storyboards. Utilized advanced deep learning frameworks, image segmentation, and LLM-based agents for asset analysis, generation, and composition, streamlining the ad creation process for digital advertising campaigns."
+        },
+        {
+          "title": "LLM Finetuning: Enabling Quality Embedding and Text Generation for Amharic Language",
+          "summary": "Enhanced NLP for Amharic by fine-tuning LLaMA-2. Key steps included implementing model quantization, preprocessing data and finetuning the model. Initial results showed promise in text generation and question answering. Future improvements will focus on  enhancing the fine-tuning process for better performance."
+        },
+        {
+          "title": "Precision RAG: Prompt Tuning For Building Enterprise Grade RAG Systems",
+          "summary": "The Prompt Generation System is an automated tool designed to assist users in generating multiple prompt options based on their input descriptions of tasks, objectives, and scenarios. The system employs sophisticated algorithms and evaluation metrics to ensure that the generated prompts align with the users requirements."
+        }
+      ],
+      "education.attributes": [
+        {
+          "study_area": "Software Engineering",
+          "study_type": "Bachelors degree",
+          "institution_name": "Bahir Dar University",
+          "start_date": "2017-09-30",
+          "end_date": "2022-06-30"
+        }
+      ],
+      "work_experience.attributes": [
+        {
+          "role": "Junior Cloud Consultant",
+          "company": "Nedamco Africa",
+          "summary": "Built a carbon footprint calculator project using C# and WebForms and deployed it on Microsoft Azure.\\n  \\u25cf Configuring and deploying requirements on Amazon AWS S3, EC2, Lambda, VPC, RDS, elastic beanstalk and load balancing.\\n  \\u25cf Configuring and deploying given assignments on Azure VMs, Virtual networks, Active Directory, DB and Functions.",
+          "start_date": "2023-12-31",
+          "end_date": "2024-03-31"
+        },
+        {
+          "role": "Software Engineer",
+          "company": "eTech S.C.",
+          "summary": "Full stack developer for a comprehensive CRM and insurance solution at Zemen Insurance, used by over 20 branches.The live system can be accessed at https://portal.zemeninsurance.com/.\\n \\u25cf Systematized fire and motor insurance  premium calculations, proposal submission, and policy generation, improving efficiency by 40%.\\n \\u25cf Developed document generation features, enhancing accuracy by 30%, and implemented SMS & email services, boosting customer engagement by 25%.",
+          "start_date": "2022-11-30",
+          "end_date": "2023-12-31"
+        },
+        {
+          "role": "Graduate Trainee ",
+          "company": "eTech S.C.",
+          "summary": "None",
+          "start_date": "2022-09-30",
+          "end_date": "2022-10-31"
+        },
+        {
+          "role": "Intern",
+          "company": "eTech S.C.",
+          "summary": "Mobile application developer, opensource OKR software introduction and implementation,  graphics designing.",
+          "start_date": "2021-05-31",
+          "end_date": "2021-08-31"
+        }
+      ]
+    },
+    {
+      "name": "Abubeker Shamil",
+      "user_profile_id": 23,
+      "basics.attributes": [
+        {
+          "role": "Generative AI & ML Engineer | CTO | Computer & Software Engineer | Entrepreneur | RAG Systems | Data Warehouse Professional",
+          "personal_statement": "Abubeker Shamil is a dedicated Software Engineer with proven leadership skills. Proficient in Python, JavaScript, fine-tuning LLMs, RAG systems, prompt engineering, Langchain, and various frameworks. Known for a problem-solving mindset, effective communication skills, and a collaborative attitude. Passionate about Generative AI and Technology, with experience in developing advanced NLP systems and optimizing data workflows."
+        }
+      ],
+      "projects.attributes": [
+        {
+          "title": "Building an Efficient Retrieval Augmented Generation (RAG) System for Legal Document \\u2014 Q&A Chatbot",
+          "summary": "Built a RAG system tailored for answering questions about legal documents. We covered the end-to-end workflow, from setting up the backend with FastAPI and Frontend with React to evaluating different configurations using RAGAS."
+        },
+        {
+          "title": "Redash LLM Chatbot for Advanced Data Analytics, Visualization, and Insight Extraction",
+          "summary": "Forget complex SQL queries; ask plain English questions. Whether it\\u2019s \\u201cWhat were the top-performing videos in June?\\u201d or \\u201cCompare viewer engagement between Q1 and Q2,\\u201d the LLM handles it all."
+        }
+      ],
+      "education.attributes": [
+        {
+          "study_area": "Computer Engineering",
+          "study_type": "Computer Engineering",
+          "institution_name": "Hawassa University",
+          "start_date": "2016-09-30",
+          "end_date": "2021-09-30"
+        }
+      ],
+      "work_experience.attributes": [
+        {
+          "role": "Chief Technology Officer - CTO",
+          "company": "Kese events",
+          "summary": "Launched apps on the Play Store, surpassing 100+ downloads, which drove\\nnotable increase in user engagement via innovative app features while also\\nachieving engagement growth by 61% by increasing the online presence.\\nLed a team 3 engineers to develop a livestreaming feature integrated into the app.",
+          "start_date": "2023-05-31",
+          "end_date": "2024-01-31"
+        },
+        {
+          "role": "Sofware Development Manager",
+          "company": "Ozoro Tech and Consulting",
+          "summary": "Managed software development projects from initiation to completion.\\nLed UI/UX design improvements for enterprise resource planning systems.\\nDeveloped and executed strategic plans to enhance project outcomes.\\nCoordinated cross-functional teams to ensure timely project delivery.",
+          "start_date": "2023-02-28",
+          "end_date": "2023-05-31"
+        },
+        {
+          "role": "Software Developer",
+          "company": "Ozoro Tech and Consulting",
+          "summary": "Developed and maintained software applications using JavaScript and Python.\\nImplemented design patterns to enhance code efficiency and maintainability.\\nContributed to Android application development projects and backend systems.",
+          "start_date": "2022-12-31",
+          "end_date": "2023-02-28"
+        }
+      ]
+    },
+    {
+      "name": "Bethelhem Mebratu",
+      "user_profile_id": 29,
+      "basics.attributes": [
+        {
+          "role": "Generative AI Engineer | Machine learning| Data engineering |Electrical engineer | Electrical lighting designer",
+          "personal_statement": "I am a junior Generative AI Engineer with a programming foundation and committed to advancing my skills in AI and technology . My expertise lies in Python, SQL and vector databases. I have hands on experience in building and fine-tuning Generative AI models,LLMs implementing RAG systems, and developing chatbots. Additionally, I am skilled in various data-related tasks such as analysis, processing, visualization, and building data warehouses."
+        }
+      ],
+      "projects.attributes": [
+        {
+          "title": "Precision RAG",
+          "summary": "None"
+        },
+        {
+          "title": "Redash chatbot LLM",
+          "summary": "I have worked on a project called  Redash Chatbot LLM ,which is an innovative integration that brings the power of OpenAIs ChatGPT model to Redash dashboard. This integration allows users to interact with their Redash dashboards using natural language queries, making data exploration and analysis more intuitive and user-friendly. The Redash Chatbot LLM plugin provides conversational query capabilities, automated data visualization, and seamless integration with Redash"
+        },
+        {
+          "title": "Scalable backtesting infrastructure",
+          "summary": "I have worked on a project revolving around utilizing LLM (Language Model) forecasting to simulate and analyze current and historical financial market situations. While acknowledging that past performance does not guarantee future outcomes, conducting backtests helps understand trends and patterns over time. The focus lies on gaining a comprehensive understanding of the financial system and stock market trading."
+        }
+      ],
+      "education.attributes": [
+        {
+          "study_area": "Electrical and Computer engineering (Industrial control)",
+          "study_type": "Bachelors degree",
+          "institution_name": "Addis Ababa University",
+          "start_date": "2015-12-31",
+          "end_date": "2020-12-31"
+        }
+      ],
+      "work_experience.attributes": [
+        {
+          "role": "-Electrical Lighting Designer",
+          "company": "-Jafer electromechanical engineering",
+          "summary": "I designed lighting systems  for residential, apartment, and mixed-purpose buildings  to meet clients specific needs and preferences using Autocad. I collaborated closely with team members of three or more people to identify and solve complex issues, ensuring seamless project execution. Additionally, I actively engaged with customers  to understand their requirements  and developed \\n      tailored lighting solutions  that exceeded their expectations. I utilized design models and report templates  to understand and  create reports , ensuring accuracy and clarity in project documentation. I was also responsible for designing electrical lighting  systems  and managing projects , ensuring timely and successful completion .",
+          "start_date": "2021-03-31",
+          "end_date": "2024-03-31"
+        }
+      ]
+    },
+    {
+      "name": "Hillary Kipkemoi",
+      "user_profile_id": 13,
+      "basics.attributes": [
+        {
+          "role": "Generative AI Engineer | Machine Learning | Software Engineer | Data Engineering",
+          "personal_statement": "I am Generative AI Engineer with solid foundation in mathematics and full-stack development. I am skilled in building RAG systems, fine-tuning LLMs, prompt engineering, and building chatbot applications. I am also proficient in Python, React, and MLOps tools & practices such as Kafka, Airflow and Github Actions.\\n\\nI am committed to continuous learning and research in the field of Artificial intelligence and actively exploring the latest advancements in NLP, generative AI to create impactful solutions."
+        }
+      ],
+      "projects.attributes": [
+        {
+          "title": "Contract Analysis RAG: A Retrieval-Augmented Generation (RAG) Approach to Legal Q&A",
+          "summary": "Developed a Retrieval-Augmented Generation (RAG) system for precise contract analysis, improving accuracy and efficiency in answering legal queries. Implemented text chunking, semantic search, and tested different embedding models to enhance retrieval and response generation. Evaluated the system using RAGAS metrics, ensuring accuracy and precision in the system."
+        }
+      ],
+      "education.attributes": [
+        {
+          "study_area": "Mathematics and Computer Science",
+          "study_type": "Bachelor of Science",
+          "institution_name": "Kenyatta University",
+          "start_date": "2020-09-30",
+          "end_date": "2024-06-30"
+        }
+      ],
+      "work_experience.attributes": []
+    },
+    {
+      "name": "Mahbubah Abdulhakim",
+      "user_profile_id": 25,
+      "basics.attributes": [
+        {
+          "role": "Generative AI Engineer | Machine Learning | Data Engineering | Application Support Engineer at ZamZam Bank",
+          "personal_statement": "A junior generative AI Engineer with 3+ year experience in IT Industry, committed to advancing my skills in AI and technology. Proficient in Python, SQL, and vector databases. Specialized in fine-tuning LLMs, building RAG systems, prompt engineering and AI Chatbot development, with a strong foundation in neural networks and natural language processing (NLP). Demonstrated expertise through hands-on project work in these areas."
+        }
+      ],
+      "projects.attributes": [
+        {
+          "title": "Backtesting-Infrastructure-CryptoTrading",
+          "summary": "This project is a robust trading and backtesting infrastructure designed to support the evaluation of various trading strategies on financial instruments like stocks and cryptocurrencies. It leverages a microservices architecture with Docker for flexibility and scalability, using tools like Airflow, Kafka, FastAPI, and PostgreSQL."
+        },
+        {
+          "title": "Contract-Advisor-RAG",
+          "summary": "This project is on build, evaluate and improve a RAG system for Contract Q&A (chatting with a contract and asking questions about the contract). Building simple Q&A pipeline with RAG using Langchain , Improving RAG systems by using different approaches, and building a RAG evaluation pipeline with RAGAS"
+        },
+        {
+          "title": "Prompt-Tuning-Precision-RAG",
+          "summary": "The need for this project is to revolutionize how businesses interact with LLMs, making the technology more accessible, efficient, and effective by addressing the challenges of prompt engineering. The following 3 components are necessary to achieve this goal\\n- Automatic Prompt Generation Component\\n- Automatic Evaluation Data Generation Service\\n- Prompt Testing and Ranking Service"
+        },
+        {
+          "title": "data-warehouse-for-llm-finetuning",
+          "summary": "This project aims to create a scalable data warehouse for Language Model (LLM) fine-tuning. The data warehouse will store and manage the data collected in the specified language, in this case Amharic, which will be used for training and fine-tuning LLM. Docker has been used to ensure a seamless setup and deployment process."
+        }
+      ],
+      "education.attributes": [
+        {
+          "study_area": "Computer Software Engineering",
+          "study_type": "Bachelors degree",
+          "institution_name": "Addis Ababa University",
+          "start_date": "2015-09-30",
+          "end_date": "2020-12-31"
+        },
+        {
+          "study_area": "Managment",
+          "study_type": "Bachelors degree",
+          "institution_name": "Bahir Dar University",
+          "start_date": "2016-09-30",
+          "end_date": "2020-09-30"
+        }
+      ],
+      "work_experience.attributes": [
+        {
+          "role": "Junior Application Support Engineer",
+          "company": "ZamZam Bank S.C",
+          "summary": "- Writing optimized queries, Developing reports using data models and report Templates\\n- Providing effective technical support on the entire application to teams within the organization \\n- EOD operations \\n- Maintainace operation and troubleshoot on Applications\\n- Customization\\n- Resolving open issues\\n- Controlling some servers like checking their availability\\n- When there are higher issues that should be escalated communicating with vendors and providing solutions",
+          "start_date": "2022-10-31",
+          "end_date": "2024-04-30"
+        },
+        {
+          "role": "Information Technology Officer",
+          "company": "Peds plc",
+          "summary": "- Customizing the Applications developed by reviewing the user requirements\\n- Fixing problems on the software and database, giving appropriate training to the customer",
+          "start_date": "2021-04-30",
+          "end_date": "2022-03-31"
+        }
+      ]
+    }
+  ]

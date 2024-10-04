@@ -10,7 +10,7 @@ Your evaluation should be structured in the following single JSON format:
 {
    [
     {
-        "title": "performance_change",    
+        "title": "performance_change",   
         "description": "put here something like: your performance has improved slightly, with the performance percentage increasing from 45% to 50%. However, the overall rating remains at 2 stars, indicating that further improvement is necessary.",
     },     
     {

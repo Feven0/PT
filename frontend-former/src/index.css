@@ -1,0 +1,30 @@
+.chat_scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+.chat_scroll::-webkit-scrollbar {
+display: none;
+}
+  
+::-webkit-scrollbar {
+    display: hidden;
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+background: #f1f1f1;
+border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+background: rgb(218, 200, 200);
+border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+background: rgb(199, 196, 196);
+border-radius: 10px;
+}
+  
+  

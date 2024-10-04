@@ -1,95 +1,120 @@
-import { Card, Typography, Collapse, Row, Col } from 'antd';
-import '../../styles/Status/allstatus.css'; 
-
-const { Title, Text } = Typography;
-const { Panel } = Collapse;
+import {useContext, useState, useEffect} from 'react';
+import { Card, Typography, Row, Col } from 'antd';
+import { BarChartComponent, LineChartOverall, RadarChart, SankeyChart, SankeyTime, LoadingIndicator } from './index'; 
+import Api from '../../Services/Services';
+import { ProviderContext } from '../../context/context';
 
 
 const AllStatus = () => {
-  const metricsData = [
-    {
-      "title": "performance_change",
-      "description": "Your performance has improved slightly, with the performance percentage increasing from 45% to 50%. However, the overall rating has improved to 3 stars, indicating that while progress has been made, further improvement is necessary."
-    },
-    {
-      "title": "confidence_change",
-      "description": "Your confidence level has increased from Low to High, suggesting a positive shift in your self-assurance during interviews."
-    },
-    {
-      "title": "engagement_change",
-      "description": "Your engagement has improved from Disengaged to Somewhat Engaged, indicating a better connection with the interview process."
-    },
-    {
-      "title": "irrelevant_answers_change",
-      "description": "The percentage of irrelevant answers has decreased from 60% to 55%, showing a slight improvement in the relevance of your responses."
-    },
-    {
-      "title": "relevant_answers_change",
-      "description": "The percentage of relevant answers has increased from 40% to 45%, indicating that you are providing more pertinent information in your responses."
-    },
-    {
-      "title": "overall_performance",
-      "description": "Overall, you have shown improvement in several areas, including confidence and engagement. However, you still need to enhance your technical knowledge and detail orientation to achieve a higher performance rating."
-    },
-    {
-      "title": "time_management",
-      "description": "You have demonstrated effective time management, passing 5 out of 5 timed questions, which indicates you are managing your response time well."
-    },
-    {
-      "skill": {
-        "technical": {
-          "title": "technical_knowledge",
-          "previous": "Low",
-          "current": "Low",
-          "recommendation": "Focus on gaining practical experience in computer vision techniques."
-        },
-        "detail": {
-          "title": "detail_orientation",
-          "previous": "Low",
-          "current": "Low",
-          "recommendation": "Practice providing detailed responses to behavioral questions."
-        }
+  const {latestsession} = useContext(ProviderContext);
+  const [refresh, setRefresh] = useState(0);
+  const [overall, setOverall] = useState();
+
+
+    const fetchOverall = async() => {
+      const job_id = localStorage.getItem("jobId")
+      const data = {
+        userId: latestsession?.userId,
+        sessionId: latestsession?.sessionId, 
+        jobId: job_id
       }
+      const response = await Api.overallmetrics(data)
+      // console.log("overall_metrics", response.data)
+      setOverall(response.data)
     }
-  ]
+
+    useEffect(() => {
+      fetchOverall()
+        const intervalId = setInterval(() => {
+          setRefresh((prev) => prev + 1);
+        }, 500000);
   
-  return (
-      <div className="status-container">
-        <Title level={2} className="status-title">Evaluation of Candidate's Interview Progress</Title>
-  
-        <Card className="status-card">
-          <Collapse accordion>
-            {metricsData.map(item => {
-              if (item.skill) {
-                return (
-                  <Panel header="Skills Improvement" key="skills">
-                    <Row gutter={16}>
-                      <Col span={12}>
-                        <Title level={4}>{item.skill.technical.title.replace(/_/g, ' ')}</Title>
-                        <Text>Previous: {item.skill.technical.previous}</Text><br />
-                        <Text>Current: {item.skill.technical.current}</Text><br />
-                        <Text>Recommendation: {item.skill.technical.recommendation}</Text>
+        return () => clearInterval(intervalId); 
+    }, [refresh])
+
+    const layoutStyle = {
+      maxWidth: '90rem', 
+      margin: '0 auto', 
+      padding: '20px', 
+      backgroundColor: '#ffffff',
+    };
+
+    const charts = [
+      { title: 'Clarity', component: <SankeyChart communication={overall?.overall_clarity}/> },
+      { title: 'Engagement', component: <SankeyChart communication={overall?.overall_engagement}/> },
+      { title: 'Time Management', component: <SankeyTime time={overall?.overall_time_management}/> },
+    ];
+
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const nextChart = () => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % charts.length);
+    };
+
+    const prevChart = () => {
+      setCurrentIndex((prevIndex) => (prevIndex - 1 + charts.length) % charts.length);
+    };
+
+
+    return (
+      <>
+          {overall == undefined ?
+            <div>
+              <LoadingIndicator message={'Fetching Metrics...'}/>
+            </div>
+          :
+            <div style={layoutStyle}>
+              <h1>
+                Overall Progress
+              </h1>
+
+              <div style={{marginLeft: '5rem'}}>
+                {/* First Row */}
+                <div style={{marginBottom: '2rem'}}>
+                  <Row style={{  display: 'flex', margin: '0 4rem 0 4rem', gap:'2rem'}}>
+                      <Col style={{backgroundColor: '#f1eded27', borderRadius: '3rem', padding:'0 4rem 0 4rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'}}>
+                          <h3 style={{color: '#d1cccb'}}>Competency</h3>
+                          <RadarChart data={overall?.overall_competency} />
                       </Col>
-                      <Col span={12}>
-                        <Title level={4}>{item.skill.detail.title.replace(/_/g, ' ')}</Title>
-                        <Text>Previous: {item.skill.detail.previous}</Text><br />
-                        <Text>Current: {item.skill.detail.current}</Text><br />
-                        <Text>Recommendation: {item.skill.detail.recommendation}</Text>
+                      <Col style={{backgroundColor: '#ebe8e865', borderRadius: '3rem', padding:'0 4rem 0 4rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'}}>
+                          <h3 style={{color: '#d1cccb'}}>Answer Relevancy</h3>
+                          <LineChartOverall relevancy={overall?.overall_performance} />
                       </Col>
-                    </Row>
-                  </Panel>
-                );
-              }
-              return (
-                <Panel header={item.title.replace(/_/g, ' ')} key={item.title}>
-                  <Text>{item.description}</Text>
-                </Panel>
-              );
-            })}
-          </Collapse>
-        </Card>
-      </div>
+                  </Row>
+                </div>            
+
+                {/* Second Row */}
+                <div>
+                  <Row style={{ display: 'flex', margin: '0 4rem 0 4rem', gap: '2rem' }}>
+                      <Col style={{backgroundColor: '#f1eded27', borderRadius: '3rem', padding:'0 1.5rem 0 1.5rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'}}>
+                        <h3 style={{color: '#d1cccb'}}>Confidence</h3>
+                        <BarChartComponent  confidenceData={overall?.overall_confidence} />
+                      </Col>
+                      
+                      <Col style={{ backgroundColor: '#f1eded27', borderRadius: '3rem', padding: '0 2.5rem 0 2.5rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>                 
+                            <div>
+                              <h3 style={{color: '#d1cccb'}}>{charts[currentIndex].title}</h3>
+                            </div>
+                            <div style={{ marginTop: '1rem', display: 'flex', cursor: 'pointer' }}>
+                                  <p onClick={prevChart} disabled={currentIndex === 0}>
+                                      &lt;
+                                  </p>
+                                  <p onClick={nextChart} style={{ marginLeft: '1rem' }}>
+                                      &gt;
+                                  </p>
+                            </div>
+                          </div>
+                              {charts[currentIndex].component}
+                      </Col>
+                  </Row>
+                </div>
+              </div>
+            </div>
+          }
+
+      </>
     );
-  };
-  
-  export default AllStatus;
+};
+
+export default AllStatus;

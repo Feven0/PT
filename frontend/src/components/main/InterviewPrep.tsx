@@ -18,7 +18,7 @@ const InterviewPrep = () => {
   return (
     <>
       <div className="interview-container">
-        {open === 'none' && (
+        {/* {open === 'none' && (
           <Card className="interview-card" style={{ width: '100%', maxWidth: '600px', margin: 'auto', textAlign: 'center' }}>
             <Title level={3}>Want to get ready for the job?</Title>
             <Text className="text-gray-400" style={{ display: 'block', marginBottom: '16px' }}>
@@ -33,15 +33,15 @@ const InterviewPrep = () => {
               Sure
             </Button>
           </Card>
-        )}
+        )} */}
       </div>
 
-      {open === 'ready' && 
+      {/* {open === 'ready' &&  */}
       <div className='interview-box'>
           <InterviewChat />
       </div>
       
-      }
+      {/* } */}
     </>
   );
 };

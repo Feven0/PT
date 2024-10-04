@@ -25,29 +25,18 @@ from typing import List
 import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_db as database
 from api.llm.ipersona.ipersona_agent import agents
-from api.config import get_openapi_token
-from dotenv import load_dotenv
 import api.pages.ipersona.models.model_persona as pemodel
 import assemblyai as aai
 import ast
 
 hr_agent = agents()
 
-# env_manager = get_env_manager()
-# from api.logs.loggers.logger import logger_config
-
-# logger = logger_config(__name__)
-
-
 uploaded_files = []
 hr_persona = []
 
 # load_dotenv("../.env")
-
-key_json = get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
-ASSEMBLYAI_API_KEY = key_json['ASSEMBLYAI_API_KEY']
 # ASSEMBLYAI_API_KEY= os.getenv("ASSEMBLYAI_API_KEY")
-aai.settings.api_key = ASSEMBLYAI_API_KEY 
+aai.settings.api_key = "49e5f82458584a70b847f477a035ce48"
 transcriber = aai.Transcriber()
 
 
@@ -55,7 +44,9 @@ transcriber = aai.Transcriber()
 routes = FastAPI(openapi_prefix="/api")
 
 module_dir= os.path.dirname(__file__)
+module_di= os.path.dirname('/home/rehmet/dev/tenx_ipersona/api/modules/prompts')
 data_path = lambda x: os.path.join(module_dir, "folders", x)
+prompt_path = lambda x: os.path.join(module_di, "prompts", x)
 
 
 @routes.post("/upload")
@@ -123,16 +114,50 @@ async def speech_to_text(file: UploadFile = File(...)):
         elapsed_time = end_time - start_time_1  
         print(f"Time taken for audio upload processing: {elapsed_time:.2f} seconds")
 
+
 @routes.post("/create_user_session")
 async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
     try:
-        #################### Save to DB #####################   
+        #################### Save to DB ##################### 
+        created_persona = util.create_persona(recieved.jbJson)
+        prompt_text = util.file_reader(prompt_path('ipersona/prompt/persona.txt'))
+        generated_persona = prompt_text\
+                .replace("{hr_persona}", created_persona)\
+                .replace("{job_description}", str(recieved.jbJson))\
+                .replace("{profile}", str(recieved.cvJson))    
+                
+        
+        message = util.file_reader(prompt_path('ipersona/prompt/generate_question.txt'))
+        context = str(message)
+        
+        msg=context\
+            .replace("{background_count}", str(2))\
+            .replace("{technical_count}", str(2))\
+            .replace("{behavioral_count}", str(2))\
+            .replace("{ability_count}", str(2))
+        
+        hr_agent.assistant.update_system_message(generated_persona)
+        response = await hr_agent.generate_question(msg)
+        generated_question_json = util.extract_json(response, quite=False)
+        
+        # Initialize question number
+        question_number = 1
+        for category, questions in generated_question_json.items():
+            for question in questions:
+                question["question_number"] = str(question_number)  
+                question_number += 1 
+        combined_generated_question_json = json.dumps(generated_question_json, indent=4)
+        
+                
         data = {
-            "email": recieved.email,
-            "userId": recieved.userId,
+            "userId": str(recieved.userId),
             "sessionId": str(uuid.uuid4()),
-            "fileName": recieved.name,
-            "cvPath": recieved.cvJson
+            "username": recieved.name,
+            "user_profile": recieved.cvJson,
+            "jobId": str(recieved.jobId),
+            "job_desc": recieved.jbJson,
+            "persona": generated_persona,
+            "generated_questions": combined_generated_question_json 
         }
                 
    
@@ -142,29 +167,15 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
     except Exception as e:
         print(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
-
-
-@routes.post("/analyse_cv")
-async def analyse_cv_job(recieved: pemodel.AnalyseJobRequestRecieved): 
-    # 
+        
+@routes.post("/clarify")
+async def clarify_question(recieved: pemodel.ClarificationRequestRecieved): 
+    question = recieved.question
     start_time = time.time()    
-    try: 
-        global hr_agent
-        # jbPath = data_path('txt_files/job.txt')
-        global persona        
-                     
-             
-        job_session_id = await database.save_to_db(recieved)
-        result = await util.analysing_vitae(recieved)
-            
-        data = {
-            "id": job_session_id,
-            "persona": result['generated_persona'],
-            "analysis": result['response']
-        }    
-         
-        res = await db.update_ipersona_data_new(data, fields_to_update=['persona', 'analysis'])
-        return result['response']
+    try:                      
+        result = await util.clarify_question(question)           
+       
+        return result
     
     except Exception as e:
         print(f"Error processing files: {e}")
@@ -173,16 +184,15 @@ async def analyse_cv_job(recieved: pemodel.AnalyseJobRequestRecieved):
     finally:
         end_time = time.time() 
         elapsed_time = end_time - start_time 
-        print(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
-        
-        
-@routes.post("/all_metrics")
-async def analyse_all_metrics(): 
-    # 
+        print(f"Time taken for question clarififcation processing: {elapsed_time:.2f} seconds")
+
+
+@routes.post("/calculate_overall_progress")
+async def calculate_overall_progress(recieved: pemodel.ChatHistoryRequestRecieved): 
     start_time = time.time()    
-    try:                      
-        result = await util.analysing_all_metrics()            
-       
+    try:  
+        chathistory = await database.fecth_all_chathistory(recieved)                    
+        result =  util.calculate_overall_progress(chathistory) 
         return result
     
     except Exception as e:

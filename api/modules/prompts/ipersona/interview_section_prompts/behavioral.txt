@@ -1,3 +1,4 @@
+Interview Question Type:  Behavioral Question
 
 VERY IMPORTANT: Rules for Generating an Interview Question for assessing the candidate behavioral:
     1. Review the Job Description:
