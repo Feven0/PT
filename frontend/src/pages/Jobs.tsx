@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Input, Row, Col } from "antd";
-import { JobCard } from '../components/main/index';
+import { JobCard } from '../components/index';
 import data from '../assets/mock-data/job_match.json';
 import jobs from '../assets/mock-data/job_profile.json';
 import { useParams } from 'react-router-dom';

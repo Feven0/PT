@@ -1,15 +1,9 @@
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
-import Cookies from "js-cookie";
-import { v4 as uuidv4 } from "uuid";
 
 const useWebSocket = (url: any) => {
   const [socket, setSocket] = useState<any>(null);
-  const [analysis, setChatAnalysis] = useState<any[]>([]);
   const [interview, setChatInterview] = useState<any[]>([]);
-  const [cvanalysis, setCVAnalysis] = useState<any[]>([]);
-  const [interview_metrics, setEvaluationMetrics] = useState<any>();
-
   
   useEffect(() => {
     const newSocket = io(url);
@@ -17,11 +11,6 @@ const useWebSocket = (url: any) => {
 
     newSocket.on('initial connect', () => {
       console.log('Connected to WebSocket server');
-    });
-
-    newSocket.on('analyse', (message) => {
-      console.log(`Received response: ${message}`);
-      setChatAnalysis((prevMessages) => [...prevMessages, ...message]);
     });
 
     newSocket.on('interview chat', (message) => {
@@ -38,7 +27,7 @@ const useWebSocket = (url: any) => {
     };
   }, [url]);
 
-  return [socket,analysis, setChatAnalysis, interview, setChatInterview, cvanalysis, setCVAnalysis, interview_metrics, setEvaluationMetrics];
+  return [socket, interview, setChatInterview];
 };
 
 export default useWebSocket;

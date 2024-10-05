@@ -1,33 +1,31 @@
-import {DisplayResume, AnalyseDoc, InterviewPrep, AllStatus} from '../components/main/index'
+import { AllStatus, InterviewChat } from '../components/index'
 import { useState, useContext } from 'react';
-import { Layout, Menu, Row, Col, Typography, Tabs } from 'antd';
+import { Layout, Row, Col, Tabs } from 'antd';
 import { ProviderContext } from '../context/context';
 import { useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import '../styles/jobdetail/jobdetail.css'
 
-const { Header, Content } = Layout;
-const { Title, Text } = Typography;
+const { Content } = Layout;
 const { TabPane } = Tabs;
 
 const JobDetail = () => {
-    const { latestsession, setStart } = useContext(ProviderContext)
-    const { userId, jobId } = useParams()
-    const [selectedTab, setSelectedTab] = useState('resume');
+    const { setStart } = useContext(ProviderContext)
+    const { jobId } = useParams()
+    const [selectedTab, setSelectedTab] = useState('');
 
     const renderContent = () => {
     switch (selectedTab) {
         case 'overall-progress':
         return <AllStatus />;
         case 'interview':
-        return <InterviewPrep />;
+        return <InterviewChat />;
         default:
         return null; 
     }
     };
 
     useEffect(() => {
-        // localStorage.removeItem("JobId")
         if(jobId !== undefined){
             localStorage.setItem("JobId", jobId)
         }
@@ -44,15 +42,12 @@ const JobDetail = () => {
           <Content style={{ padding: '2px' }}>
                 <Row>
                     <Col span={24}>
-                        {/* {selectedTab === 'resume' && <DisplayResume />}  */}
                         <Tabs
                         defaultActiveKey="resume"
                         activeKey={selectedTab}
                         onChange={setSelectedTab}
                         style={{ marginTop: '2px' }}
                         >
-                        {/* <TabPane tab="Resume" key="resume" /> */}
-                        {/* <TabPane tab="Analyze Document" key="analyze" /> */}
                         <TabPane tab="Overall Progress" key="overall-progress"/>
                         <TabPane tab="Interview Prep" key="interview" />
                         </Tabs>
