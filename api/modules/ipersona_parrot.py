@@ -263,7 +263,7 @@ async def fetch_interview_question(section: list, data: dict) -> dict:
         if an exception occurs during processing.
     """
     try:
-        message = file_reader(prompt_path('ipersona/prompt/pick_question.txt'))
+        message = file_reader(prompt_path('ipersona/pick_question.txt'))
         context = str(message)
         questions = []
         msg = context\
@@ -301,7 +301,7 @@ async def check_if_followup(candidate_response: str) -> bool:
         or an error message if an exception occurs during processing.
     """
     try:
-        message = file_reader(prompt_path('ipersona/prompt/follow_up_check.txt'))
+        message = file_reader(prompt_path('ipersona/follow_up_check.txt'))
 
         context = str(message)
         msg = context.replace("{candidate_response}", candidate_response) 
@@ -337,7 +337,7 @@ async def generate_followup(candidate_response: str) -> dict:
         or an error message if an exception occurs during processing.
     """
     try:
-        message = file_reader(prompt_path('ipersona/prompt/follow_up.txt'))
+        message = file_reader(prompt_path('ipersona/follow_up.txt'))
         context = str(message)
         msg = context.replace("{candidate_response}", candidate_response)
         response = await hr_agent.generate_question(msg)
@@ -371,7 +371,7 @@ async def realtime_response_evaluation(data: dict) -> dict:
         or an error message if an exception occurs during processing.
     """
     try:
-        evaluation_prompt = file_reader(prompt_path('ipersona/prompt/evaluation.txt'))
+        evaluation_prompt = file_reader(prompt_path('ipersona/realtime_evaluation.txt'))
         evaluation_context = str(evaluation_prompt)
         evaluation_msg = evaluation_context\
             .replace("{question}", data["previous_question"])\
@@ -413,7 +413,7 @@ async def overall_interview_evaluations(data: dict, realtime_evaluation_response
         or an error message if an exception occurs during processing.
     """
     try:
-        overall_evaluation_prompt = file_reader(prompt_path('ipersona/prompt/overall.txt'))
+        overall_evaluation_prompt = file_reader(prompt_path('ipersona/overall_evaluation.txt'))
         overall_metrics_prompt = file_reader(prompt_path("ipersona/interview_metrics_rubrics.txt"))
         overall_evaluation_context = str(overall_evaluation_prompt)
         overall_metrics_context = str(overall_metrics_prompt)
@@ -491,7 +491,7 @@ async def clarify_question(question: str) -> dict:
         an exception occurs during processing.
     """
     try:
-        message = file_reader(prompt_path("ipersona/prompt/clarify_question.txt"))
+        message = file_reader(prompt_path("ipersona/clarify_question.txt"))
         context = str(message)
         msg = context.replace("{question}", question)
         response = await hr_agent.interview_question_clarification(msg)
