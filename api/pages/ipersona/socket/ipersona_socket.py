@@ -1,6 +1,5 @@
 import socketio, ast, time
-import api.modules.ipersona_utils as util
-import api.llm.ipersona.ipersona_db as database
+import api.modules.ipersona_parrot as util
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
 socket_app = socketio.ASGIApp(sio)
 
@@ -25,12 +24,8 @@ async def interview_endpoint(sid, data):
     print("interview_data", data["previous_question"], data['user_session']['jobId'])
     try:
         start_time = time.time()
-        # print("tokens_job_description_count", len(str(data['user']['jbPath']).split()))
-        # print("tokens_profile_description_count", len(str(data['user_session']['cvPath']).split()))
-
         response = await util.generate_interview_question(data)
 
-        # print("response coming",  response)
         message = [
                 {   
                     "candidate": {
