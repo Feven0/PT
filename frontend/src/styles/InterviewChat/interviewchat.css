@@ -1,0 +1,243 @@
+.chat_contain {
+    font-size: 1rem;
+    font-family: 'Times New Roman', Times, serif;
+    text-justify: auto;
+}
+
+.messagecandidate {
+    display: flex;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    margin: 2rem 2.5rem 2rem 2.5rem;
+    text-align: justify;
+}
+
+.messageassistant {
+    background-color: #f7f7f7;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 10px;
+}
+
+.chat_container {
+    display: flex;
+    justify-content: space-around;
+}
+
+.container-chat {
+    width: 60rem;
+}
+
+.profile-image {
+    height: 40px;
+    width: 40px;
+    border-radius: 100%;
+}
+
+.interview-box {
+    display: flex;
+    gap: 1rem;
+}
+
+.card_box {
+    background-color: red;
+    width: 50rem;
+    /* max-height: 7rem; */
+}
+
+.interview_percent {
+    font-size: 1.6rem;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+}
+
+.interview-chat-container {
+    position: relative;    
+    display: flex;
+    margin: 0px 10px 0px 160px;
+}
+
+.btn-hide {
+    margin-bottom: 3rem;
+}
+
+.btn-hide .ant-btn {
+    background-color: rgb(241, 241, 233) !important; 
+    border-color: antiquewhite !important; 
+    color: black;
+}
+
+.btn-hide .ant-btn:hover {
+    background-color: #f0ebe6;
+    color: black;
+}
+
+.chat-box {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.message {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.candidate .profile-image, .assistant .profile-image {
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.markdown-content,
+.message-text {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+}
+
+.message-response {
+    background-color: #ffffff;
+    padding: 8px;
+    border-radius: 8px;
+    max-width: 70%;
+}
+
+.input-container {
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+ 
+    margin: 1rem;
+}
+
+.input-area {
+    resize: none;
+}
+
+.actions {
+    display: flex;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.actions-audio {
+    display: flex;
+    cursor: pointer;
+}
+
+.actions-load {
+    height: 20px;
+    margin-top: 30px;
+}
+.actions-btn {
+    color: #ffffff;
+    font-weight: bolder;
+    font-size: 1rem;
+    background-color: #a5a2a2;
+    border: none; 
+    padding: 10px 20px; 
+    cursor: pointer;
+    transition: background-color 0.3s; 
+}
+
+.actions-btn:hover {
+    background-color: #888888; 
+}
+.chat-timer-box {
+    margin-top: 5rem;
+}
+
+.progress-btn {
+    display: flex;
+    justify-content: center;
+    margin-top: 6rem;
+}
+
+.progress-button {
+    color: rgb(255, 255, 255);
+    font-weight: bolder;
+    padding: 1.2rem;
+    font-size: 1rem;
+}
+
+.progress-button:hover {
+    font-weight: bolder;
+    color: #d3c4c4;
+}
+
+.hover-effect {
+    transition: filter 0.3s ease; 
+}
+
+.hover-effect:hover {
+    filter: brightness(1.2);
+}
+
+.overall-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.overall-box {
+    background-color: #f8fafc;
+    padding: 0 1rem 0 1rem;
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+.view-btn {
+    background-color: #19a2f1;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: bolder;
+    height: 1.7rem;
+    border: none;
+}
+
+.clarify {
+    display: inline-block;
+    padding: 0 20px 0 20px;
+    text-align: center;
+    background-color: #e48d86;
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: '0 1px 1px 0 rgba(0, 0, 0, 1)';
+}
+
+.clarify:hover {
+    background-color: #e47269;
+}
+
+.realtime-metrics {
+    display: flex;
+    justify-content: end;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #f0e7e7;
+    border-radius: 5px;
+
+}
+
+.metrics {
+    background-color: #7e79793d;
+    padding: 0 20px 0 20px;
+    border-radius: 10px;
+    color: rgb(248, 244, 244);
+    font-weight: bolder;
+}
+
+
+.evaluation {
+    transition: all 0.3s ease;
+}
+
+.realtime-evaluation {
+    overflow: hidden; 
+}

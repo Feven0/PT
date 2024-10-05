@@ -1,0 +1,12 @@
+.audio-recorder {
+    cursor: pointer;
+    margin-top: 1rem;
+}
+
+.audio-stop {
+    color: red;
+}
+
+.audio-start {
+    color: rgb(199, 199, 199);
+}
