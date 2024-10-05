@@ -19,7 +19,7 @@ const RealTimeEvaluation = ({ evaluation }) => {
 
     return (
         <div className='evaluation realtime-evaluation' 
-            style={{ display: 'flex', gap: '2em', flexDirection: 'row-reverse', marginTop: '-4rem', marginBottom: '1rem', marginRight: '2.9rem' }}>
+            style={{ display: 'flex', gap: '2em', flexDirection: 'row-reverse', marginTop: '-4rem', marginBottom: '2rem', marginRight: '2.9rem' }}>
             
             <div
                 className="hover-effect"

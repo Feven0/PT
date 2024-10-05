@@ -36,9 +36,10 @@ const InterviewChat = () => {
         fontSize: '1rem',
         backgroundColor: isHovered ? '#888888' : '#a5a2a2', 
         border: 'none', 
-        padding: '10px 20px', 
+        padding: '8px 20px', 
         cursor: 'pointer', 
         transition: 'background-color 0.3s',
+        borderRadius: '5px 0 5px 0'
     };
 
     const clarify_question = async (question) => {
@@ -143,7 +144,7 @@ const InterviewChat = () => {
     return (
         <>
             <div className="interview-chat-container">
-                <Card className="chat-box" style={{ height: '30rem', width: '55rem', overflowY: 'auto' }}>
+                <Card className="chat-box" style={{ height: '34rem', width: '60rem', overflowY: 'auto' }}>
                 <PreviousChat/>
                 
                 {interview?.map((message, index) => (
@@ -214,7 +215,7 @@ const InterviewChat = () => {
                     <div>
                         {!start && (
                             <Button 
-                            style={{ margin:'7rem', textAlign:'center', width: '30vh', height: '10vh' }}
+                            style={{ margin:'7rem', textAlign:'center', width: '30vh', height: '10vh', color:'#ffffff', fontWeight: 'bolder', fontSize: '1.42rem' }}
                             className='start-btn' 
                             onClick={startInterview}
                             >
@@ -248,7 +249,7 @@ const InterviewChat = () => {
                                         <AudioRecorder sendDataParent={handleDataAudio} sendDataToParent={handleDataFromAudio} />
                                         {dataFromAudio && <Spin indicator={<img src={fade} alt="" className='actions-load' />} />}
                                     </div>
-                                    <div style={{marginTop: '0.6rem'}}>
+                                    <div style={{marginTop: '0.97rem'}}>
                                         <button 
                                         onClick={handler}
                                         style={buttonStyle}

@@ -58,7 +58,7 @@
 .interview-chat-container {
     position: relative;    
     display: flex;
-    margin: 16px 160px 0px 160px;
+    margin: 0px 10px 0px 160px;
 }
 
 .btn-hide {
