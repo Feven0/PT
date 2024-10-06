@@ -122,14 +122,14 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved) -> st
         """
         
         created_persona = util.create_persona(recieved.jbJson)
-        prompt_text = util.file_reader(prompt_path('ipersona/prompt/persona.txt'))
+        prompt_text = util.file_reader(prompt_path('ipersona/persona.txt'))
         generated_persona = prompt_text\
                 .replace("{hr_persona}", created_persona)\
                 .replace("{job_description}", str(recieved.jbJson))\
                 .replace("{profile}", str(recieved.cvJson))    
                 
         
-        message = util.file_reader(prompt_path('ipersona/prompt/generate_question.txt'))
+        message = util.file_reader(prompt_path('ipersona/generate_question.txt'))
         context = str(message)
         
         msg=context\
