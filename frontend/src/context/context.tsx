@@ -27,7 +27,7 @@ export const PersonaContext = ({ children }) => {
         sessionData();
         const intervalId = setInterval(() => {
           setRefresh((prev) => prev + 1);
-        }, 500000);
+        }, 5000);
   
         return () => clearInterval(intervalId); 
       // }
