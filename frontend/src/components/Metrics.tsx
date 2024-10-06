@@ -29,7 +29,7 @@ const ProgressIndicator = ({ currentValue, maxValue }) => {
 };
 
 const StarRating = ({ rating }) => {
-    const totalStars = 5;
+    const totalStars = 4;
     const stars = Array.from({ length: totalStars }, (_, index) => (
         <span
             key={index}
@@ -43,99 +43,6 @@ const StarRating = ({ rating }) => {
 };
 
 const Metrics = ({metricsData}) => {
-    const evaluation_metrics = {
-      "evaluation": {
-        "performance": [
-          {
-            "name": "performance",
-            "term": "Average",
-            "reason": "Responses were satisfactory but lacked depth and specific examples, particularly in technical discussions."
-          },
-          {
-            "name": "performance_level",
-            "level": "60",
-            "reason": "The overall performance indicated a basic understanding of AI concepts, but several gaps were present in technical details and teamwork examples."
-          },
-          {
-            "name": "confidence_level",
-            "level": "Average",
-            "reason": "The candidate appeared unsure during responses, particularly when asked to elaborate on technical experiences."
-          },
-          {
-            "name": "rating",
-            "level": "2",
-            "reason": "The rating reflects a need for improvement in providing detailed and confident responses."
-          }
-        ],
-        "areas_of_improvement": [
-          {
-            "skill": "Technical Skills",
-            "description": "You should improve your ability to discuss specific technologies and methodologies used in your projects. Providing detailed examples of your work with machine learning models, including challenges faced and solutions implemented, would enhance your responses."
-          },
-          {
-            "skill": "Team Collaboration",
-            "description": "You need to provide more comprehensive examples of teamwork experiences. Instead of vague statements, share specific situations that highlight your contributions, the challenges faced, and the outcomes achieved."
-          }
-        ],
-        "strength": [
-          {
-            "skill": "Problem-Solving",
-            "description": "You demonstrated a genuine passion for tackling complex problems and a willingness to learn, which is a strong foundation for a role in AI engineering."
-          },
-          {
-            "skill": "Communication Skills",
-            "description": "You communicated your background and experiences clearly, showing an ability to articulate your qualifications effectively, even if more detail was needed."
-          }
-        ],
-        "time_management": {
-          "fail": 0,
-          "pass": 8
-        },
-        "relevancy": [
-          {
-            "index": 1,
-            "level": "90",
-            "reason": "The response was highly relevant, addressing both educational qualifications and practical experience in AI, which are crucial for the role."
-          },
-          {
-            "index": 2,
-            "level": "90",
-            "reason": "Your background in machine learning and experience with AI projects directly relate to the responsibilities of the Senior AI Engineer position."
-          },
-          {
-            "index": 3,
-            "level": "80",
-            "reason": "Most of your response was relevant, but it lacked specific examples of projects and challenges faced."
-          },
-          {
-            "index": 4,
-            "level": "30",
-            "reason": "The response only mentioned the use of PyTorch without any specific examples or details about projects, making it largely irrelevant to the question."
-          },
-          {
-            "index": 5,
-            "level": "30",
-            "reason": "The response only vaguely addresses teamwork without providing context or specifics about the experience."
-          },
-          {
-            "index": 6,
-            "level": "30",
-            "reason": "The answer provided was very vague and did not adequately address the question about teamwork and collaboration."
-          },
-          {
-            "index": 7,
-            "level": "30",
-            "reason": "The response only vaguely addresses teamwork without providing substantial context or detail."
-          },
-          {
-            "index": 8,
-            "level": "30",
-            "reason": "The response only vaguely addresses teamwork without providing substantial context or detail."
-          }
-        ]
-      }
-    }
-
     const [expandedImprovementKeys, setExpandedImprovementKeys] = useState([]);
     const [expandedStrengthKeys, setExpandedStrengthKeys] = useState([]);
 
