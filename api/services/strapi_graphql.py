@@ -398,7 +398,7 @@ class StrapiGraphql():
         return filters
             
                         
-    def unrap_dict_wprefix(self, xin, prefix='', yy = {}):
+    def unrap_dict_wprefix(self, xin, prefix='', yy = {}, irecord=0):
         x = copy.deepcopy(xin)
         xx = copy.deepcopy(yy)
         
@@ -416,12 +416,15 @@ class StrapiGraphql():
                 
             elif isinstance(xa, list):
                 if len(xa) > 0 and isinstance(xa[0], dict):
-                    for x in xa:
-                        d = self.unrap_dict_wprefix(x, prefix=newprefix, yy=xx)
+                    for ix, x in enumerate(xa):
+                        d = self.unrap_dict_wprefix(x, prefix=newprefix, yy=xx, irecord=ix)
                         xx.update(d)
                     
             else:
-                d = {newprefix: xa}
+                if irecord > 0:                    
+                    d = {f"newprefix_{irecord}": xa}
+                else:
+                    d = {newprefix: xa}
                 xx.update(d)
               
         #print('***====output xx===***',xx)  
@@ -479,20 +482,14 @@ class StrapiGraphql():
                 
             try:
                 rlist = []
-                for ra in res:
-                    #
-                    if 'attributes' in ra.keys():
-                        r = ra['attributes']
-                    else:
-                        r = ra
-                    
+                for ra in res:                    
                     #
                     rr = {}                   
                     if 'id' in ra.keys():
                         rr['id'] = ra['id']
                         
                     #                    
-                    for name, xa in r.items():           
+                    for name, xa in ra.get('attributes', {}).items():           
                         if isinstance(xa, dict):
                             if 'data' in xa.keys():         
                                 d = copy.deepcopy(xa)               

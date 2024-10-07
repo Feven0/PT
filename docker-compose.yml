@@ -6,7 +6,7 @@ services:
     image: ipersona:latest
     restart: unless-stopped
     environment:
-      - STRAPI_STAGE=apply
+      - STRAPI_STAGE=dev
       - PORT=4500
       - APP_MODULE=app:app
       - WORKERS_PER_CORE=0.5

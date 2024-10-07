@@ -102,9 +102,9 @@ def read_json(file_path: str):
         return json.load(json_file)
         
 def get_openapi_token(
-    ssmkey="OPENAI_API_KEY",
-    envvar="openai_apikey",
-    fconfig=".env/openai_apikey.json",
+    ssmkey='OPENAI_PARROT_API_KEY',
+    envvar=None,
+    fconfig=None,
 ):
     apikey = get_auth(ssmkey=ssmkey, envvar=envvar, fconfig=fconfig)
 
@@ -574,7 +574,8 @@ class openai:
     fast_model = os.environ.get('OPENAI_FAST_MODEL',"gpt-4o-mini")
     powerful_model = os.environ.get('OPENAI_POWERFUL_MODEL',"gpt-4o")
     vision_model = os.environ.get('OPENAI_VISION_MODEL',"gpt-4-vision-preview")
-    api_key = get_openapi_token(ssmkey="OPENAI_LEAP_API_KEY")
+    api_key = get_openapi_token(ssmkey='OPENAI_PARROT_API_KEY')
+    api_key_parrot = get_openapi_token(ssmkey='OPENAI_PARROT_API_KEY')
     api_key_job_profile = get_openapi_token(ssmkey="OPENAI_LEAP_JOBPROFILE_API_KEY")
     api_key_asset_generation = get_openapi_token(ssmkey="OPENAI_LEAP_ASSETGEN_API_KEY")
 

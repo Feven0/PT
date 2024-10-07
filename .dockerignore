@@ -1,0 +1,14 @@
+.git
+*.log
+*.pdf
+api/data
+data/
+notebooks/
+*.zip
+Downloads/
+Output/
+__pycache__/
+job_logs/ 
+job_profile_cache/
+job_data_cache/
+logs/
