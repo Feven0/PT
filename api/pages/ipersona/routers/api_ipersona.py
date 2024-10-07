@@ -99,7 +99,7 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
 
 
 @routes.post("/create_user_session")
-async def user_session_files(recieved: pemodel.userSessionRequestRecieved) -> str:
+async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
     try:
         """
         Processes user session files and generates interview questions.
@@ -165,7 +165,7 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved) -> st
         res = await db.create_schema(data)
         #------------- ---------------------- 
         
-        return {"filenames": f"uploaded successfully: {res}"}
+        return {"filenames": f"uploaded successfully"}
     
     except Exception as e:
         print(f"Error processing files: {e}")
