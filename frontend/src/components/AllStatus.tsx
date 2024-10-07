@@ -8,7 +8,7 @@ import { ProviderContext } from '../context/context';
 const AllStatus = () => {
   const {latestsession} = useContext(ProviderContext);
   const [refresh, setRefresh] = useState(0);
-  const [overall, setOverall] = useState();
+  const [overall, setOverall] = useState({});
 
 
     const fetchOverall = async() => {
@@ -53,10 +53,11 @@ const AllStatus = () => {
     const prevChart = () => {
       setCurrentIndex((prevIndex) => (prevIndex - 1 + charts.length) % charts.length);
     };
+    console.log("oooooooooooooer", overall?.error !== undefined)
 
     return (
       <>
-          {overall == undefined  || overall !== null?
+          {(overall == undefined  || overall !== undefined || overall?.error === undefined) ?
             <div>
               <LoadingIndicator message={'Fetching Metrics...'}/>
             </div>
