@@ -23,7 +23,7 @@ import time
 from fastapi import UploadFile, Form
 from typing import List
 import api.llm.ipersona.ipersona_schema as db
-import api.llm.ipersona.ipersona_db as database
+import api.llm.ipersona.ipersona_db as database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
 from api.llm.ipersona.ipersona_agent import agents
 import api.pages.ipersona.models.persona as pemodel
 import assemblyai as aai
@@ -99,7 +99,7 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
 
 
 @routes.post("/create_user_session")
-async def user_session_files(recieved: pemodel.userSessionRequestRecieved) -> str:
+async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
     try:
         """
         Processes user session files and generates interview questions.
@@ -165,7 +165,7 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved) -> st
         res = await db.create_schema(data)
         #------------- ---------------------- 
         
-        return {"filenames": f"uploaded successfully: {res}"}
+        return {"filenames": f"uploaded successfully"}
     
     except Exception as e:
         print(f"Error processing files: {e}")
