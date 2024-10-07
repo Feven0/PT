@@ -3,14 +3,12 @@ import openai, os, json, time
 
 from dotenv import load_dotenv
 load_dotenv(os.path.abspath("../../.env"))
-# print("Not a thing")
-# print(os.getenv('OPENAI_API_KEY'))
+from api.config import get_openapi_token
 
-# openai.api_key = os.getenv('OPENAI_API_KEY')
-OPENAI_API_KEY = "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"
-# openai.api_key = os.environ.get('OPENAI_API_KEY')
-openai_client = openai.OpenAI(api_key=OPENAI_API_KEY )
+keys_json  = get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
+OPENAI_API_KEY = keys_json['OPENAI_PARROT_API_KEY']
 
+openai_client = OpenAI(api_key = OPENAI_API_KEY)
 
 class agents:
     _instance = None
@@ -34,27 +32,15 @@ class agents:
             llm_config= self.default_llm_config
         )
 
-        self.analyser_proxy = autogen.UserProxyAgent(
-            name="analyser_proxy",
-            is_termination_msg=lambda x: isinstance(x, dict) and "TERMINATE" == str(x.get("content", ""))[-9:].upper(),
-            human_input_mode="NEVER",
-            max_consecutive_auto_reply=3,
-        )
-
         self.interviewer_proxy = autogen.UserProxyAgent(
             name="interviewer_proxy",            
             is_termination_msg=lambda x: x.get("content", "") and x.get("content", "").rstrip().endswith("TERMINATE"),
             human_input_mode="NEVER",
             max_consecutive_auto_reply=10,
-            # code_execution_config={
-            #     "work_dir": "coding_2",
-            #     "use_docker": False,
-            # },  
         )
         
         self.interviewer_proxy.register_function(
             function_map={
-                "generate_question": self.generate_question,
                 "real_time_response_evaluation": self.evaluate_candidate_response,
                 "overall_interview_evaluation": self.evaluate_overall_interview,
                 "overall_interview_metrics": self.overall_interview_metrics,
@@ -62,48 +48,20 @@ class agents:
             }
         )       
         
-    async def generate_question(self, interview_prompt: str) -> None:
+    async def generate_question(self, message: str) -> None:
         try:
-            llm_config = {
-                "functions": [
-                    {
-                        "name": "generate_question",
-                        "description": "Your response should be in a single json format as specfied",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "interview_prompt": {
-                                    "type": "string",
-                                    "description": "interview_prompt"
-                                },
-
-                            },
-                            "required": ["interview_prompt"]
-                        }
-                    }
-                ],
-                "timeout": 120,
-                "config_list": [{"model": "gpt-4o-mini", "api_key": OPENAI_API_KEY }]
-            }
-            self.assistant.llm_config = llm_config
-
-            self.interviewer_proxy.initiate_chat(
-                self.assistant,              
-                message={
-                    "function_call": {
-                        "name": "generate_question",
-                        "arguments": interview_prompt
-                    }
-                },
+            await self.interviewer_proxy.a_initiate_chat(
+                recipient=self.assistant,
+                clear_history=False,
+                message=message,
+                max_turns=10
             )
             response = [messages for agent, messages in self.interviewer_proxy.chat_messages.items()][0][-1]["content"].replace("TERMINATE", "")
-
-            return response   
-        
+            return response
         except Exception as e:
             return f'Error: {str(e)}'
-    
-    
+        
+
     async def evaluate_candidate_response(self, evaluation_prompt: str) -> None:
         try:
             llm_config = {
@@ -267,28 +225,4 @@ class agents:
             return f'Error: {str(e)}'
 
 
-    async def generate_question(self, message: str) -> None:
-        try:
-            await self.analyser_proxy.a_initiate_chat(
-                recipient=self.assistant,
-                clear_history=False,
-                message=message,
-                max_turns=10
-            )
-            response = [messages for agent, messages in self.analyser_proxy.chat_messages.items()][0][-1]["content"].replace("TERMINATE", "")
-            return response
-        except Exception as e:
-            return f'Error: {str(e)}'
-        
-    async def send_message_interview(self, message: str) -> None:
-        try:
-            await self.interviewer_proxy.a_initiate_chat(
-                recipient=self.assistant,
-                clear_history=False,
-                message=message,
-                max_turns=10
-            )
-            response = [messages for agent, messages in self.interviewer_proxy.chat_messages.items()][0][-1]["content"].replace("TERMINATE", "")
-            return response
-        except Exception as e:
-            return f'Error: {str(e)}'
+ 
