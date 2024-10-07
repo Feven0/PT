@@ -7,7 +7,9 @@ from collections import defaultdict
 from api.llm.ipersona.ipersona_agent import agents
 import api.llm.ipersona.ipersona_db as database
 from api.config import get_openapi_token
+from api.utils.logger import LLPackerLogger, logme
 
+logger = LLPackerLogger(os.path.basename(__file__))
 
 keys_json  = get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
 OPENAI_API_KEY = keys_json['OPENAI_PARROT_API_KEY']
@@ -48,14 +50,15 @@ def create_persona(job_desc):
         classes = json.loads(file_reader(data_path("persona_class.txt")))       
         class_prompts = json.loads(file_reader(persona_class_prompts))       
         x = identify_class(classes, job_desc)
-        persona1 = ""
+        persona = ""
         for key in x:
-            persona1 += key + ": "
-            persona1 += class_prompts[key][x[key]] + "\n"
+            persona += key + ": "
+            persona += class_prompts[key][x[key]] + "\n"
         
-        return persona1
+        return persona
 
     except Exception as e:
+            logger.error(f"Persona Creation Error: {str(e)}")
             return f'Error: {str(e)}'             
 
 
@@ -82,9 +85,11 @@ async def generate_interview_question(data: dict) -> dict:
     try:
         hr_agent.assistant.update_system_message(data['user_session']['persona'])   
         response = await choose_interview_question(data['user_session']['generated_questions'], data)
+        
         return response
     
     except Exception as e:
+        logger.error(f"Persona Creation Error: ${str(e)}")
         return {'error': str(e)}
     
     
@@ -125,7 +130,6 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
             return response
         
         elif data['question_counter'] < 5:
-            print("skill assessment question")
             section = collection["Technical"]
             question_type = "Technical"
             count = None
@@ -135,7 +139,6 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
             return response
             
         elif data['question_counter'] < 7:
-            print("behavioral question")
             section = collection["Behavioral"]
             question_type = "Behavioral"
             count = None
@@ -145,7 +148,6 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
             return response
         
         elif data['question_counter'] < 10: 
-            print("ability question")
             section = collection["Ability"]
             question_type = "Ability"
             count = None
@@ -155,6 +157,7 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
             return response
 
     except Exception as e:
+        logger.error(f"Choosing question process failed: ${str(e)}")
         return {'error': str(e)}
 
 
@@ -201,7 +204,6 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
                     realtime_evaluation_response_json = await realtime_response_evaluation(data)
                     interview_question_json = await fetch_interview_question(section, data) 
                 else:
-                    print("candidate response exists")  
                     realtime_evaluation_response_json = await realtime_response_evaluation(data)
                     response = await check_if_followup(data['response'])
                     if not response:
@@ -209,7 +211,6 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
                     else:
                         interview_question_json = await generate_followup(data['response'])
             else:
-                print("candidate response does not exist") 
                 interview_question_json = await fetch_interview_question(section, data) 
             
             if 'question_number' in interview_question_json.get('interview_question', {}):
@@ -236,6 +237,7 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
         return response
     
     except Exception as e:
+        logger.error(f"Choosing question helper process failed: ${str(e)}")
         return {'error': str(e)}
    
    
@@ -277,6 +279,7 @@ async def fetch_interview_question(section: list, data: dict) -> dict:
         return response_json     
 
     except Exception as e:
+        logger.error(f"Choosing the right question process failed: ${str(e)}")
         return {'error': str(e)}
     
  
@@ -312,6 +315,7 @@ async def check_if_followup(candidate_response: str) -> bool:
         return response_json["follow-up"]
     
     except Exception as e:
+        logger.error(f"Checking follow up process failed: ${str(e)}")
         return {'error': str(e)}
     
     
@@ -347,6 +351,7 @@ async def generate_followup(candidate_response: str) -> dict:
         return response_json
     
     except Exception as e:
+        logger.error(f"Generating follow up failed: ${str(e)}")
         return {'error': str(e)}
 
 
@@ -380,11 +385,11 @@ async def realtime_response_evaluation(data: dict) -> dict:
         # Evaluate the real-time chat response for the last response
         realtime_evaluation_response = await hr_agent.evaluate_candidate_response(evaluation_msg)
         realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False)
-        print("real time evaluation response...", realtime_evaluation_response)  
         
         return realtime_evaluation_response
         
     except Exception as e:
+        logger.error(f"Real time evaluation process failed: ${str(e)}")
         return {'error': str(e)} 
     
     
@@ -468,6 +473,8 @@ async def overall_interview_evaluations(data: dict, realtime_evaluation_response
         return response
         
     except Exception as e:
+        logger.error(f"Overall evaluation process failed: ${str(e)}")
+
         return {'error': str(e)}    
                   
 
@@ -500,6 +507,8 @@ async def clarify_question(question: str) -> dict:
         return response
     
     except Exception as e:
+        logger.error(f"Overall evaluation process failed: ${str(e)}")
+
         return {'error': str(e)}
 
 
@@ -537,9 +546,12 @@ def identify_class(all_class: list, jd: str) -> dict:
             ],
             response_format={"type": "json_object"},
         )
+        
         return json.loads(result.choices[0].message.content)
+
     
     except Exception as e:
+        logger.error(f"Persona class identification failed: ${str(e)}")
         return {'error': str(e)}
     
 
@@ -589,10 +601,8 @@ def calculate_time(interview: list) -> dict:
                         time_taken_seconds = time_to_seconds(time_taken)
 
                         if time_taken_seconds > time_limit_seconds:
-                            print(f"Candidate's time ({time_taken}) exceeds the time limit ({time_limit}).")
                             exceeded_count += 1
                         else:
-                            print(f"Candidate's time ({time_taken}) is within the time limit ({time_limit}).")
                             not_exceeded_count += 1
         
         time_data = {
@@ -602,6 +612,8 @@ def calculate_time(interview: list) -> dict:
         return time_data
     
     except Exception as e:
+        logger.error(f"Calculating overall time failed: ${str(e)}")
+
         return {'error': str(e)}
         
  
@@ -654,6 +666,7 @@ def filter_the_relevancies(data: list) -> dict:
         return data
     
     except Exception as e:
+        logger.error(f"Filtering overall relevance process failed: ${str(e)}")
         return {'error': str(e)}
 
 
@@ -709,6 +722,8 @@ def percentage_term(percent: float) -> dict:
             return data
         
     except Exception as e:
+        logger.error(f"Percentage term assignation process failed: ${str(e)}")
+
         return {'error': str(e)}
     
 
@@ -808,67 +823,75 @@ def calculate_overall_progress(data: list) -> dict:
         return response
         
     except Exception as e:
+        logger.error(f"Calculating overall progress process failed: ${str(e)}")
+
         return {'error': str(e)}
         
 
 #------------------------------------ Entire Data Progress Metrics Extraction --------------------------------------
 def extract_necessary_metrics(data: list) -> dict:
-    """
-    Extracts and restructures necessary metrics from interview data.
+    try:
+        """
+        Extracts and restructures necessary metrics from interview data.
 
-    This function processes the interview data to gather metrics related to 
-    time management, competency, and overall performance. It compiles these 
-    metrics into a structured format for further analysis.
+        This function processes the interview data to gather metrics related to 
+        time management, competency, and overall performance. It compiles these 
+        metrics into a structured format for further analysis.
 
-    Parameters:
-    ----------
-    data : list
-        A list of dictionaries representing the interview sessions, where 
-        each dictionary contains chat history and evaluation metrics.
+        Parameters:
+        ----------
+        data : list
+            A list of dictionaries representing the interview sessions, where 
+            each dictionary contains chat history and evaluation metrics.
 
-    Returns:
-    -------
-    dict
-        A JSON object containing overall metrics for time management, 
-        competency, and performance, structured for visualization.
-    """
-    overall_time_management = []
-    overall_competency = []
-    overall_performance = []
-    
-    for index, dataset in enumerate(data): 
-        for entry in dataset['chathistory']: 
-            if "assistant" in entry:
-                assistant_eval = entry["assistant"]                
-                if "metrics" in assistant_eval:
-                    metrics = assistant_eval["metrics"]
-                    if isinstance(metrics, dict):
-                        time = metrics.get("time_management", [])
-                        overall_time_management.append(time)
-                        
-                if "overall_evaluation" in assistant_eval:
-                    overall_evaluation = assistant_eval["overall_evaluation"]
-                    if "competency" in overall_evaluation:
-                        competency = overall_evaluation["competency"]
-                        overall_competency.append(competency)
-                    if isinstance(overall_evaluation, dict):                            
-                        overall_eval_performance = overall_evaluation.get("overall_performance")
-                        performance = {
-                            "interview": index,
-                            "performance": overall_eval_performance
-                        }
-                        overall_performance.append(performance)
-    
-    # Restructuring time management data
-    time_management = restructure_communication_skills_for_vis(overall_time_management)
+        Returns:
+        -------
+        dict
+            A JSON object containing overall metrics for time management, 
+            competency, and performance, structured for visualization.
+        """
+        overall_time_management = []
+        overall_competency = []
+        overall_performance = []
+        
+        for index, dataset in enumerate(data): 
+            for entry in dataset['chathistory']: 
+                if "assistant" in entry:
+                    assistant_eval = entry["assistant"]                
+                    if "metrics" in assistant_eval:
+                        metrics = assistant_eval["metrics"]
+                        if isinstance(metrics, dict):
+                            time = metrics.get("time_management", [])
+                            overall_time_management.append(time)
+                            
+                    if "overall_evaluation" in assistant_eval:
+                        overall_evaluation = assistant_eval["overall_evaluation"]
+                        if "competency" in overall_evaluation:
+                            competency = overall_evaluation["competency"]
+                            overall_competency.append(competency)
+                        if isinstance(overall_evaluation, dict):                            
+                            overall_eval_performance = overall_evaluation.get("overall_performance")
+                            performance = {
+                                "interview": index,
+                                "performance": overall_eval_performance
+                            }
+                            overall_performance.append(performance)
+        
+        # Restructuring time management data
+        time_management = restructure_communication_skills_for_vis(overall_time_management)
 
-    response = {
-        "overall_time_management": time_management,
-        "overall_competency": overall_competency,
-        "overall_performance": overall_performance
-    }    
-    
-    return response  
+        response = {
+            "overall_time_management": time_management,
+            "overall_competency": overall_competency,
+            "overall_performance": overall_performance
+        }    
+        
+        return response  
+
+    except Exception as e:
+        logger.error(f"Neccessary metrics extraction process failed: ${str(e)}")
+
+        return {'error': str(e)}
 
 
 #------------------------------ Restructuring Communication skills format For Visualization ------------------------
@@ -907,6 +930,8 @@ def restructure_communication_skills_for_vis(data: list) -> list:
                 
         return transformed_data
     except Exception as e:
+        logger.error(f"Response restructring process failed: ${str(e)}")
+
         return {'error': str(e)}
 
 
@@ -923,6 +948,8 @@ def file_reader(path: str) -> str:
         return system_message
     
     except Exception as e:
+        logger.error(f"File reading process failed: ${str(e)}")
+
         return f'Error: {str(e)}'  
       
 
