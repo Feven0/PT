@@ -8,7 +8,6 @@ from api.config import get_openapi_token
 keys_json  = get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
 OPENAI_API_KEY = keys_json['OPENAI_PARROT_API_KEY']
 
-openai_client = OpenAI(api_key = OPENAI_API_KEY)
 
 class agents:
     _instance = None
