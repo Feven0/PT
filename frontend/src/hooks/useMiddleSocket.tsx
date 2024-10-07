@@ -13,7 +13,7 @@ interface AnalysisResponse {
 
 
 const useMiddleSocket = () => {
-  const [socket, interview, setChatInterview] = useWebSocket('http://0.0.0.0:5900');
+  const [socket, interview, setChatInterview] = useWebSocket(`${import.meta.env.REACT_APP_BACKEND_URL}`);
   const [loading, setLoading] = useState(false);
   const [latestInterviewResponse, setLatestInterviewResponse] = useState<AnalysisResponse | null>(null);
   const [isStarted, setIsStarted] = useState(false);  
