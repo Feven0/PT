@@ -53,11 +53,10 @@ const AllStatus = () => {
     const prevChart = () => {
       setCurrentIndex((prevIndex) => (prevIndex - 1 + charts.length) % charts.length);
     };
-    console.log("oooooooooooooer", overall?.error !== undefined)
 
     return (
       <>
-          {(overall == undefined  || overall !== undefined || overall?.error === undefined) ?
+          {(overall == undefined  || overall !== undefined || overall?.error !== undefined) ?
             <div>
               <LoadingIndicator message={'Fetching Metrics...'}/>
             </div>
