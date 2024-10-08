@@ -1,7 +1,6 @@
 import { AllStatus, InterviewChat } from '../components/index'
-import { useState, useContext } from 'react';
+import { useState} from 'react';
 import { Layout, Row, Col, Tabs } from 'antd';
-import { ProviderContext } from '../context/context';
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import '../styles/jobdetail/jobdetail.css'
@@ -10,7 +9,6 @@ const { Content } = Layout;
 const { TabPane } = Tabs;
 
 const JobDetail = () => {
-    const { setStart } = useContext<any>(ProviderContext)
     const { jobId } = useParams()
     const [selectedTab, setSelectedTab] = useState('');
 
@@ -31,11 +29,7 @@ const JobDetail = () => {
         }
     },[jobId])
 
-    useEffect(() => {
-        setStart(true);
-    }, [setStart]);
-    
-    
+  
     
       return (
         <Layout>
