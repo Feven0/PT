@@ -20,7 +20,7 @@ interface MarkdownContentProps {
 const InterviewChat = () => {
 
     const { handleInterview, interview, loading, seconds, minutes, pause } = useMiddleSocket();
-    const { latestsession} = useContext<any>(ProviderContext);
+    const { latestsession, setStart} = useContext<any>(ProviderContext);
     const [counter, setCounter] = useState<any>(1);
     const [input, setInput] = useState<any>("");
     const [dataFromAudio, setDataFromAudio] = useState<any>(false);
@@ -72,8 +72,6 @@ const InterviewChat = () => {
     let previous_question = "";
     let timerValue: any;
     
-
-
 
     const onSendMessage = (timerValue: any) => {
         const user_session = latestsession;
@@ -140,6 +138,9 @@ const InterviewChat = () => {
         } 
     };
 
+    useEffect(() => {
+        setStart(false);
+    }, [setStart]);
    
     return (
         <>
