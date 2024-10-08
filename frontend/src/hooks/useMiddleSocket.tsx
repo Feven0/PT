@@ -4,9 +4,8 @@ import { useStopwatch } from 'react-timer-hook';
 
 
 const useMiddleSocket = () => {
-  const [socket, interview, setChatInterview] = useWebSocket(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}`);
+  const [socket, interview, setChatInterview] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
   const [loading, setLoading] = useState(false);
-  // const [latestInterviewResponse, setLatestInterviewResponse] = useState<AnalysisResponse | null>(null);
   const [isStarted, setIsStarted] = useState(false);  
   const [count, setCount] = useState();
   const { seconds, minutes, start, pause, reset } = useStopwatch({ autoStart: false});
