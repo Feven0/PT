@@ -1,6 +1,9 @@
 import { Sankey } from '@ant-design/plots';
 
-const SankeyTime = ({time}) => {
+interface Time {
+  time: any
+}
+const SankeyTime : React.FC<Time> = ({time}) => {
   const config = {
     data: {
       value: {

@@ -1,0 +1,27 @@
+version: '3.7'
+
+services:
+  parrot:
+    container_name: parrot
+    image: parrot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3500:3500"
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
+
+# version: '3'
+# services:
+#   parrot:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     ports:
+#       - "3500:3500"
+#     env_file:
+#       - .env
+

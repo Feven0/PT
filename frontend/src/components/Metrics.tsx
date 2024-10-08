@@ -4,9 +4,20 @@ import {LineChart} from './index'
 import '../styles/Status/metrics.css'
 
 const { Text } = Typography;
+interface Progress {
+    currentValue: any,
+    maxValue: any
+}
 
+interface  Rating {
+    rating: any
+}
 
-const ProgressIndicator = ({ currentValue, maxValue }) => {
+interface Metrics {
+    metricsData: any
+}
+
+const ProgressIndicator : React.FC<Progress> = ({ currentValue, maxValue }) => {
   const percentage = (currentValue / maxValue) * 100;
 
   return (
@@ -28,7 +39,7 @@ const ProgressIndicator = ({ currentValue, maxValue }) => {
   );
 };
 
-const StarRating = ({ rating }) => {
+const StarRating : React.FC<Rating> = ({ rating }) => {
     const totalStars = 4;
     const stars = Array.from({ length: totalStars }, (_, index) => (
         <span
@@ -42,20 +53,20 @@ const StarRating = ({ rating }) => {
     return <div className="star-rating">{stars}</div>;
 };
 
-const Metrics = ({metricsData}) => {
-    const [expandedImprovementKeys, setExpandedImprovementKeys] = useState([]);
-    const [expandedStrengthKeys, setExpandedStrengthKeys] = useState([]);
+const Metrics : React.FC<Metrics> = ({metricsData}) => {
+    const [expandedImprovementKeys, setExpandedImprovementKeys] = useState<any>([]);
+    const [expandedStrengthKeys, setExpandedStrengthKeys] = useState<any>([]);
 
-    const onImprovementRowClick = (record) => {
+    const onImprovementRowClick = (record: any) => {
       const newExpandedKeys = expandedImprovementKeys.includes(record.key)
-          ? expandedImprovementKeys.filter(key => key !== record.key)
+          ? expandedImprovementKeys.filter((key: any) => key !== record.key)
           : [...expandedImprovementKeys, record.key];
       setExpandedImprovementKeys(newExpandedKeys);
   };
 
-  const onStrengthRowClick = (record) => {
+  const onStrengthRowClick = (record: any) => {
       const newExpandedKeys = expandedStrengthKeys.includes(record.key)
-          ? expandedStrengthKeys.filter(key => key !== record.key)
+          ? expandedStrengthKeys.filter((key: any) => key !== record.key)
           : [...expandedStrengthKeys, record.key];
       setExpandedStrengthKeys(newExpandedKeys);
   };
@@ -64,7 +75,7 @@ const Metrics = ({metricsData}) => {
     {
         dataIndex: 'skill',
         key: 'skill',
-        render: (text, record) => (
+        render: (text: any, record:any) => (
             <span onClick={() => onImprovementRowClick(record)} style={{ cursor: 'pointer'}}>
                 {text}
             </span>
@@ -76,7 +87,7 @@ const strength_columns = [
   {
       dataIndex: 'skill',
       key: 'skill',
-      render: (text, record) => (
+      render: (text: any, record: any) => (
           <span onClick={() => onStrengthRowClick(record)} style={{ cursor: 'pointer'}}>
               {text}
           </span>
@@ -84,20 +95,20 @@ const strength_columns = [
   }
 ];
 
-const improvementData = metricsData?.areas_of_improvement?.map((item, index) => ({
+const improvementData = metricsData?.areas_of_improvement?.map((item:any, index:any) => ({
     key: `improvement-${index}`,
     skill: item.skill,
     description: item.description
 })) || [];
 
-const strengthData = metricsData?.strength?.map((item, index) => ({
+const strengthData = metricsData?.strength?.map((item:any, index:any) => ({
     key: `strength-${index}`,
     skill: item.skill,
     description: item.description
 })) || [];
 
 
-    const performanceData = metricsData?.performance.reduce((acc, metric) => {
+    const performanceData = metricsData?.performance.reduce((acc:any, metric:any) => {
         acc[metric.name] = metric.level || metric.term; 
         return acc;
     }, {});
@@ -159,7 +170,7 @@ const strengthData = metricsData?.strength?.map((item, index) => ({
                             if (expanded) {
                                 setExpandedImprovementKeys([...expandedImprovementKeys, record.key]);
                             } else {
-                                setExpandedImprovementKeys(expandedImprovementKeys.filter(key => key !== record.key));
+                                setExpandedImprovementKeys(expandedImprovementKeys.filter((key:any) => key !== record.key));
                             }
                         }}
                     />
@@ -183,7 +194,7 @@ const strengthData = metricsData?.strength?.map((item, index) => ({
                               if (expanded) {
                                   setExpandedStrengthKeys([...expandedStrengthKeys, record.key]);
                               } else {
-                                  setExpandedStrengthKeys(expandedStrengthKeys.filter(key => key !== record.key));
+                                  setExpandedStrengthKeys(expandedStrengthKeys.filter((key:any) => key !== record.key));
                               }
                           }}
                       />

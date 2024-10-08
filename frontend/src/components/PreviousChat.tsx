@@ -10,13 +10,17 @@ import Api from '../Services/Services';
 
 const { Paragraph } = Typography;
 
+interface Content {
+    content: any
+}
+
 const PreviousChat = () => {
-    const {latestsession} = useContext(ProviderContext)
+    const {latestsession} = useContext<any>(ProviderContext)
     const [viewloading, setShow] = useState(false);
     const [previous, setChatHistory] = useState([])
     const [fetch, setFetch] = useState(false)
 
-    const MarkdownContent = ({ content }) => {
+    const MarkdownContent: React.FC<Content> = ({ content }) => {
         const formattedContent = content?.replace(/---/g, ' ');
         return (
             <div className="markdown-content" style={{width: '100%'}}>
@@ -28,8 +32,7 @@ const PreviousChat = () => {
     const fetchChatHistory = async () => {
         if(latestsession !== undefined){
           setShow(true)
-          let job_id = 0;
-          job_id = localStorage.getItem("jobId")
+          let job_id = localStorage.getItem("jobId")
           const data = {
             userId: latestsession?.userId,
             sessionId: latestsession?.sessionId, 
@@ -65,9 +68,9 @@ const PreviousChat = () => {
 
         {fetch &&(
             <div style={{ marginBottom: '2rem' }}>
-              {previous?.map((outerMessage, index) => (
+              {previous?.map((outerMessage:any, index:any) => (
                     <div key={index} style={{ marginBottom: '2rem' }}> 
-                        {outerMessage?.chathistory?.map((innerMessage, innerIndex) => (
+                        {outerMessage?.chathistory?.map((innerMessage:any, innerIndex:any) => (
                             <div className='chat_contain' key={innerIndex}>
                                 {innerMessage?.candidate?.response  && innerMessage.candidate.response !== "null"  && (
                                     <div className='messagecandidate' style={{ backgroundColor: '#ffffff', border: '2px solid #fcf8f8' }}>

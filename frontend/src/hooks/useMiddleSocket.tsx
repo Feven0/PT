@@ -2,20 +2,11 @@ import { useEffect, useState } from 'react';
 import useWebSocket from './useWebSocket';
 import { useStopwatch } from 'react-timer-hook';
 
-interface AnalysisResponse {
-  response: {
-    percentage: string | number | undefined | null;
-  },
-  question: {
-    percentage: string | number | undefined | null;
-  };
-}
-
 
 const useMiddleSocket = () => {
   const [socket, interview, setChatInterview] = useWebSocket(`${import.meta.env.REACT_APP_BACKEND_URL}`);
   const [loading, setLoading] = useState(false);
-  const [latestInterviewResponse, setLatestInterviewResponse] = useState<AnalysisResponse | null>(null);
+  // const [latestInterviewResponse, setLatestInterviewResponse] = useState<AnalysisResponse | null>(null);
   const [isStarted, setIsStarted] = useState(false);  
   const [count, setCount] = useState();
   const { seconds, minutes, start, pause, reset } = useStopwatch({ autoStart: false});
@@ -32,7 +23,7 @@ const useMiddleSocket = () => {
 
   useEffect(() => {
     if (socket) {
-        socket.on('interview chat', (message) => {
+        socket.on('interview chat', (message:any) => {
             setChatInterview((prevMessages: any) => {
               if (!prevMessages.some((m: any) => m.query === message.query)) {
                 return [...prevMessages, ...message];
@@ -40,7 +31,7 @@ const useMiddleSocket = () => {
               return prevMessages;
             });
             
-            setLatestInterviewResponse(message);
+            // setLatestInterviewResponse(message);
               reset(); 
             setLoading(false);
             console.log("count_inter_ques", count === 8)  

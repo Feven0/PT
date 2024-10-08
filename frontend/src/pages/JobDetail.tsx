@@ -10,7 +10,7 @@ const { Content } = Layout;
 const { TabPane } = Tabs;
 
 const JobDetail = () => {
-    const { setStart } = useContext(ProviderContext)
+    const { setStart } = useContext<any>(ProviderContext)
     const { jobId } = useParams()
     const [selectedTab, setSelectedTab] = useState('');
 

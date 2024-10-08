@@ -7,7 +7,7 @@ import '../styles/Navbar/navbar.css'
 const { Text } = Typography;
 
 const Navbar = () => {
-    const {latestsession} = useContext(ProviderContext)
+    const {latestsession} = useContext<any>(ProviderContext)
 
     const menu = (
         <Menu>

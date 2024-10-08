@@ -89,7 +89,7 @@ EOF
 #=========================================
 cat <<EOF > .env
 NODE_ENV=${NODE_ENV}
-VITE_API_URL= https://dev-parrot.10academy.org
+VITE_REACT_APP_BACKEND_URL= https://dev-parrot.10academy.org
 EOF
 
 #=========================================
