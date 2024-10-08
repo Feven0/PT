@@ -5,7 +5,11 @@ import { LiquidAntd, Metrics, RadarChart } from './index';
 const { TabPane } = Tabs;
 const { Panel } = Collapse;
 
-const OverallFeedbackModal = ({metricsData, evaluationData}) => {
+interface Overall {
+    metricsData: any,
+    evaluationData: any
+}
+const OverallFeedbackModal: React.FC<Overall> = ({metricsData, evaluationData}) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const showModal = () => {
         setIsModalVisible(true);
@@ -49,7 +53,7 @@ const OverallFeedbackModal = ({metricsData, evaluationData}) => {
                 <div style={{ maxHeight: '490px', overflowY: 'auto' }}>
                     <Tabs defaultActiveKey="1">
                         <TabPane tab="Evaluation" key="1">
-                            <h1 style={{display: 'flex', justify:'center'}}>
+                            <h1 style={{display: 'flex', justifyContent:'center'}}>
                                 {evaluationData?.message}
                             </h1>
                             <Collapse style={{marginBottom: '1rem'}}>
@@ -62,7 +66,7 @@ const OverallFeedbackModal = ({metricsData, evaluationData}) => {
                             <Collapse>
                                 <Panel header="Recommendations" key="1">
                                     <ul style={{textAlign: 'justify'}}>
-                                        {evaluationData?.recommendation.map((rec, index) => (
+                                        {evaluationData?.recommendation.map((rec:any, index:any) => (
                                             <li key={index}>
                                                 <a href={rec.link} target="_blank" rel="noopener noreferrer">
                                                     {rec.title}

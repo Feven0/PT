@@ -1,7 +1,10 @@
 import { VictoryBar, VictoryChart, VictoryAxis } from 'victory';
+interface Confidence {
+    confidenceData: any
+}
 
-const BarChart = ({ confidenceData }) => {
-    const data = confidenceData.map((item, index) => ({
+const BarChart: React.FC<Confidence> = ({ confidenceData }) => {
+    const data = confidenceData.map((item:any, index:any) => ({
         x: `Interview ${index + 1}`,
         y: item.poor ? 1 : item.good ? 2 : item.excellent ? 3 : 0,
         label: item.poor ? 'Poor' : item.good ? 'Good' : item.excellent ? 'Excellent' : 'Unknown',

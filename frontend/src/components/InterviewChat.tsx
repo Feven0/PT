@@ -13,19 +13,23 @@ import "../styles/InterviewChat/interviewchat.css"
 
 const { Paragraph } = Typography;
 
+interface MarkdownContentProps {
+    content?: string; 
+}
+
 const InterviewChat = () => {
 
     const { handleInterview, interview, loading, seconds, minutes, pause } = useMiddleSocket();
-    const { latestinterviewchat, latestsession, setStart } = useContext(ProviderContext);
-    const [counter, setCounter] = useState(1);
-    const [input, setInput] = useState("");
-    const [dataFromAudio, setDataFromAudio] = useState(false);
-    const [start, setClickStart] = useState(false);
-    const [lastTimerValue, setLastTimerValue] = useState('00:00'); 
-    const [clarifications, setClarifications] = useState({}); 
-    const [load, setLoading] = useState({}); 
-    const [clickCount, setClickCount] = useState({}); 
-    const [error, setError] = useState('');
+    const { latestsession, setStart} = useContext<any>(ProviderContext);
+    const [counter, setCounter] = useState<any>(1);
+    const [input, setInput] = useState<any>("");
+    const [dataFromAudio, setDataFromAudio] = useState<any>(false);
+    const [start, setClickStart] = useState<any>(false);
+    const [lastTimerValue, setLastTimerValue] = useState<any>('00:00'); 
+    const [clarifications, setClarifications] = useState<any>({}); 
+    const [load, setLoading] = useState<any>({}); 
+    const [clickCount, setClickCount] = useState<any>({}); 
+    // const [error, setError] = useState<any>('');
     const charLimit = 1200; 
 
     const [isHovered, setIsHovered] = useState(false);
@@ -42,36 +46,32 @@ const InterviewChat = () => {
         borderRadius: '5px 0 5px 0'
     };
 
-    const clarify_question = async (question) => {
-        setClickCount((prev) => ({
+    const clarify_question = async (question: any) => {
+        setClickCount((prev: any) => ({
             ...prev,
             [question]: (prev[question] || 0) + 1,
         }));
 
         if ((clickCount[question] || 0) >= 2) return;
 
-        setLoading((prev) => ({ ...prev, [question]: true })); 
+        setLoading((prev: any) => ({ ...prev, [question]: true })); 
         const data = { question };
         try {
             const response = await Api.clarify(data);
-            setClarifications((prev) => ({
+            setClarifications((prev: any) => ({
                 ...prev,
                 [question]: response?.data?.clarification,
             }));
         } catch (error) {
             console.error("Error fetching clarification:", error);
         } finally {
-            setLoading((prev) => ({ ...prev, [question]: false })); 
+            setLoading((prev: any) => ({ ...prev, [question]: false })); 
         }
     };   
 
     let previous_question = "";
     let timerValue: any;
     
-    useEffect(() => {
-        setStart(false);
-    }, [setStart]);
-
 
     const onSendMessage = (timerValue: any) => {
         const user_session = latestsession;
@@ -89,7 +89,7 @@ const InterviewChat = () => {
         setCounter(counter < 9 ? counter + 1 : 1);
     };
 
-    const handler = (event) => {
+    const handler = () => {
         // if (event.keyCode === 13) {  
             timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             onSendMessage(timerValue);
@@ -112,15 +112,15 @@ const InterviewChat = () => {
         setCounter(counter < 9 ? counter + 1 : 1);
     }  
 
-    const handleDataFromAudio = (audioTranscript) => {
-        setInput((prevInput) => prevInput + ' ' + audioTranscript);
+    const handleDataFromAudio = (audioTranscript: any) => {
+        setInput((prevInput: any) => prevInput + ' ' + audioTranscript);
     };
 
-    function handleDataAudio(data) {
+    function handleDataAudio(data: any) {
         setDataFromAudio(data);
     }
 
-    const MarkdownContent = ({ content }) => {
+    const MarkdownContent: React.FC<MarkdownContentProps> =  ({ content }) => {
         const formattedContent = content?.replace(/---/g, ' ');
         return (
             <div className="markdown-content" style={{width: '100%'}}>
@@ -129,17 +129,18 @@ const InterviewChat = () => {
         );
     };
 
-    const handleChange = (e) => {
+    const handleChange = (e: any) => {
         const newInput = e.target.value;
   
         if (newInput.length <= charLimit) {
             setInput(newInput);
-            setError('');
-        } else {
-            setError(`Character limit of ${charLimit} exceeded.`);
-        }
+            // setError('');
+        } 
     };
 
+    useEffect(() => {
+        setStart(false);
+    }, [setStart]);
    
     return (
         <>
@@ -147,7 +148,7 @@ const InterviewChat = () => {
                 <Card className="chat-box" style={{ height: '34rem', width: '60rem', overflowY: 'auto' }}>
                 <PreviousChat/>
                 
-                {interview?.map((message, index) => (
+                {interview?.map((message: any, index: any) => (
                     <div className='chat_contain' key={index}>
                         {message?.candidate?.response && (
                             <div className='messagecandidate' style={{ backgroundColor: '#ffffff', border: '1px solid #fcf8f8' }}>

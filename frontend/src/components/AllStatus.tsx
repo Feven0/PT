@@ -4,11 +4,10 @@ import { BarChart, LineChartOverall, RadarChart, SankeyChart, SankeyTime, Loadin
 import Api from '../Services/Services';
 import { ProviderContext } from '../context/context';
 
-
 const AllStatus = () => {
-  const {latestsession} = useContext(ProviderContext);
+  const {latestsession} = useContext<any>(ProviderContext);
   const [refresh, setRefresh] = useState(0);
-  const [overall, setOverall] = useState({});
+  const [overall, setOverall] = useState<any>(null); 
 
 
     const fetchOverall = async() => {
@@ -54,9 +53,10 @@ const AllStatus = () => {
       setCurrentIndex((prevIndex) => (prevIndex - 1 + charts.length) % charts.length);
     };
 
+
     return (
       <>
-          {(overall == undefined  || overall !== undefined || overall?.error !== undefined) ?
+          {(overall == undefined  || overall !== undefined || (overall && overall.error !== undefined)) ?
             <div>
               <LoadingIndicator message={'Fetching Metrics...'}/>
             </div>
@@ -95,9 +95,9 @@ const AllStatus = () => {
                               <h3 style={{color: '#d1cccb'}}>{charts[currentIndex].title}</h3>
                             </div>
                             <div style={{ marginTop: '1rem', display: 'flex', cursor: 'pointer' }}>
-                                  <p onClick={prevChart} disabled={currentIndex === 0}>
+                                  <button onClick={prevChart} disabled={currentIndex === 0}>
                                       &lt;
-                                  </p>
+                                  </button>
                                   <p onClick={nextChart} style={{ marginLeft: '1rem' }}>
                                       &gt;
                                   </p>

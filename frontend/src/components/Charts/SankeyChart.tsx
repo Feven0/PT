@@ -1,6 +1,9 @@
 import { Sankey } from '@ant-design/plots';
 
-const SankeyChart = ({communication}) => {
+interface Communication {
+  communication: any
+}
+const SankeyChart : React.FC<Communication> = ({communication}) => {
   const config = {
     data: {
       value: {
