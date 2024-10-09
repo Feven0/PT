@@ -69,9 +69,9 @@ ENV PATH /app/node_modules/bin:$PATH
 EOF
 
 cat <<EOF >> Dockerfile
-COPY ./package*.json /app/
+COPY ./package.json /app/
 COPY ./tsconfig.json /app/
-
+COPY ./vite.config.ts /app/
 
 RUN npm install 
 RUN npm install -g serve
@@ -80,7 +80,7 @@ COPY . /app
 RUN npm run build
 
 EXPOSE 3500
-CMD ["serve", "-s", "build"]
+CMD ["serve", "-s", "dist", "-l", "3500"]
 
 EOF
 
@@ -89,7 +89,8 @@ EOF
 #=========================================
 cat <<EOF > .env
 NODE_ENV=${NODE_ENV}
- VITE_REACT_APP_BACKEND_URL=https://dev-frog-ipersona.10academy.org
+VITE_REACT_APP_BACKEND_URL=https://dev-frog-ipersona.10academy.org
+VITE_REACT_APP_SOCKET_URL=https://dev-frog-ipersona.10academy.org:6789
 EOF
 
 #=========================================
@@ -128,12 +129,21 @@ EOF
 echo "******Done!******"
 
 
-
 echo "******Building Docker Image: $name******"
 docker-compose down || echo "$name instance is not running"
 docker rm $(docker ps -a -q)
 
 #bash env_setup.sh
-docker-compose build 
-docker-compose up --force-recreate -d 
-docker ps
+docker-compose build
+docker-compose up --force-recreate -d
+
+
+if [ $? -ne 0 ]; then
+    echo "Failed to build Docker Image: $name"
+    exit 1
+else
+  docker ps
+  echo "----- Logs so far ..-----"
+  echo "docker logs -f $(docker ps | head -2 | tail -1 | cut -d " " -f 1)"
+  docker logs -f $(docker ps | head -2 | tail -1 | cut -d " " -f 1)
+fi

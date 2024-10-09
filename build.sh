@@ -101,8 +101,8 @@ elif [[ $branch_name == "dev" ]]; then
     name="ipersona"
     port=4500
     tport=4500
-    #make_general_dockerfile $port $pyreq
-    make_gunicorn_dockerfile $port $pyreq    
+    make_general_dockerfile $port $pyreq
+    #make_gunicorn_dockerfile $port $pyreq    
 else
     echo "Using Dockerfile for General ... "
     name="${branch_name}ipersona"
