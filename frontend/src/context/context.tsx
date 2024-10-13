@@ -20,7 +20,9 @@ export const PersonaContext: React.FC<Children> = ({ children }) => {
     const [refresh, setRefresh] = useState(0);
     const [start, setStart] = useState<boolean>(true); 
     console.log(start)
-    
+  
+
+
     const sessionData = async () => {
         const userId = localStorage.getItem("userId");
         const response = await Api.fetchSession({ userId });
@@ -30,14 +32,14 @@ export const PersonaContext: React.FC<Children> = ({ children }) => {
     };
 
     useEffect(() => {
-        // if (start) {   
+        if (start) {   
             sessionData();
             const intervalId = setInterval(() => {
                 setRefresh((prev) => prev + 1);
             }, 5000);
 
             return () => clearInterval(intervalId);
-        // }
+        }
     }, [refresh]);
 
     return (

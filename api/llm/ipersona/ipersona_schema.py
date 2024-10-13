@@ -208,7 +208,7 @@ async def fetch_session(userId):
         ).with_where({
             "path": ["userId"],
             "operator": "Equal",
-            "valueString": userId 
+            "valueString": str(userId)
         }).with_additional("id").do()
         
         length = len(sessions_with_user_id['data']['Get']['IPersonaSession'])
