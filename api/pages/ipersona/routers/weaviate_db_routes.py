@@ -29,19 +29,19 @@ async def fetch_session(recieved: pemodel.SessionRequestRecieved):
     userId = recieved.userId   
     try:
         user_data = await db.fetch_session(userId)     
-        if 'generated_questions' in user_data["latest_data"]:
-            question_data = user_data["latest_data"]['generated_questions']
-            if question_data:
-                try:
-                    user_data["latest_data"]['generated_questions'] = ast.literal_eval(question_data)
-                except (ValueError, SyntaxError) as e:
-                    print(f"Error parsing generated_questions: {e}")
+        # if 'generated_questions' in user_data["latest_data"]:
+        #     question_data = user_data["latest_data"]['generated_questions']
+        #     if question_data:
+        #         try:
+        #             user_data["latest_data"]['generated_questions'] = ast.literal_eval(question_data)
+        #         except (ValueError, SyntaxError) as e:
+        #             print(f"Error parsing generated_questions: {e}")
                      
-        data = {
-            "all_user_data": user_data["all_data"],
-            "latest_user_data": user_data["latest_data"]
-        } 
-        return data
+        # data = {
+        #     "all_user_data": user_data["all_data"],
+        #     "latest_user_data": user_data["latest_data"]
+        # } 
+        return user_data
     
     except Exception as e:
         print(f"Error processing files: {e}")

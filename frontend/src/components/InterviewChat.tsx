@@ -2,14 +2,16 @@ import { useState, useEffect, useContext } from 'react';
 import { Card, Input, Button, Spin, Typography } from 'antd';
 import fade from '../assets/fade-circles.svg';
 import useMiddleSocket from '../hooks/useMiddleSocket';
+import { useParams } from 'react-router-dom';
 import hr from '../assets/hr.jpg';
 import { CgProfile } from 'react-icons/cg'
 import ReactMarkdown from 'react-markdown';
 import { ProviderContext } from '../context/context';
 import {AudioRecorder, RealTimeEvaluation, OverallFeedbackModal, PreviousChat, LoadingSpinner} from './index'
-import Api
-from '../Services/Services';
+import Api from '../Services/Services';
 import "../styles/InterviewChat/interviewchat.css"
+import users from '../assets/mock-data/user_profiles.json';
+import jobs from '../assets/mock-data/job_profile.json';
 
 const { Paragraph } = Typography;
 
@@ -18,8 +20,8 @@ interface MarkdownContentProps {
 }
 
 const InterviewChat = () => {
-
-    const { handleInterview, interview, loading, seconds, minutes, pause } = useMiddleSocket();
+    const {userId, jobId} = useParams()
+    const { handleInterview, interview, loading, seconds, minutes, pause, setChatInterview } = useMiddleSocket();
     const { latestsession, setStart} = useContext<any>(ProviderContext);
     const [counter, setCounter] = useState<any>(1);
     const [input, setInput] = useState<any>("");
@@ -29,7 +31,13 @@ const InterviewChat = () => {
     const [clarifications, setClarifications] = useState<any>({}); 
     const [load, setLoading] = useState<any>({}); 
     const [clickCount, setClickCount] = useState<any>({}); 
-    // const [error, setError] = useState<any>('');
+    const [sessions, setSession] = useState<any>([]);
+    const userSession = JSON.parse(localStorage.getItem("userSession"));
+    const sessionId = userSession?.latest_user_data?._additional?.id;
+    const latestudata = userSession?.latest_user_data;
+    const [viewloading, setShow] = useState(false);
+    const [loadingSessionId, setLoadingSessionId] = useState(null);
+
     const charLimit = 1200; 
     console.log("chat-history", interview)
     const [isHovered, setIsHovered] = useState(false);
@@ -74,9 +82,8 @@ const InterviewChat = () => {
     
 
     const onSendMessage = (timerValue: any) => {
-        const user_session = latestsession;
+        const user_session = latestudata;
         previous_question = interview[interview?.length-1]?.content?.response?.question
-
         handleInterview({ 
             input, 
             interview, 
@@ -98,18 +105,33 @@ const InterviewChat = () => {
         // }
     };
 
-    const startInterview = () => {
-        setClickStart(true)
+    const startInterview = async() => {
+        const filteredJob = jobs.filter(match => match.job_profile_id === parseInt(jobId as any));
+        const filteredUser = users.filter(match => match?.user_profile_id === parseInt(userId as any));
 
-        handleInterview({ 
-            input: input, 
-            interview: interview, 
-            user_session: latestsession,
-            counter: counter,
-            timerValue: lastTimerValue,
-            previous_question: previous_question
-        });
-        setCounter(counter < 9 ? counter + 1 : 1);
+        const data = {
+            jobId: jobId,
+            userId: userId,
+            name: filteredUser[0]?.name,
+            cvJson: filteredUser[0],
+            jbJson: filteredJob[0]
+        };
+        const response = await Api.sessionCreate(data);
+        localStorage.setItem("userSession", JSON.stringify(response?.data))
+
+        // if(response.data !== undefined){
+            setClickStart(true)
+            handleInterview({ 
+                input: input, 
+                interview: interview, 
+                user_session: latestudata,
+                counter: counter,
+                timerValue: lastTimerValue,
+                previous_question: previous_question
+            });
+            setCounter(counter < 9 ? counter + 1 : 1);
+
+        // }
     }  
 
     const handleDataFromAudio = (audioTranscript: any) => {
@@ -138,78 +160,141 @@ const InterviewChat = () => {
         } 
     };
 
+    const fetchChatHistory = async (sessionId) => {
+        console.log("sessionID", sessionId)
+        setLoadingSessionId(sessionId);  
+        const data = {
+        sessionId: sessionId, 
+        }
+        const response = await Api.fetchChatHistory(data)
+        setChatInterview(response?.data[0]?.chathistory)
+        setLoadingSessionId(null);
+    }
+
+
+    const fetchSession = async() =>{
+        const userId= localStorage.getItem("userId")
+        const response = await Api.fetchSession({userId})
+        setSession(response.data?.all_user_data)
+    }
+
     useEffect(() => {
         setStart(false);
+        fetchSession()
     }, [setStart]);
    
     return (
         <>
             <div className="interview-chat-container">
-                <Card className="chat-box" style={{ height: '34rem', width: '60rem', overflowY: 'auto' }}>
-                <PreviousChat/>
-                
-                {interview?.map((message: any, index: any) => (
-                    <div className='chat_contain' key={index}>
-                        {message?.candidate?.response && (
-                            <div className='messagecandidate' style={{ backgroundColor: '#ffffff', border: '1px solid #fcf8f8' }}>
-                                <Paragraph style={{ margin: 0 }}>
-                                    <CgProfile size={40} />
-                                    <p className="message-text" style={{ fontSize: '1rem', lineHeight: '2rem'}}>    
-                                        {message?.candidate?.response}
-                                    </p>
-                                </Paragraph>
-                            </div>
-                        )}
+                <div 
+                style={{ 
+                    display: 'flex',
+                    flexDirection: 'column-reverse', 
+                    width:'10rem', 
+                    gap:'1rem',   
+                    maxHeight: '500px',  
+                    overflowY: 'scroll',   
+                    padding: '0.5rem',
+                    marginTop: '3rem',
+                    scrollbarWidth: 'none',  
+                    msOverflowStyle: 'none', 
+                    WebkitOverflowScrolling: 'touch',  
+                    cursor: 'pointer'
+                    }}>
+               {sessions?.map((session, index) => (
+                    <div style={{ display: 'flex', gap: '1rem' }} key={index} onClick={() => fetchChatHistory(session?._additional?.id)}>
+                    <div className="session">
+                        {new Date(session?.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        })}
+                        {' at '}
+                        {new Date(session?.createdAt).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        hour12: true,
+                        })}
+                    </div>
 
-                        {(message?.assistant?.realtime_evaluation !== "null" && message?.assistant?.realtime_evaluation !== undefined) && (
-                            <RealTimeEvaluation
-                                evaluation={message.assistant.realtime_evaluation}
-                            />
-                        )}
-
-                        {(message?.assistant?.response !== "null" && message?.assistant?.response !== undefined) && (
-                            <div className='messageassistant'>
-                                <img src={hr} alt="" className='profile-image' />
-                                <Paragraph style={{ margin: 0, textAlign: 'justify', color: '#606060', fontSize: '1rem' }}>
-                                    {/* <MarkdownContent content={message?.assistant?.response?.start_message} /> */}
-                                        <div>
-                                            time limit: {message?.assistant?.response?.time_limit}
-                                        </div>
-                                        <div style={{color:'black'}}>
-                                            <MarkdownContent content={message?.assistant?.response?.question} />
-                                        </div>
-                                        
-                                        <MarkdownContent content={message?.assistant?.response?.end_message} />
-                                    
-                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                        <div
-                                            onClick={() => clarify_question(message?.assistant?.response?.question)}
-                                            className='clarify'
-                                            style={{ pointerEvents: (clickCount[message?.assistant?.response?.question] || 0) >= 2 ? 'none' : 'auto', opacity: (clickCount[message?.assistant?.response?.question] || 0) >= 2 ? 0.5 : 1 }}>
-                                            Clarify
-                                        </div>
-                                        {load[message?.assistant?.response?.question] && <LoadingSpinner style={{ marginLeft: '5px' }} />}
-                                    </div>
-
-                                    {clarifications[message?.assistant?.response?.question] && (
-                                        <div className='clarification'>
-                                            <MarkdownContent content={clarifications[message?.assistant?.response?.question]} />
-                                        </div>
-                                    )}
-                                </Paragraph>
-                            </div>
-                        )}
+                    {loadingSessionId === session.id && <LoadingSpinner style={{ marginLeft: '5px' }} />}
                     </div>
                 ))}
+                </div>
 
-                {(interview?.[interview.length - 1]?.assistant?.overall_evaluation !== "null" && interview?.[interview.length - 1]?.assistant?.overall_evaluation !== undefined) && (
-                    <OverallFeedbackModal
-                     metricsData={interview?.[interview.length - 1]?.assistant?.metrics}
-                     evaluationData={interview?.[interview.length - 1]?.assistant?.overall_evaluation} 
-                    />
-                )}
+                <Card className="chat-box" style={{ height: '34rem', width: '60rem', overflowY: 'auto' }}>
+                    {/* <PreviousChat/> */}
+                    
+                    {interview?.map((message: any, index: any) => (
+                        <div className='chat_contain' key={index}>
+                            {(message?.user_type == 'candidate' && message?.content?.response) && (
+                                <div className='messagecandidate' style={{ backgroundColor: '#ffffff', border: '1px solid #fcf8f8' }}>
+                                    <Paragraph style={{ margin: 0 }}>
+                                        <CgProfile size={40} />
+                                        <p className="message-text" style={{ fontSize: '1rem', lineHeight: '2rem'}}>    
+                                            {message?.content?.response}
+                                        </p>
+                                    </Paragraph>
+                                </div>
+                            )}
 
-                {loading && <Spin indicator={<img src={fade} alt="" className='h-10' />} />}
+                            {(message?.user_type == 'assistant' && (
+                                <div>
+                                    {(message?.content?.realtime_evaluation !== "null" && message?.content?.realtime_evaluation !== undefined) && (
+                                        <RealTimeEvaluation
+                                            evaluation={message.content.realtime_evaluation}
+                                        />
+                                    )}
+                                </div>
+                            ))}
+
+                            {(message?.user_type == 'assistant' && (
+                                <div>
+                                    {(message?.content?.response !== "null" && message?.content?.response !== undefined) && (
+                                        <div className='messageassistant'>
+                                            <img src={hr} alt="" className='profile-image' />
+                                            <Paragraph style={{ margin: 0, textAlign: 'justify', color: '#606060', fontSize: '1rem' }}>
+                                                {/* <MarkdownContent content={message?.assistant?.response?.start_message} /> */}
+                                                    <div>
+                                                        time limit: {message?.content?.response?.time_limit}
+                                                    </div>
+                                                    <div style={{color:'black'}}>
+                                                        <MarkdownContent content={message?.content?.response?.question} />
+                                                    </div>
+                                                    
+                                                    <MarkdownContent content={message?.content?.response?.end_message} />
+                                                
+                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                    <div
+                                                        onClick={() => clarify_question(message?.content?.response?.question)}
+                                                        className='clarify'
+                                                        style={{ pointerEvents: (clickCount[message?.content?.response?.question] || 0) >= 2 ? 'none' : 'auto', opacity: (clickCount[message?.content?.response?.question] || 0) >= 2 ? 0.5 : 1 }}>
+                                                        Clarify
+                                                    </div>
+                                                    {load[message?.content?.response?.question] && <LoadingSpinner style={{ marginLeft: '5px' }} />}
+                                                </div>
+
+                                                {clarifications[message?.content?.response?.question] && (
+                                                    <div className='clarification'>
+                                                        <MarkdownContent content={clarifications[message?.content?.response?.question]} />
+                                                    </div>
+                                                )}
+                                            </Paragraph>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+
+                    {(interview?.[interview.length - 1]?.content?.interview_evaluation !== "null" && interview?.[interview.length - 1]?.content?.interview_evaluation !== undefined) && (
+                        <OverallFeedbackModal
+                        metricsData={interview?.[interview.length - 1]?.content?.interview_evaluation_metrics}
+                        evaluationData={interview?.[interview.length - 1]?.content?.interview_evaluation} 
+                        />
+                    )}
+
+                    {loading && <Spin indicator={<img src={fade} alt="" className='h-10' />} />}
                 </Card>
                 
                 <div className='chat-timer-box'>

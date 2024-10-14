@@ -1,4 +1,4 @@
-import weaviate, os
+import weaviate, os, ast
 from dotenv import dotenv_values
 import datetime
 from dotenv import load_dotenv
@@ -16,6 +16,10 @@ schema = {
         {
             "class": "iPersonaSession",
             "properties": [
+                {
+                    "name": "alluser", 
+                    "dataType": ["string"]
+                },
                 {
                     "name": "userId", 
                     "dataType": ["string"]
@@ -119,7 +123,7 @@ async def create_schema(data):
         if not persona_session_exists and not persona_interview_history_exists and not persona_interview_observer_exists:
             client.schema.create(schema)  
             uploaded_uuid = await Add_session_schema_data(data)
-            print("Classes 'iPersonaSession' and 'iPersonaSessionJob' created successfully.")
+            print("All Classes created successfully.")
         else:
             print("Classes already exist. No new classes created.")
             uploaded_uuid = await Add_session_schema_data(data)
@@ -134,7 +138,8 @@ async def create_schema(data):
         
 async def Add_session_schema_data(data):
     try:
-        ipersona_data = {
+        ipersona_session_data = {
+        "alluser": data['alluser'], 
         "userId": data['userId'], 
         "jobId": data['jobId'], 
         "username": data['username'],
@@ -145,45 +150,79 @@ async def Add_session_schema_data(data):
         }
 
         ipersona_upload = client.data_object.create(
-            data_object=ipersona_data,
+            data_object=ipersona_session_data,
             class_name="iPersonaSession"
         )
-        
-        return ipersona_upload
+        user_session = await fetch_session(data['userId'])
+
+        return user_session
+    except Exception as e:
+        return f'Error Adding Session: {str(e)}' 
+    
+    
+async def Add_Interview_History(sessionId, chathistory):
+    print("######add interview#####")
+    print(chathistory)
+    session_chathistory = await fetch_chat_history(sessionId)
+    try:
+        if len(session_chathistory) == 0:
+            print("session inteview does not exist")
+            ipersona_chat_data = {
+            "sessionId": sessionId, 
+            "chathistory": str(chathistory),
+            "createdAt": get_current_time(),
+            "updatedAt": get_current_time()
+            }
+
+            ipersona_upload_history = client.data_object.create(
+                data_object=ipersona_chat_data,
+                class_name="iPersonaMessages"
+            )
+            print("session interview created", ipersona_upload_history)
+            return ipersona_upload_history
+        else:
+            print("session interview exist")
+            session_chathistory[0]['chathistory'].extend(chathistory) 
+
+            data = {
+                "sessionId": session_chathistory[0]['_additional']['id'],
+                "chathistory": session_chathistory[0]['chathistory']
+            }
+            updated = await update_ipersona_data_new(data)     
+            print("updated!", updated)
+            return updated
+
     except Exception as e:
         return f'Error: {str(e)}' 
     
-    
-async def Add_Interview_History(data):
+async def Add_Interview_Observer(sessionId, interview_evaluation, interview_evaluation_metrics):
     try:
-        ipersona_chat_data = {
-        "userId": data['userId'], 
-        "sessionId": data['sessionId'], 
-        "jobId": data['jobId'],
-        "chathistory": str(data['chathistory']),
-        "createdAt": get_current_time(),
-        "updatedAt": get_current_time()
+        ipersona_chat_observer = {
+            "sessionId": sessionId, 
+            "interview_evaluation": str(interview_evaluation),
+            "interview_evaluation_metrics": str(interview_evaluation_metrics),
+            "createdAt": get_current_time(),
+            "updatedAt": get_current_time()
         }
 
         ipersona_upload_history = client.data_object.create(
-            data_object=ipersona_chat_data,
-            class_name="iPersonaMessages"
+            data_object=ipersona_chat_observer,
+            class_name="iPersonaObserver"
         )
-        
+
         return ipersona_upload_history
     except Exception as e:
-        return f'Error: {str(e)}' 
+        return f'Error: {str(e)}'
 
 
-async def update_ipersona_data_new(data, fields_to_update):    
-    print("Updating data for ID:", data['id'])
+async def update_ipersona_data_new(data):  
     update_data = {}
     
-    if 'chathistory' in fields_to_update:
+    if 'chathistory' in data:
         update_data['chathistory'] = str(data.get('chathistory', ''))    
     try:
         result = client.data_object.update(
-            uuid=data['id'],
+            uuid=data['sessionId'],
             data_object=update_data,
             class_name='iPersonaMessages'
         )
@@ -200,14 +239,13 @@ async def fetch_session(userId):
         sessions_with_user_id = client.query.get(
             class_name="iPersonaSession",
             properties=[
+                "alluser",
                 "userId",
-                "sessionId",                
-                "username",
-                "user_profile",
                 "jobId",
-                "job_desc",
+                "username",
                 "persona",
-                "generated_questions"
+                "generated_questions",
+                "createdAt"
             ] 
         ).with_where({
             "path": ["userId"],
@@ -218,16 +256,29 @@ async def fetch_session(userId):
         length = len(sessions_with_user_id['data']['Get']['IPersonaSession'])
         index = length - 1
         result = sessions_with_user_id['data']['Get']['IPersonaSession'][index]
-        data= {
+        user_data= {
             "all_data": sessions_with_user_id['data']['Get']['IPersonaSession'],
             "latest_data": result
         }
+        
+        if 'generated_questions' in user_data["latest_data"]:
+            question_data = user_data["latest_data"]['generated_questions']
+            if question_data:
+                try:
+                    user_data["latest_data"]['generated_questions'] = ast.literal_eval(question_data)
+                except (ValueError, SyntaxError) as e:
+                    print(f"Error parsing generated_questions: {e}")
+                     
+        data = {
+            "all_user_data": user_data["all_data"],
+            "latest_user_data": user_data["latest_data"]
+        } 
         return data
     except Exception as e:
         print("Error fetching Sessions:", e)
         
 
-async def fetch_chat_history(userId, sessionId, jobId):
+async def fetch_chat_history(sessionId):
     try:
         job_with_session_id = client.query.get(
             class_name="iPersonaMessages",
@@ -238,27 +289,26 @@ async def fetch_chat_history(userId, sessionId, jobId):
             "operator": "And", 
             "operands": [
                 {
-                    "path": ["userId"],
-                    "operator": "Equal",
-                    "valueString": userId
-                },
-                {
                     "path": ["sessionId"],
                     "operator": "Equal",
                     "valueString": sessionId
-                },
-                {
-                    "path": ["jobId"],
-                    "operator": "Equal",
-                    "valueString": jobId
                 }
             ]
         }).with_additional("id").do()
         
-        result = job_with_session_id['data']['Get']['iPersonaMessages']
-
-        return result
+        session_chathistory = job_with_session_id['data']['Get']['IPersonaMessages']
+        if isinstance(session_chathistory, list):
+            for entry in session_chathistory:
+                if 'chathistory' in entry:
+                    chathistory_data = entry['chathistory']
+                    if isinstance(chathistory_data, str) and chathistory_data:  
+                        try:
+                            entry['chathistory'] = ast.literal_eval(chathistory_data)
+                        except (ValueError, SyntaxError) as e:
+                            print(f"Error parsing chathistory for entry {entry}: {e}")
+        return session_chathistory
+    
     except Exception as e:
-        print("Error fetching Sessions:", e)
+        print("Error fetching Sessions chats:", e)
         
  

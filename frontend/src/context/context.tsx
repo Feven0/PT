@@ -22,17 +22,17 @@ export const PersonaContext = ({ children }) => {
 
     
     
-    useEffect(() => {
-      // if (start) {        
-        sessionData();
-        const intervalId = setInterval(() => {
-          setRefresh((prev) => prev + 1);
-        }, 5000);
+    // useEffect(() => {
+    //   // if (start) {        
+    //     sessionData();
+    //     const intervalId = setInterval(() => {
+    //       setRefresh((prev) => prev + 1);
+    //     }, 5000);
   
-        return () => clearInterval(intervalId); 
-      // }
-      //start, latestsession
-    },[refresh]);
+    //     return () => clearInterval(intervalId); 
+    //   // }
+    //   //start, latestsession
+    // },[refresh]);
     
       return (
         <ProviderContext.Provider

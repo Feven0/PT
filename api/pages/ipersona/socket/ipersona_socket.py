@@ -1,5 +1,6 @@
 import socketio, ast, time
 import api.modules.ipersona_parrot as util
+import api.llm.ipersona.ipersona_schema as db
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
 socket_app = socketio.ASGIApp(sio)
 
@@ -21,11 +22,25 @@ async def disconnect(sid):
    
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
-    print("interview_data", data["previous_question"], data['user_session']['jobId'])
+    print("interview_session-data", data['user_session']['_additional']['id'], data['user_session']['jobId'])
     try:
         start_time = time.time()
-        response = await util.generate_interview_question(data)
+        sessionId = data['user_session']['_additional']['id']           
 
+        if(data['response']):
+            chathistory = [{
+                "user_type": "candidate",
+                "content_type": "answer",
+                "complete": False,
+                "content": {
+                    "response": data['response'],
+                    "time_taken": data['time_taken'],
+                    "realtime_evaluation": "null"
+                }
+                }]
+            await db.Add_Interview_History(sessionId, chathistory)
+
+        response = await util.generate_interview_question(data)
         # message = [
         #         {   
         #             "candidate": {
@@ -43,10 +58,10 @@ async def interview_endpoint(sid, data):
         #         }
         #     ]
         
-        assistant_next_question = None if response.get("interview") is None else response["interview"].get("interview_question")
-        realtime_evaluation = None if response.get("realtime") is None else response["realtime"].get("realtime_evaluation")
-        interview_evaluation = None if response.get("overall") is None else response["overall"].get("overall_evaluation")
-        interview_evaluation_metrics = None if response.get("metrics") is None else response["metrics"].get("evaluation_metrics")
+        assistant_next_question = "null" if response.get("interview") is None else response["interview"].get("interview_question")
+        realtime_evaluation = "null" if response.get("realtime") is None else response["realtime"].get("realtime_evaluation")
+        interview_evaluation = "null" if response.get("overall") is None else response["overall"].get("overall_evaluation")
+        interview_evaluation_metrics = "null" if response.get("metrics") is None else response["metrics"].get("evaluation_metrics")
 
         if realtime_evaluation is not None:
             content_type = "question_feedback"
@@ -64,15 +79,21 @@ async def interview_endpoint(sid, data):
                 "content_type": content_type,
                 "complete": complete,
                 "content": {
-                    "time_taken": None,
+                    "time_taken": "null",
                     "response": assistant_next_question,
                     "realtime_evaluation": realtime_evaluation,
-                    "interview_evaluation": interview_evaluation,
-                    "interview_evaluation_metrics": interview_evaluation_metrics,
+                    # "interview_evaluation": interview_evaluation,
+                    # "interview_evaluation_metrics": interview_evaluation_metrics
                 }
             }
         ]
         
+        if data['question_counter'] < 9:
+            await db.Add_Interview_History(sessionId, message)
+        else:            
+            await db.Add_Interview_History(sessionId, message)
+            await db.Add_Interview_Observer(sessionId, interview_evaluation, interview_evaluation_metrics)
+
         await sio.emit("interview chat", message, room=sid) 
 
      

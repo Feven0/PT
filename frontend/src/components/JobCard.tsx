@@ -16,7 +16,7 @@ const truncateSummary = (summary, wordLimit) => {
 };
 
 const JobCard = ({ item, matchDegree }) => {
-  const {latestsession} = useContext(ProviderContext)
+  const { latestsession } = useContext(ProviderContext)
   const { userId } = useParams()
   const [view, setView] = useState(true)
   const [loading, setLoading] = useState(false);
@@ -57,23 +57,23 @@ const JobCard = ({ item, matchDegree }) => {
 
       <Flex justify='space-between'>
           <Row style={{ marginTop: '2px' }}>
-            {sessionCreated || 
-              (parseInt(latestsession?.userId) === parseInt(userId) && (parseInt(latestsession?.jobId) === item?.job_profile_id)) ? (
+            {/* {sessionCreated || 
+              (parseInt(latestsession?.userId) === parseInt(userId as any) && (parseInt(latestsession?.jobId) === item?.job_profile_id)) ? ( */}
               <a className='link' href={`/job_detail/${userId}/${item.job_profile_id}`}>
                 <Button className='job-btn' style={{ marginTop: '5px' }}>
                   Go
                 </Button>
               </a>
-            ) : (
-              <Button 
-                className='job-btn' 
-                style={{ marginTop: '5px' }}
-                onClick={() => session_create(item.job_profile_id)}
-                disabled={loading}
-              >
-                {loading ? 'wait...' : 'Start'}
-              </Button>
-            )}
+            {/* // ) : (
+            //   <Button 
+            //     className='job-btn' 
+            //     style={{ marginTop: '5px' }}
+            //     onClick={() => session_create(item.job_profile_id)}
+            //     disabled={loading}
+            //   >
+            //     {loading ? 'wait...' : 'Start'}
+            //   </Button>
+            // )} */}
           </Row>
 
           <Row style={{ marginTop: '5px' }}>

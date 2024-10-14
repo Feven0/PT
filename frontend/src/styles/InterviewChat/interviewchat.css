@@ -58,7 +58,15 @@
 .interview-chat-container {
     position: relative;    
     display: flex;
-    margin: 0px 10px 0px 160px;
+    margin: 0px 10px 0px 60px;
+}
+
+.session {
+    padding: 0.5rem;
+}
+
+.session:hover {
+    background-color: #fc7e68;
 }
 
 .btn-hide {

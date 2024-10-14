@@ -13,7 +13,7 @@ interface AnalysisResponse {
 
 
 const useMiddleSocket = () => {
-  const [socket, interview, setChatInterview] = useWebSocket(`${import.meta.env.REACT_APP_BACKEND_URL}`);
+  const [socket, interview, setChatInterview] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
   const [loading, setLoading] = useState(false);
   const [latestInterviewResponse, setLatestInterviewResponse] = useState<AnalysisResponse | null>(null);
   const [isStarted, setIsStarted] = useState(false);  
@@ -53,6 +53,18 @@ const useMiddleSocket = () => {
 
 
   const handleInterview = async (data: any) => {
+    console.log("jj", data.input)
+    const chat = [{
+      "user_type": "candidate",
+      "content_type": "answer",
+      "complete": false,
+      "content": {
+          "response": data.input,
+          "time_taken": data.timerValue,
+          "realtime_evaluation": "null"
+      }
+      }]
+    setChatInterview((prevMessages: any) => [...prevMessages, ...chat]);
     setLoading(true)
     await socket?.emit('interview chat', { 
       response: data.input, 
@@ -77,7 +89,7 @@ const useMiddleSocket = () => {
     reset,
     isStarted, 
     setIsStarted,
-    setCount
+    setCount,
   };
 };
 

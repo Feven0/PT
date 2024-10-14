@@ -43,9 +43,9 @@ transcriber = aai.Transcriber()
 routes = FastAPI(openapi_prefix="/api")
 
 module_dir= os.path.dirname(__file__)
-module_di= os.path.dirname('/home/rehmet/dev/tenx_ipersona/api/modules/prompts')
+module_di= os.path.dirname(__file__)
 data_path = lambda x: os.path.join(module_dir, "folders", x)
-prompt_path = lambda x: os.path.join(module_di, "prompts", x)
+prompt_path = lambda x: os.path.join(module_di, "data/prompts", x)
 
 
 @routes.post("/audio_upload")
@@ -122,14 +122,16 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
         """
         
         created_persona = util.create_persona(recieved.jbJson)
-        prompt_text = util.file_reader(prompt_path('ipersona/persona.txt'))
+        prompt_text = util.file_reader(prompt_path('persona.txt'))
+        print("##########persona.txt############")
         generated_persona = prompt_text\
                 .replace("{hr_persona}", created_persona)\
                 .replace("{job_description}", str(recieved.jbJson))\
                 .replace("{profile}", str(recieved.cvJson))    
                 
         
-        message = util.file_reader(prompt_path('ipersona/generate_question.txt'))
+        message = util.file_reader(prompt_path('generate_question.txt'))
+        print("##########generate.txt############")
         context = str(message)
         
         msg=context\
@@ -149,23 +151,20 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
                 question_number += 1 
         combined_generated_question_json = json.dumps(generated_question_json, indent=4)
         
-        
         #------------- Save to DB ---------------        
         data = {
+            "alluser": str(recieved.userId),
             "userId": str(recieved.userId),
-            "sessionId": str(uuid.uuid4()),
-            "username": recieved.name,
-            "user_profile": recieved.cvJson,
             "jobId": str(recieved.jobId),
-            "job_desc": recieved.jbJson,
+            "username": recieved.name,
             "persona": generated_persona,
             "generated_questions": combined_generated_question_json 
         }                
    
-        res = await db.create_schema(data)
+        response = await db.create_schema(data)
         #------------- ---------------------- 
         
-        return {"filenames": f"uploaded successfully"}
+        return response
     
     except Exception as e:
         print(f"Error processing files: {e}")

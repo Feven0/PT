@@ -19,12 +19,10 @@ async def save_chathistory_to_db(recieved):
         return f'Error: {str(e)}' 
     
 async def fecth_all_chathistory(recieved):
-    userId = recieved.userId
     sessionId = recieved.sessionId
-    jobId = recieved.jobId
    
     try:
-        session_chathistory = await db.fetch_chat_history(userId, sessionId, jobId)
+        session_chathistory = await db.fetch_chat_history(sessionId)
             
         if isinstance(session_chathistory, list):
             for entry in session_chathistory:

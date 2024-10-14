@@ -6,6 +6,7 @@ import json_repair
 from collections import defaultdict
 from api.llm.ipersona.ipersona_agent import agents
 import api.llm.ipersona.ipersona_db as database
+import api.llm.ipersona.ipersona_schema as db
 from api.config import get_openapi_token
 from api.utils.logger import LLPackerLogger, logme
 
@@ -127,6 +128,7 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
             question_type = "Background"
             count = None
             response = await helper_func(count, question_type, section, data)
+
             return response
         
         elif data['question_counter'] < 5:
@@ -136,6 +138,7 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
             if data['question_counter'] == 3:
                 count = data['question_counter']
             response = await helper_func(count, question_type, section, data)
+            
             return response
             
         elif data['question_counter'] < 7:
@@ -145,6 +148,7 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
             if data['question_counter'] == 5:
                 count = data['question_counter']
             response = await helper_func(count, question_type, section, data)
+            
             return response
         
         elif data['question_counter'] < 10: 
@@ -154,6 +158,7 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
             if data['question_counter'] == 7:
                 count = data['question_counter']
             response = await helper_func(count, question_type, section, data)
+            
             return response
 
     except Exception as e:

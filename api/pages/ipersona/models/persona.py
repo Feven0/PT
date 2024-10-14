@@ -23,9 +23,7 @@ class userSessionRequestRecieved(BaseModel):
     jbJson: Optional[Dict[str, Any]]
     
 class ChatHistoryRequestRecieved(BaseModel):
-    userId: str
     sessionId: str
-    jobId: str
           
 class MetricsRequestRecieved(BaseModel):
     userId: str
