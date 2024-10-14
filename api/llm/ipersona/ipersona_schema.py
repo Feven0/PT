@@ -21,28 +21,14 @@ schema = {
                     "dataType": ["string"]
                 },
                 {
-                    "name": "sessionId", 
+                    "name": "jobId", 
                     "dataType": ["string"]
-                },
+                }, 
                 {
                     "name": "username", 
                     "dataType": ["string"], 
                     "default": "null"
-                },
-                {
-                    "name": "user_profile", 
-                    "dataType": ["string"], 
-                    "default": "null"
-                },
-                {
-                    "name": "jobId", 
-                    "dataType": ["string"]
-                },
-                {
-                    "name": "job_desc", 
-                    "dataType": ["string"], 
-                    "default": "null"
-                },                
+                },              
                 {
                     "name": "persona",
                     "dataType": ["string"],  
@@ -65,22 +51,42 @@ schema = {
             "vectorizer": "none"
         },
         {
-            "class": "iPersonaInterviewHistory",
+            "class": "iPersonaMessages",
             "properties": [
-                {
-                    "name": "userId", 
-                    "dataType": ["string"]
-                },
                 {
                     "name": "sessionId", 
                     "dataType": ["string"]
                 },
                 {
-                    "name": "jobId", 
+                    "name": "chathistory", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "createdAt", 
+                    "dataType": ["date"]
+                },
+                {
+                    "name": "updatedAt", 
+                    "dataType": ["date"]
+                }
+            ],
+            "vectorizer": "none"
+        },
+        {
+            "class": "iPersonaObserver",
+            "properties": [
+                {
+                    "name": "sessionId", 
                     "dataType": ["string"]
                 },
                 {
-                    "name": "chathistory", 
+                    "name": "interview_evaluation", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "interview_evaluation_metrics", 
                     "dataType": ["string"],  
                     "default": "null"
                 },
@@ -107,9 +113,10 @@ async def create_schema(data):
     try:
         existing_schema = client.schema.get()
         persona_session_exists = any(cls['class'] == "IPersonaSession" for cls in existing_schema['classes'])
-        persona_interview_history_exists = any(cls['class'] == "iPersonaInterviewHistory" for cls in existing_schema['classes'])
+        persona_interview_history_exists = any(cls['class'] == "iPersonaMessages" for cls in existing_schema['classes'])
+        persona_interview_observer_exists = any(cls['class'] == "iPersonaObserver" for cls in existing_schema['classes'])
      
-        if not persona_session_exists and not persona_interview_history_exists:
+        if not persona_session_exists and not persona_interview_history_exists and not persona_interview_observer_exists:
             client.schema.create(schema)  
             uploaded_uuid = await Add_session_schema_data(data)
             print("Classes 'iPersonaSession' and 'iPersonaSessionJob' created successfully.")
@@ -129,11 +136,8 @@ async def Add_session_schema_data(data):
     try:
         ipersona_data = {
         "userId": data['userId'], 
-        "sessionId": data['sessionId'],        
-        "username": data['username'],
-        "user_profile": str(data.get('user_profile', '')),
         "jobId": data['jobId'], 
-        "job_desc": str(data.get('job_desc', '')),
+        "username": data['username'],
         "persona": data['persona'],
         "generated_questions": str(data.get('generated_questions', '')),
         "createdAt": get_current_time(),
@@ -163,7 +167,7 @@ async def Add_Interview_History(data):
 
         ipersona_upload_history = client.data_object.create(
             data_object=ipersona_chat_data,
-            class_name="iPersonaInterviewHistory"
+            class_name="iPersonaMessages"
         )
         
         return ipersona_upload_history
@@ -181,7 +185,7 @@ async def update_ipersona_data_new(data, fields_to_update):
         result = client.data_object.update(
             uuid=data['id'],
             data_object=update_data,
-            class_name='iPersonaInterviewHistory'
+            class_name='iPersonaMessages'
         )
         
         print("Updating Successful:", True)
@@ -226,7 +230,7 @@ async def fetch_session(userId):
 async def fetch_chat_history(userId, sessionId, jobId):
     try:
         job_with_session_id = client.query.get(
-            class_name="iPersonaInterviewHistory",
+            class_name="iPersonaMessages",
             properties=[
                 "chathistory"
                 ]  
@@ -251,7 +255,7 @@ async def fetch_chat_history(userId, sessionId, jobId):
             ]
         }).with_additional("id").do()
         
-        result = job_with_session_id['data']['Get']['IPersonaInterviewHistory']
+        result = job_with_session_id['data']['Get']['iPersonaMessages']
 
         return result
     except Exception as e:
