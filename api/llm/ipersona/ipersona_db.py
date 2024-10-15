@@ -18,10 +18,11 @@ async def save_chathistory_to_db(recieved):
     except Exception as e:
         return f'Error: {str(e)}' 
     
-async def fecth_all_chathistory(recieved):
+async def fetch_all_chathistory(recieved):
     sessionId = recieved.sessionId
    
     try:
+        
         session_chathistory = await db.fetch_chat_history(sessionId)
             
         if isinstance(session_chathistory, list):

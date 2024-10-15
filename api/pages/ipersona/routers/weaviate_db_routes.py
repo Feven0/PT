@@ -68,7 +68,7 @@ async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):
         exception occurs during processing.
     """
     try:
-        session_chathistory = await database.fecth_all_chathistory(recieved)
+        session_chathistory = await database.fetch_all_chathistory(recieved)
 
         return session_chathistory
 

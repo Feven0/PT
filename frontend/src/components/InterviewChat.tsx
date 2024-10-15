@@ -175,6 +175,7 @@ const InterviewChat = () => {
     const fetchSession = async() =>{
         const userId= localStorage.getItem("userId")
         const response = await Api.fetchSession({userId})
+        console.log("sessions", response.data)
         setSession(response.data?.all_user_data)
     }
 
