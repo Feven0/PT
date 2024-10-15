@@ -100,7 +100,6 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
 
 @routes.post("/create_user_session")
 async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
-    print("sissssssssssssssssssssssssssssters")
     try:
         """
         Processes user session files and generates interview questions.
@@ -233,7 +232,9 @@ async def calculate_overall_progress(recieved: pemodel.ChatHistoryRequestRecieve
     """
     start_time = time.time()    
     try:  
-        chathistory = await database.fecth_all_chathistory(recieved)                    
+      
+        chathistory = await database.fecth_all_chathistory(recieved) 
+                        
         result =  util.calculate_overall_progress(chathistory) 
         return result
     

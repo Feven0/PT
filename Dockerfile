@@ -18,5 +18,5 @@ ENV STRAPI_STAGE=dev
 EXPOSE 4500
 RUN export nworkers=$(nproc --all)
 RUN echo "nworkers=$nworkers"
-ENTRYPOINT uvicorn app:app --host 0.0.0.0 --port 4500 
+ENTRYPOINT uvicorn app:app --host 0.0.0.0 --port 4500 --reload
 

@@ -11,7 +11,7 @@ const AllStatus = () => {
 
 
     const fetchOverall = async() => {
-      const job_id = localStorage.getItem("jobId")
+      const job_id = localStorage.getItem("JobId")
       const data = {
         userId: latestsession?.userId,
         sessionId: latestsession?.sessionId, 
@@ -56,7 +56,7 @@ const AllStatus = () => {
 
     return (
       <>
-          {(overall == undefined  || overall !== undefined || (overall && overall.error !== undefined)) ?
+          {(overall == undefined  || overall == null || (overall && overall.error !== undefined)) ?
             <div>
               <LoadingIndicator message={'Fetching Metrics...'}/>
             </div>
