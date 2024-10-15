@@ -1,6 +1,9 @@
 ##########################
 # KEDRO PROJECT
 
+Dockerfile
+docker-compose.*
+
 # ignore all local configuration
 conf/local/**
 !conf/local/.gitkeep
