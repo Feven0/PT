@@ -14,7 +14,7 @@ client = weaviate.Client(
 schema = {
     "classes": [
         {
-            "class": "iPersonaSession",
+            "class": "iPersonaSessionOld",
             "properties": [
                 {
                     "name": "userId", 
@@ -106,13 +106,13 @@ def get_current_time():
 async def create_schema(data):
     try:
         existing_schema = client.schema.get()
-        persona_session_exists = any(cls['class'] == "IPersonaSession" for cls in existing_schema['classes'])
+        persona_session_exists = any(cls['class'] == "iPersonaSessionOld" for cls in existing_schema['classes'])
         persona_interview_history_exists = any(cls['class'] == "iPersonaInterviewHistory" for cls in existing_schema['classes'])
      
         if not persona_session_exists and not persona_interview_history_exists:
             client.schema.create(schema)  
             uploaded_uuid = await Add_session_schema_data(data)
-            print("Classes 'iPersonaSession' and 'iPersonaSessionJob' created successfully.")
+            print("Classes 'iPersonaSessionOld' and 'iPersonaInterviewHistory created successfully.")
         else:
             print("Classes already exist. No new classes created.")
             uploaded_uuid = await Add_session_schema_data(data)
@@ -142,7 +142,7 @@ async def Add_session_schema_data(data):
 
         ipersona_upload = client.data_object.create(
             data_object=ipersona_data,
-            class_name="iPersonaSession"
+            class_name="iPersonaSessionOld"
         )
         
         return ipersona_upload
@@ -194,7 +194,7 @@ async def update_ipersona_data_new(data, fields_to_update):
 async def fetch_session(userId):
     try:
         sessions_with_user_id = client.query.get(
-            class_name="iPersonaSession",
+            class_name="iPersonaSessionOld",
             properties=[
                 "userId",
                 "sessionId",                
@@ -211,11 +211,11 @@ async def fetch_session(userId):
             "valueString": str(userId)
         }).with_additional("id").do()
         
-        length = len(sessions_with_user_id['data']['Get']['IPersonaSession'])
+        length = len(sessions_with_user_id['data']['Get']['IPersonaSessionOld'])
         index = length - 1
-        result = sessions_with_user_id['data']['Get']['IPersonaSession'][index]
+        result = sessions_with_user_id['data']['Get']['IPersonaSessionOld'][index]
         data= {
-            "all_data": sessions_with_user_id['data']['Get']['IPersonaSession'],
+            "all_data": sessions_with_user_id['data']['Get']['IPersonaSessionOld'],
             "latest_data": result
         }
         return data

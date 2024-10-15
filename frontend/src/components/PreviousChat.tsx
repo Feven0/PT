@@ -32,7 +32,7 @@ const PreviousChat = () => {
     const fetchChatHistory = async () => {
         if(latestsession !== undefined){
           setShow(true)
-          let job_id = localStorage.getItem("jobId")
+          let job_id = localStorage.getItem("JobId")
           const data = {
             userId: latestsession?.userId,
             sessionId: latestsession?.sessionId, 
