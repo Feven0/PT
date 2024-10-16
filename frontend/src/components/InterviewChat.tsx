@@ -167,6 +167,7 @@ const InterviewChat = () => {
         sessionId: sessionId, 
         }
         const response = await Api.fetchChatHistory(data)
+        console.log("fetching session...", response)
         setChatInterview(response?.data[0]?.chathistory)
         setLoadingSessionId(null);
     }

@@ -64,7 +64,12 @@ const useMiddleSocket = () => {
           "realtime_evaluation": "null"
       }
       }]
-    setChatInterview((prevMessages: any) => [...prevMessages, ...chat]);
+    setChatInterview((prevMessages: any) => {
+      if (!Array.isArray(prevMessages)) {
+        return [...chat];
+      }
+      return [...prevMessages, ...chat];
+    });
     setLoading(true)
     await socket?.emit('interview chat', { 
       response: data.input, 
