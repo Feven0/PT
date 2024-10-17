@@ -19,7 +19,6 @@ async def disconnect(sid):
    
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
-    print("interview_data", data["previous_question"], data['user_session']['jobId'])
     try:
         start_time = time.time()
         response = await util.generate_interview_question(data)

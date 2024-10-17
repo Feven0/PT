@@ -41,11 +41,10 @@ const JobCard : React.FC<JobCardProps> = ({ item, matchDegree }) => {
         cvJson: filteredUser[0],
         jbJson: filteredJob[0]
       };
-      console.log(data)
-
       try {
           const response = await Api.sessionCreate(data);
-          console.log(response)
+          console.log("lucy", response)
+          // if(response?.data)
           localStorage.setItem("JobId", job_profile_id)
           setSessionCreated(true);
       } catch (error) {

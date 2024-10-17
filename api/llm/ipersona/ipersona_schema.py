@@ -106,8 +106,8 @@ def get_current_time():
 async def create_schema(data):
     try:
         existing_schema = client.schema.get()
-        persona_session_exists = any(cls['class'] == "iPersonaSessionOld" for cls in existing_schema['classes'])
-        persona_interview_history_exists = any(cls['class'] == "iPersonaInterviewHistory" for cls in existing_schema['classes'])
+        persona_session_exists = any(cls['class'] == "IPersonaSessionOld" for cls in existing_schema['classes'])
+        persona_interview_history_exists = any(cls['class'] == "IPersonaInterviewHistory" for cls in existing_schema['classes'])
      
         if not persona_session_exists and not persona_interview_history_exists:
             client.schema.create(schema)  
@@ -142,7 +142,7 @@ async def Add_session_schema_data(data):
 
         ipersona_upload = client.data_object.create(
             data_object=ipersona_data,
-            class_name="iPersonaSessionOld"
+            class_name="IPersonaSessionOld"
         )
         
         return ipersona_upload
@@ -163,7 +163,7 @@ async def Add_Interview_History(data):
 
         ipersona_upload_history = client.data_object.create(
             data_object=ipersona_chat_data,
-            class_name="iPersonaInterviewHistory"
+            class_name="IPersonaInterviewHistory"
         )
         
         return ipersona_upload_history
@@ -172,7 +172,6 @@ async def Add_Interview_History(data):
 
 
 async def update_ipersona_data_new(data, fields_to_update):    
-    print("Updating data for ID:", data['id'])
     update_data = {}
     
     if 'chathistory' in fields_to_update:
@@ -181,7 +180,7 @@ async def update_ipersona_data_new(data, fields_to_update):
         result = client.data_object.update(
             uuid=data['id'],
             data_object=update_data,
-            class_name='iPersonaInterviewHistory'
+            class_name='IPersonaInterviewHistory'
         )
         
         print("Updating Successful:", True)
@@ -194,7 +193,7 @@ async def update_ipersona_data_new(data, fields_to_update):
 async def fetch_session(userId):
     try:
         sessions_with_user_id = client.query.get(
-            class_name="iPersonaSessionOld",
+            class_name="IPersonaSessionOld",
             properties=[
                 "userId",
                 "sessionId",                
@@ -212,12 +211,18 @@ async def fetch_session(userId):
         }).with_additional("id").do()
         
         length = len(sessions_with_user_id['data']['Get']['IPersonaSessionOld'])
-        index = length - 1
-        result = sessions_with_user_id['data']['Get']['IPersonaSessionOld'][index]
+        
+        if length != 0:
+            index = length - 1
+            result = sessions_with_user_id['data']['Get']['IPersonaSessionOld'][index]
+        else: 
+            result = sessions_with_user_id['data']['Get']['IPersonaSessionOld']
+
         data= {
             "all_data": sessions_with_user_id['data']['Get']['IPersonaSessionOld'],
             "latest_data": result
         }
+    
         return data
     except Exception as e:
         print("Error fetching Sessions:", e)
@@ -226,7 +231,7 @@ async def fetch_session(userId):
 async def fetch_chat_history(userId, sessionId, jobId):
     try:
         job_with_session_id = client.query.get(
-            class_name="iPersonaInterviewHistory",
+            class_name="IPersonaInterviewHistory",
             properties=[
                 "chathistory"
                 ]  

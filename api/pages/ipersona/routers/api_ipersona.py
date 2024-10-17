@@ -164,7 +164,8 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
    
         res = await db.create_schema(data)
         #------------- ---------------------- 
-        
+        print("############*************#############")
+        print(res)
         return {"filenames": f"uploaded successfully"}
     
     except Exception as e:

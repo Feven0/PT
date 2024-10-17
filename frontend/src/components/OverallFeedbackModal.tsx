@@ -29,7 +29,7 @@ const OverallFeedbackModal: React.FC<Overall> = ({metricsData, evaluationData}) 
                 <div className='overall-box'>
                     <button 
                         className='view-btn'                    
-                        style={{ marginTop: '2.6rem', border: 'none' }} 
+                        style={{ marginTop: '2.6rem', border: 'none', cursor: 'pointer' }} 
                         onClick={showModal}>
                         Feedback
                     </button>
