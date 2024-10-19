@@ -23,6 +23,7 @@ import time
 from fastapi import UploadFile, Form
 from typing import List
 import api.llm.ipersona.ipersona_schema as db
+from api.llm.ipersona.ipersona_prisma import prisma
 import api.llm.ipersona.ipersona_db as database
 from api.llm.ipersona.ipersona_agent import agents
 import api.pages.ipersona.models.persona as pemodel
@@ -157,11 +158,12 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
             "userId": str(recieved.userId),
             "jobId": str(recieved.jobId),
             "username": recieved.name,
-            "persona": generated_persona,
+            "persona": generated_persona ,
             "generated_questions": combined_generated_question_json 
         }                
    
-        response = await db.create_schema(data)
+        #response = await db.create_schema(data)
+        # response = await prisma.create_session(data)
         #------------- ---------------------- 
         
         return response
