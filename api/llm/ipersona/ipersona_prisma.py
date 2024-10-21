@@ -1,48 +1,55 @@
-import asyncio
+import ast
 from prisma import Prisma
 
-async def create_session():
+async def create_session(data):
     try:
         db = Prisma()
         await db.connect()
-        
-
-        personasession = await db.personasession.create(
-            {
-                "alluser": "recieved.alluser",
-                "userId": "recieved.userId",
-                "jobId": "recieved.jobId",
-                "username": "recieved.username",
-                "persona": "recieved.persona",
-                "generated_questions": "[{'user_type': 'candidate', 'response': 'I have a CS background'}]"
-            }
-        )
-
-        print(f'created post: {personasession.model_dump()}') 
+        personasession = await db.personasession.create(data)
+        # print(f'created post: {personasession.model_dump()}') 
+        personasession.alluser = int(personasession.alluser)
+        personasession.userId = int(personasession.userId)
+        personasession.jobId = int(personasession.jobId)
+        personasession.generated_questions = ast.literal_eval(personasession.generated_questions)
         return personasession.model_dump()
     except Exception as e:
         return {"error": str(e)}
        
 
-async def create_chat():
+async def create_chat(sessionId, message):
     try:
-        db = Prisma()
-        await db.connect()        
+        session_chathistory = await fetch_chat_history(sessionId)
+        
+        if len(session_chathistory) == 0:
+            db = Prisma()
+            await db.connect()        
 
-        personamessage = await db.personamessage.create(
-            {
-                "personasessionId": 1, 
-                "chathistory": "[{'user_type': 'candidate', 'response': 'i have a cs background'}, {'user_type': 'assistant', 'response': 'elborate more on you answer'}]",
+            personamessage = await db.personamessage.create(
+                {
+                    "personasessionId": sessionId, 
+                    "chathistory": str(message),
+                }
+            )
+
+            print(f'created chat') 
+            return personamessage.model_dump()
+        else:
+            print("session interview exist")
+            session_chathistory[0].chathistory.extend(message) 
+            
+            data = {
+                "id": session_chathistory[0].id,
+                "chathistory": session_chathistory[0].chathistory
             }
-        )
-
-        print(f'created post: {personamessage.model_dump()}') 
-        return personamessage.model_dump()
+            updated = await update_session(data)     
+            print("updated!")
+            return updated
+            
     except Exception as e:
         return {"error": str(e)}
        
 
-async def create_observer():
+async def create_observer(sessionId, interview_evaluation, interview_evaluation_metrics):
     try:
         db = Prisma()
         await db.connect()
@@ -50,74 +57,111 @@ async def create_observer():
 
         personaobserver = await db.personaobserver.create(
             {
-                "personasessionId": 1, 
-                "interview_evaluation": "[{'user_type': 'candidate', 'response': 'i have a cs background'}, {'user_type': 'assistant', 'response': 'elborate more on you answer'}]",
-                "interview_evaluation_metrics": "[{'user_type': 'candidate', 'response': 'i have a cs background'}, {'user_type': 'assistant', 'response': 'elborate more on you answer'}]"
+                "personasessionId": sessionId, 
+                "interview_evaluation": str(interview_evaluation),
+                "interview_evaluation_metrics": str(interview_evaluation_metrics)
             }
         )
 
-        print(f'created post: {personaobserver.model_dump()}') 
+        print(f'created observer') 
         return personaobserver.model_dump()
     except Exception as e:
         return {"error": str(e)}
 
 
-async def fetch_session():
+async def fetch_sessions(userId):
     try:
         db = Prisma()
         await db.connect()
         
-        personasession = await db.personasession.find_many(
-            include={
-                "personamessages": True,
-                "personaobservers": True
-            }
-        )
-        if personasession:
-            return personasession
-        else:
-            return {"error": f"Session with id {id} not found"}
-    except Exception as e:
-        return {"error": f"{str(e)}"}
-    
-    
-async def fetch_session(id):
-    try:
-        db = Prisma()
-        await db.connect()
-        
-        personasession = await db.personasession.find_unique(
+        personasessions = await db.personasession.find_many(
             where={
-                "id": id
+                "userId": userId
             },
             include={
                 "personamessages": True,
                 "personaobservers": True
             }
         )
-        if personasession:
-            return personasession
+        
+        length = len(personasessions)
+        index = length - 1
+        result = personasessions[index]
+        user_data = {
+            "all_data": personasessions,
+            "latest_data": result
+        }
+        
+        if user_data["latest_data"]:
+            print(True)
+            question_data = user_data["latest_data"].generated_questions
+            if isinstance(question_data, str):
+                try:
+                    user_data["latest_data"].generated_questions = ast.literal_eval(question_data)
+                except (ValueError, SyntaxError) as e:
+                    print(f"Error parsing generated_questions: {e}")
+            elif isinstance(question_data, list):
+                user_data["latest_data"].generated_questions = question_data 
         else:
-            return {"error": f"Session with id {id} not found"}
+            print(False)      
+                 
+        data = {
+            "all_user_data": user_data["all_data"],
+            "latest_user_data": user_data["latest_data"]
+        } 
+        
+        if data:
+            return data
+        else:
+            return {"error": f"Session with id {userId} not found"}
+    except Exception as e:
+        return {"error": f"{str(e)}"}
+       
+    
+async def fetch_chat_history(personasessionId):
+    try:
+        db = Prisma()
+        await db.connect()
+        
+        personamessages = await db.personamessage.find_many(
+            where={
+                "personasessionId": int(personasessionId)
+            }
+        )
+        
+        messages_as_dicts = [message.__dict__ for message in personamessages]
+        
+        if isinstance(personamessages, list):
+            for entry in personamessages:
+                if entry:
+                    chathistory_data = entry.chathistory
+                    if isinstance(chathistory_data, str) and chathistory_data:  
+                        try:
+                            entry.chathistory = ast.literal_eval(chathistory_data)
+                        except (ValueError, SyntaxError) as e:
+                            print(f"Error parsing chathistory for entry {entry}: {e}")
+
+        if personamessages:
+            return personamessages
+        else:
+            return []
     except Exception as e:
         return {"error": f"{str(e)}"}
 
 
-async def update_session(id):
-    async with Prisma() as db:
-        user = {
-                "alluser": "1",
-                "userId": "2",
-                "jobId": "3",
-                "username": "recieved.username",
-                "persona": "recieved.persona",
-                "generated_questions": "[{'user_type': 'candidate', 'response': 'I have a CS background'}]"
-            }
-        data = await db.personasession.update(
-            where={"id": id},
-            data=user
-        )
-    return data
+async def update_session(data):
+    try:
+        async with Prisma() as db:
+            updated_message = await db.personamessage.update(
+                where={"id": int(data['id'])},
+                data={
+                    "chathistory": str(data['chathistory'])  # Update only the chathistory field
+                }
+            )
+        return updated_message
+    
+    except Exception as e:
+        return {"error": str(e)}
 
 
 async def delete_session(id):

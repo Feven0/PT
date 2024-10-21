@@ -1,6 +1,6 @@
 datasource db {
   provider          = "postgresql"
-  url               = "postgresql://postgres.rwagfrycibaqhzyhbtip:Oggzuf4osy5H2Wm0@aws-0-eu-central-1.pooler.supabase.com:5432/postgres"
+  url               = "postgresql://postgres:123@localhost:5432/parrot"
 }
 
 generator db {

@@ -7,15 +7,17 @@ from collections import defaultdict
 from api.llm.ipersona.ipersona_agent import agents
 import api.llm.ipersona.ipersona_db as database
 import api.llm.ipersona.ipersona_schema as db
-from api.config import get_openapi_token
+# from api.config import get_openapi_token
 from api.utils.logger import LLPackerLogger, logme
+import api.llm.ipersona.ipersona_prisma as prisma
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
-keys_json  = get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
-OPENAI_API_KEY = keys_json['OPENAI_PARROT_API_KEY']
+# keys_json  = get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
+# OPENAI_API_KEY = keys_json['OPENAI_PARROT_API_KEY']
 
-openai_client = OpenAI(api_key = OPENAI_API_KEY)
+# openai_client = OpenAI(api_key = OPENAI_API_KEY)
+openai_client = OpenAI(api_key='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')
 
 
 module_dir= os.path.dirname(__file__)
@@ -121,9 +123,28 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
         if an exception occurs during processing.
     """
     try: 
+        chat = await prisma.fetch_chat_history(data['user_session']['id'])
+        print("chat_value")
+        print(chat)
+        global chat_count
+        chat_count = 1
+        print("chat_length")
+        print(len(chat) == 0)
+        
+        if len(chat) != 0:  
+            chat = chat[0].chathistory
+            assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
+            chat_count += assistant_count 
+            print("Number of assistant entries:", chat_count)
+        else:
+            print("Chat is empty.")
+        
+        print("t*******************chat_count*******************t")
+        print(chat_count)
+        
         section = None
         question_type = None
-        if data['question_counter'] < 3:
+        if chat_count < 3:
             section = collection["Background"]
             question_type = "Background"
             count = None
@@ -131,32 +152,32 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
 
             return response
         
-        elif data['question_counter'] < 5:
+        elif chat_count < 5:
             section = collection["Technical"]
             question_type = "Technical"
             count = None
-            if data['question_counter'] == 3:
-                count = data['question_counter']
+            if chat_count == 3:
+                count = chat_count
             response = await helper_func(count, question_type, section, data)
             
             return response
             
-        elif data['question_counter'] < 7:
+        elif chat_count < 7:
             section = collection["Behavioral"]
             question_type = "Behavioral"
             count = None
-            if data['question_counter'] == 5:
-                count = data['question_counter']
+            if chat_count == 5:
+                count = chat_count
             response = await helper_func(count, question_type, section, data)
             
             return response
         
-        elif data['question_counter'] < 10: 
+        elif chat_count < 10: 
             section = collection["Ability"]
             question_type = "Ability"
             count = None
-            if data['question_counter'] == 7:
-                count = data['question_counter']
+            if chat_count == 7:
+                count = chat_count
             response = await helper_func(count, question_type, section, data)
             
             return response
@@ -203,7 +224,7 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
         interview_question_json = None
         overall_interview_metrics_json = None   
         
-        if data['question_counter'] < 9:
+        if chat_count < 9:
             if data['response']:
                 if count is not None:
                     realtime_evaluation_response_json = await realtime_response_evaluation(data)

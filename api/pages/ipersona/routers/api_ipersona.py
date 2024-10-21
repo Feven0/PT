@@ -1,29 +1,16 @@
-
-import os, sys
-import json
-import time
-from typing import List, Dict
-import asyncio
-
-#
+import os, time, json, sys
 curdir = os.path.dirname(os.path.realpath(__file__))
 cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
     sys.path.append(cpath) 
-    
-#
 from fastapi import APIRouter, BackgroundTasks
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
-import os, openai, uuid, time
 import api.modules.ipersona_parrot as util
-import time
 from fastapi import FastAPI
-import time
 from fastapi import UploadFile, Form
-from typing import List
 import api.llm.ipersona.ipersona_schema as db
-from api.llm.ipersona.ipersona_prisma import prisma
+import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_db as database
 from api.llm.ipersona.ipersona_agent import agents
 import api.pages.ipersona.models.persona as pemodel
@@ -151,7 +138,8 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
                 question["question_number"] = str(question_number)  
                 question_number += 1 
         combined_generated_question_json = json.dumps(generated_question_json, indent=4)
-        
+       
+
         #------------- Save to DB ---------------        
         data = {
             "alluser": str(recieved.userId),
@@ -159,13 +147,13 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
             "jobId": str(recieved.jobId),
             "username": recieved.name,
             "persona": generated_persona ,
-            "generated_questions": combined_generated_question_json 
+            "generated_questions": str(combined_generated_question_json)
         }                
    
-        #response = await db.create_schema(data)
-        # response = await prisma.create_session(data)
+        # response = await db.create_schema(data)
+        response = await prisma.create_session(data)
         #------------- ---------------------- 
-        
+
         return response
     
     except Exception as e:

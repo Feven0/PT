@@ -1,9 +1,10 @@
-import api.llm.ipersona.ipersona_schema as db
+# import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_db as database
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
 import api.pages.ipersona.models.persona as pemodel
 import ast
+import api.llm.ipersona.ipersona_prisma as prisma
 
 route_weaviate = FastAPI(openapi_prefix="/wv")
 
@@ -28,7 +29,8 @@ async def fetch_session(recieved: pemodel.SessionRequestRecieved):
     """
     userId = recieved.userId   
     try:
-        user_data = await db.fetch_session(userId)     
+        # user_data = await db.fetch_session(userId)  
+        user_data = await prisma.fetch_sessions(userId)   
         # if 'generated_questions' in user_data["latest_data"]:
         #     question_data = user_data["latest_data"]['generated_questions']
         #     if question_data:
@@ -68,8 +70,10 @@ async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):
         exception occurs during processing.
     """
     try:
-        session_chathistory = await database.fetch_all_chathistory(recieved)
+        # session_chathistory = await database.fetch_all_chathistory(recieved)
 
+        session_chathistory = await prisma.fetch_chat_history(recieved.sessionId)
+  
         return session_chathistory
 
     except Exception as e:

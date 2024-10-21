@@ -32,9 +32,7 @@ const InterviewChat = () => {
     const [load, setLoading] = useState<any>({}); 
     const [clickCount, setClickCount] = useState<any>({}); 
     const [sessions, setSession] = useState<any>([]);
-    const userSession = JSON.parse(localStorage.getItem("userSession"));
-    const sessionId = userSession?.latest_user_data?._additional?.id;
-    const latestudata = userSession?.latest_user_data;
+    const latest = JSON.parse(localStorage.getItem("userSession"));
     const [viewloading, setShow] = useState(false);
     const [loadingSessionId, setLoadingSessionId] = useState(null);
 
@@ -82,7 +80,7 @@ const InterviewChat = () => {
     
 
     const onSendMessage = (timerValue: any) => {
-        const user_session = latestudata;
+        const user_session = latest;
         previous_question = interview[interview?.length-1]?.content?.response?.question
         handleInterview({ 
             input, 
@@ -118,13 +116,13 @@ const InterviewChat = () => {
         };
         const response = await Api.sessionCreate(data);
         localStorage.setItem("userSession", JSON.stringify(response?.data))
-
+        
         // if(response.data !== undefined){
             setClickStart(true)
             handleInterview({ 
                 input: input, 
                 interview: interview, 
-                user_session: latestudata,
+                user_session: response?.data,
                 counter: counter,
                 timerValue: lastTimerValue,
                 previous_question: previous_question
@@ -161,13 +159,13 @@ const InterviewChat = () => {
     };
 
     const fetchChatHistory = async (sessionId) => {
-        console.log("sessionID", sessionId)
+        console.log("sessionIDjim", sessionId)
         setLoadingSessionId(sessionId);  
         const data = {
         sessionId: sessionId, 
         }
         const response = await Api.fetchChatHistory(data)
-        console.log("fetching session...", response)
+        console.log("fetching session...", response?.data)
         setChatInterview(response?.data[0]?.chathistory)
         setLoadingSessionId(null);
     }
@@ -178,6 +176,8 @@ const InterviewChat = () => {
         const response = await Api.fetchSession({userId})
         console.log("sessions", response.data)
         setSession(response.data?.all_user_data)
+        //setLatest(response?.data?.latest_user_data)
+        // setSession(data?.all_user_data)  
     }
 
     useEffect(() => {
@@ -204,8 +204,8 @@ const InterviewChat = () => {
                     cursor: 'pointer'
                     }}>
                {sessions?.map((session, index) => (
-                    <div style={{ display: 'flex', gap: '1rem' }} key={index} onClick={() => fetchChatHistory(session?._additional?.id)}>
-                    <div className="session">
+                    <div style={{ display: 'flex', gap: '1rem' }} key={index} onClick={() => fetchChatHistory(session?.id)}>
+                    {/* <div className="session">
                         {new Date(session?.createdAt).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
@@ -217,7 +217,8 @@ const InterviewChat = () => {
                         minute: 'numeric',
                         hour12: true,
                         })}
-                    </div>
+                    </div> */}
+                    FETCH
 
                     {loadingSessionId === session.id && <LoadingSpinner style={{ marginLeft: '5px' }} />}
                     </div>
