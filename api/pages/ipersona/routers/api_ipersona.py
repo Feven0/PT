@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 import api.modules.ipersona_parrot as util
 from fastapi import FastAPI
 from fastapi import UploadFile, Form
+from fastapi.responses import StreamingResponse
 import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_db as database
@@ -16,6 +17,7 @@ from api.llm.ipersona.ipersona_agent import agents
 import api.pages.ipersona.models.persona as pemodel
 import assemblyai as aai
 import ast
+from openai import OpenAI
 
 hr_agent = agents()
 
@@ -35,6 +37,52 @@ module_di= os.path.dirname(__file__)
 data_path = lambda x: os.path.join(module_dir, "folders", x)
 prompt_path = lambda x: os.path.join(module_di, "data/prompts", x)
 
+
+OPENAI_API_KEY = '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'
+
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+@routes.post("/transcribe")
+async def transcribe_audio(file: UploadFile = File(...)):
+    try:
+        audio_path  = os.path.join(data_path('audio'), file.filename)
+        with open(audio_path, "wb") as f:
+            contents = await file.read()
+            f.write(contents)
+            
+            
+        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        # audio_file = await file.read()
+        
+        transcription = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_path
+        )
+        return {"transcription": transcription.text}
+    except Exception as e:
+        print(f"Error processing files: {e}")
+
+import io
+
+@routes.post("/synthesize")
+async def synthesize_text(text: str):
+    print("Received text for synthesis:", text)
+    try:
+        response = client.audio.speech.with_streaming_response.create(
+            model="tts-1",
+            voice="alloy",
+            input=text
+        )
+
+        # If response is a single audio byte stream
+        audio_data = response  # Adjust based on if response is async
+        
+        audio_stream = io.BytesIO(audio_data)
+
+        return StreamingResponse(audio_stream, media_type="audio/mpeg")
+    except Exception as e:
+        print(f"Error processing files: {e}")
+        return {"error": str(e)}
 
 @routes.post("/audio_upload")
 async def speech_to_text(file: UploadFile = File(...)) -> dict:

@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation } from "react-router-dom";
-import { Jobs, JobDetail } from '../pages/index';
+import { Jobs, JobDetail, Audio } from '../pages/index';
 import Navbar from "../components/Navbar";
 import Trainee from '../pages/Trainee';
 
@@ -13,6 +13,7 @@ const AppRoutes = () => {
         <Route path="/" element={<Trainee />} />
         <Route path="/jobs/:userId" element={<Jobs />} />
         <Route path="/job_detail/:userId/:jobId" element={<JobDetail />} />
+        <Route path="/audio" element={<Audio />} />
       </Routes>
     </div>
   );
