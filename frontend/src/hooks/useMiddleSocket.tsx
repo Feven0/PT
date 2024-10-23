@@ -4,7 +4,7 @@ import { useStopwatch } from 'react-timer-hook';
 
 
 const useMiddleSocket = () => {
-  const [socket, interview, setChatInterview] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
+  const [socket, interview, setChatInterview, audiointerview, setAudioInterview] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
   const [loading, setLoading] = useState(false);
   const [isStarted, setIsStarted] = useState(false);  
   const [count, setCount] = useState();
@@ -55,7 +55,38 @@ const useMiddleSocket = () => {
     setCount(data.counter)
   };
 
+  useEffect(() => {
+    if (socket) {
+        socket.on('audio chat', (message: any) => {
+            setAudioInterview(message);
+            // reset(); 
+            setLoading(false);
+            console.log("count_inter_ques", count === 8)  
+            if(count === 4) {
+              pause()
+            }
+      });
+    } 
+  }, [socket, interview]);
+
+
+  const handleAudioInterview = async (data: any) => {
+    setLoading(true)
+    await socket?.emit('audio chat', { 
+      response: data.input, 
+      history: data.interview, 
+      user_session: data.user_session,
+      question_counter: data.counter,
+      time_taken: data.timerValue,
+      previous_question: data.previous_question
+    });
+    setCount(data.counter)
+  };
+
   return {
+    handleAudioInterview,
+    audiointerview,
+    setLoading,
     handleInterview,
     interview,
     setChatInterview,

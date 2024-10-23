@@ -4,6 +4,8 @@ import io from 'socket.io-client';
 const useWebSocket = (url: any) => {
   const [socket, setSocket] = useState<any>(null);
   const [interview, setChatInterview] = useState<any[]>([]);
+  const [audiointerview, setAudioInterview] = useState<any>();
+
   
   useEffect(() => {
     const newSocket = io(url);
@@ -18,6 +20,11 @@ const useWebSocket = (url: any) => {
       setChatInterview((prevMessages) => [...prevMessages, ...message]);
     });
 
+    newSocket.on('audio chat', (message) => {
+      console.log(`Received response: ${message}`);
+      setAudioInterview(message);
+    });
+
     newSocket.on('disconnect', () => {
       console.log('Disconnected from WebSocket server');
     });
@@ -27,7 +34,7 @@ const useWebSocket = (url: any) => {
     };
   }, [url]);
 
-  return [socket, interview, setChatInterview];
+  return [socket, interview, setChatInterview, audiointerview, setAudioInterview];
 };
 
 export default useWebSocket;

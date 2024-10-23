@@ -5,7 +5,7 @@ interface Confidence {
 
 const BarChart: React.FC<Confidence> = ({ confidenceData }) => {
     const data = confidenceData.map((item:any, index:any) => ({
-        x: `Interview ${index + 1}`,
+        x: `${index + 1}`,
         y: item.poor ? 1 : item.good ? 2 : item.excellent ? 3 : 0,
         label: item.poor ? 'Poor' : item.good ? 'Good' : item.excellent ? 'Excellent' : 'Unknown',
     }));
