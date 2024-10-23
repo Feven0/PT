@@ -1,6 +1,8 @@
 export {default as JobCard } from './JobCard'
 export {default as InterviewChat} from './InterviewChat'
 export {default as AudioRecorder} from './AudioRecorder'
+export {default as AudioChatRecord} from './AudioChatRecord'
+export {default as Audio } from './Audio'
 export {default as AllStatus} from './AllStatus'
 export {default as RealTimeEvaluation} from './RealTimeEvaluation'
 export {default as OverallFeedbackModal} from './OverallFeedbackModal'

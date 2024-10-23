@@ -1,4 +1,4 @@
-import { AllStatus, InterviewChat } from '../components/index'
+import { AllStatus, InterviewChat, Audio } from '../components/index'
 import { useState, useContext } from 'react';
 import { Layout, Row, Col, Tabs } from 'antd';
 import { ProviderContext } from '../context/context';
@@ -20,6 +20,8 @@ const JobDetail = () => {
         return <AllStatus />;
         case 'interview':
         return <InterviewChat />;
+        case 'audio':
+        return <Audio />;
         default:
         return null; 
     }
@@ -50,6 +52,7 @@ const JobDetail = () => {
                         >
                         <TabPane tab="Overall Progress" key="overall-progress"/>
                         <TabPane tab="Interview Prep" key="interview" />
+                        <TabPane tab="Audio Interview" key="audio" />
                         </Tabs>
                         {renderContent()} 
                     </Col>

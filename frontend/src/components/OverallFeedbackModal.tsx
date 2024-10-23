@@ -25,12 +25,13 @@ const OverallFeedbackModal = ({metricsData, evaluationData}) => {
                 <div className='overall-box'>
                     <button 
                         className='view-btn'                    
-                        style={{ marginTop: '2.6rem', border: 'none' }} 
+                        style={{ marginTop: '2.6rem', border: 'none', backgroundColor: '#837e7e', borderRadius: '0.3rem', cursor: 'pointer' }} 
                         onClick={showModal}>
-                        Feedback
+                        Details
                     </button>
-                    <LiquidAntd 
-                        percent={evaluationData?.overall_performance} />
+                    {/* <LiquidAntd 
+                        percent={evaluationData?.overall_performance} /> */}
+                    <div style={{marginLeft: '1.5rem', fontSize: '2rem'}}>{evaluationData?.overall_performance}%</div>
                 </div>
             </div>
 

@@ -123,28 +123,28 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
         if an exception occurs during processing.
     """
     try: 
-        chat = await prisma.fetch_chat_history(data['user_session']['id'])
-        print("chat_value")
-        print(chat)
-        global chat_count
-        chat_count = 1
-        print("chat_length")
-        print(len(chat) == 0)
+        # chat = await prisma.fetch_chat_history(data['user_session']['id'])
+        # print("chat_value")
+        # print(chat)
+        # global chat_count
+        # chat_count = 1
+        # print("chat_length")
+        # print(len(chat) == 0)
         
-        if len(chat) != 0:  
-            chat = chat[0].chathistory
-            assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
-            chat_count += assistant_count 
-            print("Number of assistant entries:", chat_count)
-        else:
-            print("Chat is empty.")
+        # if len(chat) != 0:  
+        #     chat = chat[0].chathistory
+        #     assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
+        #     chat_count += assistant_count 
+        #     print("Number of assistant entries:", chat_count)
+        # else:
+        #     print("Chat is empty.")
         
-        print("t*******************chat_count*******************t")
-        print(chat_count)
+        # print("t*******************chat_count*******************t")
+        # print(chat_count)
         
         section = None
         question_type = None
-        if chat_count < 3:
+        if data['question_counter'] < 2: 
             section = collection["Background"]
             question_type = "Background"
             count = None
@@ -152,32 +152,32 @@ async def choose_interview_question(collection: dict, data: dict) -> dict:
 
             return response
         
-        elif chat_count < 5:
+        elif data['question_counter'] < 3: 
             section = collection["Technical"]
             question_type = "Technical"
             count = None
-            if chat_count == 3:
-                count = chat_count
+            if data['question_counter'] == 2: 
+                count = data['question_counter']
             response = await helper_func(count, question_type, section, data)
             
             return response
             
-        elif chat_count < 7:
+        elif data['question_counter'] < 4: 
             section = collection["Behavioral"]
             question_type = "Behavioral"
             count = None
-            if chat_count == 5:
-                count = chat_count
+            if data['question_counter'] == 3: 
+                count = data['question_counter']
             response = await helper_func(count, question_type, section, data)
             
             return response
         
-        elif chat_count < 10: 
+        elif data['question_counter'] < 6: 
             section = collection["Ability"]
             question_type = "Ability"
             count = None
-            if chat_count == 7:
-                count = chat_count
+            if data['question_counter'] == 4: 
+                count = data['question_counter']
             response = await helper_func(count, question_type, section, data)
             
             return response
@@ -224,7 +224,7 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
         interview_question_json = None
         overall_interview_metrics_json = None   
         
-        if chat_count < 9:
+        if data['question_counter'] < 5:
             if data['response']:
                 if count is not None:
                     realtime_evaluation_response_json = await realtime_response_evaluation(data)

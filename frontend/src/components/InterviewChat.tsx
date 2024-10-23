@@ -7,7 +7,7 @@ import hr from '../assets/hr.jpg';
 import { CgProfile } from 'react-icons/cg'
 import ReactMarkdown from 'react-markdown';
 import { ProviderContext } from '../context/context';
-import {AudioRecorder, RealTimeEvaluation, OverallFeedbackModal, PreviousChat, LoadingSpinner} from './index'
+import {AudioRecorder, RealTimeEvaluation, OverallFeedbackModal, LoadingSpinner} from './index'
 import Api from '../Services/Services';
 import "../styles/InterviewChat/interviewchat.css"
 import users from '../assets/mock-data/user_profiles.json';
