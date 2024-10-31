@@ -84,3 +84,18 @@ async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):
         print(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
     
+
+@route_weaviate.post("/fetch_chat_observer")
+async def fetch_chat_observer(recieved: pemodel.ChatHistoryRequestRecieved):  
+    try:
+        session_chatobserver = await prisma.fetch_chat_observer(recieved.sessionId)
+  
+        return session_chatobserver
+
+    except Exception as e:
+        print(f"Error fetching chat observer: {e}")
+        return None  
+    
+    except Exception as e:
+        print(f"Error processing files: {e}")
+        return JSONResponse(status_code=500, content={"error": "Error processing files"})

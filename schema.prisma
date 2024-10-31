@@ -19,13 +19,18 @@ model PersonaSession {
     generated_questions           String?
     personamessages               PersonaMessage[] 
     personaobservers              PersonaObserver[] 
+    createdAt                     DateTime @default(now())
+    updatedAt                     DateTime @updatedAt
 }
 
 model PersonaMessage {
     id                              Int                @id @default(autoincrement())
     chathistory                     String?
+    status                          Boolean            @default(false)
     personasessionId                Int?
     personasession                  PersonaSession?   @relation(fields: [personasessionId], references: [id])
+    createdAt                       DateTime @default(now())
+    updatedAt                       DateTime @updatedAt
 }
 
 model PersonaObserver {
@@ -34,4 +39,6 @@ model PersonaObserver {
     interview_evaluation_metrics    String?
     personasessionId                Int?
     personasession                  PersonaSession?   @relation(fields: [personasessionId], references: [id])
+    createdAt                       DateTime @default(now())
+    updatedAt                       DateTime @updatedAt
 }

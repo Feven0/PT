@@ -21,7 +21,7 @@ interface MarkdownContentProps {
 
 const InterviewChat = () => {
     const {userId, jobId} = useParams()
-    const { handleInterview, interview, loading, seconds, minutes, pause, setChatInterview } = useMiddleSocket();
+    const { handleInterview, loading, seconds, minutes, pause, interview, setChatInterview, inter } = useMiddleSocket();
     const { latestsession, setStart} = useContext<any>(ProviderContext);
     const [counter, setCounter] = useState<any>(1);
     const [input, setInput] = useState<any>("");
@@ -32,12 +32,36 @@ const InterviewChat = () => {
     const [load, setLoading] = useState<any>({}); 
     const [clickCount, setClickCount] = useState<any>({}); 
     const [sessions, setSession] = useState<any>([]);
+    const [observer, setObserver] = useState<any>([]);
     const latest = JSON.parse(localStorage.getItem("userSession"));
     const [viewloading, setShow] = useState(false);
     const [loadingSessionId, setLoadingSessionId] = useState(null);
-
+    const inteiew = [
+        {
+            "user_type": "candidate",
+            "content_type": "answer",
+            "complete": false,
+            "content": {
+                "chunk_response": "",
+                "time_taken": "00:00",
+                "realtime_evaluation": "null"
+            }
+        },
+        {
+            "user_type": "assistant",
+            "content_type": "question_feedback",
+            "complete": false,
+            "content": {
+                "time_taken": "null",
+                "chunk_response": [],
+                "realtime_evaluation": "null"
+            }
+        }
+    ]
     const charLimit = 1200; 
+    // console.log("chat-history", inter)
     console.log("chat-history", interview)
+
     const [isHovered, setIsHovered] = useState(false);
 
     const buttonStyle = {
@@ -81,7 +105,7 @@ const InterviewChat = () => {
 
     const onSendMessage = (timerValue: any) => {
         const user_session = latest;
-        previous_question = interview[interview?.length-1]?.content?.response?.question
+        // previous_question = interview[interview?.length-1]?.content?.response?.question
         handleInterview({ 
             input, 
             interview, 
@@ -157,16 +181,18 @@ const InterviewChat = () => {
             // setError('');
         } 
     };
+    // console.log("observers", observer)
 
     const fetchChatHistory = async (sessionId) => {
-        console.log("sessionIDjim", sessionId)
         setLoadingSessionId(sessionId);  
         const data = {
-        sessionId: sessionId, 
+            sessionId: sessionId, 
         }
         const response = await Api.fetchChatHistory(data)
-        console.log("fetching session...", response?.data)
+        const responseobs = await Api.fetchChatObserver(data)
+        console.log("fetching data...", response?.data)
         setChatInterview(response?.data[0]?.chathistory)
+        setObserver(responseobs?.data[0])
         setLoadingSessionId(null);
     }
 
@@ -174,7 +200,7 @@ const InterviewChat = () => {
     const fetchSession = async() =>{
         const userId= localStorage.getItem("userId")
         const response = await Api.fetchSession({userId})
-        console.log("sessions", response.data)
+        // console.log("sessions", response.data)
         setSession(response.data?.all_user_data)
         //setLatest(response?.data?.latest_user_data)
         // setSession(data?.all_user_data)  
@@ -192,8 +218,7 @@ const InterviewChat = () => {
                 style={{ 
                     display: 'flex',
                     flexDirection: 'column-reverse', 
-                    width:'10rem', 
-                    gap:'1rem',   
+                    width:'34rem',  
                     maxHeight: '500px',  
                     overflowY: 'scroll',   
                     padding: '0.5rem',
@@ -203,29 +228,47 @@ const InterviewChat = () => {
                     WebkitOverflowScrolling: 'touch',  
                     cursor: 'pointer'
                     }}>
-               {sessions?.map((session, index) => (
-                    <div style={{ display: 'flex', gap: '1rem' }} key={index} onClick={() => fetchChatHistory(session?.id)}>
-                    {/* <div className="session">
-                        {new Date(session?.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        })}
-                        {' at '}
-                        {new Date(session?.createdAt).toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: 'numeric',
-                        hour12: true,
-                        })}
-                    </div> */}
-                    FETCH
 
+               {sessions?.map((session, index) => (
+                    <div key={index} >
+                    <div className="session" style={{ display: 'flex', gap: '1rem', backgroundColor:'#ffffff', borderRadius: '10px', marginBottom: '10px'}}>
+                        <div onClick={() => fetchChatHistory(session?.id)}>
+                            {new Date(session?.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            })}
+                            {' at '}
+                            {new Date(session?.createdAt).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: 'numeric',
+                            hour12: true,
+                            })}
+                        </div>
+
+                        {/* {interview[interview.length - 1]?.complete !== undefined &&(
+                            <div
+                                style={{
+                                    marginLeft: '0.6rem',
+                                    background: interview[interview.length - 1]?.complete === true ? '#8af5aa' : '#f58a8a', 
+                                    color: 'white', 
+                                    padding: '0.2rem 0.5rem', 
+                                    borderRadius: '4px' 
+                                }}
+                            >
+                                {interview[interview.length - 1]?.complete === true? 'complete' : 'Incomplete'}
+                            </div>  
+                        )} 
+                        <div style={{fontSize:'11px', textAlign:'end'}}>hide</div>  */}
+                    </div>
                     {loadingSessionId === session.id && <LoadingSpinner style={{ marginLeft: '5px' }} />}
                     </div>
                 ))}
+
+
                 </div>
 
-                <Card className="chat-box" style={{ height: '34rem', width: '60rem', overflowY: 'auto' }}>
+                <Card className="chat-box" style={{ height: '34rem', width: '70rem', overflowY: 'auto' }}>
                     {/* <PreviousChat/> */}
                     
                     {interview?.map((message: any, index: any) => (
@@ -250,36 +293,51 @@ const InterviewChat = () => {
                                     )}
                                 </div>
                             ))}
+                            
+                            
 
                             {(message?.user_type == 'assistant' && (
                                 <div>
-                                    {(message?.content?.response !== "null" && message?.content?.response !== undefined) && (
+                                    {(message?.content?.chunk_response.length !== 0 && message?.content?.chunk_response !== undefined) && (
                                         <div className='messageassistant'>
                                             <img src={hr} alt="" className='profile-image' />
                                             <Paragraph style={{ margin: 0, textAlign: 'justify', color: '#606060', fontSize: '1rem' }}>
-                                                {/* <MarkdownContent content={message?.assistant?.response?.start_message} /> */}
+                                                {/* <MarkdownContent content={message?.assistant?.response?.start_message} /> */}                                        
+
                                                     <div>
-                                                        time limit: {message?.content?.response?.time_limit}
-                                                    </div>
-                                                    <div style={{color:'black'}}>
+                                                        time limit: {message?.content?.time_limit}
+                                                    </div> 
+                                                    {/* <div style={{color:'black'}}>
                                                         <MarkdownContent content={message?.content?.response?.question} />
                                                     </div>
-                                                    
-                                                    <MarkdownContent content={message?.content?.response?.end_message} />
+                                                     */}
+                                                            
+                                                        <div className="chat-chunk-container">
+                                                            {message?.content?.chunk_response.map((msg, index) => (
+                                                                <p className="chat-chunk">
+                                                                    {/* <MarkdownContent content={msg} /> */}
+                                                                    {msg}
+                                                                </p>
+                                                            ))}
+                                                        </div>
+                                                          
+                                                       
+                            
+                                                    {/* <MarkdownContent content={message?.content?.response?.end_message} /> */}
                                                 
                                                 <div style={{ display: 'flex', alignItems: 'center' }}>
                                                     <div
-                                                        onClick={() => clarify_question(message?.content?.response?.question)}
+                                                        onClick={() => clarify_question(message?.content?.full_response)}
                                                         className='clarify'
-                                                        style={{ pointerEvents: (clickCount[message?.content?.response?.question] || 0) >= 2 ? 'none' : 'auto', opacity: (clickCount[message?.content?.response?.question] || 0) >= 2 ? 0.5 : 1 }}>
+                                                        style={{ pointerEvents: (clickCount[message?.content?.full_response] || 0) >= 2 ? 'none' : 'auto', opacity: (clickCount[message?.content?.full_response] || 0) >= 2 ? 0.5 : 1 }}>
                                                         Clarify
                                                     </div>
-                                                    {load[message?.content?.response?.question] && <LoadingSpinner style={{ marginLeft: '5px' }} />}
+                                                    {load[message?.content?.full_response] && <LoadingSpinner style={{ marginLeft: '5px' }} />}
                                                 </div>
 
-                                                {clarifications[message?.content?.response?.question] && (
+                                                {clarifications[message?.content?.full_response] && (
                                                     <div className='clarification'>
-                                                        <MarkdownContent content={clarifications[message?.content?.response?.question]} />
+                                                        <MarkdownContent content={clarifications[message?.content?.full_response]} />
                                                     </div>
                                                 )}
                                             </Paragraph>
@@ -290,21 +348,29 @@ const InterviewChat = () => {
                         </div>
                     ))}
 
-                    {(interview?.[interview.length - 1]?.content?.interview_evaluation !== "null" && interview?.[interview.length - 1]?.content?.interview_evaluation !== undefined) && (
+                    {(observer?.interview_evaluation !== "null" && observer?.interview_evaluation !== undefined) && (
                         <OverallFeedbackModal
-                        metricsData={interview?.[interview.length - 1]?.content?.interview_evaluation_metrics}
-                        evaluationData={interview?.[interview.length - 1]?.content?.interview_evaluation} 
+                        metricsData={observer?.interview_evaluation_metrics}
+                        evaluationData={observer?.interview_evaluation} 
                         />
                     )}
 
                     {loading && <Spin indicator={<img src={fade} alt="" className='h-10' />} />}
                 </Card>
                 
-                <div className='chat-timer-box'>
+                <div className='chat-timer-box' style={{}}>
                     <div>
                         {!start && (
                             <Button 
-                            style={{ margin:'7rem', textAlign:'center', width: '30vh', height: '10vh', color:'#ffffff', fontWeight: 'bolder', fontSize: '1.42rem' }}
+                            style={{ 
+                                margin:'7rem', 
+                                textAlign:'center', 
+                                width: '30vh', 
+                                height: '10vh', 
+                                color:'#ffffff', 
+                                fontWeight: 'bolder', 
+                                fontSize: '1.42rem'
+                            }}
                             className='start-btn' 
                             onClick={startInterview}
                             >
@@ -319,7 +385,7 @@ const InterviewChat = () => {
                                 {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
                             </div>
                     
-                            <div className='input-container' style={{width: '28rem'}}>
+                            <div className='input-container' style={{width: '25rem'}}>
                                 <Input.TextArea
                                     value={input}
                                     placeholder="Put your answer here"

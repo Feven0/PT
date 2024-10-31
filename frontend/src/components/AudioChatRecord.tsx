@@ -11,7 +11,7 @@ const AudioChatRecord = ({ sendDataParent, sendDataToParent, pause }) => {
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
 
-    const handleClick = (audio) => {
+    const handleClick = (audio: any) => {
         sendDataToParent(audio);
     };
 
@@ -42,7 +42,7 @@ const AudioChatRecord = ({ sendDataParent, sendDataToParent, pause }) => {
         }
     };
 
-    const uploadAudio = async (audioBlob) => {
+    const uploadAudio = async (audioBlob: any) => {
         const formData = new FormData();
         formData.append('file', audioBlob, 'recording.wav'); 
 
@@ -51,6 +51,11 @@ const AudioChatRecord = ({ sendDataParent, sendDataToParent, pause }) => {
             const response = await Api.audioUpload(formData);
             handleClick(response.data.transcription);
             sendDataParent(false);
+            
+            //----------------------------------------//
+            setAudioURL(null);
+            setIsRecording(false);
+            //----------------------------------------//
         } catch (error) {
             console.error('Error uploading audio:', error);
         }
@@ -71,7 +76,7 @@ const AudioChatRecord = ({ sendDataParent, sendDataToParent, pause }) => {
 
     return (
         <div className="audio-recorder-container">
-            <div className="audio-recorder">
+            <div className="audio-recorder-chat">
                 {isRecording ? (
                     <FaCircleStop
                         size={30}
@@ -88,7 +93,7 @@ const AudioChatRecord = ({ sendDataParent, sendDataToParent, pause }) => {
             </div>
 
             {audioURL && (
-                  <audio  controls>
+                  <audio controls>
                     <source src={audioURL} type="audio/mpeg" />
                 </audio>
             )}
@@ -99,7 +104,7 @@ const AudioChatRecord = ({ sendDataParent, sendDataToParent, pause }) => {
                         Redo Recording
                     </button>
                     <button className="submit-button" onClick={submit}>
-                        Submit Recording
+                        Submit Answer
                     </button>
                 </div>
             )}

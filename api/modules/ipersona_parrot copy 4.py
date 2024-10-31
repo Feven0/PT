@@ -10,7 +10,6 @@ import api.llm.ipersona.ipersona_schema as db
 # from api.config import get_openapi_token
 from api.utils.logger import LLPackerLogger, logme
 import api.llm.ipersona.ipersona_prisma as prisma
-import api.llm.ipersona.ipersona_gpt as gpt
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
@@ -27,7 +26,7 @@ data_path = lambda x: os.path.join(module_dir, "data", x)
 
 
 
-# hr_agent = agents()
+hr_agent = agents()
 
 #-------------------------------------------- create persona --------------------------------------------
 def create_persona(job_desc):
@@ -67,7 +66,7 @@ def create_persona(job_desc):
 
 
 #--------------------------------------------  Generate Interview Questions --------------------------------
-async def generate_interview_question(data: dict):
+async def generate_interview_question(data: dict) -> dict:
     """
     Generates interview questions based on user session data.
 
@@ -87,7 +86,7 @@ async def generate_interview_question(data: dict):
         if an exception occurs during processing.
     """
     try:
-        # hr_agent.assistant.update_system_message(data['user_session']['persona'])   
+        hr_agent.assistant.update_system_message(data['user_session']['persona'])   
         response = await choose_interview_question(data['user_session']['generated_questions'], data)
         
         return response
@@ -98,7 +97,7 @@ async def generate_interview_question(data: dict):
     
     
 #-------------------------------------------- Choose Question from Generated ----------------------------------
-async def choose_interview_question(collection: dict, data: dict):
+async def choose_interview_question(collection: dict, data: dict) -> dict:
     """
     Selects an interview question based on the current question counter.
 
@@ -145,7 +144,7 @@ async def choose_interview_question(collection: dict, data: dict):
         
         section = None
         question_type = None
-        if data['question_counter'] < 3: 
+        if data['question_counter'] < 2: 
             section = collection["Background"]
             question_type = "Background"
             count = None
@@ -153,31 +152,31 @@ async def choose_interview_question(collection: dict, data: dict):
 
             return response
         
-        elif data['question_counter'] < 5: 
+        elif data['question_counter'] < 3: 
             section = collection["Technical"]
             question_type = "Technical"
+            count = None
+            if data['question_counter'] == 2: 
+                count = data['question_counter']
+            response = await helper_func(count, question_type, section, data)
+            
+            return response
+            
+        elif data['question_counter'] < 4: 
+            section = collection["Behavioral"]
+            question_type = "Behavioral"
             count = None
             if data['question_counter'] == 3: 
                 count = data['question_counter']
             response = await helper_func(count, question_type, section, data)
             
             return response
-            
-        elif data['question_counter'] < 7: 
-            section = collection["Behavioral"]
-            question_type = "Behavioral"
-            count = None
-            if data['question_counter'] == 5: 
-                count = data['question_counter']
-            response = await helper_func(count, question_type, section, data)
-            
-            return response
         
-        elif data['question_counter'] < 10: 
+        elif data['question_counter'] < 6: 
             section = collection["Ability"]
             question_type = "Ability"
             count = None
-            if data['question_counter'] == 7: 
+            if data['question_counter'] == 4: 
                 count = data['question_counter']
             response = await helper_func(count, question_type, section, data)
             
@@ -189,7 +188,7 @@ async def choose_interview_question(collection: dict, data: dict):
 
 
 #----------------------------------------- Helper Functions for Choosing Question ---------------------------------
-async def helper_func(count: int, question_type: str, section: list, data: dict):
+async def helper_func(count: int, question_type: str, section: list, data: dict) -> dict:
     """
     Processes interview questions and evaluations based on candidate responses.
 
@@ -224,9 +223,8 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
         overall_evaluation_response_json = None  
         interview_question_json = None
         overall_interview_metrics_json = None   
-        # interview_question_json = await fetch_interview_question(section, data) 
-                
-        if data['question_counter'] < 9:
+        
+        if data['question_counter'] < 5:
             if data['response']:
                 if count is not None:
                     realtime_evaluation_response_json = await realtime_response_evaluation(data)
@@ -234,26 +232,22 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
                 else:
                     realtime_evaluation_response_json = await realtime_response_evaluation(data)
                     response = await check_if_followup(data['response'])
-                    print("your rasing yourrrrrrrrrrrrrrrsefl")
-                    print(response)
                     if not response:
                         interview_question_json = await fetch_interview_question(section, data) 
                     else:
-                        interview_question_json = await generate_followup(data)
-                        print("I keep hangingggggggggggggggggggggggg out")
-                        print(interview_question_json)
+                        interview_question_json = await generate_followup(data['response'])
             else:
                 interview_question_json = await fetch_interview_question(section, data) 
             
-            # if 'question_number' in interview_question_json.get('interview_question', {}):
-            #     for item in section:
-            #         if item["question_number"] == interview_question_json['interview_question']['question_number']:
-            #             time_limit = item["time_limit"]
-            #             end_message = item["end_message"]
-            #             interview_question_json['interview_question']['question_type'] = question_type
-            #             interview_question_json['interview_question']['time_limit'] = time_limit
-            #             interview_question_json['interview_question']['end_message'] = end_message
-            #             break    
+            if 'question_number' in interview_question_json.get('interview_question', {}):
+                for item in section:
+                    if item["question_number"] == interview_question_json['interview_question']['question_number']:
+                        time_limit = item["time_limit"]
+                        end_message = item["end_message"]
+                        interview_question_json['interview_question']['question_type'] = question_type
+                        interview_question_json['interview_question']['time_limit'] = time_limit
+                        interview_question_json['interview_question']['end_message'] = end_message
+                        break    
         else:  
             realtime_evaluation_response_json = await realtime_response_evaluation(data)
             overall_evaluation_values = await overall_interview_evaluations(data, realtime_evaluation_response_json)
@@ -266,7 +260,6 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
             "overall": overall_evaluation_response_json,
             "metrics": overall_interview_metrics_json
         }
-        
         return response
     
     except Exception as e:
@@ -275,7 +268,7 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
    
    
 #----------------------------------------- picking the right Question ----------------------------------------- 
-async def fetch_interview_question(section: list, data: dict):
+async def fetch_interview_question(section: list, data: dict) -> dict:
     """
     Fetches an interview question based on the provided section and candidate response.
 
@@ -306,34 +299,16 @@ async def fetch_interview_question(section: list, data: dict):
             .replace("{questions}", str(questions))\
             .replace("{candidate_response}", data['response'])        
 
-        # response = await hr_agent.generate_question(msg)
-        content = data['user_session']['persona'] + msg
-        response = gpt.openai_gpt_assistant_with_streaming(content)
-        print("preeeeeeeeeeetttttttttttmuchhhhhhhhh")
-        print(response)
-        # response_json = extract_json(response, quite=False)
+        response = await hr_agent.generate_question(msg)
+        response_json = extract_json(response, quite=False)
         
-        return response
+        return response_json     
+
     except Exception as e:
         logger.error(f"Choosing the right question process failed: ${str(e)}")
         return {'error': str(e)}
     
-#-------------------------------- Interview question time limit generation ---------------------------- 
-async def interview_question_time_limit(question: str):
-    try:
-        message = file_reader(prompt_path('ipersona/time_limit_generator.txt'))
-        context = str(message)
-        msg = context\
-            .replace("{question}", question)     
-
-        response = await gpt.openai_gpt_assistant_without_streaming(msg)
-        response = extract_json(response, quite=False)
-        return response
-    except Exception as e:
-        logger.error(f"generating time limit process failed: ${str(e)}")
-        return {'error': str(e)}
-    
-    
+ 
 #---------------------------------------- Follow up Question Checker -------------------------------
 async def check_if_followup(candidate_response: str) -> bool:
     """
@@ -360,9 +335,7 @@ async def check_if_followup(candidate_response: str) -> bool:
         context = str(message)
         msg = context.replace("{candidate_response}", candidate_response) 
              
-        # response = await hr_agent.generate_question(msg)
-        response = await gpt.openai_gpt_assistant_without_streaming(msg)
-
+        response = await hr_agent.generate_question(msg)
         response_json = extract_json(response, quite=False)
 
         return response_json["follow-up"]
@@ -373,7 +346,7 @@ async def check_if_followup(candidate_response: str) -> bool:
     
     
 #-------------------------------------------- Generate Follow up Question -----------------------------------
-async def generate_followup(data) -> dict:
+async def generate_followup(candidate_response: str) -> dict:
     """
     Generates a follow-up question based on the candidate's response.
 
@@ -396,16 +369,12 @@ async def generate_followup(data) -> dict:
     try:
         message = file_reader(prompt_path('ipersona/follow_up.txt'))
         context = str(message)
-        msg = context.replace("{candidate_response}", data['response'])
-        # response = await hr_agent.generate_question(msg)
+        msg = context.replace("{candidate_response}", candidate_response)
+        response = await hr_agent.generate_question(msg)
+        response_json = extract_json(response, quite=False)
+        response_json['interview_question']['end_message'] = "Please take your time to provide a detailed response"
         
-        content = data['user_session']['persona'] + msg
-        response = gpt.openai_gpt_assistant_with_streaming(content)
-        
-        # response_json = extract_json(response, quite=False)
-        # response_json['interview_question']['end_message'] = "Please take your time to provide a detailed response"
-        
-        return response
+        return response_json
     
     except Exception as e:
         logger.error(f"Generating follow up failed: ${str(e)}")
@@ -440,12 +409,7 @@ async def realtime_response_evaluation(data: dict) -> dict:
             .replace("{candidate_response}", data['response'])
                 
         # Evaluate the real-time chat response for the last response
-        
-        content = data['user_session']['persona'] + evaluation_msg
-
-        # realtime_evaluation_response = await hr_agent.evaluate_candidate_response(evaluation_msg)
-        realtime_evaluation_response = await gpt.openai_gpt_assistant_without_streaming(content)
-
+        realtime_evaluation_response = await hr_agent.evaluate_candidate_response(evaluation_msg)
         realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False)
         
         return realtime_evaluation_response
@@ -493,17 +457,11 @@ async def overall_interview_evaluations(data: dict, realtime_evaluation_response
             .replace("{history}", history_str)  
                 
         # Overall interview evaluation once the interview ended        
-        # overall_evaluation_response = await hr_agent.evaluate_overall_interview(overall_evaluation_msg)
-        
-        content = data['user_session']['persona'] + overall_evaluation_msg
-        overall_evaluation_response = await gpt.openai_gpt_assistant_without_streaming(content)
-
+        overall_evaluation_response = await hr_agent.evaluate_overall_interview(overall_evaluation_msg)
         overall_evaluation_response_json = extract_json(overall_evaluation_response, quite=False)
         
         # Generate the Metrics for an interview
-        # overall_interview_metrics_response = await hr_agent.overall_interview_metrics(overall_metrics_msg)
-        content = data['user_session']['persona'] + overall_metrics_msg
-        overall_interview_metrics_response = await gpt.openai_gpt_assistant_without_streaming(content)
+        overall_interview_metrics_response = await hr_agent.overall_interview_metrics(overall_metrics_msg)
         overall_interview_metrics_json = extract_json(overall_interview_metrics_response, quite=False)
         
         # Adding necessary data to the final response json
@@ -569,8 +527,7 @@ async def clarify_question(question: str) -> dict:
         message = file_reader(prompt_path("ipersona/clarify_question.txt"))
         context = str(message)
         msg = context.replace("{question}", question)
-        # response = await hr_agent.interview_question_clarification(msg)
-        response = await gpt.openai_gpt_assistant_without_streaming(msg)
+        response = await hr_agent.interview_question_clarification(msg)
         response = extract_json(response, quite=False)
     
         return response

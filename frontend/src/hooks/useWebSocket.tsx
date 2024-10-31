@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import io from 'socket.io-client';
+import { io } from 'socket.io-client';
 
-const useWebSocket = (url: any) => {
-  const [socket, setSocket] = useState<any>(null);
+const useWebSocket = (url: string) => {
+  const [socket, setSocket] = useState<SocketIOClient.Socket | null>(null);
   const [interview, setChatInterview] = useState<any[]>([]);
-  const [audiointerview, setAudioInterview] = useState<any>();
-  
+  const [audioInterview, setAudioInterview] = useState<any>();
+  const [audioHistory, setAudioHistory] = useState<any[]>([]);
+
   useEffect(() => {
     const newSocket = io(url);
     setSocket(newSocket);
@@ -16,12 +17,73 @@ const useWebSocket = (url: any) => {
 
     newSocket.on('interview chat', (message) => {
       console.log(`Received response: ${message}`);
-      setChatInterview((prevMessages) => [...prevMessages, ...message]);
+      setChatInterview((prevMessages) => {
+        if (!Array.isArray(prevMessages)) {
+          console.error("prevMessages is not an array:", prevMessages);
+          return [message]; 
+        }
+        console.log("check status", prevMessages.length > 0 && prevMessages[prevMessages.length - 1].user_type === 'assistant')
+
+        if (prevMessages.length > 0 && prevMessages[prevMessages.length - 1].user_type === 'assistant') {
+          const lastMessage = prevMessages[prevMessages.length - 1];
+          console.log("latest assistant response", lastMessage)
+          const currentResponse = Array.isArray(lastMessage?.content?.chunk_response)
+            ? lastMessage?.content?.chunk_response
+            : [];
+
+            const newResponse = Array.isArray(message?.content?.chunk_response) 
+            ? [...currentResponse, ...message?.content?.chunk_response] 
+            : [...currentResponse, message[0]?.content?.chunk_response]; 
+    
+          return [
+            ...prevMessages.slice(0, -1), 
+            {
+              ...lastMessage,
+              content: {
+                ...lastMessage.content,
+                chunk_response: newResponse 
+              }
+            }
+          ];
+        } else {
+
+          return [...prevMessages, ...message];
+        }
+      });
     });
 
+    newSocket.on('interview fullchat', (message) => {
+      console.log(`Received full chat response: ${message}`);
+      // Replace the entire response with the new content
+      setChatInterview((prevMessages) => {
+          if (!Array.isArray(prevMessages)) {
+              console.error("prevMessages is not an array:", prevMessages);
+              return [message];
+          }
+  
+          const lastMessage = prevMessages[prevMessages.length - 1];
+  
+          if (lastMessage && lastMessage.user_type === 'assistant') {
+              return [
+                  ...prevMessages.slice(0, -1),
+                  {
+                      ...lastMessage,
+                      content: {
+                          ...lastMessage.content,
+                          full_response: message[0]?.content?.full_response,
+                          time_limit:  message[0]?.content?.time_limit
+                      }
+                  }
+              ];
+          } else {
+              return [...prevMessages, message];
+          }
+      });
+  });
+
     newSocket.on('audio chat', (message) => {
-      console.log(`Received response: ${message}`);
       setAudioInterview(message);
+      setAudioHistory((prevMessages) => [...prevMessages, message]);
     });
 
     newSocket.on('disconnect', () => {
@@ -33,7 +95,7 @@ const useWebSocket = (url: any) => {
     };
   }, [url]);
 
-  return [socket, interview, setChatInterview, audiointerview, setAudioInterview];
+  return [socket, interview, setChatInterview, audioInterview, setAudioInterview, audioHistory, setAudioHistory];
 };
 
 export default useWebSocket;

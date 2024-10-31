@@ -1,3 +1,15 @@
+.audio-history-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px; 
+}
+
+.audio-message {
+    /* background-color: #f1f1f1;  */
+    /* padding: 5px 10px; */
+    border-radius: 5px; 
+}
+
 .audio-recorder-container {
     display: flex;
     flex-direction: column;
@@ -8,11 +20,21 @@
     /* height: 100vh; */
 }
 
-.audio-recorder {
+.audio-recorder-chat {
     cursor: pointer;
     margin-top: -2.5rem;
     background-color: black;
     border-radius: 50%; 
+    height: 4rem;
+    width: 4rem;
+    display: flex; 
+    align-items: center;
+    justify-content: center; 
+}
+
+.audio-recorder {
+    cursor: pointer;
+    margin-top: -0.9rem;
     height: 4rem;
     width: 4rem;
     display: flex; 

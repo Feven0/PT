@@ -5,14 +5,14 @@ import WaveSurfer from 'wavesurfer.js';
 import { AudioChatRecord, OverallFeedbackModal } from './index';
 import useMiddleSocket from '../hooks/useMiddleSocket';
 import fade from '../assets/fade-circles.svg';
-
+import '../styles/AudioRecorder/audiorecorder.css'
 const { Panel } = Collapse;
 
 const { Title } = Typography;
 const apiKey = `${import.meta.env.VITE_REACT_APP_OPENAI_KEY}`;
 
 const Audio = () => {
-        const { handleAudioInterview, loading, seconds, minutes, pause, reset, setLoading } = useMiddleSocket();
+        const { handleAudioInterview, loading, audiointerview, audiohistory, seconds, minutes, pause, reset, setLoading } = useMiddleSocket();
         // const {userId, jobId} = useParams()
         // const userId = 16
         // const jobId = 1045
@@ -22,170 +22,19 @@ const Audio = () => {
         const [input, setInput] = useState<any>("");
         const [show, setShow] = useState<any>(true);
         const [counter, setCounter] = useState<any>(1);
-        const [lastTimerValue, setLastTimerValue] = useState<any>('00:00'); 
+        const [buffer, setBuffer] = useState('');
 
         const wavesurferRef = useRef(null);
         const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
 
-        const audiointerview = [{
-            "user_type": "assistant",
-            "content_type": "question_feedback",
-            "complete": false,
-            "content": {
-                "time_taken": "null",
-                "response": "null",
-                "realtime_evaluation": {
-                    "overall": {
-                        "relevance": "weak",
-                        "feedback": "Your response suggested a basic understanding of time management through the use of scheduling tools. However, it lacked depth and specific strategies that demonstrate how you effectively manage your workload, especially when juggling multiple projects. Providing examples or elaborating on how these tools help you prioritize tasks would strengthen your answer."
-                    },
-                    "answer_relevancy": [
-                        {
-                            "level": "50",
-                            "reason": "The mention of scheduling tools is relevant, but the response does not provide sufficient detail or context to fully address the question."
-                        }
-                    ],
-                    "communication_skills": [
-                        {
-                            "skill": "clarity",
-                            "level": "Good",
-                            "reason": "Your response was coherent, but it could benefit from more elaboration to enhance understanding."
-                        },
-                        {
-                            "skill": "engagement",
-                            "level": "Poor",
-                            "reason": "The response lacked enthusiasm and did not engage the interviewer effectively, making it seem less compelling."
-                        }
-                    ]
-                },
-                "interview_evaluation": {
-                    "evaluation": "Your performance in the interview indicates a foundational understanding of machine learning and software engineering concepts, but there are areas that require improvement. Specifically, your responses lacked depth and concrete examples, which are crucial for demonstrating your experience and capabilities. To be a better fit for the role, focus on providing specific instances of your work and the outcomes achieved, especially in collaborative settings.",
-                    "recommendation": [
-                        {
-                            "title": "Effective Communication Skills",
-                            "resource": "The Complete Communication Skills Masterclass for Life",
-                            "type": "Online Course",
-                            "link": "www.udemy.com"
-                        },
-                        {
-                            "title": "Project Management Fundamentals",
-                            "resource": "Project Management Professional (PMP) Certification Training",
-                            "type": "Online Course",
-                            "link": "www.coursera.org"
-                        },
-                        {
-                            "title": "Deep Learning Specialization",
-                            "resource": "Deep Learning Specialization by Andrew Ng",
-                            "type": "Online Course",
-                            "link": "www.coursera.org"
-                        }
-                    ],
-                    "competency": [
-                        {
-                            "name": "Machine Learning",
-                            "sfia_level": "3"
-                        },
-                        {
-                            "name": "Communication Skills",
-                            "sfia_level": "2"
-                        },
-                        {
-                            "name": "Project Management",
-                            "sfia_level": "2"
-                        }
-                    ],
-                    "overall_performance": 50,
-                    "message": "Good"
-                },
-                "interview_evaluation_metrics": {
-                    "performance": [
-                        {
-                            "name": "confidence_level",
-                            "level": "Poor",
-                            "reason": "You appeared unsure and lacked confidence during your response, which affected the clarity of your communication."
-                        }
-                    ],
-                    "areas_of_improvement": [
-                        {
-                            "skill": "Time Management",
-                            "description": "You need to provide specific examples of how you manage your time and workload effectively. Instead of general statements about collaboration, focus on concrete instances where you successfully handled multiple projects and the strategies you employed."
-                        }
-                    ],
-                    "strength": [
-                        {
-                            "skill": "Collaboration",
-                            "description": "You mentioned collaboration with developers, indicating an understanding of teamwork. However, you need to enhance this by providing detailed examples of successful collaborations and their outcomes."
-                        }
-                    ],
-                    "time_management": {
-                        "fail": 0,
-                        "pass": 0
-                    },
-                    "relevancy": [
-                        {
-                            "index": 1,
-                            "level": "50",
-                            "reason": "The mention of scheduling tools is relevant, but the response does not provide sufficient detail or context to fully address the question."
-                        }
-                    ],
-                    "message": "Good",
-                    "rating": 2
-                }
-            }
-        }]
-        console.log("audioooo", audiointerview)
-        // console.log("input", input)
+ 
+        // console.log("audioooo caroline", buffer)
+        // console.log("audiohistory", audiohistory)
 
         let previous_question = "";
         let timerValue: any;
 
-        useEffect(() => {
-            // synthesizeAudio(audiointerview)
-        }, [audiointerview])
-
-       const synthesizeAudio = async (data) => {
-        try {
-            if(data !== undefined){
-                setLoading(true)
-                const feedcheck = data[0]?.content?.realtime_evaluation
-                const response = data[0]?.content?.response
-                const feedback = data[0]?.content?.realtime_evaluation?.overall?.feedback;
-                const question = data[0]?.content?.response?.question;
-                const endMessage = data[0]?.content?.response?.end_message;
-                const time_limit = data[0]?.content?.response?.time_limit;
-                let textToRead = "";
-
-                if(feedcheck === "null" && response !== "null") {
-                    textToRead = `Let start the interview: Now, ${question} ${endMessage}`;
-                }
-                else if(response !== "null" && feedcheck !== "null") {
-                    textToRead = `${feedback}. Now, ${question}, and you must provide an answer with in ${time_limit} minutes ${endMessage}`;
-                } else {
-                    const overall  = data[0]?.content?.interview_evaluation?.evaluation
-                    textToRead = `${feedback}. We are done with the interview, Here is your overall performance evaluation ${overall}`
-                }
-
-                const mp3 = await openai.audio.speech.create({
-                    model: "tts-1-hd",
-                    voice: "nova",
-                    input: textToRead,
-                });
-
-                const audioBlob = new Blob([await mp3.arrayBuffer()], { type: 'audio/mpeg' });
-                const url = URL.createObjectURL(audioBlob);
-
-                if (audioUrl) {
-                    URL.revokeObjectURL(audioUrl);
-                }
-                setAudioUrl(url);
-                setLoading(false);
-            }
-        } catch (error) {
-            console.error("Error generating audio:", error);
-            message.error("Failed to generate audio. Please try again.");
-        }
-    };
-
+        // Initialize WaveSurfer
     useEffect(() => {
         wavesurferRef.current = WaveSurfer.create({
             container: '#waveform',
@@ -196,20 +45,71 @@ const Audio = () => {
             responsive: true,
         });
 
+        return () => {
+            wavesurferRef.current.destroy();
+        };
+    }, []);
+
+    // Handle audio URL changes
+    useEffect(() => {
         if (audioUrl) {
             wavesurferRef.current.load(audioUrl);
             wavesurferRef.current.on('ready', () => {
                 wavesurferRef.current.play();
             });
             wavesurferRef.current.on('finish', () => {
-                reset(); 
+                setAudioUrl(null); // Reset audio URL after playback
             });
         }
-
-        return () => {
-            wavesurferRef.current.destroy();
-        };
     }, [audioUrl]);
+
+    // Function to synthesize audio from text
+    const synthesizeAudio = async () => {
+        const text = 'I have work at the station near the line stree around lebu. The station was dirty but wide enough to handle too many passangers'
+        if (!text) return; 
+        try {
+            setLoading(true); 
+            
+            const mp3 = await openai.audio.speech.create({
+                model: "tts-1-hd",
+                voice: "nova",
+                input: text,
+            });
+
+            const audioBlob = new Blob([await mp3.arrayBuffer()], { type: 'audio/mpeg' });
+            const url = URL.createObjectURL(audioBlob);
+            
+            if (audioUrl) {
+                URL.revokeObjectURL(audioUrl);
+            }
+            setAudioUrl(url); 
+            setLoading(false);
+        } catch (error) {
+            console.error("Error generating audio:", error);
+            setLoading(false); 
+        }
+    };
+
+    useEffect(() => {
+        const processChunks = async () => {
+            let tempBuffer = ''; 
+            
+            for (const chunk of audiohistory) {
+                console.log("audiochunk", chunk); 
+                tempBuffer += chunk;
+
+                if (chunk.endsWith(' ') || chunk.endsWith('.') || chunk.endsWith('?') || chunk.endsWith('!')) {
+                    //await synthesizeAudio(tempBuffer.trim()); 
+                    tempBuffer = ''; 
+                }
+            }
+        };
+
+        if (audiohistory.length > 0) {
+            processChunks(); 
+        }
+    }, [audiohistory]); 
+
 
     const handleWaveformClick = (e: any) => {
         const waveformWidth = e.currentTarget.clientWidth;
@@ -253,14 +153,13 @@ const Audio = () => {
         pause();
         handleAudioInterview({ 
             input: input, 
-            interview: audiointerview, 
+            interview: audiohistory, 
             user_session: user_session,
             counter: counter,
             timerValue: timerValue,
             previous_question: previous_question
         });
         setCounter(counter < 9 ? counter + 1 : 1);
-        setLastTimerValue(timerValue); 
         setShow(false)
     }  
 
@@ -274,23 +173,29 @@ const Audio = () => {
         timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         handleAudioInterview({ 
             input: audioTranscript, 
-            interview: audiointerview, 
+            interview: audiohistory, 
             user_session: user_session,
             counter: counter,
             timerValue: timerValue,
             previous_question: previous_question
         });
         setCounter(counter < 9 ? counter + 1 : 1);
-        setLastTimerValue(timerValue); 
     }
 
-   
+
 
     return (
         <>
+        <div onClick={synthesizeAudio}>Let's Test</div>
+        <div className="audio-history-container">
+            {audiohistory.map((msg, index) => (
+                <p key={index} className="audio-message">{msg}</p> 
+            ))}
+        </div>
+
         <div style={{display: 'flex', gap: '15rem', margin: '0rem 5rem 0rem 10rem'}}>
             <div style={{ width: '600px' }}>
-                <Card title="Audio Chat" bordered={true} >
+                <Card title="Audio Interview" bordered={true} >
                     <div style={{ 
                         fontSize: '20px', 
                         display: 'flex', 
@@ -321,7 +226,7 @@ const Audio = () => {
             </div>
             
             <div style={{display:'flex', flexDirection: 'column'}}>
-                {(audiointerview !== undefined && audiointerview[0]?.content?.realtime_evaluation !== "null") &&(
+                {(audiointerview !== undefined && !loading && audiointerview[0]?.content?.realtime_evaluation !== "null") &&(
                     <div style={{width: '28rem', bottom: '0', marginBottom: '0'}}>
                         <div style={{
                         textAlign: 'justify', 
@@ -361,7 +266,7 @@ const Audio = () => {
                     </div>
                 )}
 
-                {(audiointerview !== undefined && audiointerview[0]?.content?.interview_evaluation !== "null") &&(
+                {(audiointerview !== undefined && !loading && audiointerview[0]?.content?.interview_evaluation !== "null") &&(
                     <div style={{marginTop: '1.8rem'}}>
                         <OverallFeedbackModal
                             metricsData={audiointerview[0]?.content?.interview_evaluation_metrics}

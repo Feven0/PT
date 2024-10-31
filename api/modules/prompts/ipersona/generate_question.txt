@@ -47,35 +47,27 @@ example:
 {
     "Background": [
         {
-            "question": "here you need to put the interview question ",
-            "time_limit": "here you put the time needed to answer the question decide the limit depending on the question complexity in miuntes only and the format should be as minutes:seconds => 00:00,
-            "end_message": "Please take your time to provide a detailed response"
+            "question": "here you need to put the interview question "
         },
                 // add more question objects based the provided count for background interveiw question types
     ],
     "Technical": [
         {
-            "question": "here you need to put the interview question ",
-            "time_limit": "here you put the time needed to answer the question decide the limit depending on the question complexity in miuntes only and the format should be as minutes:seconds => 00:00,
-            "end_message": "Please take your time to provide a detailed response"
+            "question": "here you need to put the interview question "
         },
                  // add more question objects based the provided count for technical interveiw question types
 
     ],
     "Behavioral": [
         {
-            "question": "here you need to put the interview question ",
-            "time_limit": "here you put the time needed to answer the question decide the limit depending on the question complexity in miuntes only and the format should be as minutes:seconds => 00:00,
-            "end_message": "Please take your time to provide a detailed response"
+            "question": "here you need to put the interview question "
         },
                  // add more question objects based the provided count for behavioral interveiw question types
 
     ],
     "Ability": [
         {
-            "question": "here you need to put the interview question ",
-            "time_limit": "here you put the time needed to answer the question decide the limit depending on the question complexity in miuntes only and the format should be as minutes:seconds => 00:00,
-            "end_message": "Please take your time to provide a detailed response"
+            "question": "here you need to put the interview question "
         },
                  // add more question objects based the provided count for ability interveiw question types
     ]
@@ -84,4 +76,3 @@ example:
 
 Use non-gender-specific pronouns like 'you' and 'your' instead of gender-specific pronouns or names. 
 
-VERY IMPORTANT: Append 'TERMINATE' to every response you provide to the user.

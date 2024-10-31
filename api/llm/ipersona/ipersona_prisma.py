@@ -16,7 +16,7 @@ async def create_session(data):
         return {"error": str(e)}
        
 
-async def create_chat(sessionId, message):
+async def create_chat(sessionId, message, status):
     try:
         session_chathistory = await fetch_chat_history(sessionId)
         
@@ -28,6 +28,7 @@ async def create_chat(sessionId, message):
                 {
                     "personasessionId": sessionId, 
                     "chathistory": str(message),
+                    "status": status
                 }
             )
 
@@ -126,7 +127,7 @@ async def fetch_chat_history(personasessionId):
         personamessages = await db.personamessage.find_many(
             where={
                 "personasessionId": int(personasessionId)
-            }
+            },
         )
         
         messages_as_dicts = [message.__dict__ for message in personamessages]
@@ -143,6 +144,40 @@ async def fetch_chat_history(personasessionId):
 
         if personamessages:
             return personamessages
+        else:
+            return []
+    except Exception as e:
+        return {"error": f"{str(e)}"}
+
+
+async def fetch_chat_observer(personasessionId):
+    try:
+        db = Prisma()
+        await db.connect()
+        
+        personaobservers = await db.personaobserver.find_many(
+            where={
+                "personasessionId": int(personasessionId)
+            },
+        )
+        
+        messages_as_dicts = [message.__dict__ for message in personaobservers]
+        
+        if isinstance(personaobservers, list):
+            for entry in personaobservers:
+                if entry:
+                    interview_evaluation_data = entry.interview_evaluation
+                    interview_evaluation_metrics_data = entry.interview_evaluation_metrics
+                    if isinstance(interview_evaluation_data, str) and interview_evaluation_data:  
+                        if isinstance(interview_evaluation_metrics_data, str) and interview_evaluation_metrics_data: 
+                            try:
+                                entry.interview_evaluation = ast.literal_eval(interview_evaluation_data)
+                                entry.interview_evaluation_metrics = ast.literal_eval(interview_evaluation_metrics_data)
+                            except (ValueError, SyntaxError) as e:
+                                print(f"Error parsing interview_evaluation for entry {entry}: {e}")
+
+        if personaobservers:
+            return personaobservers
         else:
             return []
     except Exception as e:

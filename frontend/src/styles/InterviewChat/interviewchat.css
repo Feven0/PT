@@ -45,7 +45,6 @@
 .card_box {
     background-color: red;
     width: 50rem;
-    /* max-height: 7rem; */
 }
 
 .interview_percent {
@@ -58,7 +57,7 @@
 .interview-chat-container {
     position: relative;    
     display: flex;
-    margin: 0px 10px 0px 60px;
+    margin: 0px 10px 0px 6px;
 }
 
 .session {
@@ -248,4 +247,16 @@
 
 .realtime-evaluation {
     overflow: hidden; 
+}
+
+.chat-chunk-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px; 
+    margin-bottom: 1.7rem;
+}
+
+.chat-chunk {
+    border-radius: 5px; 
+    line-height: 0; 
 }

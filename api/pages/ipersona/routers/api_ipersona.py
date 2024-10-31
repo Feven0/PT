@@ -42,6 +42,23 @@ OPENAI_API_KEY = 'sk-proj-s_602qldi_p2UpWgJ3ghdzDiEvlhm0zOJOjjhMRLZNAnVw8FHrhm6x
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+
+import time, asyncio
+from openai import OpenAI
+import textwrap
+from IPython.display import display, clear_output, HTML
+
+OPENAI_API_KEY = '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'
+
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+import textwrap
+
+app = FastAPI()
+
 @routes.post("/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
     try:
