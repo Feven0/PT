@@ -4,7 +4,7 @@ from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
 import api.pages.ipersona.models.persona as pemodel
 import ast
-# import api.llm.ipersona.ipersona_prisma as prisma
+import api.llm.ipersona.ipersona_prisma as prisma
 
 route_weaviate = FastAPI(openapi_prefix="/wv")
 
@@ -30,9 +30,7 @@ async def fetch_session(recieved: pemodel.SessionRequestRecieved):
     userId = recieved.userId   
     try:
         # user_data = await db.fetch_session(userId)  
-        
-        # user_data = await prisma.fetch_sessions(userId) 
-          
+        user_data = await prisma.fetch_sessions(userId)   
         # if 'generated_questions' in user_data["latest_data"]:
         #     question_data = user_data["latest_data"]['generated_questions']
         #     if question_data:
@@ -74,10 +72,9 @@ async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):
     try:
         # session_chathistory = await database.fetch_all_chathistory(recieved)
 
-        # session_chathistory = await prisma.fetch_chat_history(recieved.sessionId)
+        session_chathistory = await prisma.fetch_chat_history(recieved.sessionId)
   
-        # return session_chathistory
-        pass
+        return session_chathistory
 
     except Exception as e:
         print(f"Error fetching chat history: {e}")
@@ -91,10 +88,9 @@ async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):
 @route_weaviate.post("/fetch_chat_observer")
 async def fetch_chat_observer(recieved: pemodel.ChatHistoryRequestRecieved):  
     try:
-        # session_chatobserver = await prisma.fetch_chat_observer(recieved.sessionId)
+        session_chatobserver = await prisma.fetch_chat_observer(recieved.sessionId)
   
-        # return session_chatobserver
-        pass
+        return session_chatobserver
 
     except Exception as e:
         print(f"Error fetching chat observer: {e}")

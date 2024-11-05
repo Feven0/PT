@@ -3,7 +3,8 @@ import AppRoutes from "./routes/AppRoutes";
 
 const App = () => (
   <>
-      <AppRoutes/>
+      {/* <AppRoutes/> */}
+      <div>decided not to help you</div>
   </>
 );
 
