@@ -12,7 +12,7 @@ from fastapi import UploadFile, Form
 from fastapi.responses import StreamingResponse
 import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_gpt as gpt
-import api.llm.ipersona.ipersona_prisma as prisma
+# import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_db as database
 from api.llm.ipersona.ipersona_agent import agents
 import api.pages.ipersona.models.persona as pemodel
@@ -247,7 +247,7 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
         }                
    
         # response = await db.create_schema(data)
-        response = await prisma.create_session(data)
+        # response = await prisma.create_session(data)
         #------------- ---------------------- 
 
         return response

@@ -9,7 +9,7 @@ import api.llm.ipersona.ipersona_db as database
 import api.llm.ipersona.ipersona_schema as db
 # from api.config import get_openapi_token
 from api.utils.logger import LLPackerLogger, logme
-import api.llm.ipersona.ipersona_prisma as prisma
+# import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_gpt as gpt
 
 logger = LLPackerLogger(os.path.basename(__file__))
