@@ -1,12 +1,12 @@
 version: "3"
 services:
-  ipersona:
-    container_name: ipersona
+  prodipersona:
+    container_name: prodipersona
     build: .
-    image: ipersona:latest
+    image: prodipersona:latest
     restart: unless-stopped
     environment:
-      - STRAPI_STAGE=apply
+      - STRAPI_STAGE=prod
       - PORT=4500
       - APP_MODULE=app:app
       - WORKERS_PER_CORE=0.5
@@ -24,6 +24,6 @@ services:
 
 networks:
     ipersona_network:
-        name: ipersona
+        name: prodipersona
         driver: bridge      
 

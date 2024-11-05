@@ -1,6 +1,6 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11
 
-ENV STRAPI_STAGE=apply
+ENV STRAPI_STAGE=prod
 
 RUn pip install --upgrade pip
 

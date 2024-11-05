@@ -6,7 +6,7 @@ import api.pages.ipersona.models.persona as pemodel
 import ast
 # import api.llm.ipersona.ipersona_prisma as prisma
 
-route_weaviate = FastAPI(openapi_prefix="/wv")
+route_weaviate = FastAPI(root_path="/wv")
 
 @route_weaviate.post("/fetch_user_session")
 async def fetch_session(recieved: pemodel.SessionRequestRecieved):
