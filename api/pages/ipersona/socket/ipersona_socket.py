@@ -290,3 +290,12 @@ async def audio_endpoint(sid, data):
 #         elapsed_time = end_time - start_time  
 #         print(f"Time taken for interview processing: {elapsed_time:.2f} seconds")
 
+
+def get_socketio_app(fast_app):
+    app = socketio.ASGIApp(
+        socketio_server=sio,
+        other_asgi_app=fast_app,
+        socketio_path='/socket.io/'
+    )
+    return app
+
