@@ -118,14 +118,14 @@ const InterviewChat = () => {
             jbJson: filteredJob[0]
         };
         const response = await Api.sessionCreate(data);
-        localStorage.setItem("userSession", JSON.stringify(response?.data))
+        localStorage.setItem("userSession", JSON.stringify(response?.data?.latest_user_data))
         
         // if(response.data !== undefined){
             setClickStart(true)
             handleInterview({ 
                 input: input, 
                 interview: interview, 
-                user_session: response?.data,
+                user_session: response?.data?.latest_user_data,
                 counter: counter,
                 timerValue: lastTimerValue,
                 previous_question: previous_question

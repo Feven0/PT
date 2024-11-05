@@ -6,7 +6,7 @@ if not cpath in sys.path:
 from fastapi import APIRouter, BackgroundTasks
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
-import api.modules.ipersona_parrot as util
+import api.modules.ipersona_parrot_gpt as util
 from fastapi import FastAPI
 from fastapi import UploadFile, Form
 from fastapi.responses import StreamingResponse
@@ -246,8 +246,8 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
             "generated_questions": str(combined_generated_question_json)
         }                
    
-        # response = await db.create_schema(data)
-        response = await prisma.create_session(data)
+        response = await db.create_schema(data)
+        # response = await prisma.create_session(data)
         #------------- ---------------------- 
 
         return response

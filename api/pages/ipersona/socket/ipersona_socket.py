@@ -1,5 +1,5 @@
 import socketio, ast, time
-import api.modules.ipersona_parrot as util
+import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_gpt as gpt
@@ -31,12 +31,11 @@ async def disconnect(sid):
             
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
-    print("interview_session-data", type(data['user_session']), data['user_session']['id'])
+    print("interview_session-data", type(data['user_session']))
     try:
         start_time = time.time()
         global chat_count
         chat_count = 1  
-        sessionId =  data['user_session']['id']   
         # chat = await prisma.fetch_chat_history(data['user_session']['id'])
         # if len(chat) != 0:  
         #     chat = chat[0].chathistory
