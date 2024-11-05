@@ -41,6 +41,7 @@ const JobCard : React.FC<JobCardProps> = ({ item, matchDegree }) => {
         cvJson: filteredUser[0],
         jbJson: filteredJob[0]
       };
+      console.log("submit", data)
       try {
           const response = await Api.sessionCreate(data);
           console.log("lucy", response)
