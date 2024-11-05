@@ -36,5 +36,10 @@ class SaveMetricsRequestRecieved(BaseModel):
     
 class ClarificationRequestRecieved(BaseModel):
     question: str
+    
+class audioRequestRecieved(BaseModel):
+    text: str
+   
+    
 
 

@@ -4,8 +4,9 @@ import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_gpt as gpt
 from openai import OpenAI
-import textwrap
-from IPython.display import display, clear_output, HTML
+import asyncio
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
 socket_app = socketio.ASGIApp(sio)
@@ -26,26 +27,8 @@ async def connect(sid, data):
 @sio.on("disconnect")
 async def disconnect(sid):
     print("Client Disconnected: " + " " + str(sid))
-
-
-async def process_streamed_responses(response_stream):
-    response_text = ""
-    complete_texts = []
     
-    for chunk in response_stream:
-        chunk_message = chunk.choices[0].delta.content
-        if chunk_message is not None:  
-            response_text += chunk_message
-        is_complete = chunk.choices[0].finish_reason is not None
-        
-        wrapped_text = textwrap.fill(response_text, width=80)  
-        complete_texts.append(wrapped_text)
-        
-        print("damon love")
-        print(wrapped_text)
-        if is_complete:
-            break
-   
+            
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
     print("interview_session-data", type(data['user_session']), data['user_session']['id'])
@@ -78,49 +61,46 @@ async def interview_endpoint(sid, data):
         #     status = False
         #     # await prisma.create_chat(sessionId, chathistory, status)
 
-        response = await util.generate_interview_question(data)
-        print("bonieeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
-        print(response.get("interview"))
-                    
+        response = await util.generate_interview_question(data)               
  
         assistant_next_question = "" if response.get("interview") is None else response["interview"]
         # assistant_next_question = "null" if response.get("interview") is None else response["interview"].get("interview_question")
-        realtime_evaluation = "" if response.get("realtime") is None else response["realtime"].get("realtime_evaluation")
-        interview_evaluation = "" if response.get("overall") is None else response["overall"].get("overall_evaluation")
-        interview_evaluation_metrics = "" if response.get("metrics") is None else response["metrics"].get("evaluation_metrics")
+        # realtime_evaluation = "" if response.get("realtime") is None else response["realtime"].get("realtime_evaluation")
+        # interview_evaluation = "" if response.get("overall") is None else response["overall"].get("overall_evaluation")
+        # interview_evaluation_metrics = "" if response.get("metrics") is None else response["metrics"].get("evaluation_metrics")
         
-        print("interview+evaluation")
-        print(interview_evaluation)
-        print("^^^^^^^^^^^^^^^^^^^^^^^^^^")
-        print("interview+eval+metrics")
-        print(interview_evaluation_metrics)
+        # print("interview+evaluation")
+        # print(interview_evaluation)
+        # print("^^^^^^^^^^^^^^^^^^^^^^^^^^")
+        # print("interview+eval+metrics")
+        # print(interview_evaluation_metrics)
         
         accumulated_message = ""  
         
-        if realtime_evaluation is not None:
-            content_type = "question_feedback"
-            complete = False
-        elif chat_count == 8:
-            content_type = "question_feedback"
-            complete = True
-        elif interview_evaluation is not None:
-            content_type = "overall_feedback"
-            complete = True
-        else:
-            content_type = "question"
-            complete = False
+        # if realtime_evaluation is not None:
+        #     content_type = "question_feedback"
+        #     complete = False
+        # elif chat_count == 8:
+        #     content_type = "question_feedback"
+        #     complete = True
+        # elif interview_evaluation is not None:
+        #     content_type = "overall_feedback"
+        #     complete = True
+        # else:
+        #     content_type = "question"
+        #     complete = False
 
         message = [
             {
                 "user_type": "assistant",
-                "content_type": content_type,
-                "complete": complete,
+                "content_type": "question",
+                "complete": False,
                 "content": {
                     "time_taken": "null",
                     "time_limit":  "null",
                     "chunk_response": accumulated_message,
                     "full_response": '',
-                    "realtime_evaluation": realtime_evaluation,
+                    "realtime_evaluation": "",
                     # "interview_evaluation": interview_evaluation,
                     # "interview_evaluation_metrics": interview_evaluation_metrics
                 }
@@ -134,14 +114,14 @@ async def interview_endpoint(sid, data):
             accumulated_message += chunk
             message = [{
                 "user_type": "assistant",
-                "content_type": content_type,
-                "complete": complete,
+                "content_type": "question",
+                "complete": False,
                 "content": {
                     "time_taken": "null",
                     "time_limit":  "null",
                     "chunk_response": chunk,  
                     "full_response": '',
-                    "realtime_evaluation": realtime_evaluation
+                    "realtime_evaluation": ""
                 }
             }]
             
@@ -151,25 +131,38 @@ async def interview_endpoint(sid, data):
             elapsed_time = end_time - start_time  
             print(f"Chunk Time taken: {elapsed_time:.2f} seconds")
 
-
             await sio.emit("interview chat", message, room=sid) 
-          
-            
-        timelimit =  await util.interview_question_time_limit(accumulated_message)
-        final_message = [{
-            "user_type": "assistant",
-            "content_type": content_type,
-            "complete": complete,
+        
+        start_time01 = time.time()
+        timelimit =  util.interview_question_time_limit(accumulated_message)
+        end_time01 = time.time() 
+        elapsed_time01 = end_time01 - start_time01  
+        print(f"Timelimit future exec Time taken: {elapsed_time01:.2f} seconds")  
+                  
+        message = [{
             "content": {
-                "time_taken": "null",
                 "time_limit": timelimit.get("time_limit"),
-                "chunk_response": '',
                 "full_response": accumulated_message,
-                "realtime_evaluation": realtime_evaluation
             }
         }]
         
-        await sio.emit("interview fullchat", final_message, room=sid)
+        await sio.emit("time_limit", message, room=sid)
+        
+        # if(data['response']):
+        #     start_time02 = time.time()  
+        #     realtime_evaluation_response_json = util.realtime_response_evaluation(data)
+        #     realtime_evaluation = "" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
+        #     end_time02 = time.time() 
+        #     elapsed_time02 = end_time02 - start_time02
+        #     print(f"Realtime future exec Time taken: {elapsed_time02:.2f} seconds")
+        #     message = [{
+        #         "content": {
+        #             "realtime_evaluation": realtime_evaluation
+        #         }
+        #     }]
+            
+        #     await sio.emit("realtime", message, room=sid)
+
         
         # if data['question_counter'] < 9:
         #     status = False
@@ -200,48 +193,44 @@ async def audio_endpoint(sid, data):
     print("That is not what I am saying")
     try:
         start_time = time.time()        
+        response = await util.generate_interview_question(data)               
+ 
+        assistant_next_question = "" if response.get("interview") is None else response["interview"]   
+        accumulated_message = "" 
+         
+        for chunk in assistant_next_question:
+            accumulated_message += chunk
+            print("Chunk Message")
+            print(chunk)  
+            end_time = time.time() 
+            elapsed_time = end_time - start_time  
+            print(f"Chunk Time taken: {elapsed_time:.2f} seconds")    
+             
+            while True:
+                last_period = accumulated_message.rfind('.')
+                last_question = accumulated_message.rfind('?')
+
+                last_end_pos = max(last_period, last_question)
                 
-        def fetch_chunks(client, model, messages, temperature=0):
-            response = client.chat.completions.create(  
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                stream=True 
-            )
-
-            for chunk in response:
-                chunk_message = chunk.choices[0].delta.content 
-                if chunk_message: 
-                    yield chunk_message
-
-        model = 'gpt-4o-mini'
-        messages = [{'role': 'user', 'content': "What is your name?"}]
-
-        
-        accumulated_message = ""  
-
-        for chunk in fetch_chunks(client, model, messages):
-            accumulated_message += chunk 
-            await sio.emit("audio chat", chunk, room=sid) 
-            
-        # for chunk in fetch_chunks(client, model, messages):
-        #     print(chunk)  
-        #     await sio.emit("audio chat", chunk, room=sid) 
-
+                if last_end_pos != -1:
+                    complete_sentence = accumulated_message[:last_end_pos + 1]
                     
-        # model = 'gpt-4o-mini'
-        # messages = [{'role': 'user', 'content': "Tell me about ethiopia in 100 characters?"}]
-        
-        # for wrapped_text in generate_response(client, model, messages):
-        #     await sio.emit("audio chat", wrapped_text, room=sid) 
+                    await sio.emit("audio chat", complete_sentence, room=sid)
+                    
+                    accumulated_message = accumulated_message[last_end_pos + 1:].strip()
+                else:
+                    break
+            
+            
 
+   
     except Exception as e:
         print(f'Error: {str(e)}')  
         
     finally:
         end_time = time.time() 
         elapsed_time = end_time - start_time  
-        print(f"Time taken for interview processing: {elapsed_time:.2f} seconds")
+        print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
 
 
 

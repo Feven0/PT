@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi import UploadFile, Form
 from fastapi.responses import StreamingResponse
 import api.llm.ipersona.ipersona_schema as db
+import api.llm.ipersona.ipersona_gpt as gpt
 import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_db as database
 from api.llm.ipersona.ipersona_agent import agents
@@ -45,19 +46,46 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 import time, asyncio
 from openai import OpenAI
-import textwrap
-from IPython.display import display, clear_output, HTML
-
-OPENAI_API_KEY = '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'
-
-client = OpenAI(api_key=OPENAI_API_KEY)
-
-
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
-import textwrap
+from io import BytesIO
 
 app = FastAPI()
+
+@routes.post("/synthesize-audio/")
+async def synthesize_audio(recieved: pemodel.audioRequestRecieved):
+    print('Received text for synthesis:', recieved.text)
+    
+    # Call the audio synthesis client
+    response = client.audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input=recieved.text
+    )
+    print("Error in audio synthesis:", response)
+
+
+    # Check if the response is successful
+    if not response:
+        print("Error in audio synthesis:", response)
+        return {"error": "Failed to synthesize audio"}
+
+    # Read the audio data directly (no await)
+    audio_data = response.read()  # Remove await if not async
+    # print("audddddddddio data")
+    # print(audio_data)
+    # Create an audio stream
+    audio_stream = BytesIO(audio_data)
+    # print("audiiiiiiiii  stream")
+    # print(audio_stream)
+    # Ensure stream is reset to the start
+    audio_stream.seek(0)
+    print("lassstttttt")
+    print(audio_stream.seek(0))
+
+    print("Audio stream created successfully")
+    return StreamingResponse(audio_stream, media_type="audio/mpeg")
+
 
 @routes.post("/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
@@ -193,8 +221,11 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
             .replace("{behavioral_count}", str(2))\
             .replace("{ability_count}", str(2))
         
-        hr_agent.assistant.update_system_message(generated_persona)
-        response = await hr_agent.generate_question(msg)
+        # hr_agent.assistant.update_system_message(generated_persona)
+        # response = await hr_agent.generate_question(msg)
+        
+        content = generated_persona + msg
+        response = gpt.openai_gpt_assistant_without_streaming(content)
         generated_question_json = util.extract_json(response, quite=False)
         
         question_number = 1

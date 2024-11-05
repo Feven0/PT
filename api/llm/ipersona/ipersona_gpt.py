@@ -42,15 +42,7 @@ def generate_response(messages):
             yield f"{wrapped_text}\n" 
             
 
-# @app.post("/api/stream")
-async def stream_endpoint():
-    model = 'gpt-4o-mini'
-    messages = [{'role': 'user', 'content': "Tell me about Ethiopia in 100 words?"}]
-    
-    return StreamingResponse(generate_response(client, model, messages), media_type='text/plain')
-
-
-async def openai_gpt_assistant_without_streaming(msg):
+def openai_gpt_assistant_without_streaming(msg):
     model = 'gpt-4o-mini'
     temperature=0
     messages = [{'role': 'user', 'content': msg}]

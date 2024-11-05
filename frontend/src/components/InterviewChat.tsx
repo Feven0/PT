@@ -36,28 +36,7 @@ const InterviewChat = () => {
     const latest = JSON.parse(localStorage.getItem("userSession"));
     const [viewloading, setShow] = useState(false);
     const [loadingSessionId, setLoadingSessionId] = useState(null);
-    const inteiew = [
-        {
-            "user_type": "candidate",
-            "content_type": "answer",
-            "complete": false,
-            "content": {
-                "chunk_response": "",
-                "time_taken": "00:00",
-                "realtime_evaluation": "null"
-            }
-        },
-        {
-            "user_type": "assistant",
-            "content_type": "question_feedback",
-            "complete": false,
-            "content": {
-                "time_taken": "null",
-                "chunk_response": [],
-                "realtime_evaluation": "null"
-            }
-        }
-    ]
+
     const charLimit = 1200; 
     // console.log("chat-history", inter)
     console.log("chat-history", interview)
@@ -200,7 +179,7 @@ const InterviewChat = () => {
     const fetchSession = async() =>{
         const userId= localStorage.getItem("userId")
         const response = await Api.fetchSession({userId})
-        // console.log("sessions", response.data)
+        console.log("sessions", response.data)
         setSession(response.data?.all_user_data)
         //setLatest(response?.data?.latest_user_data)
         // setSession(data?.all_user_data)  
@@ -286,7 +265,7 @@ const InterviewChat = () => {
 
                             {(message?.user_type == 'assistant' && (
                                 <div>
-                                    {(message?.content?.realtime_evaluation !== "null" && message?.content?.realtime_evaluation !== undefined) && (
+                                    {(message?.content?.realtime_evaluation !== "" && message?.content?.realtime_evaluation !== undefined) && (
                                         <RealTimeEvaluation
                                             evaluation={message.content.realtime_evaluation}
                                         />
@@ -304,9 +283,11 @@ const InterviewChat = () => {
                                             <Paragraph style={{ margin: 0, textAlign: 'justify', color: '#606060', fontSize: '1rem' }}>
                                                 {/* <MarkdownContent content={message?.assistant?.response?.start_message} /> */}                                        
 
+                                                {message?.content?.time_limit !== "null" && (
                                                     <div>
                                                         time limit: {message?.content?.time_limit}
                                                     </div> 
+                                                )}
                                                     {/* <div style={{color:'black'}}>
                                                         <MarkdownContent content={message?.content?.response?.question} />
                                                     </div>

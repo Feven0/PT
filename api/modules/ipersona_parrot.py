@@ -229,10 +229,10 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
         if data['question_counter'] < 9:
             if data['response']:
                 if count is not None:
-                    realtime_evaluation_response_json = await realtime_response_evaluation(data)
+                    # realtime_evaluation_response_json = await realtime_response_evaluation(data)
                     interview_question_json = await fetch_interview_question(section, data) 
                 else:
-                    realtime_evaluation_response_json = await realtime_response_evaluation(data)
+                    # realtime_evaluation_response_json = await realtime_response_evaluation(data)
                     response = await check_if_followup(data['response'])
                     print("your rasing yourrrrrrrrrrrrrrrsefl")
                     print(response)
@@ -255,16 +255,16 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
             #             interview_question_json['interview_question']['end_message'] = end_message
             #             break    
         else:  
-            realtime_evaluation_response_json = await realtime_response_evaluation(data)
+            # realtime_evaluation_response_json = await realtime_response_evaluation(data)
             overall_evaluation_values = await overall_interview_evaluations(data, realtime_evaluation_response_json)
             overall_interview_metrics_json = overall_evaluation_values["overall_interview_metrics"]
             overall_evaluation_response_json = overall_evaluation_values["overall_evaluation_response"]
                 
         response = {
-            "interview": interview_question_json,
-            "realtime": realtime_evaluation_response_json,          
-            "overall": overall_evaluation_response_json,
-            "metrics": overall_interview_metrics_json
+            "interview": interview_question_json
+            # "realtime": realtime_evaluation_response_json,          
+            # "overall": overall_evaluation_response_json,
+            # "metrics": overall_interview_metrics_json
         }
         
         return response
@@ -309,8 +309,7 @@ async def fetch_interview_question(section: list, data: dict):
         # response = await hr_agent.generate_question(msg)
         content = data['user_session']['persona'] + msg
         response = gpt.openai_gpt_assistant_with_streaming(content)
-        print("preeeeeeeeeeetttttttttttmuchhhhhhhhh")
-        print(response)
+
         # response_json = extract_json(response, quite=False)
         
         return response
@@ -319,14 +318,14 @@ async def fetch_interview_question(section: list, data: dict):
         return {'error': str(e)}
     
 #-------------------------------- Interview question time limit generation ---------------------------- 
-async def interview_question_time_limit(question: str):
+def interview_question_time_limit(question: str):
     try:
         message = file_reader(prompt_path('ipersona/time_limit_generator.txt'))
         context = str(message)
         msg = context\
             .replace("{question}", question)     
 
-        response = await gpt.openai_gpt_assistant_without_streaming(msg)
+        response = gpt.openai_gpt_assistant_without_streaming(msg)
         response = extract_json(response, quite=False)
         return response
     except Exception as e:
@@ -361,7 +360,7 @@ async def check_if_followup(candidate_response: str) -> bool:
         msg = context.replace("{candidate_response}", candidate_response) 
              
         # response = await hr_agent.generate_question(msg)
-        response = await gpt.openai_gpt_assistant_without_streaming(msg)
+        response = gpt.openai_gpt_assistant_without_streaming(msg)
 
         response_json = extract_json(response, quite=False)
 
@@ -413,7 +412,7 @@ async def generate_followup(data) -> dict:
 
 
 #---------------------------------------- Realtime Chat Evaluation Function -------------------------------
-async def realtime_response_evaluation(data: dict) -> dict:
+def realtime_response_evaluation(data: dict) -> dict:
     """
     Evaluates the candidate's response in real-time based on the previous question.
 
@@ -444,7 +443,7 @@ async def realtime_response_evaluation(data: dict) -> dict:
         content = data['user_session']['persona'] + evaluation_msg
 
         # realtime_evaluation_response = await hr_agent.evaluate_candidate_response(evaluation_msg)
-        realtime_evaluation_response = await gpt.openai_gpt_assistant_without_streaming(content)
+        realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
 
         realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False)
         
@@ -496,14 +495,14 @@ async def overall_interview_evaluations(data: dict, realtime_evaluation_response
         # overall_evaluation_response = await hr_agent.evaluate_overall_interview(overall_evaluation_msg)
         
         content = data['user_session']['persona'] + overall_evaluation_msg
-        overall_evaluation_response = await gpt.openai_gpt_assistant_without_streaming(content)
+        overall_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
 
         overall_evaluation_response_json = extract_json(overall_evaluation_response, quite=False)
         
         # Generate the Metrics for an interview
         # overall_interview_metrics_response = await hr_agent.overall_interview_metrics(overall_metrics_msg)
         content = data['user_session']['persona'] + overall_metrics_msg
-        overall_interview_metrics_response = await gpt.openai_gpt_assistant_without_streaming(content)
+        overall_interview_metrics_response = gpt.openai_gpt_assistant_without_streaming(content)
         overall_interview_metrics_json = extract_json(overall_interview_metrics_response, quite=False)
         
         # Adding necessary data to the final response json
@@ -570,7 +569,7 @@ async def clarify_question(question: str) -> dict:
         context = str(message)
         msg = context.replace("{question}", question)
         # response = await hr_agent.interview_question_clarification(msg)
-        response = await gpt.openai_gpt_assistant_without_streaming(msg)
+        response = gpt.openai_gpt_assistant_without_streaming(msg)
         response = extract_json(response, quite=False)
     
         return response

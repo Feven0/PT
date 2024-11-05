@@ -10,7 +10,10 @@ const Api = {
   fetchChatHistory: data => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/wv/fetch_chat_history`, data),
   fetchChatObserver: data => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/wv/fetch_chat_observer`, data),
   clarify: data => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/clarify`, data),
-  overallmetrics: data => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/calculate_overall_progress`, data)
+  overallmetrics: data => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/calculate_overall_progress`, data),
+
+  audio: data => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/synthesize-audio/`, data),
+
 };
 
 

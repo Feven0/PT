@@ -3,6 +3,7 @@ import { Jobs, JobDetail } from '../pages/index';
 import Navbar from "../components/Navbar";
 import Trainee from '../pages/Trainee';
 import AudioChat from "../components/AudioChat";
+import AudioPlayer from "../components/AudioPlayer";
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -15,6 +16,8 @@ const AppRoutes = () => {
         <Route path="/jobs/:userId" element={<Jobs />} />
         <Route path="/job_detail/:userId/:jobId" element={<JobDetail />} />
         <Route path="/audio" element={<AudioChat/>} />
+        <Route path="/audioplayer" element={<AudioPlayer/>} />
+
 
       </Routes>
     </div>

@@ -13,7 +13,7 @@ interface AnalysisResponse {
 }
 
 const useMiddleSocket = () => {
-  const [socket, interview, setChatInterview, audiointerview, setAudioInterview, audiohistory, setAudioHistory, inter, setChatInter] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
+  const [socket, interview, setChatInterview, audiointerview, setAudioInterview, audioHistory, setAudioHistory] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
   const [loading, setLoading] = useState(false);
   const [latestInterviewResponse, setLatestInterviewResponse] = useState<AnalysisResponse | null>(null);
   const [isStarted, setIsStarted] = useState(false);  
@@ -115,7 +115,12 @@ const useMiddleSocket = () => {
   useEffect(() => {
     if (socket) {
         socket.on('audio chat', (message: any) => {
-            setAudioInterview(message);
+            setAudioInterview((prevMessages: any) => {
+              if (!prevMessages.some((m: any) => m.query === message.query)) {
+                return [...prevMessages, ...message];
+              }
+              return prevMessages;
+            });
             setAudioHistory((prevMessages: any) => {
               if (!prevMessages.some((m: any) => m.query === message.query)) {
                 return [...prevMessages, ...message];
@@ -169,11 +174,11 @@ const useMiddleSocket = () => {
   return {
     handleAudioInterview,
     audiointerview,
+    setAudioInterview,
     setLoading,
-    audiohistory, 
+    audioHistory, 
     setAudioHistory,
-    inter,
-
+    
     handleInterview,
     interview,
     setChatInterview,

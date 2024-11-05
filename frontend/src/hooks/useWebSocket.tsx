@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 const useWebSocket = (url: string) => {
   const [socket, setSocket] = useState<SocketIOClient.Socket | null>(null);
   const [interview, setChatInterview] = useState<any[]>([]);
-  const [audioInterview, setAudioInterview] = useState<any>();
+  const [audioInterview, setAudioInterview] = useState<any[]>([]);
   const [audioHistory, setAudioHistory] = useState<any[]>([]);
 
   useEffect(() => {
@@ -52,9 +52,9 @@ const useWebSocket = (url: string) => {
       });
     });
 
-    newSocket.on('interview fullchat', (message) => {
-      console.log(`Received full chat response: ${message}`);
-      // Replace the entire response with the new content
+    newSocket.on('time_limit', (message) => {
+      console.log(`Received time_limit response: ${message}`);
+
       setChatInterview((prevMessages) => {
           if (!Array.isArray(prevMessages)) {
               console.error("prevMessages is not an array:", prevMessages);
@@ -81,8 +81,36 @@ const useWebSocket = (url: string) => {
       });
   });
 
+  newSocket.on('realtime', (message) => {
+    console.log(`Received realtime response: ${message}`);
+    setChatInterview((prevMessages) => {
+        if (!Array.isArray(prevMessages)) {
+            console.error("prevMessages is not an array:", prevMessages);
+            return [message];
+        }
+
+        const lastMessage = prevMessages[prevMessages.length - 1];
+
+        if (lastMessage && lastMessage.user_type === 'assistant') {
+            return [
+                ...prevMessages.slice(0, -1),
+                {
+                    ...lastMessage,
+                    content: {
+                        ...lastMessage.content,
+                        realtime_evaluation: message[0]?.content?.realtime_evaluation
+                    }
+                }
+            ];
+        } else {
+            return [...prevMessages, message];
+        }
+    });
+  });
+
+
     newSocket.on('audio chat', (message) => {
-      setAudioInterview(message);
+      setAudioInterview((prevMessages) => [...prevMessages, message]);
       setAudioHistory((prevMessages) => [...prevMessages, message]);
     });
 

@@ -1,0 +1,58 @@
+{
+    "Background": [
+        {
+            "question": "Can you describe your educational background and how it has prepared you for a role in data science, particularly in NLP?",
+            "time_limit": "02:00",
+            "end_message": "Please take your time to provide a detailed response",
+            "question_number": "1"
+        },
+        {
+            "question": "What relevant work experience do you have that aligns with the responsibilities of a Data Scientist focusing on NLP?",
+            "time_limit": "02:00",
+            "end_message": "Please take your time to provide a detailed response",
+            "question_number": "2"
+        }
+    ],
+    "Technical": [
+        {
+            "question": "Can you explain your experience with machine learning frameworks such as TensorFlow or PyTorch, and how you have applied them in your projects?",
+            "time_limit": "03:00",
+            "end_message": "Please take your time to provide a detailed response",
+            "question_number": "3"
+        },
+        {
+            "question": "Describe a complex data model you have designed or developed. What techniques did you use to ensure its robustness and scalability?",
+            "time_limit": "03:00",
+            "end_message": "Please take your time to provide a detailed response",
+            "question_number": "4"
+        }
+    ],
+    "Behavioral": [
+        {
+            "question": "Tell me about a time when you faced a significant challenge in a project. How did you approach the problem and what was the outcome?",
+            "time_limit": "03:00",
+            "end_message": "Please take your time to provide a detailed response",
+            "question_number": "5"
+        },
+        {
+            "question": "Describe a situation where you had to collaborate with a team to achieve a common goal. What role did you play and what was the result?",
+            "time_limit": "03:00",
+            "end_message": "Please take your time to provide a detailed response",
+            "question_number": "6"
+        }
+    ],
+    "Ability": [
+        {
+            "question": "How do you approach exploratory data analysis when working with large datasets? Can you provide an example?",
+            "time_limit": "02:00",
+            "end_message": "Please take your time to provide a detailed response",
+            "question_number": "7"
+        },
+        {
+            "question": "What strategies do you employ to handle imbalanced datasets, and can you share an experience where you successfully applied these strategies?",
+            "time_limit": "02:00",
+            "end_message": "Please take your time to provide a detailed response",
+            "question_number": "8"
+        }
+    ]
+}

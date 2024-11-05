@@ -12,12 +12,14 @@ const { Title } = Typography;
 const apiKey = `${import.meta.env.VITE_REACT_APP_OPENAI_KEY}`;
 
 const Audio = () => {
-        const { handleAudioInterview, loading, audiointerview, audiohistory, seconds, minutes, pause, reset, setLoading } = useMiddleSocket();
+        const { handleAudioInterview, loading, audiointerview, audioHistory, seconds, minutes, pause, reset, setLoading, setAudioInterview } = useMiddleSocket();
         // const {userId, jobId} = useParams()
         // const userId = 16
         // const jobId = 1045
         const latest = JSON.parse(localStorage.getItem("userSession"));
         const [audioUrl, setAudioUrl] = useState(null);
+        const [audioUrls, setAudioUrls] = useState([]); 
+
         const [dataFromAudio, setDataFromAudio] = useState<any>(false);
         const [input, setInput] = useState<any>("");
         const [show, setShow] = useState<any>(true);
@@ -28,13 +30,137 @@ const Audio = () => {
         const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
 
  
-        // console.log("audioooo caroline", buffer)
-        // console.log("audiohistory", audiohistory)
+        console.log("audioooo caroline", audiointerview)
+        console.log("audiohistory", audioHistory)
 
         let previous_question = "";
         let timerValue: any;
 
-        // Initialize WaveSurfer
+    const handleDataFromAudio = (audioTranscript: any) => {
+        setInput(audioTranscript);
+        console.log("transcription org.", audioTranscript)
+        if(audioTranscript !== undefined){
+            submitAudio(audioTranscript)
+        }
+    };
+
+    function handleDataAudio(data: any) {
+        setDataFromAudio(data);
+    }
+
+    const startInterview = async() => {
+        if(audiointerview !== undefined){
+            previous_question = audiointerview[0]?.content?.response?.question
+        }
+        const user_session = latest
+        timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        pause();
+        handleAudioInterview({ 
+            input: input, 
+            interview: audioHistory, 
+            user_session: user_session,
+            counter: counter,
+            timerValue: timerValue,
+            previous_question: previous_question
+        });
+        setCounter(counter < 9 ? counter + 1 : 1);
+        setShow(false)
+    }  
+
+    const submitAudio = async(audioTranscript: any) => {;
+        setAudioInterview([])
+        if(audiointerview !== undefined){
+            previous_question = audiointerview[0]?.content?.response?.question
+        }
+        const user_session = latest
+        timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        handleAudioInterview({ 
+            input: audioTranscript, 
+            interview: audioHistory, 
+            user_session: user_session,
+            counter: counter,
+            timerValue: timerValue,
+            previous_question: previous_question
+        });
+        setCounter(counter < 9 ? counter + 1 : 1);
+    }
+
+    useEffect(() => {
+        const playAudioSequentially = async () => {
+            if (audioUrls.length > 0) {
+                for (const url of audioUrls) {
+                    await new Promise((resolve) => {
+                        wavesurferRef.current.load(url);
+                        wavesurferRef.current.on('ready', () => {
+                            wavesurferRef.current.play();
+                        });
+                        wavesurferRef.current.on('finish', () => {
+                            resolve(); 
+                        });
+                    });
+                }
+                setAudioUrls([]);
+            }
+        };
+        
+        playAudioSequentially();
+    }, [audioUrls]);
+
+    const synthesizeAudio = async () => {
+        const sentences = audiointerview
+        try {
+            setLoading(true); 
+            const urls = [];
+            
+            for (const sentence of sentences) {
+                console.log("AUDIO ENTRY", sentence)
+
+                const mp3 = await openai.audio.speech.create({
+                    model: "tts-1-hd",
+                    voice: "nova",
+                    input: sentence,
+                });
+
+                const audioBlob = new Blob([await mp3.arrayBuffer()], { type: 'audio/mpeg' });
+                
+                const url = URL.createObjectURL(audioBlob);
+                
+                urls.push(url); 
+                setAudioUrls(urls); 
+            }
+            setLoading(false);
+        } catch (error) {
+            console.error("Error generating audio:", error);
+            setLoading(false); 
+        }
+    };
+
+    useEffect(() => {
+        const processChunks = async () => {           
+            // for (const chunk of audioHistory) {
+            //     console.log("audiochunk", chunk); 
+            //     await synthesizeAudio(); 
+            // }
+            await synthesizeAudio();
+        };
+
+        if (audiointerview.length > 0) {
+            processChunks(); 
+        }
+    }, [audiointerview]); 
+
+
+    const handleWaveformClick = (e: any) => {
+        const waveformWidth = e.currentTarget.clientWidth;
+        const clickPosition = e.clientX - e.currentTarget.getBoundingClientRect().left;
+        const seekTo = clickPosition / waveformWidth;
+
+        if (wavesurferRef.current) {
+            wavesurferRef.current.seekTo(seekTo);
+            wavesurferRef.current.play();
+        }
+    };
+
     useEffect(() => {
         wavesurferRef.current = WaveSurfer.create({
             container: '#waveform',
@@ -50,149 +176,53 @@ const Audio = () => {
         };
     }, []);
 
-    // Handle audio URL changes
-    useEffect(() => {
-        if (audioUrl) {
-            wavesurferRef.current.load(audioUrl);
-            wavesurferRef.current.on('ready', () => {
-                wavesurferRef.current.play();
-            });
-            wavesurferRef.current.on('finish', () => {
-                setAudioUrl(null); // Reset audio URL after playback
-            });
-        }
-    }, [audioUrl]);
-
-    // Function to synthesize audio from text
-    const synthesizeAudio = async () => {
-        const text = 'I have work at the station near the line stree around lebu. The station was dirty but wide enough to handle too many passangers'
-        if (!text) return; 
-        try {
-            setLoading(true); 
-            
-            const mp3 = await openai.audio.speech.create({
-                model: "tts-1-hd",
-                voice: "nova",
-                input: text,
-            });
-
-            const audioBlob = new Blob([await mp3.arrayBuffer()], { type: 'audio/mpeg' });
-            const url = URL.createObjectURL(audioBlob);
-            
-            if (audioUrl) {
-                URL.revokeObjectURL(audioUrl);
-            }
-            setAudioUrl(url); 
-            setLoading(false);
-        } catch (error) {
-            console.error("Error generating audio:", error);
-            setLoading(false); 
-        }
-    };
-
-    useEffect(() => {
-        const processChunks = async () => {
-            let tempBuffer = ''; 
-            
-            for (const chunk of audiohistory) {
-                console.log("audiochunk", chunk); 
-                tempBuffer += chunk;
-
-                if (chunk.endsWith(' ') || chunk.endsWith('.') || chunk.endsWith('?') || chunk.endsWith('!')) {
-                    //await synthesizeAudio(tempBuffer.trim()); 
-                    tempBuffer = ''; 
-                }
-            }
-        };
-
-        if (audiohistory.length > 0) {
-            processChunks(); 
-        }
-    }, [audiohistory]); 
 
 
-    const handleWaveformClick = (e: any) => {
-        const waveformWidth = e.currentTarget.clientWidth;
-        const clickPosition = e.clientX - e.currentTarget.getBoundingClientRect().left;
-        const seekTo = clickPosition / waveformWidth;
 
-        if (wavesurferRef.current) {
-            wavesurferRef.current.seekTo(seekTo);
-            wavesurferRef.current.play();
-        }
-    };
-    const handleDataFromAudio = (audioTranscript: any) => {
-        setInput(audioTranscript);
-        console.log("transcription org.", audioTranscript)
-        if(audioTranscript !== undefined){
-            submitAudio(audioTranscript)
-        }
-    };
-
-    function handleDataAudio(data: any) {
-        setDataFromAudio(data);
-    }
-
-    const startInterview = async() => {
-        // const filteredJob = jobs.filter(match => match.job_profile_id === parseInt(jobId as any));
-        // const filteredUser = users.filter(match => match?.user_profile_id === parseInt(userId as any));
-        if(audiointerview !== undefined){
-            previous_question = audiointerview[0]?.content?.response?.question
-        }
-        const user_session = latest
-        // const data = {
-        //     jobId: jobId,
-        //     userId: userId,
-        //     name: filteredUser[0]?.name,
-        //     cvJson: filteredUser[0],
-        //     jbJson: filteredJob[0]
-        // };
-        // const response = await Api.sessionCreate(data);
-        // localStorage.setItem("userSession", JSON.stringify(response?.data))
-        timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        pause();
-        handleAudioInterview({ 
-            input: input, 
-            interview: audiohistory, 
-            user_session: user_session,
-            counter: counter,
-            timerValue: timerValue,
-            previous_question: previous_question
-        });
-        setCounter(counter < 9 ? counter + 1 : 1);
-        setShow(false)
-    }  
-
-    const submitAudio = async(audioTranscript: any) => {
-        // const filteredJob = jobs.filter(match => match.job_profile_id === parseInt(jobId as any));
-        // const filteredUser = users.filter(match => match?.user_profile_id === parseInt(userId as any));
-        if(audiointerview !== undefined){
-            previous_question = audiointerview[0]?.content?.response?.question
-        }
-        const user_session = latest
-        timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        handleAudioInterview({ 
-            input: audioTranscript, 
-            interview: audiohistory, 
-            user_session: user_session,
-            counter: counter,
-            timerValue: timerValue,
-            previous_question: previous_question
-        });
-        setCounter(counter < 9 ? counter + 1 : 1);
-    }
+    // const synthesizeAudio = async () => {
+    //     const text = 'I have work at the station near the line street around New York. The station was dirty but wide enough to handle too many passengers.';
+    //     const sentences = text.split('.').map(sentence => sentence.trim()).filter(sentence => sentence);
+    //     // const sentences = ["I have work at the station near", "the line street around New York", "The station was dirty but wide", "enough to handle too many passengers"]
+    //     for (const sentence of sentences) {
+    //         const mp3 = await openai.audio.speech.create({
+    //             model: "tts-1-hd",
+    //             voice: "nova",
+    //             input: sentence,
+    //         });
+    
+    //         const audioBlob = new Blob([await mp3.arrayBuffer()], { type: 'audio/mpeg' });
+    //         const url = URL.createObjectURL(audioBlob);
+    //         console.log("alright", url)
+    //         try {
+    //             const arrayBuffer = await fetch(url).then(response => {
+    //                 if (!response.ok) {
+    //                     throw new Error('Network response was not ok');
+    //                 }
+    //                 return response.arrayBuffer();
+    //             });
+    //             const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+    
+    //             // Update audio history
+    //             setAudioHistory(prev => [...prev, sentence]);
+    
+    //             // Add the audio buffer and URL to the queue
+    //             audioQueue.current.push({ buffer: audioBuffer, url });
+    
+    //             // Start playback if not already playing
+    //             playNext();
+    //         } catch (error) {
+    //             console.error('Failed to fetch audio data:', error);
+    //         } finally {
+    //             // Clean up the URL after use
+    //             URL.revokeObjectURL(url);
+    //         }
+    //     }
+    // };
 
 
 
     return (
         <>
-        <div onClick={synthesizeAudio}>Let's Test</div>
-        <div className="audio-history-container">
-            {audiohistory.map((msg, index) => (
-                <p key={index} className="audio-message">{msg}</p> 
-            ))}
-        </div>
-
         <div style={{display: 'flex', gap: '15rem', margin: '0rem 5rem 0rem 10rem'}}>
             <div style={{ width: '600px' }}>
                 <Card title="Audio Interview" bordered={true} >
@@ -217,10 +247,12 @@ const Audio = () => {
                         id="waveform" 
                         style={{ width: '100%', height: '128px', marginTop: '20px' }} 
                         onClick={handleWaveformClick}
-                    ></div>
+                    >
+                        
+                    </div>
 
                     <div>
-                    <AudioChatRecord sendDataParent={handleDataAudio} sendDataToParent={handleDataFromAudio} pause={pause}/>
+                        <AudioChatRecord sendDataParent={handleDataAudio} sendDataToParent={handleDataFromAudio} pause={pause}/>
                     </div>
                 </Card>
             </div>
