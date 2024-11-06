@@ -584,7 +584,7 @@ def get_openapi_token(
         return apikey
       
 @dataclass
-class assemblyai:
+class p:
     api_key = "49e5f82458584a70b847f477a035ce48"  
     
 @dataclass
