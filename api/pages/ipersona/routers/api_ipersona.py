@@ -1,24 +1,24 @@
 import os, time, json, sys
-    
-import ast
-import assemblyai as aai
-from openai import OpenAI
-     
+curdir = os.path.dirname(os.path.realpath(__file__))
+cpath = os.path.dirname(curdir)
+if not cpath in sys.path:
+    sys.path.append(cpath) 
 from fastapi import APIRouter, BackgroundTasks
 from fastapi import FastAPI, File, UploadFile, Form, Request
-from fastapi.responses import StreamingResponse, JSONResponse
-
-
-#
-from api import config
+from fastapi.responses import JSONResponse
+import api.modules.ipersona_parrot_gpt as util
+from fastapi import FastAPI
+from fastapi import UploadFile, Form
+from fastapi.responses import StreamingResponse
 import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_gpt as gpt
-import api.modules.ipersona_parrot as util
-# import api.llm.ipersona.ipersona_prisma as prisma
+import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_db as database
 from api.llm.ipersona.ipersona_agent import agents
 import api.pages.ipersona.models.persona as pemodel
-
+import assemblyai as aai
+import ast
+from openai import OpenAI
 
 hr_agent = agents()
 
@@ -27,18 +27,19 @@ hr_persona = []
 
 # load_dotenv("../.env")
 # ASSEMBLYAI_API_KEY= os.getenv("ASSEMBLYAI_API_KEY")
-aai.settings.api_key = config.openai.api_key
+aai.settings.api_key = "49e5f82458584a70b847f477a035ce48"
 transcriber = aai.Transcriber()
 
 
-routes = FastAPI(root_path="/api")
+routes = FastAPI(openapi_prefix="/api")
 
 module_dir= os.path.dirname(__file__)
+module_di= os.path.dirname(__file__)
 data_path = lambda x: os.path.join(module_dir, "folders", x)
-prompt_path = lambda x: os.path.join(module_dir, "data/prompts", x)
+prompt_path = lambda x: os.path.join(module_di, "data/prompts", x)
 
 
-OPENAI_API_KEY = config.openai.api_key
+OPENAI_API_KEY = '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'
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -245,7 +246,7 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
             "generated_questions": str(combined_generated_question_json)
         }                
    
-        # response = await db.create_schema(data)
+        response = await db.create_schema(data)
         # response = await prisma.create_session(data)
         #------------- ---------------------- 
 

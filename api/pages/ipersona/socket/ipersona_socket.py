@@ -1,21 +1,17 @@
 import socketio, ast, time
-import asyncio
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
-#
-from api import config
-import api.modules.ipersona_parrot as util
+import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_gpt as gpt
 from openai import OpenAI
-
+import asyncio
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
 socket_app = socketio.ASGIApp(sio)
 
-OPENAI_API_KEY = config.openai.api_key
+OPENAI_API_KEY = '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'
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -35,12 +31,11 @@ async def disconnect(sid):
             
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
-    print("interview_session-data", type(data['user_session']), data['user_session']['id'])
+    print("interview_session-data", type(data['user_session']))
     try:
         start_time = time.time()
         global chat_count
         chat_count = 1  
-        sessionId =  data['user_session']['id']   
         # chat = await prisma.fetch_chat_history(data['user_session']['id'])
         # if len(chat) != 0:  
         #     chat = chat[0].chathistory
