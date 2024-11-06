@@ -1,17 +1,20 @@
 import socketio, ast, time
+import asyncio
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from openai import OpenAI
+
+from api import config
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_gpt as gpt
-from openai import OpenAI
-import asyncio
-from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
 socket_app = socketio.ASGIApp(sio)
 
-OPENAI_API_KEY = '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'
+OPENAI_API_KEY = config.openai.api_key
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
