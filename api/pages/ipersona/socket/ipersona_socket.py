@@ -5,6 +5,8 @@ import api.llm.ipersona.ipersona_strapi as strapi
 import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_gpt as gpt
 from openai import OpenAI
+import assemblyai as aai
+from api import config
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
