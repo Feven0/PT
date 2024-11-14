@@ -1,11 +1,7 @@
 from openai import OpenAI
-import json, os, re, ast
+import json, os
 import os
 import json_repair
-from collections import defaultdict
-from api.llm.ipersona.ipersona_agent import agents
-import api.llm.ipersona.ipersona_db as database
-import api.llm.ipersona.ipersona_schema as db
 from api.services.strapi_ipersona import IpersonaManager
 from datetime import datetime
 from api.utils.logger import LLPackerLogger
@@ -13,11 +9,10 @@ import api.llm.ipersona.ipersona_gpt as gpt
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
-# keys_json  = get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
-# OPENAI_API_KEY = keys_json['OPENAI_PARROT_API_KEY']
+from api.services.secret import get_auth
 
-# openai_client = OpenAI(api_key = OPENAI_API_KEY)
-openai_client = OpenAI(api_key='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')
+OPENAI_API_KEY  = get_auth(ssmkey='OPENAI_PARROT_API_KEY')
+openai_client = OPENAI_API_KEY 
 
 
 module_dir= os.path.dirname(__file__)

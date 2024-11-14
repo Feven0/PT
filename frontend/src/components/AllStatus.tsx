@@ -107,7 +107,7 @@ const AllStatus = () => {
                                   </p>
                             </div>
                           </div>
-                              {charts[currentIndex].component}
+                            {charts[currentIndex].component}
                       </Col>
                   </Row>
                 </div>

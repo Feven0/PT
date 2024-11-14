@@ -58,7 +58,7 @@ const SankeyTime : React.FC<Time> = ({time}) => {
     },
   };
   return(
-    <div style={{ width: '28rem', height:'20rem' }}>
+    <div style={{ width: '30rem', height:'20rem' }}>
         <Sankey {...config} />
     </div>
   ) 

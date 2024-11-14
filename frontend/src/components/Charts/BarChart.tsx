@@ -14,7 +14,7 @@ const BarChart: React.FC<Data> = ({ metricData }) => {
     }));
 
     return (
-        <div style={{ width: '30rem', height: '20rem', position: 'relative' }}>
+        <div style={{ width: '28rem', height: '20rem', position: 'relative' }}>
             <VictoryChart domainPadding={100}>
                 <VictoryAxis
                     style={{

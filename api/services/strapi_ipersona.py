@@ -91,12 +91,13 @@ class IpersonaManager:
                 
         extracted_observers = []
         for message in filtered_data:
-            message_data = message['attributes']['i_persona_observer']['data']            
-            message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
-            message_attributes['createdAt'] = message['attributes']['createdAt']            
-            extracted_observers.append(message_attributes)
+            if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
+                message_data = message['attributes']['i_persona_observer']['data']            
+                message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
+                message_attributes['createdAt'] = message['attributes']['createdAt']          
+                extracted_observers.append(message_attributes)
 
-        return extracted_observers   
+        return extracted_observers
         
     def get_job_sessions_observers(self):
         """
@@ -167,10 +168,11 @@ class IpersonaManager:
                     
         extracted_observers = []
         for message in filtered_data:
-            message_data = message['attributes']['i_persona_observer']['data']
-            message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
-            message_attributes['createdAt'] = message['attributes']['createdAt']
-            extracted_observers.append(message_attributes)
+            if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
+                message_data = message['attributes']['i_persona_observer']['data']
+                message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
+                message_attributes['createdAt'] = message['attributes']['createdAt']
+                extracted_observers.append(message_attributes)
 
         return extracted_observers
     

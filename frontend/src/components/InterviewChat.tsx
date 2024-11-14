@@ -254,7 +254,7 @@ const InterviewChat = () => {
                                         hour12: true,
                                     })}
                                 </div>
-                                {session?.attributes?.i_persona_observer?.data !== undefined && (
+                                {session?.attributes?.i_persona_observer?.data !== null && (
                                     <span>
                                         {(() => {
                                             const item = session.attributes.i_persona_observer.data;

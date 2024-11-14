@@ -6,29 +6,21 @@ if not cpath in sys.path:
     sys.path.append(cpath) 
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import StreamingResponse, JSONResponse
-# import api.modules.ipersona_parrot_gpt as util
 import api.pages.ipersona.socket.ipersona_parrot_gpt as util
-import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_gpt as gpt
-import api.llm.ipersona.ipersona_prisma as prisma
-import api.llm.ipersona.ipersona_db as database
-from api.llm.ipersona.ipersona_agent import agents
 import api.pages.ipersona.models.persona as pemodel
-from api.services.strapi_methods import StrapiMethods
 import assemblyai as aai
 import ast
 from openai import OpenAI
+from api.services.secret import get_auth
 
-hr_agent = agents()
+OPENAI_API_KEY  = get_auth(ssmkey='OPENAI_PARROT_API_KEY')
 
 uploaded_files = []
-hr_persona = []
 
-# load_dotenv("../.env")
 # ASSEMBLYAI_API_KEY= os.getenv("ASSEMBLYAI_API_KEY")
 aai.settings.api_key = "49e5f82458584a70b847f477a035ce48"
 transcriber = aai.Transcriber()
-
 
 routes = FastAPI(openapi_prefix="/api")
 
@@ -36,9 +28,6 @@ module_dir= os.path.dirname(__file__)
 module_di= os.path.dirname(__file__)
 data_path = lambda x: os.path.join(module_dir, "folders", x)
 prompt_path = lambda x: os.path.join(module_di, "data/prompts", x)
-
-
-OPENAI_API_KEY = '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'
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -64,42 +53,6 @@ async def strapi_methods():
         # data = ipersona_manager.update_session_status()
         # data = ipersona_manager.get_session()
 
-        # message_data = {
-        #         "attributes": {
-        #             "message": {
-        #                 "user_type": "candidate",
-        #                 "content_type": "answer",
-        #                 "content": {
-        #                     "response": "data['response']",
-        #                     "time_taken": "data['time_taken']",
-        #                     "realtime_evaluation": "null"
-        #                 }
-        #             },
-        #         },
-        #         "metadata": {
-        #             "createdBy": "parrot"
-        #         }
-        #     }
-
-        # data = ipersona_manager.insert_message(message_data)
-        
-        # Print or return the fetched data
-        # print("###########")
-        # print(data)
-        
-        # message_data = {
-        #     "attributes": {
-        #         "message": "Test message",
-        #         "evaluation": "Good"
-        #     },
-        #     "metadata": {
-        #         "createdBy": "User123"
-        #     }
-        # }
-
-        # data = ipersona_manager.insert_message(message_data)
-        # print(data)        
-        
         return data
     
     except Exception as e:
@@ -112,32 +65,18 @@ async def strapi_methods():
 async def synthesize_audio(recieved: pemodel.audioRequestRecieved):
     print('Received text for synthesis:', recieved.text)
     
-    # Call the audio synthesis client
     response = client.audio.speech.create(
         model="tts-1",
         voice="alloy",
         input=recieved.text
     )
     print("Error in audio synthesis:", response)
-
-
-    # Check if the response is successful
     if not response:
         print("Error in audio synthesis:", response)
         return {"error": "Failed to synthesize audio"}
-
-    # Read the audio data directly (no await)
-    audio_data = response.read()  # Remove await if not async
-    # print("audddddddddio data")
-    # print(audio_data)
-    # Create an audio stream
+    audio_data = response.read()  
     audio_stream = BytesIO(audio_data)
-    # print("audiiiiiiiii  stream")
-    # print(audio_stream)
-    # Ensure stream is reset to the start
     audio_stream.seek(0)
-    print("lassstttttt")
-    print(audio_stream.seek(0))
 
     print("Audio stream created successfully")
     return StreamingResponse(audio_stream, media_type="audio/mpeg")
@@ -150,10 +89,6 @@ async def transcribe_audio(file: UploadFile = File(...)):
         with open(audio_path, "wb") as f:
             contents = await file.read()
             f.write(contents)
-            
-            
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        # audio_file = await file.read()
         
         transcription = client.audio.transcriptions.create(
             model="whisper-1",
@@ -175,8 +110,7 @@ async def synthesize_text(text: str):
             input=text
         )
 
-        # If response is a single audio byte stream
-        audio_data = response  # Adjust based on if response is async
+        audio_data = response 
         
         audio_stream = io.BytesIO(audio_data)
 
@@ -289,19 +223,7 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
             for question in questions:
                 question["question_number"] = str(question_number)  
                 question_number += 1 
-        combined_generated_question_json = json.dumps(generated_question_json, indent=4)
-       
-
-        #------------- Save to DB ---------------        
-        # data = {
-        #     "alluser": str(recieved.userId),
-        #     "userId": str(recieved.userId),
-        #     "jobId": str(recieved.jobId),
-        #     "username": recieved.name,
-        #     "persona": generated_persona ,
-        #     "generated_questions": str(combined_generated_question_json)
-        # }     
-        
+        combined_generated_question_json = json.dumps(generated_question_json, indent=4)        
         
         message_data = {
             "slug": str(uuid.uuid4()),
@@ -320,10 +242,6 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
         ipersona_manager = IpersonaManager(run_stage="dev")
 
         response = ipersona_manager.create_session(message_data)           
-   
-        # response = await db.create_sechema(data)
-        # response = await prisma.create_session(data)
-        #------------- ---------------------- 
 
         return response
     
