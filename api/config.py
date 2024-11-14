@@ -57,6 +57,26 @@ if os.path.exists(efs_path):
 else:
     model_path = f'{apipath}'
     
+def get_strapi_params(stage):
+    if stage.lower().startswith('devapply'):
+        root='dev-apply-cms'
+        ssmkey="APPLY_DEV_STRAPI_TOKEN"
+    elif stage.lower().startswith('apply'):
+        root='apply-cms'
+        ssmkey="APPLY_PROD_STRAPI_TOKEN" 
+    elif stage.lower().startswith('prod'):
+        root='cms'
+        ssmkey="TENX_PROD_STRAPI_TOKEN" 
+    else:  #stage.lower().startswith('dev')
+        root='dev-cms'
+        ssmkey="TENX_DEV_STRAPI_TOKEN"  
+
+    return root, ssmkey  
+    
+root, ssmkey = get_strapi_params(strapi_stage)
+indev = root.startswith('dev')
+inprod = not indev   
+    
 # def object_diff_delta(obj1, obj2, blob=True):
 #     ddiff = DeepDiff(obj1, obj2, ignore_order=True)
 #     delta = Delta(ddiff)
@@ -101,14 +121,6 @@ def read_json(file_path: str):
     with open(file_path) as json_file:
         return json.load(json_file)
         
-def get_openapi_token(
-    ssmkey='OPENAI_PARROT_API_KEY',
-    envvar=None,
-    fconfig=None,
-):
-    apikey = get_auth(ssmkey=ssmkey, envvar=envvar, fconfig=fconfig)
-
-    return apikey
 
 def rapidapi_header(ssmkey="RAPIDAPI_API_KEY",
                     envvar="rapidapi_api_key",
@@ -558,6 +570,23 @@ class s3:
     prefix_cl = os.environ.get('S3_CL_PREFIX', 'cover_letter')
     prefix_cv = os.environ.get('S3_CV_PREFIX', 'resume')
 
+
+def get_openapi_token(
+    ssmkey,
+    envvar=None,
+    fconfig=None,
+    ):
+    
+    if not ssmkey:
+        raise Exception(f'Invalid ssmkey={ssmkey}')
+    else:
+        apikey = get_auth(ssmkey=ssmkey, envvar=envvar, fconfig=fconfig)    
+        return apikey
+      
+@dataclass
+class assemblyai:
+    api_key = "49e5f82458584a70b847f477a035ce48"  
+    
 @dataclass
 class openai:
     max_calls = 3  # max number of maximum calls per tool function call
@@ -574,30 +603,14 @@ class openai:
     fast_model = os.environ.get('OPENAI_FAST_MODEL',"gpt-4o-mini")
     powerful_model = os.environ.get('OPENAI_POWERFUL_MODEL',"gpt-4o")
     vision_model = os.environ.get('OPENAI_VISION_MODEL',"gpt-4-vision-preview")
-    api_key = get_openapi_token(ssmkey='OPENAI_PARROT_API_KEY')
-    api_key_parrot = get_openapi_token(ssmkey='OPENAI_PARROT_API_KEY')
-    api_key_job_profile = get_openapi_token(ssmkey="OPENAI_LEAP_JOBPROFILE_API_KEY")
-    api_key_asset_generation = get_openapi_token(ssmkey="OPENAI_LEAP_ASSETGEN_API_KEY")
-
-
-def get_strapi_params(stage):
-    if stage.lower().startswith('devapply'):
-        root='dev-apply-cms'
-        ssmkey="APPLY_DEV_STRAPI_TOKEN"
-    elif stage.lower().startswith('apply'):
-        root='apply-cms'
-        ssmkey="APPLY_PROD_STRAPI_TOKEN" 
-    elif stage.lower().startswith('prod'):
-        root='cms'
-        ssmkey="TENX_PROD_STRAPI_TOKEN" 
-    else:  #stage.lower().startswith('dev')
-        root='dev-cms'
-        ssmkey="TENX_DEV_STRAPI_TOKEN"  
-
-    return root, ssmkey   
-    
-root, ssmkey = get_strapi_params(strapi_stage)
-
+    if indev:        
+        api_key = get_openapi_token("OPENAI_PARROT_API_KEY")  
+    else:
+        api_key = get_openapi_token("OPENAI_PARROT_API_KEY")         
+        
+    api_key_map = {'api_key': api_key }
+    api_key_map_inv = {v:k for k, v in api_key_map.items()}
+     
 
 @dataclass
 class strapi:

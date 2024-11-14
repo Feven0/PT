@@ -15,11 +15,11 @@ export branch_name=${branch_name:-HEAD}
 if [ $branch_name == "prod" ]; then
     branch_name="prod"
     echo "******Running Production Frog Backend Environment******"
-    export STRAPI_STAGE="apply"   
+    export STRAPI_STAGE="prod"   
 else
     branch_name="dev"
     echo "******Running Development Environment******"
-    export STRAPI_STAGE="devapply"  
+    export STRAPI_STAGE="dev"  
 fi
 
 source api/env_setup.sh
@@ -93,8 +93,8 @@ if [[ $branch_name == "prod" ]] || [[ $branch_name == "worker" ]]; then
     name="${branch_name}ipersona"
     port=4500
     tport=4500
-    make_general_dockerfile $port $pyreq
-    #make_gunicorn_dockerfile $port $pyreq
+    #make_general_dockerfile $port $pyreq
+    make_gunicorn_dockerfile $port $pyreq
 elif [[ $branch_name == "dev" ]]; then
     pyreq="./api"
     echo "DEV: Using Gunicorn multi workers... "
@@ -109,17 +109,19 @@ else
     port=4500
     tport=4500
     pyreq="./api"
-    make_general_dockerfile $port $pyreq
+    #make_general_dockerfile $port $pyreq
+    make_gunicorn_dockerfile $port $pyreq
 fi
 echo "name=$name"
 echo "port=$port"
 echo "pyreq=$pyreq"
 
-if [[ $branch_name == "prod" ]]; then
-    echo "Backed Production Deployment: Exit after writing Dockerfile for ${branch_name} branch"
-    exit
+if [[ $1 != "force" ]]; then
+    if [[ $branch_name == "prod" ]]; then
+        echo "Backed Production Deployment: Exit after writing Dockerfile for ${branch_name} branch"
+        exit
+    fi
 fi
-
 #=========================================
 #       write docker-compose.yml
 #=========================================

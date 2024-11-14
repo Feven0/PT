@@ -7,8 +7,7 @@ if not cpath in sys.path:
 from fastapi import APIRouter, BackgroundTasks
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
-# import api.modules.ipersona_parrot_gpt as util
-import api.pages.ipersona.socket.ipersona_parrot_gpt as util
+import api.modules.ipersona_parrot_gpt as util
 from fastapi import FastAPI
 from fastapi import UploadFile, Form
 from fastapi.responses import StreamingResponse
@@ -18,7 +17,6 @@ import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_db as database
 from api.llm.ipersona.ipersona_agent import agents
 import api.pages.ipersona.models.persona as pemodel
-from api.services.strapi_methods import StrapiMethods
 import assemblyai as aai
 import ast
 from openai import OpenAI
@@ -30,7 +28,7 @@ hr_persona = []
 
 # load_dotenv("../.env")
 # ASSEMBLYAI_API_KEY= os.getenv("ASSEMBLYAI_API_KEY")
-aai.settings.api_key = "49e5f82458584a70b847f477a035ce48"
+aai.settings.api_key = config.assemblyai.api_key
 transcriber = aai.Transcriber()
 
 
@@ -42,7 +40,7 @@ data_path = lambda x: os.path.join(module_dir, "folders", x)
 prompt_path = lambda x: os.path.join(module_di, "data/prompts", x)
 
 
-OPENAI_API_KEY = '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'
+OPENAI_API_KEY = config.openai.api_key
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 

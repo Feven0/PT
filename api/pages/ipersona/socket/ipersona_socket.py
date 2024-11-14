@@ -4,18 +4,16 @@ import api.modules.ipersona_parrot_audio as audio
 import api.llm.ipersona.ipersona_strapi as strapi
 import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_gpt as gpt
-from api.services.strapi_ipersona import IpersonaManager
 from openai import OpenAI
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import assemblyai as aai
 
 aai.settings.api_key = "436bc16c4e474f47ae116cbe17041966"
 
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
 socket_app = socketio.ASGIApp(sio)
 
-OPENAI_API_KEY = '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'
+OPENAI_API_KEY = config.openai.api_key
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
