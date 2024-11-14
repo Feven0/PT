@@ -1,14 +1,10 @@
 import { CgProfile } from 'react-icons/cg';
 import { Link } from 'react-router-dom';
-import { useContext } from 'react';
 import { Dropdown, Menu, Button, Typography } from 'antd';
-import { ProviderContext } from '../context/context';
 import '../styles/Navbar/navbar.css'
 const { Text } = Typography;
 
 const Navbar = () => {
-    const {latestsession} = useContext<any>(ProviderContext)
-
     const menu = (
         <Menu>
             <Menu.Item key="4">
@@ -26,7 +22,7 @@ const Navbar = () => {
                         <Text className='header'>iPersona</Text>
                     </Link>
                     <span>
-                        <Text style={{fontSize: '0.9rem'}} className='pdf'>{latestsession?.username}</Text>
+                        <Text style={{fontSize: '0.9rem'}} className='pdf'></Text>
                     </span>
                 </div>
                 <Dropdown overlay={menu} trigger={['click']}>

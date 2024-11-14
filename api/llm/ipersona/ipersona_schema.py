@@ -1,12 +1,12 @@
-import weaviate, os
+import weaviate, os, ast
 import datetime
 
-WEAVIATE_URL="https://ysdjbg7nqa4sqxezwqmgw.c0.us-east1.gcp.weaviate.cloud"
-WEAVIATE_API_KEY="4W2aBrrgSXutplLyj3jKeKt45y8X9E3QKJAH"
-client = weaviate.Client(
-    url=WEAVIATE_URL,
-    auth_client_secret=weaviate.AuthApiKey(api_key=WEAVIATE_API_KEY),
-)
+# WEAVIATE_URL="https://ysdjbg7nqa4sqxezwqmgw.c0.us-east1.gcp.weaviate.cloud"
+# WEAVIATE_API_KEY="4W2aBrrgSXutplLyj3jKeKt45y8X9E3QKJAH"
+# client = weaviate.Client(
+#     url=WEAVIATE_URL,
+#     auth_client_secret=weaviate.AuthApiKey(api_key=WEAVIATE_API_KEY),
+# )
 
 schema = {
     "classes": [
@@ -14,32 +14,22 @@ schema = {
             "class": "iPersonaSessionOld",
             "properties": [
                 {
+                    "name": "alluser", 
+                    "dataType": ["string"]
+                },
+                {
                     "name": "userId", 
                     "dataType": ["string"]
                 },
                 {
-                    "name": "sessionId", 
+                    "name": "jobId", 
                     "dataType": ["string"]
-                },
+                }, 
                 {
                     "name": "username", 
                     "dataType": ["string"], 
                     "default": "null"
-                },
-                {
-                    "name": "user_profile", 
-                    "dataType": ["string"], 
-                    "default": "null"
-                },
-                {
-                    "name": "jobId", 
-                    "dataType": ["string"]
-                },
-                {
-                    "name": "job_desc", 
-                    "dataType": ["string"], 
-                    "default": "null"
-                },                
+                },              
                 {
                     "name": "persona",
                     "dataType": ["string"],  
@@ -62,22 +52,42 @@ schema = {
             "vectorizer": "none"
         },
         {
-            "class": "iPersonaInterviewHistory",
+            "class": "iPersonaMessages",
             "properties": [
-                {
-                    "name": "userId", 
-                    "dataType": ["string"]
-                },
                 {
                     "name": "sessionId", 
                     "dataType": ["string"]
                 },
                 {
-                    "name": "jobId", 
+                    "name": "chathistory", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "createdAt", 
+                    "dataType": ["date"]
+                },
+                {
+                    "name": "updatedAt", 
+                    "dataType": ["date"]
+                }
+            ],
+            "vectorizer": "none"
+        },
+        {
+            "class": "iPersonaObserver",
+            "properties": [
+                {
+                    "name": "sessionId", 
                     "dataType": ["string"]
                 },
                 {
-                    "name": "chathistory", 
+                    "name": "interview_evaluation", 
+                    "dataType": ["string"],  
+                    "default": "null"
+                },
+                {
+                    "name": "interview_evaluation_metrics", 
                     "dataType": ["string"],  
                     "default": "null"
                 },
@@ -124,13 +134,11 @@ async def create_schema(data):
         
 async def Add_session_schema_data(data):
     try:
-        ipersona_data = {
+        ipersona_session_data = {
+        "alluser": data['alluser'], 
         "userId": data['userId'], 
-        "sessionId": data['sessionId'],        
-        "username": data['username'],
-        "user_profile": str(data.get('user_profile', '')),
         "jobId": data['jobId'], 
-        "job_desc": str(data.get('job_desc', '')),
+        "username": data['username'],
         "persona": data['persona'],
         "generated_questions": str(data.get('generated_questions', '')),
         "createdAt": get_current_time(),
@@ -138,46 +146,81 @@ async def Add_session_schema_data(data):
         }
 
         ipersona_upload = client.data_object.create(
-            data_object=ipersona_data,
-            class_name="IPersonaSessionOld"
+            data_object=ipersona_session_data,
+            class_name="iPersonaSession"
         )
-        
-        return ipersona_upload
+        user_session = await fetch_session(data['userId'])
+
+        return user_session
+    except Exception as e:
+        return f'Error Adding Session: {str(e)}' 
+    
+    
+async def Add_Interview_History(sessionId, chathistory):
+    print("######add interview#####")
+    print(chathistory)
+    session_chathistory = await fetch_chat_history(sessionId)
+    try:
+        if len(session_chathistory) == 0:
+            print("session inteview does not exist")
+            ipersona_chat_data = {
+            "sessionId": sessionId, 
+            "chathistory": str(chathistory),
+            "createdAt": get_current_time(),
+            "updatedAt": get_current_time()
+            }
+
+            ipersona_upload_history = client.data_object.create(
+                data_object=ipersona_chat_data,
+                class_name="iPersonaMessages"
+            )
+            print("session interview created", ipersona_upload_history)
+            return ipersona_upload_history
+        else:
+            print("session interview exist")
+            session_chathistory[0]['chathistory'].extend(chathistory) 
+
+            data = {
+                "sessionId": session_chathistory[0]['_additional']['id'],
+                "chathistory": session_chathistory[0]['chathistory']
+            }
+            updated = await update_ipersona_data_new(data)     
+            print("updated!", updated)
+            return updated
+
     except Exception as e:
         return f'Error: {str(e)}' 
     
-    
-async def Add_Interview_History(data):
+async def Add_Interview_Observer(sessionId, interview_evaluation, interview_evaluation_metrics):
     try:
-        ipersona_chat_data = {
-        "userId": data['userId'], 
-        "sessionId": data['sessionId'], 
-        "jobId": data['jobId'],
-        "chathistory": str(data['chathistory']),
-        "createdAt": get_current_time(),
-        "updatedAt": get_current_time()
+        ipersona_chat_observer = {
+            "sessionId": sessionId, 
+            "interview_evaluation": str(interview_evaluation),
+            "interview_evaluation_metrics": str(interview_evaluation_metrics),
+            "createdAt": get_current_time(),
+            "updatedAt": get_current_time()
         }
 
         ipersona_upload_history = client.data_object.create(
-            data_object=ipersona_chat_data,
-            class_name="IPersonaInterviewHistory"
+            data_object=ipersona_chat_observer,
+            class_name="iPersonaObserver"
         )
-        
+
         return ipersona_upload_history
     except Exception as e:
-        return f'Error: {str(e)}' 
+        return f'Error: {str(e)}'
 
 
-async def update_ipersona_data_new(data, fields_to_update):    
+async def update_ipersona_data_new(data):  
     update_data = {}
     
-    if 'chathistory' in fields_to_update:
+    if 'chathistory' in data:
         update_data['chathistory'] = str(data.get('chathistory', ''))    
     try:
         result = client.data_object.update(
-            uuid=data['id'],
+            uuid=data['sessionId'],
             data_object=update_data,
-            class_name='IPersonaInterviewHistory'
+            class_name='iPersonaMessages'
         )
         
         print("Updating Successful:", True)
@@ -192,14 +235,13 @@ async def fetch_session(userId):
         sessions_with_user_id = client.query.get(
             class_name="IPersonaSessionOld",
             properties=[
+                "alluser",
                 "userId",
-                "sessionId",                
-                "username",
-                "user_profile",
                 "jobId",
-                "job_desc",
+                "username",
                 "persona",
-                "generated_questions"
+                "generated_questions",
+                "createdAt"
             ] 
         ).with_where({
             "path": ["userId"],
@@ -207,28 +249,35 @@ async def fetch_session(userId):
             "valueString": str(userId)
         }).with_additional("id").do()
         
-        length = len(sessions_with_user_id['data']['Get']['IPersonaSessionOld'])
-        
-        if length != 0:
-            index = length - 1
-            result = sessions_with_user_id['data']['Get']['IPersonaSessionOld'][index]
-        else: 
-            result = sessions_with_user_id['data']['Get']['IPersonaSessionOld']
-
-        data= {
-            "all_data": sessions_with_user_id['data']['Get']['IPersonaSessionOld'],
+        length = len(sessions_with_user_id['data']['Get']['IPersonaSession'])
+        index = length - 1
+        result = sessions_with_user_id['data']['Get']['IPersonaSession'][index]
+        user_data= {
+            "all_data": sessions_with_user_id['data']['Get']['IPersonaSession'],
             "latest_data": result
         }
-    
+        
+        if 'generated_questions' in user_data["latest_data"]:
+            question_data = user_data["latest_data"]['generated_questions']
+            if question_data:
+                try:
+                    user_data["latest_data"]['generated_questions'] = ast.literal_eval(question_data)
+                except (ValueError, SyntaxError) as e:
+                    print(f"Error parsing generated_questions: {e}")
+                     
+        data = {
+            "all_user_data": user_data["all_data"],
+            "latest_user_data": user_data["latest_data"]
+        } 
         return data
     except Exception as e:
         print("Error fetching Sessions:", e)
         
 
-async def fetch_chat_history(userId, sessionId, jobId):
+async def fetch_chat_history(sessionId):
     try:
         job_with_session_id = client.query.get(
-            class_name="IPersonaInterviewHistory",
+            class_name="iPersonaMessages",
             properties=[
                 "chathistory"
                 ]  
@@ -236,27 +285,26 @@ async def fetch_chat_history(userId, sessionId, jobId):
             "operator": "And", 
             "operands": [
                 {
-                    "path": ["userId"],
-                    "operator": "Equal",
-                    "valueString": userId
-                },
-                {
                     "path": ["sessionId"],
                     "operator": "Equal",
                     "valueString": sessionId
-                },
-                {
-                    "path": ["jobId"],
-                    "operator": "Equal",
-                    "valueString": jobId
                 }
             ]
         }).with_additional("id").do()
         
-        result = job_with_session_id['data']['Get']['IPersonaInterviewHistory']
-
-        return result
+        session_chathistory = job_with_session_id['data']['Get']['IPersonaMessages']
+        if isinstance(session_chathistory, list):
+            for entry in session_chathistory:
+                if 'chathistory' in entry:
+                    chathistory_data = entry['chathistory']
+                    if isinstance(chathistory_data, str) and chathistory_data:  
+                        try:
+                            entry['chathistory'] = ast.literal_eval(chathistory_data)
+                        except (ValueError, SyntaxError) as e:
+                            print(f"Error parsing chathistory for entry {entry}: {e}")
+        return session_chathistory
+    
     except Exception as e:
-        print("Error fetching Sessions:", e)
+        print("Error fetching Sessions chats:", e)
         
  

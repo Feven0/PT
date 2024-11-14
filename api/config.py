@@ -57,6 +57,26 @@ if os.path.exists(efs_path):
 else:
     model_path = f'{apipath}'
     
+def get_strapi_params(stage):
+    if stage.lower().startswith('devapply'):
+        root='dev-apply-cms'
+        ssmkey="APPLY_DEV_STRAPI_TOKEN"
+    elif stage.lower().startswith('apply'):
+        root='apply-cms'
+        ssmkey="APPLY_PROD_STRAPI_TOKEN" 
+    elif stage.lower().startswith('prod'):
+        root='cms'
+        ssmkey="TENX_PROD_STRAPI_TOKEN" 
+    else:  #stage.lower().startswith('dev')
+        root='dev-cms'
+        ssmkey="TENX_DEV_STRAPI_TOKEN"  
+
+    return root, ssmkey  
+    
+root, ssmkey = get_strapi_params(strapi_stage)
+indev = root.startswith('dev')
+inprod = not indev   
+    
 # def object_diff_delta(obj1, obj2, blob=True):
 #     ddiff = DeepDiff(obj1, obj2, ignore_order=True)
 #     delta = Delta(ddiff)
@@ -558,6 +578,23 @@ class s3:
     prefix_cl = os.environ.get('S3_CL_PREFIX', 'cover_letter')
     prefix_cv = os.environ.get('S3_CV_PREFIX', 'resume')
 
+
+def get_openapi_token(
+    ssmkey,
+    envvar=None,
+    fconfig=None,
+    ):
+    
+    if not ssmkey:
+        raise Exception(f'Invalid ssmkey={ssmkey}')
+    else:
+        apikey = get_auth(ssmkey=ssmkey, envvar=envvar, fconfig=fconfig)    
+        return apikey
+      
+@dataclass
+class assemblyai:
+    api_key = "49e5f82458584a70b847f477a035ce48"  
+    
 @dataclass
 class openai:
     max_calls = 3  # max number of maximum calls per tool function call
@@ -991,5 +1028,4 @@ def return_json(json_message, status=200, show=False):
         'headers': {'Content-Type': 'application/json'},
         'body': json.dumps(json_message)
     }
-
 

@@ -17,7 +17,7 @@ interface Metrics {
     metricsData: any
 }
 
-const ProgressIndicator : React.FC<Progress> = ({ currentValue, maxValue }) => {
+const ProgressIndicator: React.FC<Progress> = ({ currentValue, maxValue }) => {
   const percentage = (currentValue / maxValue) * 100;
 
   return (
@@ -39,7 +39,7 @@ const ProgressIndicator : React.FC<Progress> = ({ currentValue, maxValue }) => {
   );
 };
 
-const StarRating : React.FC<Rating> = ({ rating }) => {
+const StarRating: React.FC<Rating> = ({ rating }) => {
     const totalStars = 4;
     const stars = Array.from({ length: totalStars }, (_, index) => (
         <span
@@ -53,7 +53,7 @@ const StarRating : React.FC<Rating> = ({ rating }) => {
     return <div className="star-rating">{stars}</div>;
 };
 
-const Metrics : React.FC<Metrics> = ({metricsData}) => {
+const Metrics: React.FC<Metrics> = ({metricsData}) => {
     const [expandedImprovementKeys, setExpandedImprovementKeys] = useState<any>([]);
     const [expandedStrengthKeys, setExpandedStrengthKeys] = useState<any>([]);
 
@@ -75,7 +75,7 @@ const Metrics : React.FC<Metrics> = ({metricsData}) => {
     {
         dataIndex: 'skill',
         key: 'skill',
-        render: (text: any, record:any) => (
+        render: (text: any, record: any) => (
             <span onClick={() => onImprovementRowClick(record)} style={{ cursor: 'pointer'}}>
                 {text}
             </span>
@@ -95,20 +95,20 @@ const strength_columns = [
   }
 ];
 
-const improvementData = metricsData?.areas_of_improvement?.map((item:any, index:any) => ({
+const improvementData = metricsData?.areas_of_improvement?.map((item: any, index: any) => ({
     key: `improvement-${index}`,
     skill: item.skill,
     description: item.description
 })) || [];
 
-const strengthData = metricsData?.strength?.map((item:any, index:any) => ({
+const strengthData = metricsData?.strength?.map((item: any, index: any) => ({
     key: `strength-${index}`,
     skill: item.skill,
     description: item.description
 })) || [];
 
 
-    const performanceData = metricsData?.performance.reduce((acc:any, metric:any) => {
+    const performanceData = metricsData?.performance.reduce((acc: any, metric: any) => {
         acc[metric.name] = metric.level || metric.term; 
         return acc;
     }, {});
@@ -170,7 +170,7 @@ const strengthData = metricsData?.strength?.map((item:any, index:any) => ({
                             if (expanded) {
                                 setExpandedImprovementKeys([...expandedImprovementKeys, record.key]);
                             } else {
-                                setExpandedImprovementKeys(expandedImprovementKeys.filter((key:any) => key !== record.key));
+                                setExpandedImprovementKeys(expandedImprovementKeys.filter((key: any) => key !== record.key));
                             }
                         }}
                     />
@@ -194,7 +194,7 @@ const strengthData = metricsData?.strength?.map((item:any, index:any) => ({
                               if (expanded) {
                                   setExpandedStrengthKeys([...expandedStrengthKeys, record.key]);
                               } else {
-                                  setExpandedStrengthKeys(expandedStrengthKeys.filter((key:any) => key !== record.key));
+                                  setExpandedStrengthKeys(expandedStrengthKeys.filter((key: any) => key !== record.key));
                               }
                           }}
                       />

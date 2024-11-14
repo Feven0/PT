@@ -4,14 +4,12 @@ import { FaCircleStop } from "react-icons/fa6";
 import Api from '../Services/Services';
 import "../styles/AudioRecorder/audiorecorder.css";
 
-interface AudioChatRecord {
-    sendDataParent: (data: any) => void; 
-    sendDataToParent: (data: any) => void; 
-    pause: any 
+interface Data {
+    sendDataParent: any, sendDataToParent: any, pause: any
 }
 
-const AudioChatRecord: React.FC<AudioChatRecord> = ({ sendDataParent, sendDataToParent, pause }) => {
-    const [isRecording, setIsRecording] = useState<any>(false);
+const AudioChatRecord: React.FC<Data> = ({ sendDataParent, sendDataToParent, pause }) => {
+    const [isRecording, setIsRecording] = useState(false);
     const [audioURL, setAudioURL] = useState<any>(null);
     const [audioBlob, setAudioBlob] = useState<any>();
     const mediaRecorderRef = useRef<any>(null);
@@ -57,6 +55,11 @@ const AudioChatRecord: React.FC<AudioChatRecord> = ({ sendDataParent, sendDataTo
             const response = await Api.audioUpload(formData);
             handleClick(response.data.transcription);
             sendDataParent(false);
+            
+            //----------------------------------------//
+            setAudioURL(null);
+            setIsRecording(false);
+            //----------------------------------------//
         } catch (error) {
             console.error('Error uploading audio:', error);
         }
@@ -77,7 +80,7 @@ const AudioChatRecord: React.FC<AudioChatRecord> = ({ sendDataParent, sendDataTo
 
     return (
         <div className="audio-recorder-container">
-            <div className="audio-recorder">
+            <div className="audio-recorder-chat">
                 {isRecording ? (
                     <FaCircleStop
                         size={30}
@@ -94,7 +97,7 @@ const AudioChatRecord: React.FC<AudioChatRecord> = ({ sendDataParent, sendDataTo
             </div>
 
             {audioURL && (
-                  <audio  controls>
+                  <audio controls>
                     <source src={audioURL} type="audio/mpeg" />
                 </audio>
             )}
@@ -105,7 +108,7 @@ const AudioChatRecord: React.FC<AudioChatRecord> = ({ sendDataParent, sendDataTo
                         Redo Recording
                     </button>
                     <button className="submit-button" onClick={submit}>
-                        Submit Recording
+                        Submit Answer
                     </button>
                 </div>
             )}

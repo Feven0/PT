@@ -30,19 +30,26 @@ class StrapiMethods:
         
         self.token = get_auth(ssmkey,
                              envvar='STRAPI_TOKEN',
-                             fconfig=lambda_friendly_path(f'.env/{root}.json'))
-
-        
+                             fconfig=lambda_friendly_path(f'.env/{root}.json'))       
         
 
-    def fetch_data(self,table, token=None):
+    def fetch_data(self, table, token=None):
+        # Construct the full URL using self.api_url
+        url = f"{self.api_url.replace('graphql', 'api')}/{table}"
        
-        r = requests.get(table,headers = {
-
-                        "Authorization": f"Bearer {self.token}", 
-
-                        "Content-Type": "application/json"})
-        return r.json()
+        try:
+            # Make the request with the correct headers
+            r = requests.get(url, headers={
+                "Authorization": f"Bearer {self.token}", 
+                "Content-Type": "application/json"
+            })
+            
+            # Return the response as JSON
+            return r.json()
+        
+        except Exception as e:
+            print(f"Error fetching data: {e}")
+            raise
     
                 
     def update(self,table, id, params, token=None):

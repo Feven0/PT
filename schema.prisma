@@ -1,0 +1,44 @@
+datasource db {
+  provider          = "postgresql"
+  url               = "postgresql://postgres:123@localhost:5432/parrot"
+}
+
+generator db {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+model PersonaSession {
+    id                            Int     @id @default(autoincrement())
+    alluser                       String?
+    userId                        String?
+    jobId                         String?
+    username                      String?
+    persona                       String?
+    generated_questions           String?
+    personamessages               PersonaMessage[] 
+    personaobservers              PersonaObserver[] 
+    createdAt                     DateTime @default(now())
+    updatedAt                     DateTime @updatedAt
+}
+
+model PersonaMessage {
+    id                              Int                @id @default(autoincrement())
+    chathistory                     String?
+    status                          Boolean            @default(false)
+    personasessionId                Int?
+    personasession                  PersonaSession?   @relation(fields: [personasessionId], references: [id])
+    createdAt                       DateTime @default(now())
+    updatedAt                       DateTime @updatedAt
+}
+
+model PersonaObserver {
+    id                              Int     @id @default(autoincrement())
+    interview_evaluation            String?
+    interview_evaluation_metrics    String?
+    personasessionId                Int?
+    personasession                  PersonaSession?   @relation(fields: [personasessionId], references: [id])
+    createdAt                       DateTime @default(now())
+    updatedAt                       DateTime @updatedAt
+}

@@ -3,18 +3,17 @@ import { FaMicrophoneAlt } from 'react-icons/fa';
 import { FaCircleStop } from "react-icons/fa6";
 import Api from '../Services/Services';
 import "../styles/AudioRecorder/audiorecorder.css"
-interface AudioRecorderProps {
-    sendDataParent: (data: any) => void; 
-    sendDataToParent: (data: any) => void; 
+interface Data {
+    sendDataParent: any, sendDataToParent: any
 }
 
-const AudioRecorder: React.FC<AudioRecorderProps> = ({ sendDataParent, sendDataToParent }) => {
-    const [isRecording, setIsRecording] = useState(false);
-    // const [audioURL, setAudioURL] = useState<any>(null);
+const AudioRecorder: React.FC<Data> = ({ sendDataParent, sendDataToParent }) => {
+    const [isRecording, setIsRecording] = useState<any>(false);
+    const [audioURL, setAudioURL] = useState<any>(null);
     const mediaRecorderRef = useRef<any>(null);
     const audioChunksRef = useRef<any>([]);
-    // const [data, setData] = useState<any>("");
-
+    const [data, setData] = useState("");
+    console.log(audioURL, data)
     function handleClick(audio: any) {
         sendDataToParent(audio);
     }
@@ -29,8 +28,8 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ sendDataParent, sendDataT
 
         mediaRecorderRef.current.onstop = () => {
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-            // const url = URL.createObjectURL(audioBlob);
-            // setAudioURL(url);
+            const url = URL.createObjectURL(audioBlob);
+            setAudioURL(url);
             audioChunksRef.current = []; 
             uploadAudio(audioBlob); 
         };
@@ -51,7 +50,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ sendDataParent, sendDataT
         try {
             sendDataParent(true)
             const response = await Api.audioUpload(formData)
-            // setData(response.data.transcription)
+            setData(response.data.transcription)
             handleClick(response.data.transcription)
             sendDataParent(false)
         } catch (error) {

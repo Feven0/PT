@@ -1,9 +1,9 @@
 version: "3"
 services:
-  ipersona:
-    container_name: ipersona
+  prodipersona:
+    container_name: prodipersona
     build: .
-    image: ipersona:latest
+    image: prodipersona:latest
     restart: unless-stopped
     environment:
       - STRAPI_STAGE=dev
@@ -24,6 +24,6 @@ services:
 
 networks:
     ipersona_network:
-        name: ipersona
+        name: prodipersona
         driver: bridge      
 

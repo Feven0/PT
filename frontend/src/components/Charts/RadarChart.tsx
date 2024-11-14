@@ -1,17 +1,15 @@
 import { Radar } from "@ant-design/plots";
 import { Col, Row } from "antd";
-
 interface Data {
   data: any
 }
 
-const RadarChart : React.FC<Data> = ({data}) => {
+const RadarChart: React.FC<Data> = ({data}) => {
+  const doubleArray = Array.isArray(data) && Array.isArray(data) ? data : data;
 
-  const doubleArray = Array.isArray(data) && Array.isArray(data[0]) ? data : [data];
-
-  const datas = doubleArray?.map((competencies, index) => {
-    const type = `Interview ${index + 1}`;
-    return competencies?.map((item:any) => ({
+  const datas = doubleArray?.map((competencies: any) => {
+    const type = competencies?.time;
+    return competencies?.competency?.map((item: any) => ({
         ...item,
         sfia_level: parseInt(item.sfia_level, 10), 
         type: type

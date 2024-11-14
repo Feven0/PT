@@ -1,6 +1,6 @@
 import ast
 import api.llm.ipersona.ipersona_schema as db
-
+import api.llm.ipersona.ipersona_prisma as prisma
 
 async def save_chathistory_to_db(recieved):
     try:
@@ -18,23 +18,23 @@ async def save_chathistory_to_db(recieved):
     except Exception as e:
         return f'Error: {str(e)}' 
     
-async def fecth_all_chathistory(recieved):
-    userId = recieved.userId
+async def fetch_all_chathistory(recieved):
     sessionId = recieved.sessionId
-    jobId = recieved.jobId
    
     try:
-        session_chathistory = await db.fetch_chat_history(userId, sessionId, jobId)
-            
-        if isinstance(session_chathistory, list):
-            for entry in session_chathistory:
-                if 'chathistory' in entry:
-                    chathistory_data = entry['chathistory']
-                    if isinstance(chathistory_data, str) and chathistory_data:  
-                        try:
-                            entry['chathistory'] = ast.literal_eval(chathistory_data)
-                        except (ValueError, SyntaxError) as e:
-                            print(f"Error parsing chathistory for entry {entry}: {e}")
+        
+        #session_chathistory = await db.fetch_chat_history(sessionId)
+        session_chathistory = await prisma.fetch_chat_history(sessionId)
+
+        # if isinstance(session_chathistory, list):
+        #     for entry in session_chathistory:
+        #         if 'chathistory' in entry:
+        #             chathistory_data = entry['chathistory']
+        #             if isinstance(chathistory_data, str) and chathistory_data:  
+        #                 try:
+        #                     entry['chathistory'] = ast.literal_eval(chathistory_data)
+        #                 except (ValueError, SyntaxError) as e:
+        #                     print(f"Error parsing chathistory for entry {entry}: {e}")
 
         return session_chathistory
     

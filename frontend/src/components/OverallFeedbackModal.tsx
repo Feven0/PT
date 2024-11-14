@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { Modal, Button, Tabs, Collapse } from 'antd';
-import { LiquidAntd, Metrics, RadarChart } from './index';
+import { Metrics, RadarRealtime } from './index';
 
 const { TabPane } = Tabs;
 const { Panel } = Collapse;
 
-interface Overall {
-    metricsData: any,
-    evaluationData: any
-}
-const OverallFeedbackModal: React.FC<Overall> = ({metricsData, evaluationData}) => {
+interface Data {
+    metricsData: any, evaluationData: any
+  } 
+
+const OverallFeedbackModal: React.FC<Data> =({metricsData, evaluationData}) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const showModal = () => {
         setIsModalVisible(true);
@@ -27,14 +27,11 @@ const OverallFeedbackModal: React.FC<Overall> = ({metricsData, evaluationData}) 
         <div>
             <div className='overall-container'>
                 <div className='overall-box'>
-                    <button 
-                        className='view-btn'                    
-                        style={{ marginTop: '2.6rem', border: 'none', cursor: 'pointer' }} 
-                        onClick={showModal}>
-                        Feedback
-                    </button>
-                    <LiquidAntd 
-                        percent={evaluationData?.overall_performance} />
+                    <div 
+                    style={{marginLeft: '0.5rem', fontSize: '1rem'}}
+                    onClick={showModal}>
+                        {metricsData?.overall_performance_score}%
+                    </div>
                 </div>
             </div>
 
@@ -66,7 +63,7 @@ const OverallFeedbackModal: React.FC<Overall> = ({metricsData, evaluationData}) 
                             <Collapse>
                                 <Panel header="Recommendations" key="1">
                                     <ul style={{textAlign: 'justify'}}>
-                                        {evaluationData?.recommendation.map((rec:any, index:any) => (
+                                        {evaluationData?.recommendation.map((rec: any, index: any) => (
                                             <li key={index}>
                                                 <a href={rec.link} target="_blank" rel="noopener noreferrer">
                                                     {rec.title}
@@ -79,14 +76,11 @@ const OverallFeedbackModal: React.FC<Overall> = ({metricsData, evaluationData}) 
                                     </ul>
                                 </Panel>
                             </Collapse>
-                            <div style={{ textAlign: 'justify', marginTop: '2rem', color:'#534d4d' }}>
-                                {evaluationData?.conclusion_statement}
-                            </div>
 
                             <div>
                                 <h3>Competency Level</h3>
                                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '94vh' }}>
-                                    <RadarChart
+                                    <RadarRealtime
                                         data={evaluationData?.competency}
                                     />
                                 </div>

@@ -1,11 +1,13 @@
 import api.llm.ipersona.ipersona_schema as db
 import api.llm.ipersona.ipersona_db as database
-from fastapi import FastAPI, File, UploadFile, Form, Request
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 import api.pages.ipersona.models.persona as pemodel
 import ast
+import api.llm.ipersona.ipersona_prisma as prisma
+from api.services.strapi_ipersona import IpersonaManager
 
-route_weaviate = FastAPI(openapi_prefix="/wv")
+route_weaviate = FastAPI(root_path="/wv")
 
 @route_weaviate.post("/fetch_user_session")
 async def fetch_session(recieved: pemodel.SessionRequestRecieved):
@@ -26,22 +28,13 @@ async def fetch_session(recieved: pemodel.SessionRequestRecieved):
         A dictionary containing all user data and the latest user data, or an 
         error response if an exception occurs during processing.
     """
-    userId = recieved.userId   
     try:
-        user_data = await db.fetch_session(userId)     
-        if 'generated_questions' in user_data["latest_data"]:
-            question_data = user_data["latest_data"]['generated_questions']
-            if question_data:
-                try:
-                    user_data["latest_data"]['generated_questions'] = ast.literal_eval(question_data)
-                except (ValueError, SyntaxError) as e:
-                    print(f"Error parsing generated_questions: {e}")
-                     
-        data = {
-            "all_user_data": user_data["all_data"],
-            "latest_user_data": user_data["latest_data"]
-        } 
-        return data
+        ipersona_manager = IpersonaManager(alluser=recieved.alluser, jobId=recieved.jobId, run_stage="dev")
+        user_data = ipersona_manager.get_job_sessions()
+        #user_data = ipersona_manager.get_job_sessions_observers()
+
+
+        return user_data
     
     except Exception as e:
         print(f"Error processing files: {e}")
@@ -68,8 +61,9 @@ async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):
         exception occurs during processing.
     """
     try:
-        session_chathistory = await database.fecth_all_chathistory(recieved)
-
+        ipersona_manager = IpersonaManager(sessionId=recieved.sessionId, run_stage="dev")
+        session_chathistory = ipersona_manager.get_messages()
+  
         return session_chathistory
 
     except Exception as e:
@@ -80,3 +74,51 @@ async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):
         print(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
     
+
+@route_weaviate.post("/fetch_user_session_observers")
+async def fetch_user_session_observer(recieved: pemodel.UserSessionRequestRecieved):  
+    try:
+        ipersona_manager = IpersonaManager(sessionId=recieved.alluser, jobId=recieved.jobId, run_stage="dev")
+        session_chatobserver = ipersona_manager.get_job_sessions_observers()
+         
+        return session_chatobserver
+
+    except Exception as e:
+        print(f"Error fetching chat observer: {e}")
+        return None  
+    
+    except Exception as e:
+        print(f"Error processing files: {e}")
+        return JSONResponse(status_code=500, content={"error": "Error processing files"})
+    
+@route_weaviate.post("/fetch_user_all_observer")
+async def fetch_user_all_observer(recieved: pemodel.ChatHistoryRequestRecieved):  
+    try:
+        ipersona_manager = IpersonaManager(sessionId=recieved.sessionId, run_stage="dev")
+        session_chatobserver = ipersona_manager.get_observers()
+         
+        return session_chatobserver
+
+    except Exception as e:
+        print(f"Error fetching chat observer: {e}")
+        return None  
+    
+    except Exception as e:
+        print(f"Error processing files: {e}")
+        return JSONResponse(status_code=500, content={"error": "Error processing files"})
+    
+@route_weaviate.post("/fetch_single_session")
+async def fetch_single_session(recieved: pemodel.ChatHistoryRequestRecieved):  
+    try:
+        ipersona_manager = IpersonaManager(sessionId=recieved.sessionId, run_stage="dev")
+        session_fetched = ipersona_manager.get_session()
+         
+        return session_fetched
+
+    except Exception as e:
+        print(f"Error fetching chat observer: {e}")
+        return None  
+    
+    except Exception as e:
+        print(f"Error processing files: {e}")
+        return JSONResponse(status_code=500, content={"error": "Error processing files"})

@@ -125,7 +125,8 @@ class StrapiGraphql():
         request = requests.post(self.apiroot, json={'query': query, 'variables': variables}, headers=self.headers)
         if request.status_code == 200:
             r =  request.json()
-            result_json= json.dumps(r, indent=2)
+            # result_json= json.dumps(r, indent=2)
+            result_json = r
             
         else:
             raise Exception("Query failed to run by returning code of {}. {}".format(

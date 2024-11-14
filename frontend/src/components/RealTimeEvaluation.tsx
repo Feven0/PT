@@ -3,11 +3,12 @@ import { Collapse } from 'antd';
 import '../styles/InterviewChat/interviewchat.css'
 
 const { Panel } = Collapse;
-
-interface Realtime {
+interface Data {
     evaluation: any
 }
-const RealTimeEvaluation: React.FC<Realtime> = ({ evaluation }) => {
+
+
+const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
     const [isVisible, setIsVisible] = useState(false);
     // const [visibleIndex, setVisibleIndex] = useState(null);
 
@@ -16,9 +17,9 @@ const RealTimeEvaluation: React.FC<Realtime> = ({ evaluation }) => {
         // setVisibleIndex(index);
     };
 
-    const overall = evaluation.overall || []
-    // const answerRelevancy = evaluation.answer_relevancy || [];
-    const communicationSkills = evaluation.communication_skills || [];
+    const overall = evaluation?.overall || []
+    // const answerRelevancy = evaluation?.answer_relevancy || [];
+    const communicationSkills = evaluation?.communication_skills || [];
 
     return (
         <div className='evaluation realtime-evaluation' 
@@ -28,9 +29,9 @@ const RealTimeEvaluation: React.FC<Realtime> = ({ evaluation }) => {
                 className="hover-effect"
                 title="Answer Relevance"
                 style={{
-                    backgroundColor: overall.relevance === 'strong' ? '#48f50354' : 
-                                    overall.relevance === 'weak' ? '#ff000054' : 
-                                    overall.relevance === 'medium' ? '#7fc6f554' : '#000000',
+                    backgroundColor: overall?.relevance === 'strong' ? '#48f50354' : 
+                                    overall?.relevance === 'weak' ? '#ff000054' : 
+                                    overall?.relevance === 'medium' ? '#7fc6f554' : '#000000',
                     display: 'inline-block',
                     borderRadius: '5px 15px 5px 15px',
                     cursor: 'pointer',                  
@@ -43,12 +44,12 @@ const RealTimeEvaluation: React.FC<Realtime> = ({ evaluation }) => {
                     display: 'inline-block',
                     padding: '1px 1rem 1px 1rem',
                     fontWeight: 'bold',
-                    color: overall.relevance === 'strong' ? '#02771b' : 
-                    overall.relevance === 'weak' ? '#FF0000' : 
-                    overall.relevance === 'medium' ? '#0797f7' : '#ffffff',
+                    color: overall?.relevance === 'strong' ? '#02771b' : 
+                    overall?.relevance === 'weak' ? '#FF0000' : 
+                    overall?.relevance === 'medium' ? '#0797f7' : '#ffffff',
                     }}
                 >
-                    {overall.relevance}
+                    {overall?.relevance}
                 </div>
             </div>
 
@@ -76,12 +77,12 @@ const RealTimeEvaluation: React.FC<Realtime> = ({ evaluation }) => {
                             style={{ backgroundColor: '#f3f5f7', border: 'none', borderRadius: '1rem' }}
                         >
                             <div style={{ padding: '1rem' }}>
-                                {communicationSkills.map((skill:any, index:any) => (
+                                {communicationSkills?.map((skill: any, index: any) => (
                                     <div key={index} style={{ marginBottom: '0.5rem' }}>
                                         <strong style={{ fontSize: '1.1rem' }}>
-                                            {skill.skill}: 
+                                            {skill?.skill}: 
                                         </strong>
-                                        <span style={{ marginLeft: '0.5rem', color: '#555' }}>{skill.level}</span>
+                                        <span style={{ marginLeft: '0.5rem', color: '#555' }}>{skill?.level}</span>
                                     </div>
                                 ))}
                             </div>

@@ -1,233 +1,43 @@
-import { useState, useRef, useEffect, useContext } from 'react';
-import { Card, message, Spin, Collapse } from 'antd';
+import { useState, useRef, useEffect } from 'react';
+import { Card, Spin, Collapse } from 'antd';
 import { OpenAI } from 'openai';
 import WaveSurfer from 'wavesurfer.js';
 import { AudioChatRecord, OverallFeedbackModal } from './index';
 import useMiddleSocket from '../hooks/useMiddleSocket';
-import { ProviderContext } from '../context/context';
 import fade from '../assets/fade-circles.svg';
-
+import '../styles/AudioRecorder/audiorecorder.css'
+// import Assembly from './Assembly';
 const { Panel } = Collapse;
 
 const apiKey = `${import.meta.env.VITE_REACT_APP_OPENAI_KEY}`;
 
-interface CustomWaveSurferOptions {
-    container: string;
-    audioContext?: AudioContext; 
-    waveColor?: string;
-    progressColor?: string;
-    height?: number;
-    responsive?: boolean;
-}
-
 const Audio = () => {
-        const { handleAudioInterview, loading, audiointerview, seconds, minutes, pause, reset, setLoading } = useMiddleSocket();
-        const { latestsession } = useContext<any>(ProviderContext);
-        const [audioUrl, setAudioUrl] = useState<any>(null);
+        const { handleAudioInterview, loading, audiointerview, audioHistory, seconds, minutes, pause, setLoading, setAudioInterview } = useMiddleSocket();
+        // const {userId, jobId} = useParams()
+        // const userId = 16
+        // const jobId = 1045
+        const latest = JSON.parse(localStorage.getItem("userSession") || 'null');        
+        // const [audioUrl, setAudioUrl] = useState(null);
+        const [audioUrls, setAudioUrls] = useState<any>([]); 
         const [dataFromAudio, setDataFromAudio] = useState<any>(false);
         const [input, setInput] = useState<any>("");
         const [show, setShow] = useState<any>(true);
         const [counter, setCounter] = useState<any>(1);
-        const wavesurferRef = useRef<WaveSurfer | null>(null);
+        // const [buffer, setBuffer] = useState('');
+
+        const wavesurferRef = useRef<any>(null);
         const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
 
-        // const audiointerview = [{
-        //     "user_type": "assistant",
-        //     "content_type": "question_feedback",
-        //     "complete": false,
-        //     "content": {
-        //         "time_taken": "null",
-        //         "response": "null",
-        //         "realtime_evaluation": {
-        //             "overall": {
-        //                 "relevance": "weak",
-        //                 "feedback": "Your response suggested a basic understanding of time management through the use of scheduling tools. However, it lacked depth and specific strategies that demonstrate how you effectively manage your workload, especially when juggling multiple projects. Providing examples or elaborating on how these tools help you prioritize tasks would strengthen your answer."
-        //             },
-        //             "answer_relevancy": [
-        //                 {
-        //                     "level": "50",
-        //                     "reason": "The mention of scheduling tools is relevant, but the response does not provide sufficient detail or context to fully address the question."
-        //                 }
-        //             ],
-        //             "communication_skills": [
-        //                 {
-        //                     "skill": "clarity",
-        //                     "level": "Good",
-        //                     "reason": "Your response was coherent, but it could benefit from more elaboration to enhance understanding."
-        //                 },
-        //                 {
-        //                     "skill": "engagement",
-        //                     "level": "Poor",
-        //                     "reason": "The response lacked enthusiasm and did not engage the interviewer effectively, making it seem less compelling."
-        //                 }
-        //             ]
-        //         },
-        //         "interview_evaluation": {
-        //             "evaluation": "Your performance in the interview indicates a foundational understanding of machine learning and software engineering concepts, but there are areas that require improvement. Specifically, your responses lacked depth and concrete examples, which are crucial for demonstrating your experience and capabilities. To be a better fit for the role, focus on providing specific instances of your work and the outcomes achieved, especially in collaborative settings.",
-        //             "recommendation": [
-        //                 {
-        //                     "title": "Effective Communication Skills",
-        //                     "resource": "The Complete Communication Skills Masterclass for Life",
-        //                     "type": "Online Course",
-        //                     "link": "www.udemy.com"
-        //                 },
-        //                 {
-        //                     "title": "Project Management Fundamentals",
-        //                     "resource": "Project Management Professional (PMP) Certification Training",
-        //                     "type": "Online Course",
-        //                     "link": "www.coursera.org"
-        //                 },
-        //                 {
-        //                     "title": "Deep Learning Specialization",
-        //                     "resource": "Deep Learning Specialization by Andrew Ng",
-        //                     "type": "Online Course",
-        //                     "link": "www.coursera.org"
-        //                 }
-        //             ],
-        //             "competency": [
-        //                 {
-        //                     "name": "Machine Learning",
-        //                     "sfia_level": "3"
-        //                 },
-        //                 {
-        //                     "name": "Communication Skills",
-        //                     "sfia_level": "2"
-        //                 },
-        //                 {
-        //                     "name": "Project Management",
-        //                     "sfia_level": "2"
-        //                 }
-        //             ],
-        //             "overall_performance": 50,
-        //             "message": "Good"
-        //         },
-        //         "interview_evaluation_metrics": {
-        //             "performance": [
-        //                 {
-        //                     "name": "confidence_level",
-        //                     "level": "Poor",
-        //                     "reason": "You appeared unsure and lacked confidence during your response, which affected the clarity of your communication."
-        //                 }
-        //             ],
-        //             "areas_of_improvement": [
-        //                 {
-        //                     "skill": "Time Management",
-        //                     "description": "You need to provide specific examples of how you manage your time and workload effectively. Instead of general statements about collaboration, focus on concrete instances where you successfully handled multiple projects and the strategies you employed."
-        //                 }
-        //             ],
-        //             "strength": [
-        //                 {
-        //                     "skill": "Collaboration",
-        //                     "description": "You mentioned collaboration with developers, indicating an understanding of teamwork. However, you need to enhance this by providing detailed examples of successful collaborations and their outcomes."
-        //                 }
-        //             ],
-        //             "time_management": {
-        //                 "fail": 0,
-        //                 "pass": 0
-        //             },
-        //             "relevancy": [
-        //                 {
-        //                     "index": 1,
-        //                     "level": "50",
-        //                     "reason": "The mention of scheduling tools is relevant, but the response does not provide sufficient detail or context to fully address the question."
-        //                 }
-        //             ],
-        //             "message": "Good",
-        //             "rating": 2
-        //         }
-        //     }
-        // }]
-
-        console.log("audioooo", audiointerview)
+ 
+        console.log("audioooo caroline", audiointerview)
+        console.log("audiohistory", audioHistory)
 
         let previous_question = "";
         let timerValue: any;
 
-        useEffect(() => {
-            synthesizeAudio(audiointerview)
-        }, [audiointerview])
-
-       const synthesizeAudio = async (data: any) => {
-        try {
-            if(data !== undefined){
-                setLoading(true)
-                const feedcheck = data[0]?.content?.realtime_evaluation
-                const response = data[0]?.content?.response
-                const feedback = data[0]?.content?.realtime_evaluation?.overall?.feedback;
-                const question = data[0]?.content?.response?.question;
-                const endMessage = data[0]?.content?.response?.end_message;
-                const time_limit = data[0]?.content?.response?.time_limit;
-                let textToRead = "";
-
-                if(feedcheck === "null" && response !== "null") {
-                    textToRead = `Let start the interview: Now, ${question} ${endMessage}`;
-                }
-                else if(response !== "null" && feedcheck !== "null") {
-                    textToRead = `${feedback}. Now, ${question}, and you must provide an answer with in ${time_limit} minutes ${endMessage}`;
-                } else {
-                    const overall  = data[0]?.content?.interview_evaluation?.evaluation
-                    textToRead = `${feedback}. We are done with the interview, Here is your overall performance evaluation ${overall}`
-                }
-
-                const mp3 = await openai.audio.speech.create({
-                    model: "tts-1-hd",
-                    voice: "nova",
-                    input: textToRead,
-                });
-
-                const audioBlob = new Blob([await mp3.arrayBuffer()], { type: 'audio/mpeg' });
-                const url = URL.createObjectURL(audioBlob);
-
-                if (audioUrl) {
-                    URL.revokeObjectURL(audioUrl);
-                }
-                setAudioUrl(url);
-                setLoading(false);
-            }
-        } catch (error) {
-            console.error("Error generating audio:", error);
-            message.error("Failed to generate audio. Please try again.");
-        }
-    };
-    
-    useEffect(() => {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        wavesurferRef.current = WaveSurfer.create({
-            container: '#waveform',
-            audioContext: audioContext, 
-            waveColor: '#6c63ff',
-            progressColor: '#ff6f61',
-            height: 128,
-            responsive: true,
-        }as CustomWaveSurferOptions);
-
-        if (audioUrl) {
-            wavesurferRef.current.load(audioUrl);
-            wavesurferRef.current.on('ready', () => {
-                wavesurferRef.current?.play();
-            });
-            wavesurferRef.current.on('finish', () => {
-                reset(); 
-            });
-        }
-
-        return () => {
-            wavesurferRef.current?.destroy();
-        };
-    }, [audioUrl]); 
-
-    const handleWaveformClick = (e: any) => {
-        const waveformWidth = e.currentTarget.clientWidth;
-        const clickPosition = e.clientX - e.currentTarget.getBoundingClientRect().left;
-        const seekTo = clickPosition / waveformWidth;
-
-        if (wavesurferRef.current) {
-            wavesurferRef.current.seekTo(seekTo);
-            wavesurferRef.current.play();
-        }
-    };
     const handleDataFromAudio = (audioTranscript: any) => {
         setInput(audioTranscript);
+        console.log("transcription org.", audioTranscript)
         if(audioTranscript !== undefined){
             submitAudio(audioTranscript)
         }
@@ -241,13 +51,12 @@ const Audio = () => {
         if(audiointerview !== undefined){
             previous_question = audiointerview[0]?.content?.response?.question
         }
-        const user_session = latestsession
-
+        const user_session = latest
         timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         pause();
         handleAudioInterview({ 
             input: input, 
-            interview: audiointerview, 
+            interview: audioHistory, 
             user_session: user_session,
             counter: counter,
             timerValue: timerValue,
@@ -257,15 +66,16 @@ const Audio = () => {
         setShow(false)
     }  
 
-    const submitAudio = async(audioTranscript: any) => {
+    const submitAudio = async(audioTranscript: any) => {;
+        setAudioInterview([])
         if(audiointerview !== undefined){
             previous_question = audiointerview[0]?.content?.response?.question
         }
-        const user_session = latestsession
+        const user_session = latest
         timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         handleAudioInterview({ 
             input: audioTranscript, 
-            interview: audiointerview, 
+            interview: audioHistory, 
             user_session: user_session,
             counter: counter,
             timerValue: timerValue,
@@ -274,16 +84,154 @@ const Audio = () => {
         setCounter(counter < 9 ? counter + 1 : 1);
     }
 
-   
+    useEffect(() => {
+        const playAudioSequentially = async () => {
+            if (audioUrls.length > 0) {
+                for (const url of audioUrls) {
+                    await new Promise<void>((resolve) => { 
+                        wavesurferRef.current.load(url);
+
+                        wavesurferRef.current.on('ready', () => {
+                            wavesurferRef.current.play();
+                        });
+
+                        wavesurferRef.current.on('finish', () => {
+                            resolve(); 
+                        });
+                    });
+                }
+                setAudioUrls([]);
+            }
+        };
+
+        playAudioSequentially();
+    }, [audioUrls]);
+
+    const synthesizeAudio = async () => {
+        const sentences = audiointerview
+        try {
+            setLoading(true); 
+            const urls = [];
+            
+            for (const sentence of sentences) {
+                console.log("AUDIO ENTRY", sentence)
+
+                const mp3 = await openai.audio.speech.create({
+                    model: "tts-1-hd",
+                    voice: "nova",
+                    input: sentence,
+                });
+
+                const audioBlob = new Blob([await mp3.arrayBuffer()], { type: 'audio/mpeg' });
+                
+                const url = URL.createObjectURL(audioBlob);
+                
+                urls.push(url); 
+                setAudioUrls(urls); 
+            }
+            setLoading(false);
+        } catch (error) {
+            console.error("Error generating audio:", error);
+            setLoading(false); 
+        }
+    };
+
+    useEffect(() => {
+        const processChunks = async () => {           
+            // for (const chunk of audioHistory) {
+            //     console.log("audiochunk", chunk); 
+            //     await synthesizeAudio(); 
+            // }
+            await synthesizeAudio();
+        };
+
+        if (audiointerview.length > 0) {
+            processChunks(); 
+        }
+    }, [audiointerview]); 
+
+
+    const handleWaveformClick = (e: any) => {
+        const waveformWidth = e.currentTarget.clientWidth;
+        const clickPosition = e.clientX - e.currentTarget.getBoundingClientRect().left;
+        const seekTo = clickPosition / waveformWidth;
+
+        if (wavesurferRef.current) {
+            wavesurferRef.current.seekTo(seekTo);
+            wavesurferRef.current.play();
+        }
+    };
+
+    useEffect(() => {
+        wavesurferRef.current = WaveSurfer.create({
+            container: '#waveform',
+            // audioContext: new (window.AudioContext || window.webkitAudioContext)(),
+            waveColor: '#6c63ff',
+            progressColor: '#ff6f61',
+            height: 128,
+            // responsive: true,
+        });
+
+        return () => {
+            wavesurferRef.current.destroy();
+        };
+    }, []);
+
+
+
+
+    // const synthesizeAudio = async () => {
+    //     const text = 'I have work at the station near the line street around New York. The station was dirty but wide enough to handle too many passengers.';
+    //     const sentences = text.split('.').map(sentence => sentence.trim()).filter(sentence => sentence);
+    //     // const sentences = ["I have work at the station near", "the line street around New York", "The station was dirty but wide", "enough to handle too many passengers"]
+    //     for (const sentence of sentences) {
+    //         const mp3 = await openai.audio.speech.create({
+    //             model: "tts-1-hd",
+    //             voice: "nova",
+    //             input: sentence,
+    //         });
+    
+    //         const audioBlob = new Blob([await mp3.arrayBuffer()], { type: 'audio/mpeg' });
+    //         const url = URL.createObjectURL(audioBlob);
+    //         console.log("alright", url)
+    //         try {
+    //             const arrayBuffer = await fetch(url).then(response => {
+    //                 if (!response.ok) {
+    //                     throw new Error('Network response was not ok');
+    //                 }
+    //                 return response.arrayBuffer();
+    //             });
+    //             const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+    
+    //             // Update audio history
+    //             setAudioHistory(prev => [...prev, sentence]);
+    
+    //             // Add the audio buffer and URL to the queue
+    //             audioQueue.current.push({ buffer: audioBuffer, url });
+    
+    //             // Start playback if not already playing
+    //             playNext();
+    //         } catch (error) {
+    //             console.error('Failed to fetch audio data:', error);
+    //         } finally {
+    //             // Clean up the URL after use
+    //             URL.revokeObjectURL(url);
+    //         }
+    //     }
+    // };
+
+
+
     return (
         <>
         <div style={{display: 'flex', gap: '15rem', margin: '0rem 5rem 0rem 10rem'}}>
             <div style={{ width: '600px' }}>
-                <Card title="Audio Chat" bordered={true} >
+                <Card title="Audio Interview" bordered={true} >
                     <div style={{ 
                         fontSize: '20px', 
                         display: 'flex', 
                         justifyContent:'space-between',
+                        // textAlign: 'end'
                         }}>
                         
                         {show && (<div>
@@ -300,16 +248,19 @@ const Audio = () => {
                         id="waveform" 
                         style={{ width: '100%', height: '128px', marginTop: '20px' }} 
                         onClick={handleWaveformClick}
-                    ></div>
+                    >
+                        
+                    </div>
 
                     <div>
-                    <AudioChatRecord sendDataParent={handleDataAudio} sendDataToParent={handleDataFromAudio} pause={pause}/>
+                        <AudioChatRecord sendDataParent={handleDataAudio} sendDataToParent={handleDataFromAudio} pause={pause}/>
+                        {/* <Assembly/> */}
                     </div>
                 </Card>
             </div>
             
             <div style={{display:'flex', flexDirection: 'column'}}>
-                {(audiointerview !== undefined && audiointerview[0]?.content?.realtime_evaluation !== "null") &&(
+                {(audiointerview !== undefined && !loading && audiointerview[0]?.content?.realtime_evaluation !== "null") &&(
                     <div style={{width: '28rem', bottom: '0', marginBottom: '0'}}>
                         <div style={{
                         textAlign: 'justify', 
@@ -349,7 +300,7 @@ const Audio = () => {
                     </div>
                 )}
 
-                {(audiointerview !== undefined && audiointerview[0]?.content?.interview_evaluation !== "null") &&(
+                {(audiointerview !== undefined && !loading && audiointerview[0]?.content?.interview_evaluation !== "null") &&(
                     <div style={{marginTop: '1.8rem'}}>
                         <OverallFeedbackModal
                             metricsData={audiointerview[0]?.content?.interview_evaluation_metrics}

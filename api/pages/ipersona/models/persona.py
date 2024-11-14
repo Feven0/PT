@@ -9,7 +9,8 @@ class UserSessionRequestRecieved(BaseModel):
     jbId: str
     
 class SessionRequestRecieved(BaseModel):
-    userId: str
+    alluser: int
+    jobId: int
     
 class SessionJobRequestRecieved(BaseModel):
     sessionId: str
@@ -22,11 +23,16 @@ class userSessionRequestRecieved(BaseModel):
     cvJson: Optional[Dict[str, Any]]
     jbJson: Optional[Dict[str, Any]]
     
+class UserSessionRequestRecieved(BaseModel):
+    alluser: int
+    jobId: int
+    
+class AllUserSessionRequestRecieved(BaseModel):
+    alluser: int
+
 class ChatHistoryRequestRecieved(BaseModel):
-    userId: str
-    sessionId: str
-    jobId: str
-          
+    sessionId: int
+               
 class MetricsRequestRecieved(BaseModel):
     userId: str
     sessionId: str
@@ -38,5 +44,10 @@ class SaveMetricsRequestRecieved(BaseModel):
     
 class ClarificationRequestRecieved(BaseModel):
     question: str
+    
+class audioRequestRecieved(BaseModel):
+    text: str
+   
+    
 
 

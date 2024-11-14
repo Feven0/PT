@@ -1,14 +1,13 @@
 import { Line } from '@ant-design/plots';
 
-interface Relevance {
+interface Data {
   relevancy: any
 }
 
-const LineChartOverall : React.FC<Relevance> = ({relevancy}) => {
-
-    const relevancyData = relevancy.map((item:any) => ({
-      interview: item.interview, 
-      performance: parseInt(item.performance, 10)
+const LineChartOverall: React.FC<Data> = ({relevancy}) => {
+    const relevancyData = relevancy?.map((item: any) => ({
+      interview: item.time, 
+      performance: parseInt(item.score, 10)
     }));
 
     const config = {

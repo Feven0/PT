@@ -1,24 +1,23 @@
-import {useContext, useState, useEffect} from 'react';
+import {useState, useEffect} from 'react';
 import { Row, Col } from 'antd';
-import { BarChart, LineChartOverall, RadarChart, SankeyChart, SankeyTime, LoadingIndicator } from './index'; 
+import { BarChart, LineChartOverall, RadarChart, SankeyTime, LoadingIndicator } from './index'; 
 import Api from '../Services/Services';
-import { ProviderContext } from '../context/context';
+import { useParams } from 'react-router-dom';
 
 const AllStatus = () => {
-  const {latestsession} = useContext<any>(ProviderContext);
-  const [refresh, setRefresh] = useState(0);
-  const [overall, setOverall] = useState<any>(null); 
-
+    const {userId, jobId} = useParams()
+    const [refresh, setRefresh] = useState(0);
+    const [overall, setOverall] = useState<any>({});
+    const [currentIndex, setCurrentIndex] = useState(0);
 
     const fetchOverall = async() => {
-      const job_id = localStorage.getItem("JobId")
       const data = {
-        userId: latestsession?.userId,
-        sessionId: latestsession?.sessionId, 
-        jobId: job_id
+        alluser: userId,
+        jobId: jobId
       }
-      const response = await Api.overallmetrics(data)
+      const response = await Api.OverallSesssionMetrics(data)
       setOverall(response.data)
+      console.log(response.data)
     }
 
     useEffect(() => {
@@ -26,7 +25,7 @@ const AllStatus = () => {
         const intervalId = setInterval(() => {
           setRefresh((prev) => prev + 1);
         }, 500000);
-  
+
         return () => clearInterval(intervalId); 
     }, [refresh])
 
@@ -38,12 +37,11 @@ const AllStatus = () => {
     };
 
     const charts = [
-      { title: 'Clarity', component: <SankeyChart communication={overall?.overall_clarity}/> },
-      { title: 'Engagement', component: <SankeyChart communication={overall?.overall_engagement}/> },
-      { title: 'Time Management', component: <SankeyTime time={overall?.overall_time_management}/> },
+      { title: 'Confidence', component: <BarChart metricData={overall?.overall_confidence}/> },
+      { title: 'Clarity', component: <BarChart metricData={overall?.overall_clarity}/> },
+      { title: 'Engagement', component: <BarChart metricData={overall?.overall_engagement}/> }
     ];
 
-    const [currentIndex, setCurrentIndex] = useState(0);
 
     const nextChart = () => {
       setCurrentIndex((prevIndex) => (prevIndex + 1) % charts.length);
@@ -56,7 +54,7 @@ const AllStatus = () => {
 
     return (
       <>
-          {(overall == undefined  || overall == null || (overall && overall.error !== undefined)) ?
+          {(overall === undefined && Object.keys(overall).length == 0) ?
             <div>
               <LoadingIndicator message={'Fetching Metrics...'}/>
             </div>
@@ -70,7 +68,13 @@ const AllStatus = () => {
                 {/* First Row */}
                 <div style={{marginBottom: '2rem'}}>
                   <Row style={{  display: 'flex', margin: '0 4rem 0 4rem', gap:'2rem'}}>
-                      <Col style={{backgroundColor: '#f1eded27', borderRadius: '3rem', padding:'0 4rem 0 4rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'}}>
+                      <Col 
+                      style={{
+                        backgroundColor: '#f1eded27', 
+                        borderRadius: '3rem', 
+                        padding:'0 4rem 0 4rem', 
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                      }}>
                           <h3 style={{color: '#d1cccb'}}>Competency</h3>
                           <RadarChart data={overall?.overall_competency} />
                       </Col>
@@ -85,8 +89,8 @@ const AllStatus = () => {
                 <div>
                   <Row style={{ display: 'flex', margin: '0 4rem 0 4rem', gap: '2rem' }}>
                       <Col style={{backgroundColor: '#f1eded27', borderRadius: '3rem', padding:'0 1.5rem 0 1.5rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'}}>
-                        <h3 style={{color: '#d1cccb'}}>Confidence</h3>
-                        <BarChart confidenceData={overall?.overall_confidence} />
+                        <h3 style={{color: '#d1cccb'}}>Time Management</h3>
+                        <SankeyTime time={overall?.overall_time_management}/>
                       </Col>
                       
                       <Col style={{ backgroundColor: '#f1eded27', borderRadius: '3rem', padding: '0 2.5rem 0 2.5rem', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>

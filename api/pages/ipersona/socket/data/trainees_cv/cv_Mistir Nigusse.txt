@@ -1,0 +1,66 @@
+Professional Summary 
+I am an aspiring Data Engineer with MERN stack development background. Proficient in Python, SQL, and ETL 
+processes. Eager to leverage full-stack experience for building scalable data pipelines and optimizing data infrastructure. 
+Skills 
+Work Experience 
+Software Engineer - Zowi construction - Addis Ababa, Ethiopia - 15/1/2024- Present 
+●
+Responsible for managing implementation phase of an Intelligent Transportation Software System 
+developed for Addis Ababa City Bus Authority. The system is a huge lOT based software used for smart 
+bus dispatching and monitoring. My responsibilities are to manage the training and evaluation dispatcher 
+to use the system effectively, Execute test plans to ensure reliability and performance, keep log and 
+report of software defects, prepare manual and technical documentations, give the appropriate technical 
+and business demonstration of the system as necessary. As of now I’ve successfully managed the pilot 
+implementation phase on 3 routes. 
+Junior Software Engineer - Platform Technologies,  - Addis Ababa, Ethiopia - 29/08/2023 - 12/1/2024 
+●
+Web dashboard planning, designing and prototype development using Flutter web, BLOC, Node/Express 
+and MongoDB. The company has another service provider system that was on work, however it was 
+very difficult to manage the clients and the revenue generated. I managed to design and develop a 
+working prototype dashboard to effectively manage transaction and client management data, which 
+resulted in positive impact on the company’s sales and revenue. 
+Intern Front-end developer - RCNDC - https://rcndc.com - Addis Ababa, Ethiopia - 08/06/2022 - 08/08/2023   
+●
+Mobile application development, testing and maintenance using Flutter/Dart, GetX, GraphQL api. My 
+responsibility was to add new features, fix bugs and refactor a mobile application code base. I was able 
+to achieve a more cleaner, testable and  maintainable code structure, which leads to minimized bugs and 
+scaled by new features 
+●
+Front-End Web application development using React.js, Tailwind CSS and Redux library. I developed an 
+e-commerce like website for a company, which was later customized a little and reused to develop 
+similar platform. 
+Projects 
+Cache Superadmin Console  
+●
+An admin console for another service provider software application. It manages all data’s associated with 
+the clients of the main application, manage the transaction and revenue generated on the main app. 
+Software Engineer 
+MISTIR NIGUSSE
+Phone: +251922331422 
+Email: mistirnigusse0@gmail.com 
+Github: https://github.com/mistir-nigusse 
+Address: Addis Ababa, Ethiopia
+Technical Skills 
+Python,  SQL,  NoSQL, ETL processes, Hadoop, AWS, 
+MERN stack, Flutter.
+Software Tools 
+Github, Linux, Slack, Apache Kafka, Apache Hadoop, 
+
+Hakime health service provider admin console 
+●
+Two admin consoles for a health service provider platform. They manages and visualize data’s related to 
+doctors, patients pharmacies, transactions, and advertisements of the main platform. 
+●
+Links: https://github.com/mistir-nigusse/hakime-admin-dashboard | https://github.com/mistir-nigusse/
+Hakime- Pharmacy 
+Alga hotel booking and reservation app:  
+●
+A mobile application to find, book and reserve hotel rooms and pensions nearby. 
+●
+Links: https://play.google.com/store/apps/details?id=com.rcndc.my_alga_app&hl=en&gl=US 
+Language 
+Mother tongue: Amharic 
+Other language: English - Listening C1, Reading C1, Speaking C1, Writing C1 
+Education 
+BSc in Software Engineering - BahirDar University - BahirDar, Ethiopia -  10/11/2019 - 8/07/2023
+

@@ -1,0 +1,62 @@
+Geomatic Engineer. 
+SHEILA 
+MURUGI 
+IRUNGU 
+Phone: (+254) 746 359 406 | Email: tmurugi49@gmail.com 
+Github Link & Linkedin Link: https://github.com/Sheila-Murugi, 
+https://www.linkedin.com/in/sheila-murugi-8b189b273/  
+Address: Nairobi, Kenya. 
+Professional Summary 
+I am skilled Geomatic Engineer. I possess skills in data analysis through various programming languages. My 
+goal is to qualify and excel in the field of Machine Learning. I am confident that I will be able to learn and 
+work with emerging technologies.  
+Skills 
+Technical Skills 
+Processing of geographical data using various 
+programming and non-programming tools. 
+(Python, HTML, CSS, R and JavaScript)  
+ 
+Software Tools 
+ArcGIS,  ERDAS Imagine,  Google Earth Pro, Google 
+Earth Engine, Jupyter Notebook, R studio &Visual 
+Studio.  
+Work Experience 
+GIS intern - Kenya Rural Roads Authority (KeRRA) – Nairobi, Kenya – January 2023 – March 2023 
+ 
+Generating maps that display roads in various rural areas of the country. 
+ 
+Identifying roads for proposed construction or upgrading by KeRRA. 
+ 
+Attending project environmental assessment meetings. 
+ 
+Learning about the whole process of road construction in Kenya. 
+ 
+Geomatic Engineering intern - Kenya Airports Authority (KAA)- Nairobi, Kenya – January 2022 – 
+March 2022 
+ 
+Carrying out survey for the construction of an airstrip at Nakuru, Kenya. 
+ 
+Paving of the existing runway and separating the military and civilian components of the 
+ 
+airstrip. 
+ 
+Learning about the whole process of constructing a runway and setting up an airstrip. 
+Projects 
+Drought Prediction Using Meteorological Data in a Support Vector Machines (SVM) model. 
+ 
+ 
+The objectives of this study were; to characterize drought in Turkana, to analyze the 
+temporal and spatial distribution characteristics of drought in Turkana, to develop models 
+based on the SVM algorithm that predict drought over Turkana using gauge based 
+meteorological data and to determine the most effective SVM model for drought prediction 
+using the available meteorological data for Turkana county and validate the performance of 
+the developed model.  
+Education 
+
+Bachelor of Geomatic Engineering and Geospatial Information Systems - Jomo Kenyatta University of 
+Agriculture and Technology (JKUAT) - Kenya – September 2018 – June 2024  
+ 
+Throughout my course, I processed and analyzed geographical data using programming 
+languages to obtain relevant information. The data that I handled included both satellite 
+data and ground station data. 
+

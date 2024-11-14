@@ -1,0 +1,58 @@
+{
+  "Employment Type": [
+    "Full-time",
+    "Part-time",
+    "Contract",
+    "Temporary",
+    "Internship"
+  ],
+  "Industry": [
+    "Tech",
+    "Healthcare",
+    "Finance",
+    "Education",
+    "Retail"
+  ],
+  "Role Level": [
+    "Entry-level",
+    "Mid-level",
+    "Senior-level",
+    "Executive"
+  ],
+  "Department / Title": [
+    "Engineering",
+    "Sales",
+    "Marketing",
+    "HR",
+    "Operations"
+  ],
+  "Work Environment": [
+    "Remote",
+    "On-site",
+    "Hybrid"
+  ],
+  "Company Size": [
+    "Small",
+    "Medium",
+    "Large",
+    "Enterprise"
+  ],
+  "Company Culture": [
+    "Collaborative",
+    "Innovative",
+    "Fast-paced",
+    "Traditional"
+  ],
+  "Team Structure and Performance Metrics": [
+    "Flat",
+    "Hierarchical",
+    "KPI-driven",
+    "OKR-driven"
+  ],
+  "Education": [
+    "High School",
+    "Bachelor’s",
+    "Master’s",
+    "PhD"
+  ]
+}

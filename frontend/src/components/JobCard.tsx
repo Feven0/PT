@@ -1,13 +1,17 @@
 import { Card, Row, Flex, Button } from 'antd'
 import { useParams } from 'react-router-dom';
-import { useState, useContext } from 'react';
-import { ProviderContext } from '../context/context';
-import Api from '../Services/Services';
-import users from '../assets/mock-data/user_profiles.json';
-import jobs from '../assets/mock-data/job_profile.json';
+// import { useState, useContext } from 'react';
+// import { ProviderContext } from '../context/context';
+// import Api from '../Services/Services';
+// import users from '../assets/mock-data/user_profiles.json';
+// import jobs from '../assets/mock-data/job_profile.json';
 import '../styles/jobcard/jobcard.css'
 
-const truncateSummary = (summary:any, wordLimit:any) => {
+interface Data {
+  item: any, matchDegree: any
+}
+
+const truncateSummary = (summary: any, wordLimit: any) => {
   const words = summary?.split(' ');
   if (words?.length > wordLimit) {
     return words?.slice(0, wordLimit).join(' ') + '...'; 
@@ -15,46 +19,37 @@ const truncateSummary = (summary:any, wordLimit:any) => {
   return summary;
 };
 
-interface JobCardProps {
-  item:  any; 
-  matchDegree: any 
-}
-
-
-const JobCard : React.FC<JobCardProps> = ({ item, matchDegree }) => {
-  const {latestsession} = useContext<any>(ProviderContext)
-  const { userId } = useParams<any>()
-  // const [view, setView] = useState<any>(true)
-  const [loading, setLoading] = useState<any>(false);
-  const [sessionCreated, setSessionCreated] = useState<any>(false);
+const JobCard: React.FC<Data> = ({ item, matchDegree }) => {
+  const { userId } = useParams()
+  // const [view, setView] = useState(true)
+  // const [loading, setLoading] = useState(false);
+  // const [sessionCreated, setSessionCreated] = useState(false);
   const limitedSummary = truncateSummary(item?.purpose, 3); 
-  const filteredUser = users.filter(match => match?.user_profile_id === parseInt(userId as any));
+  // const filteredUser = users.filter(match => match?.user_profile_id === parseInt(userId as any));
 
-  const session_create = async(job_profile_id: any) => {
-      // setView(false);
-      setLoading(true);
-      const filteredJob = jobs.filter(match => match.job_profile_id === job_profile_id);
-      const data = {
-        jobId: job_profile_id,
-        userId: userId,
-        name: filteredUser[0]?.name,
-        cvJson: filteredUser[0],
-        jbJson: filteredJob[0]
-      };
-      console.log("submit", data)
-      try {
-          const response = await Api.sessionCreate(data);
-          console.log("lucy", response)
-          // if(response?.data)
-          localStorage.setItem("JobId", job_profile_id)
-          setSessionCreated(true);
-      } catch (error) {
-          console.error("Error creating session:", error);
-      } finally {
-          setLoading(false);
-          // setView(true);
-      }
-  }
+  // const session_create = async(job_profile_id) => {
+  //     setView(false);
+  //     setLoading(true);
+  //     const filteredJob = jobs.filter(match => match.job_profile_id === job_profile_id);
+  //     const data = {
+  //       jobId: job_profile_id,
+  //       userId: userId,
+  //       name: filteredUser[0]?.name,
+  //       cvJson: filteredUser[0],
+  //       jbJson: filteredJob[0]
+  //     };
+      
+  //     try {
+  //         const response = await Api.sessionCreate(data);
+  //         localStorage.setItem("jobId", job_profile_id)
+  //         setSessionCreated(true);
+  //     } catch (error) {
+  //         console.error("Error creating session:", error);
+  //     } finally {
+  //         setLoading(false);
+  //         setView(true);
+  //     }
+  // }
 
 
   return (
@@ -66,23 +61,23 @@ const JobCard : React.FC<JobCardProps> = ({ item, matchDegree }) => {
 
       <Flex justify='space-between'>
           <Row style={{ marginTop: '2px' }}>
-            {sessionCreated || 
-              (parseInt(latestsession?.userId) === parseInt(userId || '0') && (parseInt(latestsession?.jobId) === item?.job_profile_id)) ? (
+            {/* {sessionCreated || 
+              (parseInt(latestsession?.userId) === parseInt(userId as any) && (parseInt(latestsession?.jobId) === item?.job_profile_id)) ? ( */}
               <a className='link' href={`/job_detail/${userId}/${item.job_profile_id}`}>
                 <Button className='job-btn' style={{ marginTop: '5px' }}>
                   Go
                 </Button>
               </a>
-            ) : (
-              <Button 
-                className='job-btn' 
-                style={{ marginTop: '5px' }}
-                onClick={() => session_create(item.job_profile_id)}
-                disabled={loading}
-              >
-                {loading ? 'wait...' : 'Start'}
-              </Button>
-            )}
+            {/* // ) : (
+            //   <Button 
+            //     className='job-btn' 
+            //     style={{ marginTop: '5px' }}
+            //     onClick={() => session_create(item.job_profile_id)}
+            //     disabled={loading}
+            //   >
+            //     {loading ? 'wait...' : 'Start'}
+            //   </Button>
+            // )} */}
           </Row>
 
           <Row style={{ marginTop: '5px' }}>

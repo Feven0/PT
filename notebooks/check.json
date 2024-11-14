@@ -1,0 +1,245 @@
+[
+  {
+    "name": "Abraham Teka",
+    "user_profile_id": 16,
+    "basics.attributes": [
+      {
+        "role": "Generative AI Engineer | Software Engineer | Machine Learning | Cloud Solutions (Azure, AWS) | Advocate for Continuous Improvement",
+        "personal_statement": "Abraham Teka here, ambitious about advancing software solutions through Generative AI and cloud computing. With certifications in Azure and AWS, I specialize in RAG systems, prompt engineering, and LLM fine-tuning. I aim to innovate and drive technological advancements in AI and software engineering. Lets connect and build intelligent solutions that make technology beneficial to everyone!"
+      }
+    ],
+    "projects.attributes": [
+      {
+        "title": "Automated Storyboard Synthesis for Digital Advertising",
+        "summary": "Developed a machine learning solution to automate the conversion of textual advertisement concepts into detailed visual storyboards. Utilized advanced deep learning frameworks, image segmentation, and LLM-based agents for asset analysis, generation, and composition, streamlining the ad creation process for digital advertising campaigns."
+      },
+      {
+        "title": "LLM Finetuning: Enabling Quality Embedding and Text Generation for Amharic Language",
+        "summary": "Enhanced NLP for Amharic by fine-tuning LLaMA-2. Key steps included implementing model quantization, preprocessing data and finetuning the model. Initial results showed promise in text generation and question answering. Future improvements will focus on  enhancing the fine-tuning process for better performance."
+      },
+      {
+        "title": "Precision RAG: Prompt Tuning For Building Enterprise Grade RAG Systems",
+        "summary": "The Prompt Generation System is an automated tool designed to assist users in generating multiple prompt options based on their input descriptions of tasks, objectives, and scenarios. The system employs sophisticated algorithms and evaluation metrics to ensure that the generated prompts align with the users requirements."
+      }
+    ],
+    "education.attributes": [
+      {
+        "study_area": "Software Engineering",
+        "study_type": "Bachelors degree",
+        "institution_name": "Bahir Dar University",
+        "start_date": "2017-09-30",
+        "end_date": "2022-06-30"
+      }
+    ],
+    "work_experience.attributes": [
+      {
+        "role": "Junior Cloud Consultant",
+        "company": "Nedamco Africa",
+        "summary": "Built a carbon footprint calculator project using C# and WebForms and deployed it on Microsoft Azure.\\n  \\u25cf Configuring and deploying requirements on Amazon AWS S3, EC2, Lambda, VPC, RDS, elastic beanstalk and load balancing.\\n  \\u25cf Configuring and deploying given assignments on Azure VMs, Virtual networks, Active Directory, DB and Functions.",
+        "start_date": "2023-12-31",
+        "end_date": "2024-03-31"
+      },
+      {
+        "role": "Software Engineer",
+        "company": "eTech S.C.",
+        "summary": "Full stack developer for a comprehensive CRM and insurance solution at Zemen Insurance, used by over 20 branches.The live system can be accessed at https://portal.zemeninsurance.com/.\\n \\u25cf Systematized fire and motor insurance  premium calculations, proposal submission, and policy generation, improving efficiency by 40%.\\n \\u25cf Developed document generation features, enhancing accuracy by 30%, and implemented SMS & email services, boosting customer engagement by 25%.",
+        "start_date": "2022-11-30",
+        "end_date": "2023-12-31"
+      },
+      {
+        "role": "Graduate Trainee ",
+        "company": "eTech S.C.",
+        "summary": "None",
+        "start_date": "2022-09-30",
+        "end_date": "2022-10-31"
+      },
+      {
+        "role": "Intern",
+        "company": "eTech S.C.",
+        "summary": "Mobile application developer, opensource OKR software introduction and implementation,  graphics designing.",
+        "start_date": "2021-05-31",
+        "end_date": "2021-08-31"
+      }
+    ]
+  },
+  {
+    "name": "Abubeker Shamil",
+    "user_profile_id": 23,
+    "basics.attributes": [
+      {
+        "role": "Generative AI & ML Engineer | CTO | Computer & Software Engineer | Entrepreneur | RAG Systems | Data Warehouse Professional",
+        "personal_statement": "Abubeker Shamil is a dedicated Software Engineer with proven leadership skills. Proficient in Python, JavaScript, fine-tuning LLMs, RAG systems, prompt engineering, Langchain, and various frameworks. Known for a problem-solving mindset, effective communication skills, and a collaborative attitude. Passionate about Generative AI and Technology, with experience in developing advanced NLP systems and optimizing data workflows."
+      }
+    ],
+    "projects.attributes": [
+      {
+        "title": "Building an Efficient Retrieval Augmented Generation (RAG) System for Legal Document \\u2014 Q&A Chatbot",
+        "summary": "Built a RAG system tailored for answering questions about legal documents. We covered the end-to-end workflow, from setting up the backend with FastAPI and Frontend with React to evaluating different configurations using RAGAS."
+      },
+      {
+        "title": "Redash LLM Chatbot for Advanced Data Analytics, Visualization, and Insight Extraction",
+        "summary": "Forget complex SQL queries; ask plain English questions. Whether it\\u2019s \\u201cWhat were the top-performing videos in June?\\u201d or \\u201cCompare viewer engagement between Q1 and Q2,\\u201d the LLM handles it all."
+      }
+    ],
+    "education.attributes": [
+      {
+        "study_area": "Computer Engineering",
+        "study_type": "Computer Engineering",
+        "institution_name": "Hawassa University",
+        "start_date": "2016-09-30",
+        "end_date": "2021-09-30"
+      }
+    ],
+    "work_experience.attributes": [
+      {
+        "role": "Chief Technology Officer - CTO",
+        "company": "Kese events",
+        "summary": "Launched apps on the Play Store, surpassing 100+ downloads, which drove\\nnotable increase in user engagement via innovative app features while also\\nachieving engagement growth by 61% by increasing the online presence.\\nLed a team 3 engineers to develop a livestreaming feature integrated into the app.",
+        "start_date": "2023-05-31",
+        "end_date": "2024-01-31"
+      },
+      {
+        "role": "Sofware Development Manager",
+        "company": "Ozoro Tech and Consulting",
+        "summary": "Managed software development projects from initiation to completion.\\nLed UI/UX design improvements for enterprise resource planning systems.\\nDeveloped and executed strategic plans to enhance project outcomes.\\nCoordinated cross-functional teams to ensure timely project delivery.",
+        "start_date": "2023-02-28",
+        "end_date": "2023-05-31"
+      },
+      {
+        "role": "Software Developer",
+        "company": "Ozoro Tech and Consulting",
+        "summary": "Developed and maintained software applications using JavaScript and Python.\\nImplemented design patterns to enhance code efficiency and maintainability.\\nContributed to Android application development projects and backend systems.",
+        "start_date": "2022-12-31",
+        "end_date": "2023-02-28"
+      }
+    ]
+  },
+  {
+    "name": "Bethelhem Mebratu",
+    "user_profile_id": 29,
+    "basics.attributes": [
+      {
+        "role": "Generative AI Engineer | Machine learning| Data engineering |Electrical engineer | Electrical lighting designer",
+        "personal_statement": "I am a junior Generative AI Engineer with a programming foundation and committed to advancing my skills in AI and technology . My expertise lies in Python, SQL and vector databases. I have hands on experience in building and fine-tuning Generative AI models,LLMs implementing RAG systems, and developing chatbots. Additionally, I am skilled in various data-related tasks such as analysis, processing, visualization, and building data warehouses."
+      }
+    ],
+    "projects.attributes": [
+      {
+        "title": "Precision RAG",
+        "summary": "None"
+      },
+      {
+        "title": "Redash chatbot LLM",
+        "summary": "I have worked on a project called  Redash Chatbot LLM ,which is an innovative integration that brings the power of OpenAIs ChatGPT model to Redash dashboard. This integration allows users to interact with their Redash dashboards using natural language queries, making data exploration and analysis more intuitive and user-friendly. The Redash Chatbot LLM plugin provides conversational query capabilities, automated data visualization, and seamless integration with Redash"
+      },
+      {
+        "title": "Scalable backtesting infrastructure",
+        "summary": "I have worked on a project revolving around utilizing LLM (Language Model) forecasting to simulate and analyze current and historical financial market situations. While acknowledging that past performance does not guarantee future outcomes, conducting backtests helps understand trends and patterns over time. The focus lies on gaining a comprehensive understanding of the financial system and stock market trading."
+      }
+    ],
+    "education.attributes": [
+      {
+        "study_area": "Electrical and Computer engineering (Industrial control)",
+        "study_type": "Bachelors degree",
+        "institution_name": "Addis Ababa University",
+        "start_date": "2015-12-31",
+        "end_date": "2020-12-31"
+      }
+    ],
+    "work_experience.attributes": [
+      {
+        "role": "-Electrical Lighting Designer",
+        "company": "-Jafer electromechanical engineering",
+        "summary": "I designed lighting systems  for residential, apartment, and mixed-purpose buildings  to meet clients specific needs and preferences using Autocad. I collaborated closely with team members of three or more people to identify and solve complex issues, ensuring seamless project execution. Additionally, I actively engaged with customers  to understand their requirements  and developed \\n      tailored lighting solutions  that exceeded their expectations. I utilized design models and report templates  to understand and  create reports , ensuring accuracy and clarity in project documentation. I was also responsible for designing electrical lighting  systems  and managing projects , ensuring timely and successful completion .",
+        "start_date": "2021-03-31",
+        "end_date": "2024-03-31"
+      }
+    ]
+  },
+  {
+    "name": "Hillary Kipkemoi",
+    "user_profile_id": 13,
+    "basics.attributes": [
+      {
+        "role": "Generative AI Engineer | Machine Learning | Software Engineer | Data Engineering",
+        "personal_statement": "I am Generative AI Engineer with solid foundation in mathematics and full-stack development. I am skilled in building RAG systems, fine-tuning LLMs, prompt engineering, and building chatbot applications. I am also proficient in Python, React, and MLOps tools & practices such as Kafka, Airflow and Github Actions.\\n\\nI am committed to continuous learning and research in the field of Artificial intelligence and actively exploring the latest advancements in NLP, generative AI to create impactful solutions."
+      }
+    ],
+    "projects.attributes": [
+      {
+        "title": "Contract Analysis RAG: A Retrieval-Augmented Generation (RAG) Approach to Legal Q&A",
+        "summary": "Developed a Retrieval-Augmented Generation (RAG) system for precise contract analysis, improving accuracy and efficiency in answering legal queries. Implemented text chunking, semantic search, and tested different embedding models to enhance retrieval and response generation. Evaluated the system using RAGAS metrics, ensuring accuracy and precision in the system."
+      }
+    ],
+    "education.attributes": [
+      {
+        "study_area": "Mathematics and Computer Science",
+        "study_type": "Bachelor of Science",
+        "institution_name": "Kenyatta University",
+        "start_date": "2020-09-30",
+        "end_date": "2024-06-30"
+      }
+    ],
+    "work_experience.attributes": []
+  },
+  {
+    "name": "Mahbubah Abdulhakim",
+    "user_profile_id": 25,
+    "basics.attributes": [
+      {
+        "role": "Generative AI Engineer | Machine Learning | Data Engineering | Application Support Engineer at ZamZam Bank",
+        "personal_statement": "A junior generative AI Engineer with 3+ year experience in IT Industry, committed to advancing my skills in AI and technology. Proficient in Python, SQL, and vector databases. Specialized in fine-tuning LLMs, building RAG systems, prompt engineering and AI Chatbot development, with a strong foundation in neural networks and natural language processing (NLP). Demonstrated expertise through hands-on project work in these areas."
+      }
+    ],
+    "projects.attributes": [
+      {
+        "title": "Backtesting-Infrastructure-CryptoTrading",
+        "summary": "This project is a robust trading and backtesting infrastructure designed to support the evaluation of various trading strategies on financial instruments like stocks and cryptocurrencies. It leverages a microservices architecture with Docker for flexibility and scalability, using tools like Airflow, Kafka, FastAPI, and PostgreSQL."
+      },
+      {
+        "title": "Contract-Advisor-RAG",
+        "summary": "This project is on build, evaluate and improve a RAG system for Contract Q&A (chatting with a contract and asking questions about the contract). Building simple Q&A pipeline with RAG using Langchain , Improving RAG systems by using different approaches, and building a RAG evaluation pipeline with RAGAS"
+      },
+      {
+        "title": "Prompt-Tuning-Precision-RAG",
+        "summary": "The need for this project is to revolutionize how businesses interact with LLMs, making the technology more accessible, efficient, and effective by addressing the challenges of prompt engineering. The following 3 components are necessary to achieve this goal\\n- Automatic Prompt Generation Component\\n- Automatic Evaluation Data Generation Service\\n- Prompt Testing and Ranking Service"
+      },
+      {
+        "title": "data-warehouse-for-llm-finetuning",
+        "summary": "This project aims to create a scalable data warehouse for Language Model (LLM) fine-tuning. The data warehouse will store and manage the data collected in the specified language, in this case Amharic, which will be used for training and fine-tuning LLM. Docker has been used to ensure a seamless setup and deployment process."
+      }
+    ],
+    "education.attributes": [
+      {
+        "study_area": "Computer Software Engineering",
+        "study_type": "Bachelors degree",
+        "institution_name": "Addis Ababa University",
+        "start_date": "2015-09-30",
+        "end_date": "2020-12-31"
+      },
+      {
+        "study_area": "Managment",
+        "study_type": "Bachelors degree",
+        "institution_name": "Bahir Dar University",
+        "start_date": "2016-09-30",
+        "end_date": "2020-09-30"
+      }
+    ],
+    "work_experience.attributes": [
+      {
+        "role": "Junior Application Support Engineer",
+        "company": "ZamZam Bank S.C",
+        "summary": "- Writing optimized queries, Developing reports using data models and report Templates\\n- Providing effective technical support on the entire application to teams within the organization \\n- EOD operations \\n- Maintainace operation and troubleshoot on Applications\\n- Customization\\n- Resolving open issues\\n- Controlling some servers like checking their availability\\n- When there are higher issues that should be escalated communicating with vendors and providing solutions",
+        "start_date": "2022-10-31",
+        "end_date": "2024-04-30"
+      },
+      {
+        "role": "Information Technology Officer",
+        "company": "Peds plc",
+        "summary": "- Customizing the Applications developed by reviewing the user requirements\\n- Fixing problems on the software and database, giving appropriate training to the customer",
+        "start_date": "2021-04-30",
+        "end_date": "2022-03-31"
+      }
+    ]
+  }
+]

@@ -10,10 +10,9 @@ from pathfig import *
 from api import config
 
 
-from tenx_job_recommender.tenx_ipersona.api.llm.llm_models import ChatGPT, Gemini, TogetherAI
-from tenx_job_recommender.tenx_ipersona.api.utils.document_utils import get_url_content, extract_text, extract_text_from_pdf
-from zlm.utils.latex_ops import latex_to_pdf
-from tenx_job_recommender.tenx_ipersona.api.utils.utils import (
+from api.llm.llm_models import ChatGPT, Gemini, TogetherAI
+from api.utils.document_utils import get_url_content, extract_text, extract_text_from_pdf
+from api.utils.utils import (
     get_default_download_folder,
     key_value_chunking,
     measure_execution_time,
