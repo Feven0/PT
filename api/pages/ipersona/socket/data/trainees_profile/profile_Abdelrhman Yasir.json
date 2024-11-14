@@ -1,0 +1,1079 @@
+{
+    "user_profile": {
+        "display": "User Profile",
+        "name": "user profile",
+        "description": "A user profile is a collection of personal information",
+        "profile_type": [
+            "information",
+            "competence"
+        ],
+        "basics": {
+            "template": "basic",
+            "display": "Basics",
+            "name": "basics",
+            "code": "user_profile:basics",
+            "profile_type": [
+                "information"
+            ],
+            "description": "Basic information about a person typically includes details that are fundamental to identifying and understanding them.",
+            "attributes": [
+                {
+                    "status": "approved",
+                    "history": [],
+                    "uuid": "235acc51-873b-59b1-8edc-a128e3097fbc",
+                    "username": " ",
+                    "role": "",
+                    "personal_statement": "",
+                    "phone": "",
+                    "email": "abdalrhmanalsh6@gmail.com",
+                    "image": "",
+                    "location": {
+                        "address": " ",
+                        "postal_Code": " ",
+                        "city": " ",
+                        "country": " "
+                    },
+                    "media": [
+                        {
+                            "name": "LinkedIn",
+                            "link": "",
+                            "icon": "linkedin"
+                        }
+                    ]
+                }
+            ]
+        },
+        "education": {
+            "template": "form",
+            "display": "Education",
+            "name": "education",
+            "code": "user_profile:education",
+            "profile_type": [
+                "information"
+            ],
+            "description": "Education is the act of teaching knowledge to others and the act of receiving knowledge from someone else. This category describes the educational background of the user. ",
+            "attributes": []
+        },
+        "competencies": {
+            "template": "competency",
+            "display": "Competency Keyword",
+            "name": "competency keyword",
+            "code": "user_profile:competencies",
+            "description": "A category contains user's competences or skills.",
+            "profile_type": [
+                "competency"
+            ],
+            "attributes": [
+                {
+                    "status": "approved",
+                    "uuid": "f6cb9493-4b44-5453-b5eb-233aeae11569",
+                    "history": [],
+                    "display": "Programming Language",
+                    "name": "programming language",
+                    "description": "A programming language is a way for programmers (developers) to communicate with computers. Programming languages consist of a set of rules that allows string values to be converted into various ways of generating machine code, or, in the case of visual programming languages, graphical elements.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": "high",
+                            "sentiment": "positive",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "python",
+                        "javaScript",
+                        "django"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "bf91fe29-9cdc-58c8-bdd1-f4d319bd9d55",
+                    "history": [],
+                    "display": "Data Engineering",
+                    "name": "data engineering",
+                    "description": "Data engineering is the process of designing and building systems that let people collect and analyze raw data from multiple sources and formats.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": "high",
+                            "sentiment": "positive",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "big data",
+                        "cloud",
+                        "aws",
+                        "azure",
+                        "gcp",
+                        "amazon kinesis",
+                        "kubernetes",
+                        "hadoop",
+                        "kafka",
+                        "apache flink",
+                        "rabbitmq",
+                        "airflow",
+                        "presto",
+                        "dvc",
+                        "neo4j",
+                        "nosql",
+                        "sql",
+                        "postgres",
+                        "big query",
+                        "mysql",
+                        "amazon dynamodb",
+                        "aws aurora",
+                        "mongodb",
+                        "amazon redshift",
+                        "terraform",
+                        "pyspark"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "fe969994-4e38-5517-9097-b75ee331e714",
+                    "history": [],
+                    "display": "Analytics Engineering",
+                    "name": "analytics engineering",
+                    "description": "Analytics engineering is a discipline that focuses on designing, constructing, and maintaining data infrastructure and data pipelines. Analytics engineers bridge the gap between data science and data engineering by transforming raw data into clean, reliable datasets that can be easily analyzed by data analysts and data scientists",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "dbt",
+                        "superset",
+                        "tableau",
+                        "data transformation",
+                        "time series analysis",
+                        "sql",
+                        "postgres",
+                        "big query"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "b790304d-13df-5434-aa7a-48439f6e36ef",
+                    "history": [],
+                    "display": "Automation",
+                    "name": "automation",
+                    "description": " Automation in machine learning (ML) and data engineering involves using tools and processes to streamline, simplify and enhance the development, deployment, and maintenance of ML models and data pipelines. This automation aims to improve efficiency, reduce errors, and enable scalability",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "devops",
+                        "mlops",
+                        "cicd",
+                        "ml pipeline",
+                        "unit testng",
+                        "hyper parameter tuning",
+                        "cloud",
+                        "aws",
+                        "azure",
+                        "gcp",
+                        "linux",
+                        "docker",
+                        "kubernetes",
+                        "hadoop",
+                        "git",
+                        "jenkins",
+                        "jira",
+                        "mlflow",
+                        "airflow",
+                        "dbt",
+                        "dvc",
+                        "cml",
+                        "terraform",
+                        "bash",
+                        "swagger",
+                        "restful"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "7d31f0b7-9b79-5e19-b206-1fa2a9e12bc6",
+                    "history": [],
+                    "display": "Mathematics",
+                    "name": "mathematics",
+                    "description": "Mathematics plays a foundational role in machine learning (ML). It provides the theoretical underpinnings that enable the development of algorithms, models, and methods for learning from data.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "algorithm",
+                        "deep learning",
+                        "machine learning",
+                        "mathematics"
+                    ]
+                },
+                {
+                    "status": "approved",
+                    "uuid": "d189d356-4917-5504-9a37-09121625c163",
+                    "history": [],
+                    "display": "Statistics",
+                    "name": "statistics",
+                    "description": "Statistics is integral to machine learning (ML), providing the framework and tools for analyzing and interpreting data, modeling uncertainty, and making predictions. Statistics is integral to machine learning (ML), providing the framework and tools for analyzing and interpreting data, modeling uncertainty, and making predictions. ",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "data analysis",
+                        "statistics",
+                        "correlation",
+                        "distribution",
+                        "sampling",
+                        "time series analysis"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "99254fe9-fd58-5910-987e-1df8c912c16d",
+                    "history": [],
+                    "display": "Deep Learning",
+                    "name": "deep learning",
+                    "description": "Deep learning is a subfield of machine learning that focuses on using neural networks with many layers to model and solve complex problems. It is inspired by the structure and function of the human brain, consisting of neurons and synapses.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "deep learning",
+                        "automatic speech recognition",
+                        "natural language processing",
+                        "image segmentation",
+                        "object detection",
+                        "computer vision",
+                        "caffe2",
+                        "open cv",
+                        "keras",
+                        "pytorch",
+                        "tensorflow"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "14ebf0cb-80f0-5f85-8e50-dff6ba805b00",
+                    "history": [],
+                    "display": "Machine Learning",
+                    "name": "machine learning",
+                    "description": "Machine learning is the use and development of computer systems that are able to learn and adapt without following explicit instructions, by using algorithms and statistical models to analyze and draw inferences from patterns in data.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "algorithm",
+                        "machine learning",
+                        "unsupervised learning",
+                        "semi supervised learning",
+                        "supervised learning",
+                        "hyper parameter tuning",
+                        "random forest",
+                        "dvc",
+                        "spacy",
+                        "gensim",
+                        "llm",
+                        "TensorFlow",
+                        "GPT chroma db",
+                        "BERT",
+                        "PyTorch",
+                        "Scikit-learn",
+                        "Pandas",
+                        "NumPy",
+                        "Keras",
+                        "Reinforcement Learning",
+                        "Deep Learning",
+                        "NLP",
+                        "Computer Vision",
+                        "prompt engineering",
+                        "Predictive Analytics",
+                        "Data preprocessing",
+                        "Generative Adversarial Networks",
+                        "Transformer Models",
+                        "Large Language Model"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "55310124-a3f0-56ad-bc16-e355a734f880",
+                    "history": [],
+                    "display": "Database",
+                    "name": "database",
+                    "description": "A database is an organized collection of structured information, or data, typically stored electronically in a computer system. Databases are managed by database management systems (DBMS), which provide tools and interfaces to help users store, modify, and query the data.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "database",
+                        "big data",
+                        "dbt",
+                        "presto",
+                        "neo4j",
+                        "nosql",
+                        "sql",
+                        "postgres",
+                        "big query",
+                        "superset",
+                        "mysql",
+                        "amazon dynamodb",
+                        "aws aurora",
+                        "mongodb",
+                        "amazon redshift",
+                        "pyspark"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "e1859c3c-fcc7-5f4c-8d04-87191d687cb8",
+                    "history": [],
+                    "display": "Software Development",
+                    "name": "software development",
+                    "description": " Software development is the process of designing, creating, deploying, and maintaining software applications and systems. It involves a series of steps or phases that include the conception of the software idea, planning, coding, testing, deployment, and maintenance.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "cicd",
+                        "ml pipeline",
+                        "unit testng",
+                        "linux",
+                        "docker",
+                        "kubernetes",
+                        "hadoop",
+                        "git",
+                        "jenkins",
+                        "jira",
+                        "mlflow",
+                        "dvc",
+                        "cml",
+                        "bash",
+                        "restful"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "e42cfdf5-c09c-5454-a313-c8ccf8852271",
+                    "history": [],
+                    "display": "AI Science",
+                    "name": "ai science",
+                    "description": "AI science, or artificial intelligence science, is an interdisciplinary field focused on creating systems and machines capable of performing tasks that typically require human intelligence.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "ml pipeline",
+                        "big data",
+                        "machine learning",
+                        "data analysis",
+                        "visualization",
+                        "unit testng",
+                        "unsupervised learning",
+                        "semi supervised learning",
+                        "supervised learning",
+                        "hyper parameter tuning",
+                        "automatic speech recognition",
+                        "natural language processing",
+                        "image segmentation",
+                        "object detection",
+                        "computer vision",
+                        "mlflow",
+                        "caffe2",
+                        "open cv",
+                        "python",
+                        "decision tree",
+                        "random forest",
+                        "spacy",
+                        "gensim",
+                        "keras",
+                        "pyspark",
+                        "pytorch",
+                        "tensorflow",
+                        "plotly",
+                        "seaborn",
+                        "matplotlib",
+                        "django",
+                        "streamlit",
+                        "flask",
+                        "dri dashboard",
+                        "dri python",
+                        "ray"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "2df6cbd5-e907-501a-bb05-06894eac0ba7",
+                    "history": [],
+                    "display": "BI Analytics",
+                    "name": "bi analytics",
+                    "description": "Business Intelligence (BI) Analytics is the process of analyzing data to help organizations make informed business decisions. It involves the use of various tools, technologies, and methodologies to collect, process, and present data in a way that reveals actionable insights.",
+                    "credibility": "observed",
+                    "sfia_level": "2",
+                    "rationale": "Has gained basic domain knowledge and demonstrates application of essential generic knowledge typically found in industry bodies of knowledge. Absorbs new information when presented systematically and applies it effectively. Understands and uses appropriate methods, tools, applications, and processes. Shows a rational and organized approach to work, performs a range of activities in varied environments, interacts with and may influence immediate colleagues, and uses limited discretion in resolving issues or inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "big data",
+                        "algorithm",
+                        "machine learning",
+                        "data analysis",
+                        "statistics",
+                        "visualization",
+                        "mathematics",
+                        "correlation",
+                        "distribution",
+                        "sampling",
+                        "unsupervised learning",
+                        "communication",
+                        "reporting",
+                        "business understanding",
+                        "gap analysis",
+                        "dbt",
+                        "nosql",
+                        "sql",
+                        "postgres",
+                        "big query",
+                        "superset",
+                        "mysql",
+                        "amazon dynamodb",
+                        "aws aurora",
+                        "mongodb",
+                        "amazon redshift",
+                        "python",
+                        "r",
+                        "plotly",
+                        "seaborn",
+                        "matplotlib",
+                        "tableau",
+                        "streamlit",
+                        "flask",
+                        "dri dashboard",
+                        "dri python"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "240f19ac-3451-5bcf-a173-f050a91ee86e",
+                    "history": [],
+                    "display": "Frontend Development",
+                    "name": "frontend development",
+                    "description": "Frontend development refers to the practice of creating the user interface (UI) and user experience (UX) of a web application or website.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "react",
+                        "html",
+                        "css",
+                        "vue js",
+                        "javascript"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "8dbcf6a1-175a-53e7-841f-01ad979614b1",
+                    "history": [],
+                    "display": "Backend Development",
+                    "name": "backend development",
+                    "description": " Backend development refers to the server-side development of web applications, focusing on the logic, database interactions, authentication, server configuration, and other aspects that enable the frontend (client-side) to function properly.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "cicd",
+                        "linux",
+                        "docker",
+                        "kubernetes",
+                        "hadoop",
+                        "git",
+                        "jenkins",
+                        "jira",
+                        "airflow",
+                        "dbt",
+                        "dvc",
+                        "cml",
+                        "neo4j",
+                        "nosql",
+                        "sql",
+                        "postgres",
+                        "big query",
+                        "amazon dynamodb",
+                        "aws aurora",
+                        "mongodb",
+                        "terraform",
+                        "bash",
+                        "python",
+                        "go",
+                        "java",
+                        "r",
+                        "swagger",
+                        "restful",
+                        "django",
+                        "flask"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "b610d553-054e-5113-ad25-c1bfa42a23aa",
+                    "history": [],
+                    "display": "Full Stack Development",
+                    "name": "full stack development",
+                    "description": "Full stack development refers to the practice of developing both the frontend (client-side) and backend (server-side) portions of a web application or software product.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "python",
+                        "java script",
+                        "react",
+                        "django",
+                        "flask"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "b2d7a731-6e80-5c8a-9825-748e002f68eb",
+                    "history": [],
+                    "display": "Deploying GenAI Systems",
+                    "name": "deploying genai systems",
+                    "description": "Deploying General Artificial Intelligence (GenAI) systems refers to the process of making artificial intelligence (AI) systems operational and available for use in various applications and environments. GenAI systems typically refer to AI models or systems that are designed to exhibit human-level intelligence across a broad range of tasks, rather than specialized AI models focused on specific tasks or domains.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "cicd",
+                        "restful",
+                        "django",
+                        "streamlit",
+                        "flask",
+                        "prompt tuning",
+                        "prompt design",
+                        "prompt testing",
+                        "prompt evaluation",
+                        "llm "
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "757c226c-2c17-56fd-9296-4ea8a529561a",
+                    "history": [],
+                    "display": "Collaboration",
+                    "name": "collaboration",
+                    "description": "Collaboration refers to the ability of individuals or groups to work together effectively towards a common goal or outcome, leveraging their collective knowledge, skills, and resources.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "google calendar",
+                        "tools for remote work",
+                        "git",
+                        "jenkins",
+                        "jira",
+                        "cml",
+                        "tableau",
+                        "slack"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "e3588217-3086-5254-9566-72f0eb724e6a",
+                    "history": [],
+                    "display": "Communication",
+                    "name": "communication",
+                    "description": "Communication refers to the ability of individuals to effectively convey and exchange information, ideas, and messages in various contexts and settings. It encompasses both verbal and non-verbal communication skills, as well as the ability to listen actively and respond appropriately.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "oral presentation",
+                        "document content design",
+                        "story telling",
+                        "participation",
+                        "communication",
+                        "reporting",
+                        "business english",
+                        "proof reading",
+                        "formatting documents",
+                        "how to ask questions",
+                        "making presentation"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "abd840bf-6f2e-57b4-8ba3-e20f74337a27",
+                    "history": [],
+                    "display": "Management",
+                    "name": "management",
+                    "description": " Management refers to the ability of individuals to effectively organize, coordinate, and oversee tasks, projects, or teams to achieve specific goals or objectives. It encompasses a range of skills and behaviors that enable individuals to lead, delegate, and prioritize effectively within their roles.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "time management",
+                        "change management",
+                        "decision making",
+                        "self reflection",
+                        "gap analysis",
+                        "business understanding",
+                        "how to mentor",
+                        "how to be mentored"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                },
+                {
+                    "status": "approved",
+                    "uuid": "cfbd8d2c-e467-59c1-9e68-28fa293c798b",
+                    "history": [],
+                    "display": "Professionalism",
+                    "name": "professionalism",
+                    "description": " Professionalism in terms of user competence refers to the set of behaviors, attitudes, and qualities that individuals demonstrate in their professional roles and interactions. It encompasses a range of attributes that contribute to ethical conduct, effective communication, and the ability to perform competently within a specific profession or organizational context.",
+                    "credibility": "observed",
+                    "sfia_level": "1",
+                    "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                    "evidence": [
+                        {
+                            "source": [
+                                "github",
+                                "grade"
+                            ],
+                            "reported_by": "staff",
+                            "confidence_degree": " ",
+                            "sentiment": " ",
+                            "remark": ""
+                        }
+                    ],
+                    "skills": [
+                        "decision making",
+                        "problem solving",
+                        "analytical thinking",
+                        "self motivation",
+                        "critical thinking",
+                        "process mapping",
+                        "google calendar",
+                        "be on time",
+                        "tools for remote work",
+                        "participate in meeting",
+                        "time management",
+                        "change management",
+                        "prioritization",
+                        "writing effective email",
+                        "how to say no",
+                        "self learning",
+                        "asking questions",
+                        "prioritization",
+                        "t shaped person",
+                        "presentation",
+                        "writing",
+                        "content",
+                        "coherence",
+                        "communication",
+                        "reporting",
+                        "business understanding",
+                        "selecting jobs to apply for",
+                        "can review exclusion criteria",
+                        "gap analysis",
+                        "business english",
+                        "proof reading",
+                        "formatting documents",
+                        "how to ask questions",
+                        "how to mentor",
+                        "how to be mentored",
+                        "research",
+                        "workspace remote work",
+                        "analyze knowledge gap",
+                        "slack"
+                    ],
+                    "knowledge": [],
+                    "attitude": [],
+                    "ability": [],
+                    "others": []
+                }
+            ]
+        },
+        "work": {
+            "template": "form",
+            "display": "Work",
+            "name": "work",
+            "code": "user_profile:work",
+            "description": "Work is when user gain practical wisdom with an employer by learning about a particular role, organization or career path.",
+            "profile_type": [
+                "competency"
+            ],
+            "attributes": []
+        },
+        "projects": {
+            "template": "form",
+            "display": "Projects",
+            "name": "project",
+            "code": "user_profile:projects",
+            "description": "A category that contains list of projects done by the user.",
+            "profile_type": [
+                "competency"
+            ],
+            "attributes": []
+        },
+        "certificates": {
+            "template": "form",
+            "display": "Certificates",
+            "name": "certificate",
+            "code": "user_profile:certificates",
+            "descriptions": " Certificate is a document containing a certified statement especially as to the truth of something for the user.",
+            "profile_type": [
+                "information",
+                "competency"
+            ],
+            "attributes": []
+        },
+        "achievements": {
+            "template": "form",
+            "display": "Achievements",
+            "name": "achievement",
+            "code": "user_profile:achievements",
+            "descriptions": "Achievement is the extent to which a user has achieved either short or long term educational and work goals.",
+            "profile_type": [
+                "information",
+                "competency"
+            ],
+            "attributes": []
+        },
+        "publications": {
+            "template": "form",
+            "display": "Publication",
+            "name": "publication",
+            "code": "user_profile:publications",
+            "description": " Publications refer to the works that the user has authored or contributed to and have been published.",
+            "profile_type": [
+                "competence",
+                "information"
+            ],
+            "attributes": []
+        },
+        "languages": {
+            "template": "form",
+            "display": "Languages",
+            "name": "languages",
+            "code": "user_profile:languages",
+            "description": "Language refers to the languages that a person can speak, read, or write",
+            "profile_type": [
+                "information"
+            ],
+            "attributes": []
+        },
+        "interests": {
+            "template": "form",
+            "display": "Interests",
+            "name": "interests",
+            "code": "user_profile:interests",
+            "description": "Interests refer to the activities, hobbies, or topics that a person enjoys and spends time on outside of their professional or academic obligations.  ",
+            "profile_type": [
+                "information"
+            ],
+            "attributes": []
+        },
+        "volunteer": {
+            "template": "form",
+            "display": "Volunteer",
+            "name": "volunteer",
+            "code": "user_profile:volunteer",
+            "description": "volunteer  refers to a user who has engaged in unpaid work, often for charitable or community service purposes.",
+            "profile_type": [
+                "information"
+            ],
+            "attributes": []
+        },
+        "references": {
+            "template": "form",
+            "display": "References",
+            "name": "references",
+            "code": "user_profile:references",
+            "description": " References refer to people or documents that can vouch for the user's qualifications, skills, and experiences.",
+            "profile_type": [
+                "information"
+            ],
+            "attributes": []
+        }
+    }
+}

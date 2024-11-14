@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import { Modal, Button, Tabs, Collapse } from 'antd';
-import { LiquidAntd, Metrics, RadarChart } from './index';
+import { Metrics, RadarChart } from './index';
 
 const { TabPane } = Tabs;
 const { Panel } = Collapse;
 
-const OverallFeedbackModal = ({metricsData, evaluationData}) => {
+interface Data {
+    metricsData: any, evaluationData: any
+  }
+  
+  
+
+const OverallFeedbackModal: React.FC<Data> =({metricsData, evaluationData}) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const showModal = () => {
         setIsModalVisible(true);
@@ -23,15 +29,17 @@ const OverallFeedbackModal = ({metricsData, evaluationData}) => {
         <div>
             <div className='overall-container'>
                 <div className='overall-box'>
-                    <button 
+                    {/* <button 
                         className='view-btn'                    
                         style={{ marginTop: '2.6rem', border: 'none', backgroundColor: '#837e7e', borderRadius: '0.3rem', cursor: 'pointer' }} 
                         onClick={showModal}>
                         Details
-                    </button>
-                    {/* <LiquidAntd 
-                        percent={evaluationData?.overall_performance} /> */}
-                    <div style={{marginLeft: '1.5rem', fontSize: '2rem'}}>{evaluationData?.overall_performance}%</div>
+                    </button> */}
+                    <div 
+                    style={{marginLeft: '0.5rem', fontSize: '1rem'}}
+                    onClick={showModal}>
+                        {metricsData?.overall_performance_score}%
+                    </div>
                 </div>
             </div>
 
@@ -50,7 +58,7 @@ const OverallFeedbackModal = ({metricsData, evaluationData}) => {
                 <div style={{ maxHeight: '490px', overflowY: 'auto' }}>
                     <Tabs defaultActiveKey="1">
                         <TabPane tab="Evaluation" key="1">
-                            <h1 style={{display: 'flex', justify:'center'}}>
+                            <h1 style={{display: 'flex', justifyContent:'center'}}>
                                 {evaluationData?.message}
                             </h1>
                             <Collapse style={{marginBottom: '1rem'}}>
@@ -63,7 +71,7 @@ const OverallFeedbackModal = ({metricsData, evaluationData}) => {
                             <Collapse>
                                 <Panel header="Recommendations" key="1">
                                     <ul style={{textAlign: 'justify'}}>
-                                        {evaluationData?.recommendation.map((rec, index) => (
+                                        {evaluationData?.recommendation.map((rec: any, index: any) => (
                                             <li key={index}>
                                                 <a href={rec.link} target="_blank" rel="noopener noreferrer">
                                                     {rec.title}

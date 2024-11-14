@@ -6,21 +6,21 @@ const apiKey = `${import.meta.env.VITE_REACT_APP_OPENAI_KEY}`;
 const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
 
 const AudioPlayer = () => {
-    const [audioHistory, setAudioHistory] = useState([]);
-    const [audioUrl, setAudioUrl] = useState(null);
-    const wavesurferRef = useRef(null);
-    const wavesurferInstance = useRef(null);
-    const audioContextRef = useRef(new (window.AudioContext || window.webkitAudioContext)());
-
+    const [audioHistory, setAudioHistory] = useState<any>([]);
+    const [audioUrl, setAudioUrl] = useState<any>(null);
+    const wavesurferRef = useRef<any>(null);
+    const wavesurferInstance = useRef<any>(null);
+    // const audioContextRef = useRef(new (window.AudioContext || window.webkitAudioContext)());
+    console.log(setAudioHistory, openai)
     // Set up WaveSurfer instance
     useEffect(() => {
         wavesurferInstance.current = WaveSurfer.create({
             container: wavesurferRef.current,
-            audioContext: audioContextRef.current,
+            //audioContext: audioContextRef.current,
             waveColor: '#6c63ff',
             progressColor: '#ff6f61',
             height: 128,
-            responsive: true,
+            //responsive: true,
         });
 
         // Cleanup on unmount
@@ -29,7 +29,7 @@ const AudioPlayer = () => {
         };
     }, []);
 
-    const fetchAudio = async (inputText) => {
+    const fetchAudio = async (inputText: any) => {
         const data = { text: inputText.toString() };
         try {
             // Set the response type to 'blob'
@@ -91,7 +91,7 @@ const AudioPlayer = () => {
                 </button>
 
                 <div className="chat-chunk-container">
-                    {audioHistory.map((msg, index) => (
+                    {audioHistory.map((msg: any, index: any) => (
                         <p key={index} className="chat-chunk">{msg}</p>
                     ))}
                 </div>

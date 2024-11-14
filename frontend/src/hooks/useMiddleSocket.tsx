@@ -1,21 +1,13 @@
 import { useEffect, useState } from 'react';
 import useWebSocket from './useWebSocket';
 import { useStopwatch } from 'react-timer-hook';
-import { message } from 'antd';
-
-interface AnalysisResponse {
-  response: {
-    percentage: string | number | undefined | null;
-  },
-  question: {
-    percentage: string | number | undefined | null;
-  };
-}
 
 const useMiddleSocket = () => {
   const [socket, interview, setChatInterview, audiointerview, setAudioInterview, audioHistory, setAudioHistory] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
   const [loading, setLoading] = useState(false);
-  const [latestInterviewResponse, setLatestInterviewResponse] = useState<AnalysisResponse | null>(null);
+  const [startfetching, setStartFetch] = useState(true);
+  const [ready, setReady] = useState<any>(false);
+  const [startchat, setChat] = useState<any>(false);
   const [isStarted, setIsStarted] = useState(false);  
   const [count, setCount] = useState();
   const { seconds, minutes, start, pause, reset } = useStopwatch({ autoStart: false});
@@ -28,62 +20,38 @@ const useMiddleSocket = () => {
       });
     }
   }, [socket]);
-
-
-  // useEffect(() => {
-  //   if (socket) {
-  //       socket.on('interview chat', (message) => {
-  //           // setChatInter(message)
-  //           setChatInter((prevMessages: any) => {
-  //             if (!prevMessages.some((m: any) => m.query === message.query)) {
-  //               return [...prevMessages, ...message];
-  //             }
-  //             return prevMessages;
-  //           });
-
-  //           setChatInterview((prevMessages: any) => {
-  //             if (!prevMessages.some((m: any) => m.query === message.query)) {
-  //               return [...prevMessages, ...message];
-  //             }
-  //             return prevMessages;
-  //           });
-            
-  //           setLatestInterviewResponse(message);
-  //             reset(); 
-  //           setLoading(false);
-  //           console.log("count_inter_ques", count === 8)  
-  //           if(count === 8) {
-  //             pause()
-  //           }
-  //     });
-  //   } 
-  // }, [socket, interview]);
-  
+ 
     useEffect(() => {
       if (socket) {
-        socket.on('initial connect', (message) => {
+        socket.on('initial connect', (message: any) => {
           console.log("sessionInit", message);
         });
   
-        socket.on('interview chat', (message) => {
-          console.log(`Instant received message: `, message);
-          setLatestInterviewResponse(message);
+        socket.on('interview chat', (message: any) => {
+          console.log(message)
           reset();
           setLoading(false);
+          setStartFetch(true);
         });
+
+        socket.on('interview done', (message: any) => {
+          console.log("interview done", message)
+          setStartFetch(true);
+          setReady(false)
+          setChat(false)
+          pause()
+        })
   
-        socket.on('error', (error) => {
+        socket.on('error', (error: any) => {
           console.error(error.message);
         });
       }
     }, [socket]);
   
     const handleInterview = async (data: any) => {
-      console.log("Handling interview data:", data.input);
       const chat = [{
         user_type: "candidate",
         content_type: "answer",
-        complete: false,
         content: {
           response: data.input,
           time_taken: data.timerValue,
@@ -91,7 +59,7 @@ const useMiddleSocket = () => {
         }
       }];
   
-      setChatInterview((prevMessages) => {
+      setChatInterview((prevMessages: any) => {
         if (!Array.isArray(prevMessages)) {
           return [...chat];
         }
@@ -101,16 +69,10 @@ const useMiddleSocket = () => {
       setLoading(true);
       await socket?.emit('interview chat', { 
         response: data.input, 
-        history: data.interview, 
         user_session: data.user_session,
-        question_counter: data.counter,
         time_taken: data.timerValue,
-        previous_question: data.previous_question
       });
-      setCount(data.counter);
     };
- 
-
 
   useEffect(() => {
     if (socket) {
@@ -157,8 +119,7 @@ const useMiddleSocket = () => {
     //     return [...chat];
     //   }
     //   return [...prevMessages, ...chat];
-    // });
-    
+    // });    
     setLoading(true)
     await socket?.emit('audio chat', { 
       response: data.input, 
@@ -178,6 +139,12 @@ const useMiddleSocket = () => {
     setLoading,
     audioHistory, 
     setAudioHistory,
+    startfetching, 
+    setStartFetch,
+    ready, 
+    setReady,
+    startchat, 
+    setChat,
     
     handleInterview,
     interview,

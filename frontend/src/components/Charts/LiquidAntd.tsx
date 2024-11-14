@@ -1,12 +1,15 @@
 import { Liquid } from '@ant-design/plots';
+interface Data {
+  percent: any
+}
 
-const LiquidAntd = ({ percent }) => {
+const LiquidAntd : React.FC<Data> = ({ percent }) => {
   const config = {
     percent:  percent*0.01, 
     width: 100, 
     height: 100,
     style: {
-      shape: (x, y, r) => {
+      shape: (x: any, y: any, r:any) => {
         const path = [];
         const w = r * 2;
 

@@ -3,14 +3,17 @@ import { FaMicrophoneAlt } from 'react-icons/fa';
 import { FaCircleStop } from "react-icons/fa6";
 import Api from '../Services/Services';
 import "../styles/AudioRecorder/audiorecorder.css"
+interface Data {
+    sendDataParent: any, sendDataToParent: any
+}
 
-const AudioRecorder = ({ sendDataParent, sendDataToParent }) => {
-    const [isRecording, setIsRecording] = useState(false);
-    const [audioURL, setAudioURL] = useState(null);
-    const mediaRecorderRef = useRef(null);
-    const audioChunksRef = useRef([]);
+const AudioRecorder: React.FC<Data> = ({ sendDataParent, sendDataToParent }) => {
+    const [isRecording, setIsRecording] = useState<any>(false);
+    const [audioURL, setAudioURL] = useState<any>(null);
+    const mediaRecorderRef = useRef<any>(null);
+    const audioChunksRef = useRef<any>([]);
     const [data, setData] = useState("");
-
+    console.log(audioURL, data)
     function handleClick(audio: any) {
         sendDataToParent(audio);
     }
@@ -19,7 +22,7 @@ const AudioRecorder = ({ sendDataParent, sendDataToParent }) => {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorderRef.current = new MediaRecorder(stream);
         
-        mediaRecorderRef.current.ondataavailable = (event) => {
+        mediaRecorderRef.current.ondataavailable = (event: any) => {
             audioChunksRef.current.push(event.data);
         };
 
@@ -40,7 +43,7 @@ const AudioRecorder = ({ sendDataParent, sendDataToParent }) => {
         setIsRecording(false);
     };
 
-    const uploadAudio = async (audioBlob) => {
+    const uploadAudio = async (audioBlob: any) => {
         const formData = new FormData();
         formData.append('file', audioBlob, 'recording.wav'); 
 

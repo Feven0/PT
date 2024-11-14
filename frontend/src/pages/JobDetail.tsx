@@ -1,7 +1,6 @@
-import { AllStatus, InterviewChat, Audio } from '../components/index'
-import { useState, useContext } from 'react';
+import { AllStatus, InterviewChat, Audio, AllProgress } from '../components/index'
+import { useState} from 'react';
 import { Layout, Row, Col, Tabs } from 'antd';
-import { ProviderContext } from '../context/context';
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import '../styles/jobdetail/jobdetail.css'
@@ -10,12 +9,13 @@ const { Content } = Layout;
 const { TabPane } = Tabs;
 
 const JobDetail = () => {
-    const { setStart } = useContext(ProviderContext)
     const { jobId } = useParams()
     const [selectedTab, setSelectedTab] = useState('');
 
     const renderContent = () => {
     switch (selectedTab) {
+        case 'all-stat':
+        return <AllProgress/>
         case 'overall-progress':
         return <AllStatus />;
         case 'interview':
@@ -31,17 +31,12 @@ const JobDetail = () => {
         if(jobId !== undefined){
             localStorage.setItem("JobId", jobId)
         }
-    },[jobId])
-
-    useEffect(() => {
-        setStart(true);
-    }, [setStart]);
+    },[jobId])   
     
     
-    
-      return (
+    return (
         <Layout>
-          <Content style={{ padding: '2px' }}>
+            <Content style={{ padding: '2px' }}>
                 <Row>
                     <Col span={24}>
                         <Tabs
@@ -50,6 +45,7 @@ const JobDetail = () => {
                         onChange={setSelectedTab}
                         style={{ marginTop: '2px' }}
                         >
+                        <TabPane tab="All Stat" key="all-stat"/>
                         <TabPane tab="Overall Progress" key="overall-progress"/>
                         <TabPane tab="Interview Prep" key="interview" />
                         <TabPane tab="Audio Interview" key="audio" />
@@ -57,9 +53,9 @@ const JobDetail = () => {
                         {renderContent()} 
                     </Col>
                 </Row>
-          </Content>
+            </Content>
         </Layout>
-      );
+    );
 }
 
 export default JobDetail

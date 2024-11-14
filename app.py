@@ -180,7 +180,7 @@ app = get_socketio_app(fast_app)
 if __name__ == "__main__":
     
     #, reload=True
-    port = os.environ.get("PORT", 5900)
+    port = os.environ.get("PORT", 9900)
     # nworkers = number_of_workers()
     # print(f"Starting FastAPI server on port {port} with {nworkers} workers")
         

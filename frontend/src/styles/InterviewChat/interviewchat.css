@@ -58,6 +58,7 @@
     position: relative;    
     display: flex;
     margin: 0px 10px 0px 6px;
+    gap: 15px;
 }
 
 .session {
@@ -79,13 +80,13 @@
 }
 
 .btn-hide .ant-btn:hover {
-    background-color: #f0ebe6;
+    background-color: #f3dfda;
     color: black;
 }
 
 .chat-box {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
+    /* box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); */
+    /* border-radius: 8px; */
     padding: 16px;
 }
 

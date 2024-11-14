@@ -1,10 +1,22 @@
 import { Sankey } from '@ant-design/plots';
+interface Time {
+  time: any
+}
 
-const SankeyTime = ({time}) => {
+const SankeyTime : React.FC<Time> = ({time}) => {
+  const transformDataToLinks = (data: any) => {
+    return data?.flatMap((item: any, index: any) => [
+        { source: `Interview ${index + 1}`, target: 'fail', value: item.time_management.fail },
+        { source: `Interview ${index + 1}`, target: 'pass', value: item.time_management.pass }
+    ]);
+  };
+
+  const transformedLinks = transformDataToLinks(time);
+
   const config = {
     data: {
       value: {
-        links: time,
+        links: transformedLinks,
       },
     },
     scale: {

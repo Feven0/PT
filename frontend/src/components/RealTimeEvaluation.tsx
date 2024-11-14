@@ -3,18 +3,23 @@ import { Collapse } from 'antd';
 import '../styles/InterviewChat/interviewchat.css'
 
 const { Panel } = Collapse;
+interface Data {
+    evaluation: any
+}
 
-const RealTimeEvaluation = ({ evaluation }) => {
+
+const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
     const [isVisible, setIsVisible] = useState(false);
-    const [visibleIndex, setVisibleIndex] = useState(null);
+    // const [visibleIndex, setVisibleIndex] = useState(null);
 
-    const toggleVisibility = (index) => {
+    const toggleVisibility = (index: any) => {
+        console.log(index)
         setIsVisible(!isVisible);
-        setVisibleIndex(index);
+        // setVisibleIndex(index);
     };
 
     const overall = evaluation?.overall || []
-    const answerRelevancy = evaluation?.answer_relevancy || [];
+    // const answerRelevancy = evaluation?.answer_relevancy || [];
     const communicationSkills = evaluation?.communication_skills || [];
 
     return (
@@ -73,7 +78,7 @@ const RealTimeEvaluation = ({ evaluation }) => {
                             style={{ backgroundColor: '#f3f5f7', border: 'none', borderRadius: '1rem' }}
                         >
                             <div style={{ padding: '1rem' }}>
-                                {communicationSkills?.map((skill, index) => (
+                                {communicationSkills?.map((skill: any, index: any) => (
                                     <div key={index} style={{ marginBottom: '0.5rem' }}>
                                         <strong style={{ fontSize: '1.1rem' }}>
                                             {skill?.skill}: 

@@ -1,8 +1,12 @@
 import { Line } from '@ant-design/plots';
 
-const LineChart = ({relevancy}) => {
-    const relevancyData = relevancy.map(item => ({
-      question: item.index, 
+interface Data {
+  relevancy: any
+}
+
+const LineChart : React.FC<Data> = ({relevancy}) => {
+    const relevancyData = relevancy.map((item: any, index: any) => ({
+      question: index, 
       answer_relevance: parseInt(item.level, 10)
     }));
 

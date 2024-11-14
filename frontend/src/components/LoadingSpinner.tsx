@@ -1,6 +1,9 @@
 import '../styles/LoadingSpinner.css'; 
 
-const LoadingSpinner = ({ style }) => {
+interface Style {
+    style: any
+}
+const LoadingSpinner: React.FC<Style>=({ style }) => {
     return (
         <div className="loading-spinner" style={style}></div>
     );

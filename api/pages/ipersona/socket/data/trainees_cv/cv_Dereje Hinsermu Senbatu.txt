@@ -1,0 +1,82 @@
+Dereje Hinsermu Senbatu
+Togo st, Addis Ababa, Ethiopia
+Phone Nos: +25124629640, +251973401776,E-mail:derejehinsermu2@gmail.com
+LinkedIn profile name: https://www.linkedin.com/in/dereje-hinsermu-519a26161/
+Github profile name: https://github.com/derejehinsermu
+PROFESSIONAL SUMMARY
+Experienced Machine Learning Engineer with a Computer Engineering background, enthusiastic about generative AI. Eager
+to apply this passion in a startup environment, I aim to bridge cutting-edge research with practical, scalable solutions for
+product innovation. Proven track record in delivering impactful technologies and driving business growth.
+EDUCATION
+Madda Walabu University,Bale Robe, Ethiopia
+2019
+Bachelor Science (B.Sc.) in Computer Engineering
+Final Grade: Second Class Honors
+GPA: 3.77/4
+Thesis Title:
+Deep Learning Based Afaan Oromo talking Robot
+SOFT SKILLS
+●
+Excellent communication and interpersonal
+●
+Proven leadership and team collaboration
+●
+Strong organizational and project
+management
+TECHNICAL SKILLS:
+●
+Tools: GCP, Django, Flask, TensorFlow
+●
+Programming Languages: Python, C
+●
+Proficient in fine-tuning large language
+models
+EXPERIENCE
+Chief AI Officer
+●
+Atriv.ai, Netherlands (Remote)
+●
+September 2023 - Present
+●
+Lead the AI division to develop and implement
+AI technologies. Direct cross-functional teams,
+enhancing product efficiency and accuracy.
+Part-Time Machine Learning Engineer
+●
+Gebeya Inc, Technology Division, Addis Ababa,
+Ethiopia
+●
+September 2023 - Present
+●
+Fine-tune large language models and integrate
+AI solutions, reducing processing times and
+boosting model reliability.
+Machine Learning Engineer (Freelance)
+●
+Upwork
+●
+2020 - Present
+●
+Design and implement machine learning
+models, specializing in predictive modeling and
+NLP, improving client data processing efficiency
+Researcher
+●
+Ethiopian Artificial Intelligence Institute, Addis
+Ababa, Ethiopia
+●
+2020 - 2023
+●
+Conducted AI research, published 2 papers,
+and led projects improving data accuracy
+PUBLICATIONS
+1. Senbatu, D.H., Girma, B.S., Ayano, Y.M. (2023). Tomato Leaf Disease Detection and Classification Using Custom
+Modified AlexNet. In: Girma Debelee, T., Ibenthal, A., Schwenker, F. (eds) Pan-African Conference on Artificial Intelligence.
+PanAfriCon AI 2022. Communications in Computer and Information Science, vol 1800. Springer, Cham.
+https://doi.org/10.1007/978-3-031-31327-1_6
+2.Shimelis, Birhanu; Senbatu, Dereje Hinsermu (2022), “Afaan Oromoo Text-to-Speech Dataset”, Mendeley Data, V1, doi:
+10.17632/hnvkvj589y.1
+VOLUNTEERING & LEADERSHIP EXPERIENCE
+Community Services:Volunteered on a variety and number of community services through campus greenery, activated
+Participant in Community Services and Exemplary Work (2014-2019
+

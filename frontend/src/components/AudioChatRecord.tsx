@@ -4,12 +4,16 @@ import { FaCircleStop } from "react-icons/fa6";
 import Api from '../Services/Services';
 import "../styles/AudioRecorder/audiorecorder.css";
 
-const AudioChatRecord = ({ sendDataParent, sendDataToParent, pause }) => {
+interface Data {
+    sendDataParent: any, sendDataToParent: any, pause: any
+}
+
+const AudioChatRecord: React.FC<Data> = ({ sendDataParent, sendDataToParent, pause }) => {
     const [isRecording, setIsRecording] = useState(false);
-    const [audioURL, setAudioURL] = useState(null);
-    const [audioBlob, setAudioBlob] = useState();
-    const mediaRecorderRef = useRef(null);
-    const audioChunksRef = useRef([]);
+    const [audioURL, setAudioURL] = useState<any>(null);
+    const [audioBlob, setAudioBlob] = useState<any>();
+    const mediaRecorderRef = useRef<any>(null);
+    const audioChunksRef = useRef<any>([]);
 
     const handleClick = (audio: any) => {
         sendDataToParent(audio);
@@ -19,7 +23,7 @@ const AudioChatRecord = ({ sendDataParent, sendDataToParent, pause }) => {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorderRef.current = new MediaRecorder(stream);
         
-        mediaRecorderRef.current.ondataavailable = (event) => {
+        mediaRecorderRef.current.ondataavailable = (event: any) => {
             audioChunksRef.current.push(event.data);
         };
 

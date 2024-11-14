@@ -1,7 +1,6 @@
 import { Select } from 'antd';
 import data from '../assets/mock-data/user_profiles.json';
 import { Link } from 'react-router-dom';
-
 import '../styles/Trainee.css'; 
 const { Option } = Select;
 

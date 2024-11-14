@@ -1,0 +1,49 @@
+Professional Summary
+Am a Machine Learning Engineer with experience in designing and implementing machine learning models
+and systems to learn from and make decisions and predictions based on data. I have worked with tools such
+as Python, development environment -jupyter notebook and IDE’s, Machine Learning Libraries, data
+manipulation and analysis tools and version controls.
+Skills
+Technical Skills
+Python, machine learning algorithms, statistical analysis,
+data preprocessing and cleaning, data visualization, deep
+learning, version control.
+Software Tools
+Jupyter Notebooks, scikit-learn,
+Projects
+Natural Language Preprocessing with Disaster Tweets Jan - Feb 2024
+●
+Built a machine learning model that predicts which tweets are about real disaster and which
+one aren’t
+●
+Trained the model on a dataset of labeled tweets using NLP techniques and supervised
+learning algorithm
+●
+Preprocessed and cleaned the row data through tokenization, stemming and removal of
+stopwords.
+Applied Data Science Lab at WorldQuant University May- Sept 2023
+●
+Determine if real estate prices are influenced more by property size or location. Built data
+visualizations, and examined the relationship between two variables using correlation.
+●
+Built an ARMA time-series model to predict particulate matter levels in Kenya. I extract
+data from a MongoDB database using pymongo, and improve model performance through
+hyperparameter tuning.
+●
+Built a k-means model to cluster US consumers into groups. I used principal component
+analysis (PCA) for data visualization, and created an interactive dashboard with Plotly Dash.
+●
+Created a GARCH time series model to predict asset volatility. I acquired stock data
+through an API, cleaned and stored it in a SQLite database, and built their own API to
+serve model predictions.
+Education
+Control and Instrumentation - Jomo Kenyatta University of Agriculture and Technology - Kenya - September
+2018- December 2022
+Miss.
+ONTITA NYAMUSI MORAA
+Phone: +254719447188
+Email: nyamusiontita@gmail.com
+Github Link: https://github.com/MoraaOntita
+Linkedin Link:
+https://www.linkedin.com/in/moraa-ontita-b16a49205/
+

@@ -1,4 +1,5 @@
 import os, time, json, sys
+import uuid
 curdir = os.path.dirname(os.path.realpath(__file__))
 cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
@@ -6,7 +7,8 @@ if not cpath in sys.path:
 from fastapi import APIRouter, BackgroundTasks
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
-import api.modules.ipersona_parrot_gpt as util
+# import api.modules.ipersona_parrot_gpt as util
+import api.pages.ipersona.socket.ipersona_parrot_gpt as util
 from fastapi import FastAPI
 from fastapi import UploadFile, Form
 from fastapi.responses import StreamingResponse
@@ -16,6 +18,7 @@ import api.llm.ipersona.ipersona_prisma as prisma
 import api.llm.ipersona.ipersona_db as database
 from api.llm.ipersona.ipersona_agent import agents
 import api.pages.ipersona.models.persona as pemodel
+from api.services.strapi_methods import StrapiMethods
 import assemblyai as aai
 import ast
 from openai import OpenAI
@@ -48,9 +51,66 @@ import time, asyncio
 from openai import OpenAI
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
+from api.services.strapi_ipersona import IpersonaManager
 from io import BytesIO
 
 app = FastAPI()
+
+@routes.post("/strapi_db_test")
+async def strapi_methods():
+    try:
+        ipersona_manager = IpersonaManager(sessionId=32, alluser=16, jobId=1045, run_stage="dev")
+        # data = ipersona_manager.get_messages()
+        # data = ipersona_manager.get_observers()
+        # data = ipersona_manager.get_alluser_sessions()
+        data = ipersona_manager.get_job_sessions_observers()
+        # data = ipersona_manager.get_job_sessions()
+        # data = ipersona_manager.update_session_status()
+        # data = ipersona_manager.get_session()
+
+        # message_data = {
+        #         "attributes": {
+        #             "message": {
+        #                 "user_type": "candidate",
+        #                 "content_type": "answer",
+        #                 "content": {
+        #                     "response": "data['response']",
+        #                     "time_taken": "data['time_taken']",
+        #                     "realtime_evaluation": "null"
+        #                 }
+        #             },
+        #         },
+        #         "metadata": {
+        #             "createdBy": "parrot"
+        #         }
+        #     }
+
+        # data = ipersona_manager.insert_message(message_data)
+        
+        # Print or return the fetched data
+        # print("###########")
+        # print(data)
+        
+        # message_data = {
+        #     "attributes": {
+        #         "message": "Test message",
+        #         "evaluation": "Good"
+        #     },
+        #     "metadata": {
+        #         "createdBy": "User123"
+        #     }
+        # }
+
+        # data = ipersona_manager.insert_message(message_data)
+        # print(data)        
+        
+        return data
+    
+    except Exception as e:
+        print(f"Error processing files: {e}")
+    except Exception as e:
+        print(f"Error processing files: {e}")
+        return {"error": str(e)}
 
 @routes.post("/synthesize-audio/")
 async def synthesize_audio(recieved: pemodel.audioRequestRecieved):
@@ -237,16 +297,35 @@ async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
        
 
         #------------- Save to DB ---------------        
-        data = {
-            "alluser": str(recieved.userId),
-            "userId": str(recieved.userId),
-            "jobId": str(recieved.jobId),
-            "username": recieved.name,
-            "persona": generated_persona ,
-            "generated_questions": str(combined_generated_question_json)
-        }                
+        # data = {
+        #     "alluser": str(recieved.userId),
+        #     "userId": str(recieved.userId),
+        #     "jobId": str(recieved.jobId),
+        #     "username": recieved.name,
+        #     "persona": generated_persona ,
+        #     "generated_questions": str(combined_generated_question_json)
+        # }     
+        
+        
+        message_data = {
+            "slug": str(uuid.uuid4()),
+            "attributes": {
+                "alluser": recieved.userId,
+                "jobId": recieved.jobId,
+                "username": recieved.name,
+                "persona": generated_persona,
+                "generated_questions": generated_question_json
+            },
+            "metadata": {
+                "createdBy": "parrot"
+            }
+        }
+
+        ipersona_manager = IpersonaManager(run_stage="dev")
+
+        response = ipersona_manager.create_session(message_data)           
    
-        response = await db.create_schema(data)
+        # response = await db.create_sechema(data)
         # response = await prisma.create_session(data)
         #------------- ---------------------- 
 
@@ -295,8 +374,8 @@ async def clarify_question(recieved: pemodel.ClarificationRequestRecieved) -> di
         print(f"Time taken for question clarififcation processing: {elapsed_time:.2f} seconds")
 
 
-@routes.post("/calculate_overall_progress")
-async def calculate_overall_progress(recieved: pemodel.ChatHistoryRequestRecieved) -> dict:
+@routes.post("/calculate_session_overall_progress")
+async def calculate_overall_progress(recieved: pemodel.UserSessionRequestRecieved) -> dict:
     """
     Calculates overall progress metrics from chat history.
 
@@ -317,8 +396,47 @@ async def calculate_overall_progress(recieved: pemodel.ChatHistoryRequestRecieve
     """
     start_time = time.time()    
     try:  
-        chathistory = await database.fetch_all_chathistory(recieved)                    
-        result =  util.calculate_overall_progress(chathistory) 
+        ipersona_manager = IpersonaManager(sessionId=recieved.alluser, jobId=recieved.jobId, run_stage="dev")
+        session_chatobserver = ipersona_manager.get_job_sessions_observers()
+                            
+        result =  util.calculate_overall_progress(session_chatobserver) 
+        return result
+    
+    except Exception as e:
+        print(f"Error processing files: {e}")
+        return JSONResponse(status_code=500, content={"error": "Error processing files"})
+
+    finally:
+        end_time = time.time() 
+        elapsed_time = end_time - start_time 
+        print(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
+
+
+@routes.post("/calculate_allstat_progress")
+async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestRecieved) -> dict:
+    """
+    Calculates overall users progress metrics for all job types.
+
+    This asynchronous function retrieves chat history data from the database and 
+    calculates overall progress metrics using a utility function. It returns the 
+    calculated results or an error message if the process fails.
+
+    Parameters:
+    ----------
+    recieved : pemodel.ChatHistoryRequestRecieved
+        An object containing the necessary information to fetch chat history.
+
+    Returns:
+    -------
+    dict
+        A dictionary containing the calculated overall progress metrics or an 
+        error message if an exception occurs during processing.
+    """
+    start_time = time.time()    
+    try:  
+        ipersona_manager = IpersonaManager(sessionId=recieved.alluser, run_stage="dev")
+        session_chatobserver = ipersona_manager.get_alluser_sessions()                  
+        result =  util.all_session_jobs_average_metrics(session_chatobserver) 
         return result
     
     except Exception as e:

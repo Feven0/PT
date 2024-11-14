@@ -1,32 +1,31 @@
 import { useState, useRef, useEffect } from 'react';
-import { Typography, Card, message, Spin, Collapse } from 'antd';
+import { Card, Spin, Collapse } from 'antd';
 import { OpenAI } from 'openai';
 import WaveSurfer from 'wavesurfer.js';
 import { AudioChatRecord, OverallFeedbackModal } from './index';
 import useMiddleSocket from '../hooks/useMiddleSocket';
 import fade from '../assets/fade-circles.svg';
 import '../styles/AudioRecorder/audiorecorder.css'
+// import Assembly from './Assembly';
 const { Panel } = Collapse;
 
-const { Title } = Typography;
 const apiKey = `${import.meta.env.VITE_REACT_APP_OPENAI_KEY}`;
 
 const Audio = () => {
-        const { handleAudioInterview, loading, audiointerview, audioHistory, seconds, minutes, pause, reset, setLoading, setAudioInterview } = useMiddleSocket();
+        const { handleAudioInterview, loading, audiointerview, audioHistory, seconds, minutes, pause, setLoading, setAudioInterview } = useMiddleSocket();
         // const {userId, jobId} = useParams()
         // const userId = 16
         // const jobId = 1045
-        const latest = JSON.parse(localStorage.getItem("userSession"));
-        const [audioUrl, setAudioUrl] = useState(null);
-        const [audioUrls, setAudioUrls] = useState([]); 
-
+        const latest = JSON.parse(localStorage.getItem("userSession") || 'null');        
+        // const [audioUrl, setAudioUrl] = useState(null);
+        const [audioUrls, setAudioUrls] = useState<any>([]); 
         const [dataFromAudio, setDataFromAudio] = useState<any>(false);
         const [input, setInput] = useState<any>("");
         const [show, setShow] = useState<any>(true);
         const [counter, setCounter] = useState<any>(1);
-        const [buffer, setBuffer] = useState('');
+        // const [buffer, setBuffer] = useState('');
 
-        const wavesurferRef = useRef(null);
+        const wavesurferRef = useRef<any>(null);
         const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
 
  
@@ -89,11 +88,13 @@ const Audio = () => {
         const playAudioSequentially = async () => {
             if (audioUrls.length > 0) {
                 for (const url of audioUrls) {
-                    await new Promise((resolve) => {
+                    await new Promise<void>((resolve) => { 
                         wavesurferRef.current.load(url);
+
                         wavesurferRef.current.on('ready', () => {
                             wavesurferRef.current.play();
                         });
+
                         wavesurferRef.current.on('finish', () => {
                             resolve(); 
                         });
@@ -102,7 +103,7 @@ const Audio = () => {
                 setAudioUrls([]);
             }
         };
-        
+
         playAudioSequentially();
     }, [audioUrls]);
 
@@ -164,11 +165,11 @@ const Audio = () => {
     useEffect(() => {
         wavesurferRef.current = WaveSurfer.create({
             container: '#waveform',
-            audioContext: new (window.AudioContext || window.webkitAudioContext)(),
+            // audioContext: new (window.AudioContext || window.webkitAudioContext)(),
             waveColor: '#6c63ff',
             progressColor: '#ff6f61',
             height: 128,
-            responsive: true,
+            // responsive: true,
         });
 
         return () => {
@@ -253,6 +254,7 @@ const Audio = () => {
 
                     <div>
                         <AudioChatRecord sendDataParent={handleDataAudio} sendDataToParent={handleDataFromAudio} pause={pause}/>
+                        {/* <Assembly/> */}
                     </div>
                 </Card>
             </div>
@@ -283,7 +285,7 @@ const Audio = () => {
                                 style={{ backgroundColor: '#f3f5f7', border: 'none', borderRadius: '1rem' }}
                             >
                                 <div style={{ padding: '1rem' }}>
-                                    {audiointerview[0]?.content?.realtime_evaluation?.communication_skills?.map((skill, index) => (
+                                    {audiointerview[0]?.content?.realtime_evaluation?.communication_skills?.map((skill: any, index: any) => (
                                         <div key={index} style={{ marginBottom: '0.5rem' }}>
                                             <strong style={{ fontSize: '1.1rem' }}>
                                                 {skill?.skill}: 
