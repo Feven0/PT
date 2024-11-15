@@ -39,7 +39,7 @@ from fastapi.staticfiles import StaticFiles
 from api.services.secret import get_auth, is_lambda
 from api.pages.base import api_router as pages_router
 from api.pages.ipersona.routers.api_ipersona import routes
-from api.pages.ipersona.routers.db_routes import route_weaviate
+from api.pages.ipersona.routers.db_routes import route_strapi
 from api.pages.ipersona.socket.ipersona_socket import get_socketio_app
 from api.utils.logger import LLPackerLogger
 
@@ -119,7 +119,7 @@ routes.add_middleware(
     allow_headers=["*"],
 )
 
-route_weaviate.add_middleware(
+route_strapi.add_middleware(
     CORSMiddleware,
     allow_origins=['*'],
     allow_credentials=True,
@@ -129,7 +129,7 @@ route_weaviate.add_middleware(
 
 
 fast_app.mount("/api", routes)
-fast_app.mount("/wv", route_weaviate)
+fast_app.mount("/wv", route_strapi)
 
   
 def startup_event():

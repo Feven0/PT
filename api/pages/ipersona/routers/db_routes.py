@@ -7,9 +7,9 @@ import ast
 import api.llm.ipersona.ipersona_prisma as prisma
 from api.services.strapi_ipersona import IpersonaManager
 
-route_weaviate = FastAPI(root_path="/wv")
+route_strapi = FastAPI(root_path="/wv")
 
-@route_weaviate.post("/fetch_user_session")
+@route_strapi.post("/fetch_user_session")
 async def fetch_session(recieved: pemodel.SessionRequestRecieved):
     """
     Fetches user session data from the database.
@@ -41,7 +41,7 @@ async def fetch_session(recieved: pemodel.SessionRequestRecieved):
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
    
    
-@route_weaviate.post("/fetch_chat_history")
+@route_strapi.post("/fetch_chat_history")
 async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):  
     """
     Fetches the chat history from the database.
@@ -75,7 +75,7 @@ async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
     
 
-@route_weaviate.post("/fetch_user_session_observers")
+@route_strapi.post("/fetch_user_session_observers")
 async def fetch_user_session_observer(recieved: pemodel.UserSessionRequestRecieved):  
     try:
         ipersona_manager = IpersonaManager(sessionId=recieved.alluser, jobId=recieved.jobId, run_stage="dev")
@@ -91,7 +91,7 @@ async def fetch_user_session_observer(recieved: pemodel.UserSessionRequestReciev
         print(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
     
-@route_weaviate.post("/fetch_user_all_observer")
+@route_strapi.post("/fetch_user_all_observer")
 async def fetch_user_all_observer(recieved: pemodel.ChatHistoryRequestRecieved):  
     try:
         ipersona_manager = IpersonaManager(sessionId=recieved.sessionId, run_stage="dev")
@@ -107,7 +107,7 @@ async def fetch_user_all_observer(recieved: pemodel.ChatHistoryRequestRecieved):
         print(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
     
-@route_weaviate.post("/fetch_single_session")
+@route_strapi.post("/fetch_single_session")
 async def fetch_single_session(recieved: pemodel.ChatHistoryRequestRecieved):  
     try:
         ipersona_manager = IpersonaManager(sessionId=recieved.sessionId, run_stage="dev")
