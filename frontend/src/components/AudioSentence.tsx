@@ -35,7 +35,6 @@ const AudioSentence = () => {
     const [input, setInput] = useState<any>("");
     const [show, setShow] = useState<any>(true);
     const [counter, setCounter] = useState<any>(1);
-    const [isVisible, setIsVisible] = useState(false);  
     const [isOn, setOn] = useState(false);  
     const wavesurferRef = useRef<any>(null);
     const audioQueue = useRef<any>([]); 
@@ -126,7 +125,6 @@ const AudioSentence = () => {
     useEffect(() => {
         const delay = 6000;  
         const timer = setTimeout(() => {
-            setIsVisible(true);  
         }, delay);
 
         return () => clearTimeout(timer);  

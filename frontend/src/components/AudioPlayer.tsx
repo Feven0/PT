@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
+
 interface Data {
     audiointerview: any
 }

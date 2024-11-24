@@ -18,7 +18,8 @@ const useMiddleSocket = () => {
     loading, 
     setLoading, 
     done, 
-    setDone] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
+    setDone, 
+    chunk] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
   const [startfetching, setStartFetch] = useState(true);
   const [ready, setReady] = useState<any>(false);
   const [startchat, setChat] = useState<any>(false);
@@ -225,6 +226,7 @@ const useMiddleSocket = () => {
     setAssemblyTTS,
     done, 
     setDone,
+    chunk,
 
     startfetching, 
     setStartFetch,

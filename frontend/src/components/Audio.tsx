@@ -16,21 +16,19 @@ const Audio = () => {
             seconds, 
             minutes, 
             pause, 
-            setLoading, 
             setAudioInterview,
             audioChunk,
             setAudioInterviewChunk,
-            done } = useMiddleSocket();
+            done,
+            chunk } = useMiddleSocket();
 
         const latest = JSON.parse(localStorage.getItem("userSession") || 'null');        
         const [input, setInput] = useState<any>("");
         const [show, setShow] = useState<any>(true);
         const [counter, setCounter] = useState<any>(1);
-        const [isVisible, setIsVisible] = useState(false);  
         const audioQueue = useRef<any>([]); 
-        const isPlayingRef = useRef<any>(false); 
+        // const isPlayingRef = useRef<any>(false); 
         const previousLengthRef = useRef<any>(0); 
-
         let previous_question = "";
         let timerValue: any;
 
@@ -84,7 +82,7 @@ const Audio = () => {
     useEffect(() => {
         const delay = 6000;  
         const timer = setTimeout(() => {
-            setIsVisible(true);  
+            // setIsVisible(true);  
         }, delay);
 
         return () => clearTimeout(timer);  
@@ -193,28 +191,28 @@ const Audio = () => {
     //     }
     // };
     
-    const synthesizeAudio = async (newc: any) => {
-        try {
-            setLoading(true);
+    // const synthesizeAudio = async (newc: any) => {
+    //     try {
+    //         setLoading(true);
     
-            if (newc.length > 0) {
-                newc.forEach((chunkUrl: any) => {
-                    audioQueue.current.push(chunkUrl);  
-                });
+    //         if (newc.length > 0) {
+    //             newc.forEach((chunkUrl: any) => {
+    //                 audioQueue.current.push(chunkUrl);  
+    //             });
     
-                if (!isPlayingRef.current) {
-                    playNextAudio(); 
-                }
-            } else {
-                console.error('No audio interview chunks available');
-            }
+    //             if (!isPlayingRef.current) {
+    //                 playNextAudio(); 
+    //             }
+    //         } else {
+    //             console.error('No audio interview chunks available');
+    //         }
     
-            setLoading(false);
-        } catch (error) {
-            console.error('Error processing audio:', error);
-            setLoading(false);
-        }
-    };
+    //         setLoading(false);
+    //     } catch (error) {
+    //         console.error('Error processing audio:', error);
+    //         setLoading(false);
+    //     }
+    // };
 
     
     return (
@@ -257,16 +255,17 @@ const Audio = () => {
                     
                     {(loading) && <Spin indicator={<img src={fade} alt="" className='h-10' />} />}
                     
-                    <div className='audio-container'>
-                        {isVisible && (
+                    <div className='audio-container'>    
+                        {chunk && (              
                             <div className="chat-chunk-container">                            
-                                {audioChunk.map((item: any, index: any) => (
+                                {audioChunk?.map((item: any, index: any) => (
                                     <p className="chat-chunk" key={index}>
                                         {item}
                                     </p> 
                                 ))}
                             </div> 
-                        )} 
+                            
+                        )}
 
                         {done && (
                         <AudioPlayer

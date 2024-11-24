@@ -113,8 +113,15 @@ async def audio_endpoint(sid, data):
         response = await copy.generate_interview_question(data)
         assistant_next_question = response.get("interview", "")
 
-        tasks = [synthesize_text(chunk) for chunk in assistant_next_question]
+        #tasks = [synthesize_text(chunk) for chunk in assistant_next_question]
+
+        tasks = []
+        for chunk in assistant_next_question:
+            await sio.emit("audio-single-text-chunk", chunk, room=sid)
+            tasks.append(synthesize_text(chunk))
         
+        await sio.emit("audio-single-text-chunk-done", room=sid)
+
         audio_chunks = await asyncio.gather(*tasks)
 
         for audio_data in audio_chunks:

@@ -10,6 +10,7 @@ const useWebSocket = (url: string) => {
   const [transcript, setAssemblyTTS] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [chunk, setChunkDone] = useState(false);
 
 
   useEffect(() => {
@@ -218,6 +219,14 @@ const useWebSocket = (url: string) => {
       setAudioInterview((prevMessages) => [...prevMessages, audioUrl]);
     });
 
+    newSocket.on('audio-single-text-chunk',(message) => {
+      setAudioInterviewChunk((prevMessages) => [...prevMessages, message]);
+    })
+
+    newSocket.on('audio-single-text-chunk-done',() => {
+      setChunkDone(true);
+    })
+
     newSocket.on('audio-ten-chunks', (message) => {
       setAudioInterview((prevMessages) => [...prevMessages, message]);
     });
@@ -255,7 +264,9 @@ const useWebSocket = (url: string) => {
     loading, 
     setLoading,
     done, 
-    setDone
+    setDone,
+    chunk, 
+    setChunkDone
   ];
 };
 
