@@ -124,10 +124,10 @@ async def audio_endpoint(sid, data):
 
             await sio.emit("audio-single-chunk", audio_data, room=sid)
        
-        ## Optional: Filter out any errors (if needed)
+        ## Optional
         # valid_audio_chunks = [chunk for chunk in audio_chunks if not isinstance(chunk, dict) or 'error' not in chunk]
 
-        # # Concatenate all audio chunks (if you want to send them as one blob)
+        # # Concatenate all audio chunks then pass it
         # final_audio_data = b''.join(valid_audio_chunks)
         # await sio.emit("audio-single-chunk", audio_chunks, room=sid)
 
