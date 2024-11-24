@@ -6,7 +6,7 @@ import { useParams } from 'react-router-dom';
 import hr from '../assets/hr.jpg';
 import { CgProfile } from 'react-icons/cg'
 import ReactMarkdown from 'react-markdown';
-import {AudioRecorder, RealTimeEvaluation, OverallFeedbackModal, LoadingSpinner} from './index'
+import {ChatAudioRecorder, RealTimeEvaluation, OverallFeedbackModal, LoadingSpinner} from './index'
 import Api from '../Services/Services';
 import "../styles/InterviewChat/interviewchat.css"
 import users from '../assets/mock-data/user_profiles.json';
@@ -437,7 +437,7 @@ const InterviewChat = () => {
                             
                             <div className='actions'>
                                 <div className='actions-audio'>
-                                    <AudioRecorder sendDataParent={handleDataAudio} sendDataToParent={handleDataFromAudio} />
+                                    <ChatAudioRecorder sendDataParent={handleDataAudio} sendDataToParent={handleDataFromAudio} />
                                     {dataFromAudio && <Spin indicator={<img src={fade} alt="" className='actions-load' />} />}
                                 </div>
                                 <div style={{marginTop: '0.97rem'}}>

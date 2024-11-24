@@ -19,7 +19,7 @@ const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
 
     const overall = evaluation?.overall || []
     // const answerRelevancy = evaluation?.answer_relevancy || [];
-    const communicationSkills = evaluation?.communication_skills || [];
+    // const communicationSkills = evaluation?.communication_skills || [];
 
     return (
         <div className='evaluation realtime-evaluation' 
@@ -71,7 +71,7 @@ const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
                         >
                             <div className='message-text' style={{ padding: '1rem', color: '#6b6666', lineHeight: '1.5rem' }}>{overall.feedback}</div>
                         </Panel>
-                        <Panel 
+                        {/* <Panel 
                             header="Other Metrics" 
                             key="2" 
                             style={{ backgroundColor: '#f3f5f7', border: 'none', borderRadius: '1rem' }}
@@ -86,7 +86,7 @@ const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
                                     </div>
                                 ))}
                             </div>
-                        </Panel>
+                        </Panel> */}
                     </Collapse>
                 </div>
             )}

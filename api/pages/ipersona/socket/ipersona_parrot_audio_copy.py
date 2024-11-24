@@ -1,7 +1,11 @@
 from openai import OpenAI
-import json, os
+import json, os, re, ast
 import os
 import json_repair
+from collections import defaultdict
+from api.llm.ipersona.ipersona_agent import agents
+import api.llm.ipersona.ipersona_db as database
+import api.llm.ipersona.ipersona_schema as db
 from api.services.strapi_ipersona import IpersonaManager
 from datetime import datetime
 from api.utils.logger import LLPackerLogger
@@ -9,13 +13,12 @@ import api.llm.ipersona.ipersona_gpt as gpt
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
-from api.services.secret import get_auth
+# keys_json  = get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
+# OPENAI_API_KEY = keys_json['OPENAI_PARROT_API_KEY']
 
-OPENAI_API_KEY  = get_auth(ssmkey='OPENAI_PARROT_API_KEY')
-openai_client = OpenAI(api_key=OPENAI_API_KEY )
+# openai_client = OpenAI(api_key = OPENAI_API_KEY)
+openai_client = OpenAI(api_key='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')
 
-print("key coreecttttttttttttttttttttttttt")
-print(OPENAI_API_KEY)
 
 module_dir= os.path.dirname(__file__)
 prompt_path = lambda x: os.path.join(module_dir, "prompts", x)
@@ -95,7 +98,7 @@ async def generate_interview_question(data: dict):
     
     
 #-------------------------------------------- Choose Question from Generated ----------------------------------
-async def choose_interview_question(collection: dict, data: dict):
+async def choose_interview_question(collection: dict, data: dict) -> dict:
     """
     Selects an interview question based on the current question counter.
 
@@ -121,25 +124,9 @@ async def choose_interview_question(collection: dict, data: dict):
         if an exception occurs during processing.
     """
     try: 
-        print("rehmettttttttttttttt")
-        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
-        session_chathistory = ipersona_manager.get_messages()
-        chat = session_chathistory['count']
-  
-        global chat_count
-        chat_count = 1
-        
-        if chat != 0:  
-            chat = session_chathistory['total']
-            assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
-            chat_count += assistant_count 
-            print("Number of assistant entries:", chat_count)
-        else:
-            print("Chat is empty.")
-        
         section = None
         question_type = None
-        if chat_count < 3: 
+        if data['question_counter'] < 2: 
             section = collection["Background"]
             question_type = "Background"
             count = None
@@ -147,32 +134,32 @@ async def choose_interview_question(collection: dict, data: dict):
 
             return response
         
-        elif chat_count < 5: 
+        elif data['question_counter'] < 3: 
             section = collection["Technical"]
             question_type = "Technical"
             count = None
-            if chat_count == 3: 
-                count = chat_count
+            if data['question_counter'] == 2: 
+                count = data['question_counter']
             response = await helper_func(count, question_type, section, data)
             
             return response
             
-        elif chat_count < 7: 
+        elif data['question_counter'] < 4: 
             section = collection["Behavioral"]
             question_type = "Behavioral"
             count = None
-            if chat_count == 5: 
-                count = chat_count
+            if data['question_counter'] == 3: 
+                count = data['question_counter']
             response = await helper_func(count, question_type, section, data)
             
             return response
         
-        elif chat_count < 10: 
+        elif data['question_counter'] < 6: 
             section = collection["Ability"]
             question_type = "Ability"
             count = None
-            if chat_count == 7: 
-                count = chat_count
+            if data['question_counter'] == 4: 
+                count = data['question_counter']
             response = await helper_func(count, question_type, section, data)
             
             return response
@@ -216,11 +203,13 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
     try:
         interview_question_json = None
                 
-        if chat_count < 9:
+        if data['question_counter'] < 5:
             if data['response']:
                 if count is not None:
+                    # realtime_evaluation_response_json = await realtime_response_evaluation(data)
                     interview_question_json = await fetch_interview_question(section, data) 
                 else:
+                    # realtime_evaluation_response_json = await realtime_response_evaluation(data)
                     response = await check_if_followup(data['response'])
          
                     if not response:
@@ -271,15 +260,19 @@ async def fetch_interview_question(section: list, data: dict):
     """
     try:
         message = file_reader(prompt_path('ipersona/pick_question.txt'))
+   
         context = str(message)
         questions = []
         msg = context\
             .replace("{collection}", str(section))\
             .replace("{questions}", str(questions))\
             .replace("{candidate_response}", data['response'])        
-
+          
+        # response = await hr_agent.generate_question(msg)
         content = data['user_session']['attributes']['attributes']['persona'] + msg
         response = gpt.openai_gpt_assistant_with_streaming(content)
+
+        # response_json = extract_json(response, quite=False)
         
         return response
     except Exception as e:
@@ -401,31 +394,34 @@ def realtime_response_evaluation(data: dict) -> dict:
         or an error message if an exception occurs during processing.
     """
     try:
-        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
-        session_chathistory = ipersona_manager.get_messages()
-        history = session_chathistory['total']
+        # ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
+        # session_chathistory = ipersona_manager.get_messages()
+        # history = session_chathistory['total']
         
-        last_assistant_response = None
-        for entry in reversed(history):
-            message = entry            
-            if message["user_type"] == "assistant":
-                last_assistant_response = message["content"].get("full_response")  
-                break  
+        # last_assistant_response = None
+        # for entry in reversed(history):
+        #     message = entry            
+        #     if message["user_type"] == "assistant":
+        #         last_assistant_response = message["content"].get("full_response")  
+        #         break  
 
-        if last_assistant_response:
-            print("Last assistant response:", last_assistant_response)
-        else:
-            print("No assistant response found in the chat history.")
+        # if last_assistant_response:
+        #     print("Last assistant response:", last_assistant_response)
+        # else:
+        #     print("No assistant response found in the chat history.")
             
         evaluation_prompt = file_reader(prompt_path('ipersona/realtime_evaluation.txt'))
         evaluation_context = str(evaluation_prompt)
         evaluation_msg = evaluation_context\
-            .replace("{question}", last_assistant_response)\
+            .replace("{question}", data["previous_question"])\
             .replace("{candidate_response}", data['response'])
-                
-        # Evaluate the real-time chat response for the last response data["previous_question"]
+            # .replace("{question}", last_assistant_response)\
+
+   
+        # Evaluate the real-time chat response for the last response data["previous_question"]       
         
         content = data['user_session']['attributes']['attributes']['persona'] + evaluation_msg
+     
 
         # realtime_evaluation_response = await hr_agent.evaluate_candidate_response(evaluation_msg)
         realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
@@ -464,15 +460,17 @@ async def overall_interview_evaluations(data: dict) -> dict:
         or an error message if an exception occurs during processing.
     """
     try:
-        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'] , run_stage="dev")
-        all_chat_history = ipersona_manager.get_messages()
-        history = all_chat_history['total']
+        # ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'] , run_stage="dev")
+        # all_chat_history = ipersona_manager.get_messages()
+        # history = all_chat_history['total']
         
         overall_evaluation_prompt = file_reader(prompt_path('ipersona/overall_evaluation.txt'))
         overall_metrics_prompt = file_reader(prompt_path("ipersona/interview_metrics_rubrics.txt"))
         overall_evaluation_context = str(overall_evaluation_prompt)
         overall_metrics_context = str(overall_metrics_prompt)
-        history_str = '\n'.join(str(item) for item in history)
+        # history_str = '\n'.join(str(item) for item in history)
+        history_str = '\n'.join(str(item) for item in data['history'])
+
 
         overall_evaluation_msg = overall_evaluation_context\
             .replace("{history}", history_str)  
@@ -490,6 +488,7 @@ async def overall_interview_evaluations(data: dict) -> dict:
         overall_interview_metrics_response = gpt.openai_gpt_assistant_without_streaming(content)
         overall_interview_metrics_json = extract_json(overall_interview_metrics_response, quite=False)
          
+        history = data['history']
         
         time_array = calculate_time(history)
         relevancy = filter_the_relevancies(history)
@@ -515,16 +514,17 @@ async def overall_interview_evaluations(data: dict) -> dict:
                     "createdBy": "parrot"
                 }                
             }
-        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
-        ipersona_manager.insert_observer(overall_json)
-        ipersona_manager.update_session_status()
+        # ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
+        # ipersona_manager.insert_observer(overall_json)
+        # ipersona_manager.update_session_status()
         #################################################################################################
       
         response = {
             "overall_interview_metrics": overall_interview_metrics_json,
             "overall_evaluation_response": overall_evaluation_response_json
         }
-        
+        print("-------------------------------overall interview evaluation----------------------------------")
+        print(response)
         return response
         
     except Exception as e:
@@ -568,7 +568,7 @@ async def clarify_question(question: str) -> dict:
         return {'error': str(e)}
 
 
-#------------------- Job Description Class Identifier -------------------
+#-------------------------------------------- Job Description Class Identifier -----------------------------------
 def identify_class(all_class: list, jd: str) -> dict:
     """
     Identifies the class of a given job description (JD).
@@ -905,7 +905,7 @@ def calculate_average(data):
         count += 1 
     
     average_confidence = total_score / count if count > 0 else 0
-    return round(average_confidence, 2)
+    return average_confidence
 
 
 def calculate_average_time_management(data):

@@ -1,7 +1,11 @@
 from openai import OpenAI
-import json, os
+import json, os, re, ast
 import os
 import json_repair
+from collections import defaultdict
+from api.llm.ipersona.ipersona_agent import agents
+import api.llm.ipersona.ipersona_db as database
+import api.llm.ipersona.ipersona_schema as db
 from api.services.strapi_ipersona import IpersonaManager
 from datetime import datetime
 from api.utils.logger import LLPackerLogger
@@ -9,13 +13,12 @@ import api.llm.ipersona.ipersona_gpt as gpt
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
-from api.services.secret import get_auth
+# keys_json  = get_openapi_token(ssmkey="tenx/env/vars", envvar="OPENAI_API_KEY", fconfig=".env/openai_apikey.json")
+# OPENAI_API_KEY = keys_json['OPENAI_PARROT_API_KEY']
 
-OPENAI_API_KEY  = get_auth(ssmkey='OPENAI_PARROT_API_KEY')
-openai_client = OpenAI(api_key=OPENAI_API_KEY )
+# openai_client = OpenAI(api_key = OPENAI_API_KEY)
+openai_client = OpenAI(api_key='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')
 
-print("key coreecttttttttttttttttttttttttt")
-print(OPENAI_API_KEY)
 
 module_dir= os.path.dirname(__file__)
 prompt_path = lambda x: os.path.join(module_dir, "prompts", x)
@@ -121,7 +124,6 @@ async def choose_interview_question(collection: dict, data: dict):
         if an exception occurs during processing.
     """
     try: 
-        print("rehmettttttttttttttt")
         ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
         session_chathistory = ipersona_manager.get_messages()
         chat = session_chathistory['count']
@@ -136,6 +138,9 @@ async def choose_interview_question(collection: dict, data: dict):
             print("Number of assistant entries:", chat_count)
         else:
             print("Chat is empty.")
+        
+        print("t*******************chat_count*******************t")
+        print(chat_count)
         
         section = None
         question_type = None
@@ -219,8 +224,10 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
         if chat_count < 9:
             if data['response']:
                 if count is not None:
+                    # realtime_evaluation_response_json = await realtime_response_evaluation(data)
                     interview_question_json = await fetch_interview_question(section, data) 
                 else:
+                    # realtime_evaluation_response_json = await realtime_response_evaluation(data)
                     response = await check_if_followup(data['response'])
          
                     if not response:
@@ -278,8 +285,11 @@ async def fetch_interview_question(section: list, data: dict):
             .replace("{questions}", str(questions))\
             .replace("{candidate_response}", data['response'])        
 
+        # response = await hr_agent.generate_question(msg)
         content = data['user_session']['attributes']['attributes']['persona'] + msg
         response = gpt.openai_gpt_assistant_with_streaming(content)
+
+        # response_json = extract_json(response, quite=False)
         
         return response
     except Exception as e:
@@ -568,7 +578,7 @@ async def clarify_question(question: str) -> dict:
         return {'error': str(e)}
 
 
-#------------------- Job Description Class Identifier -------------------
+#-------------------------------------------- Job Description Class Identifier -----------------------------------
 def identify_class(all_class: list, jd: str) -> dict:
     """
     Identifies the class of a given job description (JD).
@@ -905,7 +915,7 @@ def calculate_average(data):
         count += 1 
     
     average_confidence = total_score / count if count > 0 else 0
-    return round(average_confidence, 2)
+    return average_confidence
 
 
 def calculate_average_time_management(data):

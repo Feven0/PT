@@ -13,6 +13,7 @@ const Api = {
   UserAllSessionMetrics: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/calculate_allstat_progress`, data),
   OverallSesssionMetrics: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/calculate_session_overall_progress`, data),
   audio: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/synthesize-audio/`, data),
+  textToSpeech: () => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/synthesize`),
 
 };
 

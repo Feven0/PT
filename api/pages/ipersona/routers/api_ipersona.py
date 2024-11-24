@@ -1,4 +1,5 @@
 import os, time, json, sys
+import base64
 import uuid
 curdir = os.path.dirname(os.path.realpath(__file__))
 cpath = os.path.dirname(curdir)
@@ -13,6 +14,7 @@ import assemblyai as aai
 import ast
 from openai import OpenAI
 from api.services.secret import get_auth
+import openai
 
 OPENAI_API_KEY  = get_auth(ssmkey='OPENAI_PARROT_API_KEY')
 
@@ -101,22 +103,29 @@ async def transcribe_audio(file: UploadFile = File(...)):
 import io
 
 @routes.post("/synthesize")
-async def synthesize_text(text: str):
-    print("Received text for synthesis:", text)
+async def synthesize_text():
+    print("Received text for synthesis:")
     try:
-        response = client.audio.speech.with_streaming_response.create(
+        response = client.audio.speech.create(
             model="tts-1",
             voice="alloy",
-            input=text
+            input="text france best love"
         )
 
-        audio_data = response 
+        audio_data = response.read()  
         
+        print("Audio data size:", len(audio_data))  
+        print("Audio data content:", audio_data)  
+
+        if len(audio_data) == 0 or len(audio_data) < 500:  
+            return {"error": "Received insufficient audio data."}
+
         audio_stream = io.BytesIO(audio_data)
 
         return StreamingResponse(audio_stream, media_type="audio/mpeg")
+
     except Exception as e:
-        print(f"Error processing files: {e}")
+        print(f"Error processing audio: {e}")
         return {"error": str(e)}
 
 @routes.post("/audio_upload")
@@ -168,7 +177,43 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
         elapsed_time = end_time - start_time_1  
         print(f"Time taken for audio upload processing: {elapsed_time:.2f} seconds")
 
+openai.api_key= OPENAI_API_KEY
 
+@routes.post("/tts")
+async def synthesize_audio():
+    sentences = ["what else is", "new girly"]
+
+    audio_blobs = []
+
+    try:
+        print("Get first binary content from the response (if it's streaming binary)")
+
+        # for sentence in sentences:
+        #speech_file_path = Path(__file__).parent / "speech.mp3"
+        response = client.audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input="Today is a wonderful day to build something people love!"
+        )
+
+        response.stream_to_file(speech_file_path)
+                
+        print("Get binary content from the response (if it's streaming binary)")
+        print(response)
+        #     audio_data = response
+            
+        #     # Convert binary data to base64
+        #     audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+            
+        #     audio_blobs.append(audio_base64)
+
+        # # Return base64-encoded audio data as JSON
+        # return {"audio_blobs": audio_blobs}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+    
 @routes.post("/create_user_session")
 async def user_session_files(recieved: pemodel.userSessionRequestRecieved):
     try:

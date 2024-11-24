@@ -3,8 +3,22 @@ import useWebSocket from './useWebSocket';
 import { useStopwatch } from 'react-timer-hook';
 
 const useMiddleSocket = () => {
-  const [socket, interview, setChatInterview, audiointerview, setAudioInterview, audioHistory, setAudioHistory] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
-  const [loading, setLoading] = useState(false);
+  const [
+    socket, 
+    interview, 
+    setChatInterview, 
+    audiointerview, 
+    setAudioInterview, 
+    audioHistory, 
+    setAudioHistory, 
+    transcript, 
+    setAssemblyTTS,
+    audioChunk, 
+    setAudioInterviewChunk, 
+    loading, 
+    setLoading, 
+    done, 
+    setDone] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
   const [startfetching, setStartFetch] = useState(true);
   const [ready, setReady] = useState<any>(false);
   const [startchat, setChat] = useState<any>(false);
@@ -12,20 +26,21 @@ const useMiddleSocket = () => {
   const [count, setCount] = useState();
   const { seconds, minutes, start, pause, reset } = useStopwatch({ autoStart: false});
 
-  useEffect(() => {
-    if (socket) {
-      socket.on('initial connect', (message: any) => {
-        console.log("sessionInit", message)        
-      });
-    }
-  }, [socket]);
- 
+
+    useEffect(() => {
+      if (socket) {
+        socket.on('initial connect', (message: any) => {
+          console.log("sessionInit", message)        
+        });
+      }
+    }, [socket]);
+  
     useEffect(() => {
       if (socket) {
         socket.on('initial connect', (message: any) => {
           console.log("sessionInit", message);
         });
-  
+
         socket.on('interview chat', (message: any) => {
           console.log(message)
           reset();
@@ -40,7 +55,7 @@ const useMiddleSocket = () => {
           setChat(false)
           pause()
         })
-  
+
         socket.on('error', (error: any) => {
           console.error(error.message);
         });
@@ -73,52 +88,46 @@ const useMiddleSocket = () => {
       });
     };
 
+    useEffect(() => {
+      if (socket) {
+          socket.on('audio transcribe', (message: any) => {
+              setAssemblyTTS((prevMessages: any) => {
+                if (!prevMessages.some((m: any) => m.query === message.query)) {
+                  return [...prevMessages, ...message];
+                }
+                return prevMessages;
+              });
+        });
+      } 
+    }, [socket, transcript]);
+  
+    const handleAssemblyTTS = async (data: any) => {   
+      await socket?.emit('audio transcribe', {
+        user_session: data.latest,
+        audioblob: data.audioblob,
+        question_counter: 1,
+        response: ''      
+      });
+    };
+ 
   useEffect(() => {
     if (socket) {
         socket.on('audio chat', (message: any) => {
-            setAudioInterview((prevMessages: any) => {
-              if (!prevMessages.some((m: any) => m.query === message.query)) {
-                return [...prevMessages, ...message];
-              }
-              return prevMessages;
-            });
             setAudioHistory((prevMessages: any) => {
               if (!prevMessages.some((m: any) => m.query === message.query)) {
                 return [...prevMessages, ...message];
               }
               return prevMessages;
             });
-            // setAudioHistory((prevMessages: any) => [
-            //   ...prevMessages,
-            //   message, // Add each new chunk to the history
-            // ]);
-            // reset(); 
             setLoading(false);
-            //console.log("count_inter_quest", count === 4)  
             if(count === 4) {
               pause()
             }
       });
     } 
-  }, [socket, interview]);
+  }, [socket]);
 
-  const handleAudioInterview = async (data: any) => {
-    // const chat = [{
-    //   "user_type": "candidate",
-    //   "content_type": "answer",
-    //   "complete": false,
-    //   "content": {
-    //       "response": data.input,
-    //       "time_taken": data.timerValue,
-    //       "realtime_evaluation": "null"
-    //   }
-    //   }]
-    // setAudioHistory((prevMessages: any) => {
-    //   if (!Array.isArray(prevMessages)) {
-    //     return [...chat];
-    //   }
-    //   return [...prevMessages, ...chat];
-    // });    
+  const handleAudioInterview = async (data: any) => {    
     setLoading(true)
     await socket?.emit('audio chat', { 
       response: data.input, 
@@ -131,6 +140,75 @@ const useMiddleSocket = () => {
     setCount(data.counter)
   };
 
+  useEffect(() => {
+    if (socket) {
+        socket.on('audio chat sentence', () => {
+        //  console.log(message)
+          reset();
+          setLoading(false);
+          setStartFetch(true);
+      });
+    } 
+  }, [socket]);
+
+  const handleAudioSentence = async (data: any) => {    
+    setLoading(true)
+    const chat = [{
+      user_type: "candidate",
+      content_type: "answer",
+      content: {
+        response: data.input,
+        time_taken: data.timerValue,
+        realtime_evaluation: "null"
+      }
+    }];
+
+    setAudioHistory((prevMessages: any) => {
+      if (!Array.isArray(prevMessages)) {
+        return [...chat];
+      }
+      return [...prevMessages, ...chat];
+    });
+
+    await socket?.emit('audio chat sentence', { 
+      response: data.input, 
+      user_session: data.user_session,
+      time_taken: data.timerValue
+    });
+    setCount(data.counter)
+  };
+
+  useEffect(() => {
+    if (socket) {
+        socket.on('audio double chunk', (message: any) => {
+            setAudioHistory((prevMessages: any) => {
+              if (!prevMessages.some((m: any) => m.query === message.query)) {
+                return [...prevMessages, ...message];
+              }
+              return prevMessages;
+            });
+            setLoading(false);
+            if(count === 4) {
+              pause()
+            }
+      });
+    } 
+  }, [socket]);
+
+  const handleAudioDouble = async (data: any) => {    
+    setLoading(true)
+    await socket?.emit('audio double chunk', { 
+      response: data.input, 
+      history: data.interview, 
+      user_session: data.user_session,
+      question_counter: data.counter,
+      time_taken: data.timerValue,
+      previous_question: data.previous_question
+    });
+    setCount(data.counter)
+  };
+
+
   return {
     handleAudioInterview,
     audiointerview,
@@ -138,6 +216,16 @@ const useMiddleSocket = () => {
     setLoading,
     audioHistory, 
     setAudioHistory,
+    transcript, 
+    handleAssemblyTTS,
+    audioChunk, 
+    setAudioInterviewChunk,
+    handleAudioSentence,
+    handleAudioDouble,
+    setAssemblyTTS,
+    done, 
+    setDone,
+
     startfetching, 
     setStartFetch,
     ready, 

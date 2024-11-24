@@ -54,19 +54,12 @@ const RadarChartStat: React.FC<Data> = ({ data }) => {
         </Col>
 
         <Col style={{ marginLeft: '2rem', marginTop: '4rem', textAlign: 'left' }}>
-          {/* <h3 style={{ color: '#1890ff' }}>Average Scale Standards</h3> */}
           <ul style={{ listStyleType: 'none', padding: '1rem', backgroundColor:'#ffffff', borderRadius: '10px' }}>
             <li style={{ margin: '0.5rem 0', fontSize: '13px', color: 'lightcoral' }}>
-              <strong>1.00 - 1.49</strong> (Poor)
-            </li>
-            <li style={{ margin: '0.5rem 0', fontSize: '13px', color: '#ffa500' }}>
-              <strong>1.50 - 1.99</strong> (Between Poor and Good)
+              <strong>1.00</strong> (Poor)
             </li>
             <li style={{ margin: '0.5rem 0', fontSize: '13px', color: 'lightgreen' }}>
-              <strong>2.00 - 2.49</strong> (Good)
-            </li>
-            <li style={{ margin: '0.5rem 0', fontSize: '13px', color: '#32cd32' }}>
-              <strong>2.50 - 2.99</strong> (Between Good and Excellent)
+              <strong>2.00</strong> (Good)
             </li>
             <li style={{ margin: '0.5rem 0', fontSize: '13px', color: '#008000' }}>
               <strong>3.00</strong> (Excellent)

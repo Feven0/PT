@@ -1,5 +1,15 @@
 
 from api.services.strapi_ipersona import IpersonaManager
+import api.pages.ipersona.socket.ipersona_parrot_gpt as util
+
+
+def calculate_time_limit(response):
+    accumulated_message = ""
+    for chunk in response:
+        accumulated_message += chunk   
+    timelimit =  util.interview_question_time_limit(accumulated_message)   
+    return timelimit         
+ 
 
 def step1_insert_message(data):
     sessionId =  data['user_session']['id'] 

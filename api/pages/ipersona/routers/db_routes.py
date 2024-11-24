@@ -33,7 +33,6 @@ async def fetch_session(recieved: pemodel.SessionRequestRecieved):
         user_data = ipersona_manager.get_job_sessions()
         #user_data = ipersona_manager.get_job_sessions_observers()
 
-
         return user_data
     
     except Exception as e:

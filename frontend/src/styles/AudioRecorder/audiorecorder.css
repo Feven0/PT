@@ -5,8 +5,6 @@
 }
 
 .audio-message {
-    /* background-color: #f1f1f1;  */
-    /* padding: 5px 10px; */
     border-radius: 5px; 
 }
 
@@ -16,8 +14,7 @@
     align-items: center;
     justify-content: center;
     gap: 1.5rem;
-    margin-top: 10rem;
-    /* height: 100vh; */
+    margin-top: 8rem;
 }
 
 .audio-recorder-chat {
@@ -45,11 +42,7 @@
 .waveform {
     width: 100%;
     height: 128px;
-    margin-top: 50rem; /* Adjust as needed */
-}
-
-.audio-controls {
-    /* margin-top: 10px; */
+    margin-top: 50rem; 
 }
 
 .audio-stop {
@@ -81,5 +74,52 @@
 
 .submit-button {
     background-color: #f07762; 
-    color: white;
+    color: #ffffff;
 }
+
+.audio-container {
+    background-color: #dfdcdb;
+    padding: 1rem 1rem 2.6rem 1rem;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+.chat-chunk-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px; 
+}
+
+.chat-chunk {
+    border-radius: 5px; 
+    line-height: 1.5; 
+}
+
+.waveform {
+    background-color: rgba(0, 0, 0, 0.822);
+    padding: 0 1rem 0 1rem;
+    border-radius: 0.3rem;
+    background-color: #dfdcdb;
+    text-align: center;
+    float: right;
+}
+
+.timer-container {
+    padding: 0.2rem 0.6rem 0.2rem 0.6rem;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+.timer {
+    padding: 0 1rem 0 1rem;
+}
+
+.audio-chunk-container {
+    display: block; 
+}
+
+.audio-chunk {
+    border-radius: 5px; 
+    line-height: 2;
+    display: inline;  
+}
+
+
