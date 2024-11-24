@@ -1,4 +1,4 @@
-import { AllStatus, InterviewChat, Audio, AllProgress, AudioSentence, Audio2Chunk } from '../components/index'
+import { JobOverallProgress, InterviewChat, Audio, UserOverallProgress, AudioSentence, Audio2Chunk } from '../components/index'
 import { useState} from 'react';
 import { Layout, Row, Col, Tabs } from 'antd';
 import { useEffect } from 'react';
@@ -15,9 +15,9 @@ const JobDetail = () => {
     const renderContent = () => {
     switch (selectedTab) {
         case 'all-stat':
-        return <AllProgress/>
+        return <UserOverallProgress/>
         case 'overall-progress':
-        return <AllStatus/>;
+        return <JobOverallProgress/>;
         case 'interview':
         return <InterviewChat/>;
         case 'audio-1-chunk':

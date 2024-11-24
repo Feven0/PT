@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Api from '../Services/Services'
 import { useParams } from 'react-router-dom'
-import { RadarChartStat, PieChartStat } from './index'
+import { RadarChartStat, ProgressBarChart } from './index'
 
 const AllProgress = () => {
     const {userId} = useParams()
@@ -14,6 +14,7 @@ const AllProgress = () => {
           alluser: userId
         }
         const response = await Api.UserAllSessionMetrics(data)
+        console.log("lady", response.data)
         setAllProgress(response.data)
       }
   
@@ -34,8 +35,8 @@ const AllProgress = () => {
         marginTop: '3rem', 
         backgroundColor:'#ffffff'}}
     >
-        <RadarChartStat data={progress}/>
-        <PieChartStat data={progress}/>
+        {/* <RadarChartStat data={progress}/> */}
+        <ProgressBarChart data={progress}/>
     </div>
   )
 }

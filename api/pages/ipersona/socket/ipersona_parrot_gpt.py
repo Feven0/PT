@@ -921,8 +921,9 @@ def calculate_average_time_management(data):
         total_fails += fails     
     
     total_questions = total_passes + total_fails
-    average_pass_rate = (total_passes / total_questions) * 100 if total_questions > 0 else 0
-    average_fail_rate = (total_fails / total_questions) * 100 if total_questions > 0 else 0
+    
+    average_pass_rate = round((total_passes / total_questions) * 100, 2) if total_questions > 0 else 0
+    average_fail_rate = round((total_fails / total_questions) * 100, 2) if total_questions > 0 else 0
 
     return {
         "total_passes": total_passes,
@@ -930,6 +931,7 @@ def calculate_average_time_management(data):
         "average_pass_rate": average_pass_rate,
         "average_fail_rate": average_fail_rate
     }
+
 
 #-------------------------------------------- FIle reader --------------------------------------------
 def convert_iso_to_readable_format(iso_time):
