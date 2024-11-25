@@ -1,12 +1,14 @@
-
 from openai import OpenAI
 import json, os, re, ast
 import os
 import json_repair
 from collections import defaultdict
+from api.llm.ipersona.ipersona_agent import agents
 import api.llm.ipersona.ipersona_db as database
-# from api.config import get_openapi_token
-from api.utils.logger import LLPackerLogger, logme
+import api.llm.ipersona.ipersona_schema as db
+from api.services.strapi_ipersona import IpersonaManager
+from datetime import datetime
+from api.utils.logger import LLPackerLogger
 import api.llm.ipersona.ipersona_gpt as gpt
 
 logger = LLPackerLogger(os.path.basename(__file__))
@@ -64,7 +66,7 @@ def create_persona(job_desc):
 
 
 #--------------------------------------------  Generate Interview Questions --------------------------------
-def generate_interview_question(transcription, list_transcription, data: dict):
+async def generate_interview_question(data: dict):
     """
     Generates interview questions based on user session data.
 
@@ -84,8 +86,9 @@ def generate_interview_question(transcription, list_transcription, data: dict):
         if an exception occurs during processing.
     """
     try:
+        
         # hr_agent.assistant.update_system_message(data['user_session']['persona'])   
-        response = choose_interview_question(transcription, list_transcription, data['user_session']['generated_questions'], data)
+        response = await choose_interview_question(data['user_session']['attributes']['attributes']['generated_questions'], data)
         
         return response
     
@@ -95,7 +98,7 @@ def generate_interview_question(transcription, list_transcription, data: dict):
     
     
 #-------------------------------------------- Choose Question from Generated ----------------------------------
-def choose_interview_question(transcription, list_transcription, collection: dict, data: dict):
+async def choose_interview_question(collection: dict, data: dict):
     """
     Selects an interview question based on the current question counter.
 
@@ -121,62 +124,61 @@ def choose_interview_question(transcription, list_transcription, collection: dic
         if an exception occurs during processing.
     """
     try: 
-        # chat = await prisma.fetch_chat_history(data['user_session']['id'])
-        # print("chat_value")
-        # print(chat)
-        # global chat_count
-        # chat_count = 1
-        # print("chat_length")
-        # print(len(chat) == 0)
+        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
+        session_chathistory = ipersona_manager.get_messages()
+        chat = session_chathistory['count']
+  
+        global chat_count
+        chat_count = 1
         
-        # if len(chat) != 0:  
-        #     chat = chat[0].chathistory
-        #     assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
-        #     chat_count += assistant_count 
-        #     print("Number of assistant entries:", chat_count)
-        # else:
-        #     print("Chat is empty.")
+        if chat != 0:  
+            chat = session_chathistory['total']
+            assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
+            chat_count += assistant_count 
+            print("Number of assistant entries:", chat_count)
+        else:
+            print("Chat is empty.")
         
-        # print("t*******************chat_count*******************t")
-        # print(chat_count)
+        print("t*******************chat_count*******************t")
+        print(chat_count)
         
         section = None
         question_type = None
-        if data['question_counter'] < 3: 
+        if chat_count < 3: 
             section = collection["Background"]
             question_type = "Background"
             count = None
-            response = helper_func(transcription, list_transcription, count, question_type, section, data)
+            response = await helper_func(count, question_type, section, data)
 
             return response
         
-        elif data['question_counter'] < 5: 
+        elif chat_count < 5: 
             section = collection["Technical"]
             question_type = "Technical"
             count = None
-            if data['question_counter'] == 3: 
-                count = data['question_counter']
-            response = helper_func(count, question_type, section, data)
+            if chat_count == 3: 
+                count = chat_count
+            response = await helper_func(count, question_type, section, data)
             
             return response
             
-        elif data['question_counter'] < 7: 
+        elif chat_count < 7: 
             section = collection["Behavioral"]
             question_type = "Behavioral"
             count = None
-            if data['question_counter'] == 5: 
-                count = data['question_counter']
-            response = helper_func(count, question_type, section, data)
+            if chat_count == 5: 
+                count = chat_count
+            response = await helper_func(count, question_type, section, data)
             
             return response
         
-        elif data['question_counter'] < 10: 
+        elif chat_count < 10: 
             section = collection["Ability"]
             question_type = "Ability"
             count = None
-            if data['question_counter'] == 7: 
-                count = data['question_counter']
-            response = helper_func(count, question_type, section, data)
+            if chat_count == 7: 
+                count = chat_count
+            response = await helper_func(count, question_type, section, data)
             
             return response
 
@@ -186,7 +188,7 @@ def choose_interview_question(transcription, list_transcription, collection: dic
 
 
 #----------------------------------------- Helper Functions for Choosing Question ---------------------------------
-def helper_func(transcription, list_transcription, count: int, question_type: str, section: list, data: dict):
+async def helper_func(count: int, question_type: str, section: list, data: dict):
     """
     Processes interview questions and evaluations based on candidate responses.
 
@@ -217,51 +219,31 @@ def helper_func(transcription, list_transcription, count: int, question_type: st
         message instead.
     """
     try:
-        realtime_evaluation_response_json = None
-        overall_evaluation_response_json = None  
         interview_question_json = None
-        overall_interview_metrics_json = None   
-        # interview_question_json = await fetch_interview_question(section, data) 
                 
-        if data['question_counter'] < 9:
+        if chat_count < 9:
             if data['response']:
                 if count is not None:
                     # realtime_evaluation_response_json = await realtime_response_evaluation(data)
-                    interview_question_json = fetch_interview_question(transcription, list_transcription, section, data) 
+                    interview_question_json = await fetch_interview_question(section, data) 
                 else:
                     # realtime_evaluation_response_json = await realtime_response_evaluation(data)
-                    # response = await check_if_followup(data['response'])
-                    # print("your rasing yourrrrrrrrrrrrrrrsefl")
-                    # print(response)
-                    # if not response:
-                    interview_question_json = fetch_interview_question(transcription, list_transcription, section, data) 
-                    # else:
-                    #     interview_question_json = await generate_followup(data)
-                    #     print("I keep hangingggggggggggggggggggggggg out")
-                    #     print(interview_question_json)
+                    response = await check_if_followup(data['response'])
+         
+                    if not response:
+                        interview_question_json = await fetch_interview_question(section, data) 
+                    else:
+                        interview_question_json = await generate_followup(data)
+                       
             else:
-                interview_question_json = fetch_interview_question(transcription, list_transcription, section, data) 
-            
-            # if 'question_number' in interview_question_json.get('interview_question', {}):
-            #     for item in section:
-            #         if item["question_number"] == interview_question_json['interview_question']['question_number']:
-            #             time_limit = item["time_limit"]
-            #             end_message = item["end_message"]
-            #             interview_question_json['interview_question']['question_type'] = question_type
-            #             interview_question_json['interview_question']['time_limit'] = time_limit
-            #             interview_question_json['interview_question']['end_message'] = end_message
-            #             break    
+                interview_question_json = await fetch_interview_question(section, data) 
+   
         else:  
-            # realtime_evaluation_response_json = await realtime_response_evaluation(data)
-            overall_evaluation_values = overall_interview_evaluations(data, realtime_evaluation_response_json)
-            overall_interview_metrics_json = overall_evaluation_values["overall_interview_metrics"]
-            overall_evaluation_response_json = overall_evaluation_values["overall_evaluation_response"]
+            await overall_interview_evaluations(data)
+            #
                 
         response = {
             "interview": interview_question_json
-            # "realtime": realtime_evaluation_response_json,          
-            # "overall": overall_evaluation_response_json,
-            # "metrics": overall_interview_metrics_json
         }
         
         return response
@@ -272,7 +254,7 @@ def helper_func(transcription, list_transcription, count: int, question_type: st
    
    
 #----------------------------------------- picking the right Question ----------------------------------------- 
-def fetch_interview_question(transcript:str, list_transcription: dict, section: list, data: dict):
+async def fetch_interview_question(section: list, data: dict):
     """
     Fetches an interview question based on the provided section and candidate response.
 
@@ -295,32 +277,21 @@ def fetch_interview_question(transcript:str, list_transcription: dict, section: 
         if an exception occurs during processing.
     """
     try:
-        transcribe_msg = file_reader(prompt_path('ipersona/transcription_evaluate.txt'))
-        question = "Can you describe your educational background and how it has prepared you for a role in data science, particularly in NLP?"
-        replace_para = transcribe_msg\
-            .replace("{transcription}", transcript)\
-            .replace("{list_transcription}", str(list_transcription))\
-            .replace("{question}", question)
-        resp = gpt.openai_gpt_assistant_without_streaming(replace_para)
-        resp_json = extract_json(resp, quite=False)
-        print("was annnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
-        print(resp_json)
-        if(resp_json['status']):
-            message = file_reader(prompt_path('ipersona/pick_question.txt'))
-            context = str(message)
-            questions = []
-            msg = context\
-                .replace("{collection}", str(section))\
-                .replace("{questions}", str(questions))\
-                .replace("{candidate_response}", data['response'])        
+        message = file_reader(prompt_path('ipersona/pick_question.txt'))
+        context = str(message)
+        questions = []
+        msg = context\
+            .replace("{collection}", str(section))\
+            .replace("{questions}", str(questions))\
+            .replace("{candidate_response}", data['response'])        
 
-            # response = await hr_agent.generate_question(msg)
-            content = data['user_session']['persona'] + msg
-            response = gpt.openai_gpt_assistant_with_streaming(content)
+        # response = await hr_agent.generate_question(msg)
+        content = data['user_session']['attributes']['attributes']['persona'] + msg
+        response = gpt.openai_gpt_assistant_with_streaming(content)
 
-            # response_json = extract_json(response, quite=False)            
-            return response
-            
+        # response_json = extract_json(response, quite=False)
+        
+        return response
     except Exception as e:
         logger.error(f"Choosing the right question process failed: ${str(e)}")
         return {'error': str(e)}
@@ -406,7 +377,7 @@ async def generate_followup(data) -> dict:
         msg = context.replace("{candidate_response}", data['response'])
         # response = await hr_agent.generate_question(msg)
         
-        content = data['user_session']['persona'] + msg
+        content = data['user_session']['attributes']['attributes']['persona'] + msg
         response = gpt.openai_gpt_assistant_with_streaming(content)
         
         # response_json = extract_json(response, quite=False)
@@ -440,15 +411,31 @@ def realtime_response_evaluation(data: dict) -> dict:
         or an error message if an exception occurs during processing.
     """
     try:
+        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
+        session_chathistory = ipersona_manager.get_messages()
+        history = session_chathistory['total']
+        
+        last_assistant_response = None
+        for entry in reversed(history):
+            message = entry            
+            if message["user_type"] == "assistant":
+                last_assistant_response = message["content"].get("full_response")  
+                break  
+
+        if last_assistant_response:
+            print("Last assistant response:", last_assistant_response)
+        else:
+            print("No assistant response found in the chat history.")
+            
         evaluation_prompt = file_reader(prompt_path('ipersona/realtime_evaluation.txt'))
         evaluation_context = str(evaluation_prompt)
         evaluation_msg = evaluation_context\
-            .replace("{question}", data["previous_question"])\
+            .replace("{question}", last_assistant_response)\
             .replace("{candidate_response}", data['response'])
                 
-        # Evaluate the real-time chat response for the last response
+        # Evaluate the real-time chat response for the last response data["previous_question"]
         
-        content = data['user_session']['persona'] + evaluation_msg
+        content = data['user_session']['attributes']['attributes']['persona'] + evaluation_msg
 
         # realtime_evaluation_response = await hr_agent.evaluate_candidate_response(evaluation_msg)
         realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
@@ -463,7 +450,7 @@ def realtime_response_evaluation(data: dict) -> dict:
     
     
 #----------------------------------------- Overall Interview Evaluation -------------------------------
-async def overall_interview_evaluations(data: dict, realtime_evaluation_response_json: dict) -> dict:
+async def overall_interview_evaluations(data: dict) -> dict:
     """
     Evaluates the overall performance of a candidate in an interview.
 
@@ -487,11 +474,15 @@ async def overall_interview_evaluations(data: dict, realtime_evaluation_response
         or an error message if an exception occurs during processing.
     """
     try:
+        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'] , run_stage="dev")
+        all_chat_history = ipersona_manager.get_messages()
+        history = all_chat_history['total']
+        
         overall_evaluation_prompt = file_reader(prompt_path('ipersona/overall_evaluation.txt'))
         overall_metrics_prompt = file_reader(prompt_path("ipersona/interview_metrics_rubrics.txt"))
         overall_evaluation_context = str(overall_evaluation_prompt)
         overall_metrics_context = str(overall_metrics_prompt)
-        history_str = '\n'.join(str(item) for item in data['history'])
+        history_str = '\n'.join(str(item) for item in history)
 
         overall_evaluation_msg = overall_evaluation_context\
             .replace("{history}", history_str)  
@@ -499,45 +490,44 @@ async def overall_interview_evaluations(data: dict, realtime_evaluation_response
         overall_metrics_msg = overall_metrics_context\
             .replace("{history}", history_str)  
                 
-        # Overall interview evaluation once the interview ended        
-        # overall_evaluation_response = await hr_agent.evaluate_overall_interview(overall_evaluation_msg)
-        
-        content = data['user_session']['persona'] + overall_evaluation_msg
+     
+        content = data['user_session']['attributes']['attributes']['persona'] + overall_evaluation_msg
         overall_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
 
         overall_evaluation_response_json = extract_json(overall_evaluation_response, quite=False)
-        
-        # Generate the Metrics for an interview
-        # overall_interview_metrics_response = await hr_agent.overall_interview_metrics(overall_metrics_msg)
-        content = data['user_session']['persona'] + overall_metrics_msg
+   
+        content = data['user_session']['attributes']['attributes']['persona'] + overall_metrics_msg
         overall_interview_metrics_response = gpt.openai_gpt_assistant_without_streaming(content)
         overall_interview_metrics_json = extract_json(overall_interview_metrics_response, quite=False)
+         
         
-        # Adding necessary data to the final response json
-        message = [{ "candidate": {"response": data['response'], "time_taken": data['time_taken']}},
-                   {"assistant": {"response": "null", 
-                                  "realtime_evaluation": realtime_evaluation_response_json["realtime_evaluation"], 
-                                  "overall_evaluation": overall_evaluation_response_json["overall_evaluation"], 
-                                  "metrics": "null"}}]        
-        data['history'].extend(message)
-        
-        time_array = calculate_time(data['history'])
-        relevancy = filter_the_relevancies(data['history'])
+        time_array = calculate_time(history)
+        relevancy = filter_the_relevancies(history)
         percent_term = percentage_term(relevancy["average"])
         
-        overall_interview_metrics_json["evaluation_metrics"]["time_management"] = time_array
-        overall_interview_metrics_json["evaluation_metrics"]["relevancy"] = relevancy["relevancy"]
-        overall_evaluation_response_json["overall_evaluation"]["overall_performance"] = relevancy["average"]
         overall_evaluation_response_json["overall_evaluation"]["message"] = percent_term["term"]
         overall_interview_metrics_json["evaluation_metrics"]["message"] = percent_term["term"]
+        overall_interview_metrics_json["evaluation_metrics"]["time_management"] = time_array
+        overall_interview_metrics_json["evaluation_metrics"]["relevancy"] = relevancy["relevancy"]
+        overall_interview_metrics_json["evaluation_metrics"]["overall_performance_score"] = relevancy["average"]
         overall_interview_metrics_json["evaluation_metrics"]["rating"] = percent_term["rating"]
+        overall_interview_metrics_json["evaluation_metrics"]["competency"] = overall_evaluation_response_json["overall_evaluation"]["competency"]
         
-        ############################## Save final chat history to weaviate ##########################################
-        temp = data['history'][-1]
-        temp["assistant"]["realtime_evaluation"] = realtime_evaluation_response_json["realtime_evaluation"]
-        temp["assistant"]["overall_evaluation"] = overall_evaluation_response_json["overall_evaluation"]
-        temp["assistant"]["metrics"] = overall_interview_metrics_json["evaluation_metrics"]
-        await database.save_chathistory_to_db(data)
+        ############################## Save final chat history to strapi #########################################        
+        overall_interview_metrics_json = overall_interview_metrics_json["evaluation_metrics"]
+        overall_evaluation_response_json = overall_evaluation_response_json["overall_evaluation"]
+        overall_json = {
+                "attributes": {
+                    "interview_evaluation": overall_evaluation_response_json,
+                    "interview_evaluation_metrics": overall_interview_metrics_json,
+                },
+                "metadata": {
+                    "createdBy": "parrot"
+                }                
+            }
+        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
+        ipersona_manager.insert_observer(overall_json)
+        ipersona_manager.update_session_status()
         #################################################################################################
       
         response = {
@@ -666,14 +656,14 @@ def calculate_time(interview: list) -> dict:
         not_exceeded_count = 0
         
         for i in range(len(interview)):
-            if 'assistant' in interview[i]:
-                assistant_response = interview[i]['assistant']['response']
+            if interview[i]['user_type'] == 'assistant':
+                assistant_response = interview[i]['content']
                 if assistant_response and 'time_limit' in assistant_response:
                     time_limit = assistant_response['time_limit']
                     time_limit_seconds = time_to_seconds(time_limit)
                     
-                    if i + 1 < len(interview) and 'candidate' in interview[i + 1]:
-                        time_taken = interview[i + 1]['candidate']['time_taken']
+                    if i + 1 < len(interview) and interview[i+1]['user_type'] == 'candidate':
+                        time_taken = interview[i + 1]['content']['time_taken']                        
                         time_taken_seconds = time_to_seconds(time_taken)
 
                         if time_taken_seconds > time_limit_seconds:
@@ -720,12 +710,12 @@ def filter_the_relevancies(data: list) -> dict:
         index_counter = 1
         
         for entry in data:
-            if 'assistant' in entry and 'realtime_evaluation' in entry['assistant']:
-                evaluation = entry['assistant']['realtime_evaluation']
+            if entry['user_type'] == 'assistant' and 'realtime_evaluation' in entry['content']:
+                evaluation = entry['content']['realtime_evaluation']
                 if 'answer_relevancy' in evaluation:
                     for relevance in evaluation['answer_relevancy']:
                         relevance_with_index = {
-                            "index": index_counter,  
+                            "question_no": index_counter,  
                             "level": relevance['level'],
                             "reason": relevance['reason']
                         }
@@ -735,6 +725,8 @@ def filter_the_relevancies(data: list) -> dict:
         levels = [int(item["level"]) for item in relevancy]
         average_relevancy = sum(levels) / len(levels) if levels else 0
         
+        average_relevancy = round(average_relevancy, 2)
+        
         data = {
             "relevancy": relevancy,
             "average": average_relevancy
@@ -742,9 +734,8 @@ def filter_the_relevancies(data: list) -> dict:
         return data
     
     except Exception as e:
-        logger.error(f"Filtering overall relevance process failed: ${str(e)}")
+        logger.error(f"Filtering overall relevance process failed: {str(e)}")
         return {'error': str(e)}
-
 
 #----------------------------------------- Assigning Rating Metrics Value Range -----------------------------------------   
 def percentage_term(percent: float) -> dict:
@@ -805,215 +796,157 @@ def percentage_term(percent: float) -> dict:
 
 #----------------------------------------- Entire Data Progress Calculator -----------------------------------------   
 def calculate_overall_progress(data: list) -> dict:
-    """
-    Calculates the overall progress metrics from interview data.
-
-    This function processes the interview data to assess and summarize 
-    metrics related to confidence, clarity, and engagement over time. 
-    It aggregates the metrics from the chat history and restructures them 
-    for visualization.
-
-    Parameters:
-    ----------
-    data : list
-        A list of dictionaries representing the interview sessions, where 
-        each dictionary contains chat history and evaluation metrics.
-
-    Returns:
-    -------
-    dict
-        A JSON object containing overall metrics for confidence, clarity, 
-        engagement, time management, competency, and performance, or an 
-        error message if an exception occurs during processing.
-    """
     try:
         confidence_overtime = []  
         clarity_overtime = []     
-        engagement_overtime = []   
-
-        for dataset in data:  
-            confidence_count = {}
-            clarity_count = {
-                "excellent": 0,
-                "good": 0,
-                "poor": 0
-            }
-            engagement_count = {
-                "excellent": 0,
-                "good": 0,
-                "poor": 0
-            }
-            
-            for entry in dataset['chathistory']:  
-                if "assistant" in entry:
-                    assistant_eval = entry["assistant"]
-                    # Answer relevance overall metrics
-                    if "metrics" in assistant_eval:
-                        metrics = assistant_eval["metrics"]
-                        if isinstance(metrics, dict):
-                            for performance in metrics.get("performance", []):
-                                if isinstance(performance, dict):
-                                    # Check for confidence level
-                                    performance_name = performance.get('name')
-                                    confidence_level = performance.get('level', '').lower() 
-
-                                    if confidence_level:
-                                        confidence_count[confidence_level] = 1
-
-                    # Communication overall metrics
-                    if "realtime_evaluation" in assistant_eval:
-                        realtime = assistant_eval["realtime_evaluation"]
-                        
-                        if isinstance(realtime, dict):
-                            for communication in realtime.get("communication_skills", []):                            
-                                if isinstance(communication, dict):
-                                    # Count overall clarity
-                                    if communication.get('skill') == "clarity":  
-                                        clarity_level = communication['level'].lower()  
-                                        if clarity_level in clarity_count:
-                                            clarity_count[clarity_level] += 1
-
-                                    # Count overall engagement
-                                    if communication.get('skill') == "engagement":  
-                                        engagement_level = communication['level'].lower()  
-                                        if engagement_level in engagement_count:
-                                            engagement_count[engagement_level] += 1
-
-            confidence_overtime.append(confidence_count)
-            clarity_overtime.append(clarity_count)
-            engagement_overtime.append(engagement_count)
-            
-            # Restructure communication skills
-            clarity = restructure_communication_skills_for_vis(clarity_overtime)
-            engagement = restructure_communication_skills_for_vis(engagement_overtime)
+        engagement_overtime = [] 
+        overall_time_managements = []
+        overall_competencies = []
+        overall_performance_scores = []
         
-        result = extract_necessary_metrics(data)   
+        for entry in data:
+            iso_time = entry.get("createdAt", "")
+            created_time = convert_iso_to_readable_format(iso_time)
+            performance = entry.get("performance", [])
+            realtime = entry.get('communication_skills', []) 
+            time = entry.get('time_management', {})
+            competency = entry.get('competency', [])
+            overall_performance_score = entry.get("overall_performance_score", "")
+            obj_time = {
+                "time": created_time,
+                "time_management": time
+            }
+            overall_time_managements.append(obj_time)
+            obj_competency = {
+                "time": created_time,
+                "competency": competency
+            }
+            overall_competencies.append(obj_competency)   
+            obj_score = {
+                "time": created_time,
+                "score": overall_performance_score
+            }
+            overall_performance_scores.append(obj_score)   
+            
+            if isinstance(performance, list):
+                for item in performance:
+                    confidence_level = item.get('level', '').lower()
+                    if(confidence_level == 'poor'):
+                            value = 1
+                    elif(confidence_level == 'good'):
+                        value = 2
+                    elif(confidence_level == 'excellent'):
+                        value = 3
+                    confidence = {"time": created_time, "level": confidence_level, "value": value}
+                    confidence_overtime.append(confidence)                        
+        
+            if isinstance(realtime, list):
+                for communication in realtime:  
+                    if communication.get('skill') == "clarity":  
+                        clarity_level = communication['level'].lower() 
+                        if(clarity_level == 'poor'):
+                            value = 1
+                        elif(clarity_level == 'good'):
+                            value = 2
+                        elif(clarity_level == 'excellent'):
+                            value = 3
+                        clarity = {"time": created_time, "level": clarity_level, "value": value}
+                        clarity_overtime.append(clarity)
+
+                    if communication.get('skill') == "engagement":  
+                        engagement_level = communication['level'].lower()  
+                        if(engagement_level == 'poor'):
+                            value = 1
+                        elif(engagement_level == 'good'):
+                            value = 2
+                        elif(engagement_level == 'excellent'):
+                            value = 3
+                        engagement = {"time": created_time, "level": engagement_level, "value": value}
+                        engagement_overtime.append(engagement)
+    
         response = {
             "overall_confidence": confidence_overtime,
-            "overall_clarity": clarity,
-            "overall_engagement": engagement,
-            "overall_time_management": result["overall_time_management"],
-            "overall_competency": result["overall_competency"],
-            "overall_performance": result["overall_performance"]
+            "overall_clarity": clarity_overtime,
+            "overall_engagement": engagement_overtime,
+            "overall_time_management": overall_time_managements,
+            "overall_competency": overall_competencies,
+            "overall_performance": overall_performance_scores
         }
         return response
-        
+    
     except Exception as e:
-        logger.error(f"Calculating overall progress process failed: ${str(e)}")
+        logger.error(f"File reading process failed: ${str(e)}")
 
-        return {'error': str(e)}
-        
+        return f'Error: {str(e)}'  
+    
 
-#------------------------------------ Entire Data Progress Metrics Extraction --------------------------------------
-def extract_necessary_metrics(data: list) -> dict:
+#----------------------------- Entire User Session Progress Over All Types of Jobs -----------------------------
+def all_session_jobs_average_metrics(data):
     try:
-        """
-        Extracts and restructures necessary metrics from interview data.
-
-        This function processes the interview data to gather metrics related to 
-        time management, competency, and overall performance. It compiles these 
-        metrics into a structured format for further analysis.
-
-        Parameters:
-        ----------
-        data : list
-            A list of dictionaries representing the interview sessions, where 
-            each dictionary contains chat history and evaluation metrics.
-
-        Returns:
-        -------
-        dict
-            A JSON object containing overall metrics for time management, 
-            competency, and performance, structured for visualization.
-        """
-        overall_time_management = []
-        overall_competency = []
-        overall_performance = []
+        response = calculate_overall_progress(data)
+        avg_confidence = calculate_average(response['overall_confidence'])
+        avg_clarity = calculate_average(response['overall_clarity'])
+        avg_engagment = calculate_average(response['overall_engagement'])
+        avg_time_management = calculate_average_time_management(response['overall_time_management'])
+ 
         
-        for index, dataset in enumerate(data): 
-            for entry in dataset['chathistory']: 
-                if "assistant" in entry:
-                    assistant_eval = entry["assistant"]                
-                    if "metrics" in assistant_eval:
-                        metrics = assistant_eval["metrics"]
-                        if isinstance(metrics, dict):
-                            time = metrics.get("time_management", [])
-                            overall_time_management.append(time)
-                            
-                    if "overall_evaluation" in assistant_eval:
-                        overall_evaluation = assistant_eval["overall_evaluation"]
-                        if "competency" in overall_evaluation:
-                            competency = overall_evaluation["competency"]
-                            overall_competency.append(competency)
-                        if isinstance(overall_evaluation, dict):                            
-                            overall_eval_performance = overall_evaluation.get("overall_performance")
-                            performance = {
-                                "interview": index,
-                                "performance": overall_eval_performance
-                            }
-                            overall_performance.append(performance)
+        overall_data = {
+                            "avg_confidence": avg_confidence,
+                            "avg_clarity": avg_clarity,
+                            "avg_engagment": avg_engagment,
+                            "avg_time_management": avg_time_management
+                        }
         
-        # Restructuring time management data
-        time_management = restructure_communication_skills_for_vis(overall_time_management)
+        return overall_data
 
-        response = {
-            "overall_time_management": time_management,
-            "overall_competency": overall_competency,
-            "overall_performance": overall_performance
-        }    
+
         
-        return response  
-
     except Exception as e:
-        logger.error(f"Neccessary metrics extraction process failed: ${str(e)}")
-
-        return {'error': str(e)}
-
-
-#------------------------------ Restructuring Communication skills format For Visualization ------------------------
-def restructure_communication_skills_for_vis(data: list) -> list:
-    """
-    Restructures communication skills data for visualization.
-
-    This function transforms the communication skills data into a format 
-    suitable for visualization by creating a list of dictionaries that 
-    represent relationships between interview names and their corresponding 
-    skill levels.
-
-    Parameters:
-    ----------
-    data : list
-        A list of dictionaries containing communication skills metrics from 
-        multiple interviews.
-
-    Returns:
-    -------
-    list
-        A list of dictionaries where each dictionary contains the interview 
-        name, skill type (capitalized), and corresponding value, or an error 
-        message if an exception occurs during processing.
-    """
-    try:
-        transformed_data = []
-        for i, interview in enumerate(data, start=1):
-            interview_name = f"Interview {i}"
-            for target, value in interview.items():
-                transformed_data.append({
-                    "source": interview_name,
-                    "target": target.capitalize(), 
-                    "value": value
-                })
-                
-        return transformed_data
-    except Exception as e:
-        logger.error(f"Response restructring process failed: ${str(e)}")
-
-        return {'error': str(e)}
+        logger.error(f"File reading process failed: ${str(e)}")
+    
+    
+def calculate_average(data):
+    total_score = 0
+    count = 0
+    
+    for entry in data:
+        value = entry.get("value", 0)          
+        total_score += value 
+        count += 1 
+    
+    average_confidence = total_score / count if count > 0 else 0
+    return average_confidence
 
 
+def calculate_average_time_management(data):
+    total_passes = 0
+    total_fails = 0
+    
+    for entry in data:
+        time_management = entry.get("time_management", {})
+        passes = time_management.get("pass", 0)  
+        fails = time_management.get("fail", 0)    
+        
+        total_passes += passes  
+        total_fails += fails     
+    
+    total_questions = total_passes + total_fails
+    average_pass_rate = (total_passes / total_questions) * 100 if total_questions > 0 else 0
+    average_fail_rate = (total_fails / total_questions) * 100 if total_questions > 0 else 0
 
+    return {
+        "total_passes": total_passes,
+        "total_fails": total_fails,
+        "average_pass_rate": average_pass_rate,
+        "average_fail_rate": average_fail_rate
+    }
 
 #-------------------------------------------- FIle reader --------------------------------------------
+def convert_iso_to_readable_format(iso_time):
+    dt = datetime.strptime(iso_time, '%Y-%m-%dT%H:%M:%S.%fZ')    
+    readable_time = dt.strftime('%d %b %Y %I:%M %p')
+    return readable_time
+
 def file_reader(path: str) -> str:
     """ File Reader """
     try:

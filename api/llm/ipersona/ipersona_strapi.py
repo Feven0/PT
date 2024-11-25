@@ -1,6 +1,6 @@
 
 from api.services.strapi_ipersona import IpersonaManager
-import api.pages.ipersona.socket.ipersona_parrot_gpt as util
+import api.modules.ipersona_parrot_gpt as util
 
 
 def calculate_time_limit(response):

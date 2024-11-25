@@ -1,7 +1,10 @@
 import socketio, time
-import api.pages.ipersona.socket.ipersona_parrot_gpt as util
-import api.pages.ipersona.socket.ipersona_parrot_audio as audio
-import api.pages.ipersona.socket.ipersona_parrot_audio_copy as copy
+# import api.pages.ipersona.socket.ipersona_parrot_gpt as util
+# import api.pages.ipersona.socket.ipersona_parrot_audio as audio
+# import api.pages.ipersona.socket.ipersona_parrot_audio_copy as copy
+import api.modules.ipersona_parrot_gpt as util
+import api.modules.ipersona_parrot_audio as audio
+import api.modules.ipersona_parrot_audio_copy as copy
 import api.llm.ipersona.ipersona_strapi as strapi
 from api.services.strapi_ipersona import IpersonaManager
 from openai import OpenAI

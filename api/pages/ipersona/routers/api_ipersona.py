@@ -7,7 +7,7 @@ if not cpath in sys.path:
     sys.path.append(cpath) 
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import StreamingResponse, JSONResponse
-import api.pages.ipersona.socket.ipersona_parrot_gpt as util
+import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_gpt as gpt
 import api.pages.ipersona.models.persona as pemodel
 import assemblyai as aai
