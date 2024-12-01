@@ -1,7 +1,7 @@
 from fastapi import APIRouter,  FastAPI
 
 # from api.pages.analysis.routers import api_cv_analysis
-from api.pages.ipersona.routers import api_ipersona
+from api.pages.ipersona.routers import ipersona_test
 
 
 #from api.pages.users import route_users

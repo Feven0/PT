@@ -14,6 +14,7 @@ from api.services.strapi_graphql import StrapiGraphql
 from api.services.strapi_methods import StrapiMethods
 import api.utils.aws_utils as awsut
 from api.utils import camel_to_snake
+from api.modules.utils.utils import measure_execution_time
 #
 
 from api.utils.logger import LLPackerLogger
@@ -26,6 +27,20 @@ capitalize = lambda x: x[0].upper() + x[1:]
     
 class LeapBaseClass:
     def __init__(self, **kwargs) -> None:
+        log_level = kwargs.get('log_level', None)
+        
+        #          
+        if log_level and isinstance(log_level, int):
+            logger._logger.setLevel(log_level) 
+                    
+        if config.strapi.stage=='dev':
+            self.run_stage =  kwargs.get('run_stage',config.strapi.stage)
+        else:
+            self.run_stage = config.strapi.stage
+        self.user_token = kwargs.get('strapi_token', kwargs.get('user_token', ""))
+        self.strapi_token = self.user_token
+        self.user_role = kwargs.get('user_role', "")
+                                
         self.kwargs = kwargs
         self.sg = StrapiGraphql(**kwargs)
         self.verbose = kwargs.get('verbose', 0)
@@ -46,6 +61,7 @@ class LeapBaseClass:
         self.sqs_link = awsut.sqs_link
         self.publish_to_sns = awsut.publish_to_sns
         self.publish_to_sqs = awsut.publish_to_sqs
+              
             
     def _get_value(self, res, key, single=False, default="", **kwargs):
 
@@ -72,9 +88,16 @@ class LeapBaseClass:
             return kwargs.get(key, default)
                             
     def process_extra_data(self, extra_data, inplace=True, **kwargs):
-        if not extra_data:            
-            return "", {}, {} 
+        # if not extra_data:            
+        #     return "", {}, {} 
         
+        for tcol, rtcol in {'createdAt':'created_at', 'updatedAt':'updated_at'}.items():
+            if len([x for x in extra_data if x['name']==tcol])==0:
+                v = {"name":tcol, "dtype":"DateTime", "value":tcol, "rename":rtcol}                
+                extra_data.append(v)  
+            if not tcol in self.type_map.keys():
+                self.type_map[tcol] = 'DateTime'
+                            
         data_template = self.data
         if hasattr(self, 'data_template'):
             data_template = self.data_template
@@ -83,6 +106,7 @@ class LeapBaseClass:
         new_type_map = {}
         new_enum_map = {}
         new_name_map = {}
+        has_nested_filter = False
         if extra_data:
             if isinstance(extra_data, dict):
                 extra_data = [extra_data]
@@ -95,19 +119,34 @@ class LeapBaseClass:
                 dtype = ed.get('type', ed.get('dtype', "")).strip()
                 value = ed.get('value', "").strip()
                 rename = ed.get('rename', "")
+                nested_filter = ed.get('filter', "")
                 
+                if name in ['createdAt', 'updatedAt'] and not (name in self.type_map.keys()):
+                    self.type_map[name] = 'DateTime'
+
                 logger.info(f"Processing extra data for table={self.table}, name={name}, dtype={dtype}, value: {value}")
                 
                 # Validate data before adding
-                if (name and dtype and value and name) and not ((name in data_template) and (name in self.type_map.keys())):
-                    logger.good(f'name={name} is valid')
+                if name in data_template:
+                    logger.info(f"Extra data name={name} already exists in data_template!")
+                    continue
+                
+                if name not in self.type_map.keys():
+                    self.type_map[name] = dtype
+                
+                if name and dtype and value and name:
+                    #logger.good(f'name={name} is valid')
                     if dtype in ['String','DateTime','Int','Float','ID','JSON'] or dtype.startswith('ENUM'):
                         logger.info(f"Adding a field in data with name={name}, dtype={dtype}, value: {value}")
                         #logger.good(f'dtype={dtype} is valid!')
                         #
                         if dtype == "ID":                            
                             if 'data {' in value:
-                                value = "%s { %s }"%(name, value)
+                                if nested_filter:
+                                    has_nested_filter = True
+                                    value = "%s %s { %s }"%(name, nested_filter, value)
+                                else:
+                                    value = "%s { %s }"%(name, value)
                             else:
                                 value = name
                         elif dtype.startswith('ENUM'):
@@ -133,7 +172,7 @@ class LeapBaseClass:
                         logger.error(f"Invalid data type: {dtype} for extra data name={name}")
                         continue
                 else:
-                    logger.error(f"Invalid extra data name={name}")
+                    logger.error(f"Invalid extra data: {ed}")
                     continue
                      
         logger.info(f"New data item from extra_data: \n {new_data_item}")  
@@ -146,9 +185,11 @@ class LeapBaseClass:
             try:          
                 if '%s' in data_template:
                     # logger.info(f"Updating self.data with new data item ...")
-                    #        
-                                              
+                    #                                                      
                     self.data = data_template%new_data_item[:-1] 
+                    #if has_nested_filter:
+                    #    print('**** query schema with nested filter: \n', self.data)
+                        
                     self.type_map.update(new_type_map)
                     self.enum_map.update(new_enum_map)
                     self.id_names_map.update(new_name_map)
@@ -160,28 +201,32 @@ class LeapBaseClass:
             return new_data_item, new_type_map, new_enum_map
         
         
-          
+    @measure_execution_time 
     def coarsen_object_type(self, object):
         new_object = {}
         for ovar, val in object.items():
             var = ovar
             
+            if not val:
+                logger.info(f"Empty value for attribute: {var} in object! Skipping it ...", fg='yellow')
+                continue
+            
             if var in self.output_variables:
-                logger.warn(f"Output attribute: {var} in object! Skipping it ...")
+                logger.info(f"Output attribute: {var} in object! Skipping it ...", fg='yellow')
                 continue
             
             if ovar.endswith('_id'):
                 if ovar in self.type_map.keys():
                     pass  # already in correct format
                 elif ovar[:-3] in self.type_map.keys() and self.type_map.get(ovar[:-3], "") == 'ID':
-                    logger.good(f'Auto Fix: {var} with {var[:-3]}!')
+                    logger.info(f'Auto Fix: {var} with {var[:-3]}!', fg='green')
                     var = ovar[:-3]  
                 elif 'tinder_'+ovar[:-3] in self.type_map.keys():
-                    logger.good(f'Auto Fix: {var} with tinder_{var[:-3]}!')
+                    logger.info(f'Auto Fix: {var} with tinder_{var[:-3]}!', fg='green')
                     var = 'tinder_'+ovar[:-3]    
                 for k, v in self.id_names_map.items():
                     if ovar == v and k in self.type_map.keys():
-                        logger.good(f'Auto Fix: {var} with {k}!')
+                        logger.info(f'Auto Fix: {var} with {k}!')
                         var = k
                         break                 
                                 
@@ -199,7 +244,7 @@ class LeapBaseClass:
                             print(e)
                             logger.error(f"Error coarsening STRING object=({var}, {val}). Skipping it ...")                        
                     elif self.type_map[var].startswith('Date'):
-                        try:
+                        try:                            
                             #issue with python vs javascript isoformat - remove/add last 'Z' to parse/cast                             
                             try:
                                 new_object[var] = datetime.fromisoformat(val).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -247,11 +292,11 @@ class LeapBaseClass:
                     logger.error(f"Error coarsening object=({var}, {val}): {e}")
                     return {}
             else:
-                logger.warn(f"Invalid attribute: {var} in object! Skipping it ...")
+                logger.info(f"Invalid attribute: {var} in object! Skipping it ...", fg='yellow')
                 
         return new_object
                 
-        
+    @measure_execution_time
     def validate_objects_type(self, object, all=True, coarsen=True):
         if coarsen:
             object = self.coarsen_object_type(object)
@@ -355,6 +400,7 @@ class LeapBaseClass:
             return 'job_application_status_id'        
         else:
             try:
+                #logger.warn(f"Mapping id to *_id for table: {table} ...")
                 return camel_to_snake(table)+'_id'
             except Exception as e:
                 print(e)
@@ -377,6 +423,9 @@ class LeapBaseClass:
             
         # loop over other attributes    
         for k,v in self.type_map.items(): 
+            if k in ['createdAt', 'updatedAt']:
+                continue
+            
             if k in item:  
                 if v == 'ID':
                     logger.info(f"ID attribute found in object: col={k}, val={item[k]}, type={type(item[k])}!")
@@ -394,7 +443,27 @@ class LeapBaseClass:
             
         return param_type, param_var
                        
-    def map_id_to_object_id(self, res):        
+    def map_id_to_object_id(self, res):              
+        res = copy.deepcopy(res)
+        
+        def _apply_id_map(k, v, cols):
+            newcol = None
+            col = None
+            try:
+                if k+'_id' in cols:
+                    newcol = v                          
+                    col = k+'_id'
+                else:
+                    for c in cols:
+                        if c.startswith(k):
+                            newcol = c.replace(k, v)
+                            col = c
+                            break                    
+            except Exception as e:
+                logger.error(e)
+            
+            return newcol, col
+        
         if isinstance(res, pd.DataFrame):
             if res.empty:
                 return res
@@ -406,29 +475,35 @@ class LeapBaseClass:
                 return tenxdf
             
             columns={'id': self.id_name()}
-            for k, v in self.id_names_map.items():
-                if k in tenxdf.columns:
-                    columns[k] = v
-                elif k+'_id' in tenxdf.columns:
-                    columns[k+'_id'] = v
+            for k, v in self.id_names_map.items():                
+                newcol, col = _apply_id_map(k, v, tenxdf.columns)
+                if newcol:
+                    columns[col] = newcol
+    
             tenxdf.rename(columns=columns, inplace=True)            
             return tenxdf
         
         elif isinstance(res, dict):
             if not res:
-                return res
+                return res            
             if 'id' not in res.keys():
                 logger.error("No ID attribute found in DICT RES object!")
                 if logger.log_level<50:
                     print(res)
                 return res
-            
-            res[self.id_name()] = res.pop('id')
-            for k, v in self.id_names_map.items():
-                if k in res.keys():
-                    res[v] = res.pop(k)
-                elif k+'_id' in res.keys():
-                    res[v] = res.pop(k+'_id')
+            else:
+                res[self.id_name()] = res.pop('id')
+                
+            keys_list = list(res.keys())           
+            for k, v in self.id_names_map.items():  
+                newcol, col = _apply_id_map(k, v, keys_list)
+                if newcol: 
+                    try:                                           
+                        res[newcol] = res.pop(col)
+                    except Exception as e:
+                        print(e)
+                        logger.error(f"Error mapping {(k, v, col)} to {newcol} in object!")
+                        continue
                     
             return res
         
@@ -486,7 +561,13 @@ class LeapBaseClass:
         
         return c1 or c2 or c3 or c4
         
-    def construct_filter(self, filter="", prefix=", ", **kwargs):
+    def construct_query_filter(self, prefix=", ", **kwargs):
+        
+        query_filter = ""
+        for k in ['query_filter', 'filter', 'filters']:
+            if k in kwargs.keys():
+                query_filter = kwargs.pop(k)
+                break
         
         # process extra data
         extra_data = kwargs.pop('extra_data', [])
@@ -502,10 +583,10 @@ class LeapBaseClass:
                                         ('dtype' in x.keys() or 'type' in x.keys())
             }
                     
-        # add created at filter                 
-        if not filter:
+        # add created at query_filter                 
+        if not query_filter:
             
-            logger.info('Empty filter. Checking if time and general filter keys are passed ...')            
+            logger.info('Empty query_filter. Checking if time and general filter keys are passed ...')            
             scol = kwargs.pop('scol',"")
             sval = kwargs.pop('sval',"")
             op = kwargs.pop('op',"eq")
@@ -535,15 +616,16 @@ class LeapBaseClass:
             dtype = 'DateTime'
             if dt:=kwargs.pop('dt', kwargs.pop('since',None)):
                 if isinstance(dt, int):
-                    dt = datetime.now() - timedelta(days=dt)
+                    dt = datetime.now().replace(hour=23,minute=59,second=59, microsecond=0) - timedelta(days=dt)
                 if isinstance(dt, datetime):
                     dt = dt.isoformat()
                 if isinstance(dt, str):
                     dtval = f'"{dt}Z"'                                 
                     #
+                logger.good(f'----> Time filter for `{dtcol} {dtop} {dt}` ...')
                     
             andcol = kwargs.pop('andcol', [])
-            andval = kwargs.pop('andval', kwargs.pop('andvalue', []))
+            andval = kwargs.pop('andval', kwargs.pop('andvalue', []))            
             andop = kwargs.pop('andop', {})
             andtype = kwargs.pop('andtype', {x:self.type_map.get(x, 'String') for x in andcol})
             
@@ -551,11 +633,12 @@ class LeapBaseClass:
             f2 = lambda x: self.type_map.get(x, 'String')
             andop = self.sg.make_scol_optype_dict(andcol, andop, func=f1)
             andtype = self.sg.make_scol_optype_dict(andcol, andtype, func=f2)
-                                        
+                                    
+
             if scol and sval and dtcol and dt and dtop:
-                logger.info(f'----> Applying general filter for `{dtcol} {dtop} {dt}` ...')
-                andcol.append(dtcol)
-                andval.append(dtval)
+                logger.info(f'----> Applying general filter for `{dtcol} {dtop} {dt}` ...')                                
+                andcol.append(dtcol)                
+                andval.append(dtval)                                        
                 andop[dtcol] = dtop
                 andtype[dtcol] = 'DateTime'
             elif dtcol and dtval and dtop:
@@ -577,19 +660,28 @@ class LeapBaseClass:
                                    andtype=andtype,
                                    relation_map=self.relation_map,
                                    ))
-                filter = self.sg.create_filter(**kwargs)
-                
-                filter= f'{prefix}filters: {filter}'
+                query_filter = self.sg.create_filter(**kwargs)
+                    
+                if query_filter:
+                    query_filter = f'{prefix}filters: {query_filter}'
+
                 extra_data.append({"name":dtcol, "dtype":"DateTime", "value":dtcol})
             else:
                 logger.info('No time or general filter keys passed!')    
                 
-        return filter, extra_data        
-                                    
+        
+        return query_filter, extra_data        
+          
+    @measure_execution_time                          
     def exists(self, data="", table='', 
                scol='id', sval='', 
-               op='eq', filters="", 
-               **kwargs):
+               op='eq', **kwargs):
+        
+        query_filter = ""
+        for k in ['query_filter', 'filter', 'filters']:
+            if k in kwargs.keys():
+                query_filter = kwargs.pop(k)
+                break
         
         logger.debug(f'-------> exists kwargs {kwargs}', level=9)
         
@@ -624,7 +716,7 @@ class LeapBaseClass:
         logger.info("----------------------> check/get data if exists in Tenx:")
             
         logger.info(f"Checking if data exists in `table={table}` using the following filter:")
-        if not filters:   
+        if not query_filter:   
             if scol == 'id':
                 var = "$id"
             else:
@@ -637,9 +729,9 @@ class LeapBaseClass:
                                 andtype=andtype, 
                                 ortype=ortype,
                                 relation_map=self.relation_map))
-            filters =  self.sg.create_filter(**kwargs)            
+            query_filter =  self.sg.create_filter(**kwargs)            
 
-        logger.info(f"----> `self.exists` filters: {filters}", fg='yellow')
+        logger.info(f"----> `self.exists` query_filter: {query_filter}", fg='yellow')
         
         if scol == 'id':     
             logger.info(f'----> Filtering by ID column...')  
@@ -665,14 +757,14 @@ class LeapBaseClass:
         elif self.type_map[scol] == 'ID':  #it is a table
             logger.info(f'----> Filtering by related_table={scol} in `table={table}` ...')
             if isinstance(sval, list): 
-                #filters = filters.replace('eq:', 'in:')              
+                #query_filter = query_filter.replace('eq:', 'in:')              
                 query = '''
                     query get%s($val: [%s]!) {
                         %s(filters: %s ) {     
                             %s 
                         }
                     }
-                '''%(capitalize(table), stype, table, filters, data)
+                '''%(capitalize(table), stype, table, query_filter, data)
             else:
                 query = '''
                     query get%s($val: %s!) {
@@ -680,7 +772,7 @@ class LeapBaseClass:
                             %s 
                         }
                     }
-                '''%(capitalize(table), stype, table, filters, data)
+                '''%(capitalize(table), stype, table, query_filter, data)
                             
             variables = {'val': sval}  
                       
@@ -692,35 +784,51 @@ class LeapBaseClass:
                         %s 
                     }
                 }
-            '''%(capitalize(table), stype, table, filters, data)
+            '''%(capitalize(table), stype, table, query_filter, data)
             
             variables = {'val': sval}                        
 
         logger.info(f"----> Searching for `{scol}={sval}` in `table={table}` ... ", bold=True, fg='pink')
         
-            
+
         if scol == 'id' or scol in data:            
             res, _ = self.sg.execute_query(query, variables, **kwargs)
         else:
+            print('==============================')
+            print('exists query:')
+            print(json.dumps(query, indent=4))
+            print('exists variables:')
+            print(json.dumps(variables, indent=4))
+            print('==============================')            
             logger.error(f"----> Invalid column={scol} for {table} with attributes: \n {data}!")
             return {}
                       
         
         if res:
             logger.good(f"----> Found object with {scol}={sval} in `table={table}`!")
-            res = self.map_id_to_object_id(res)             
+            res = self.map_id_to_object_id(res) 
+            #logger.good(f'Returned object type: {type(res)} - >[0]-> {type(res[0])}')            
             return res[0]
         else:
             logger.info(f"----> No Object found with {scol}={sval} in `table={table}`!")
             return {}
-                          
-    def count_records(self, filter="",**kwargs):
+          
+    @measure_execution_time                
+    def count_records(self, **kwargs):
+        
+        query_filter = ""
+        for k in ['query_filter', 'filter', 'filters']:
+            if k in kwargs.keys():
+                query_filter = kwargs.pop(k)
+                break
 
         kwargs.update({'dataframe':False, 'raw':True})
         logger.debug(f'-------> count_records kwargs {kwargs}', level=9)
         
         kwargs['limit'] = 0
-        filter, extra_data = self.construct_filter(filter, prefix="", **kwargs)  
+        kwargs['prefix'] = ""
+        query_filter, extra_data = self.construct_query_filter(query_filter=query_filter,
+                                                               **kwargs)  
         
         #
         # process extra data                            
@@ -755,7 +863,7 @@ class LeapBaseClass:
                 }   
             }
         }
-        '''%(capitalize(table), table, filter)
+        '''%(capitalize(table), table, query_filter)
         
         variables = {}        
         
@@ -764,53 +872,82 @@ class LeapBaseClass:
         total = meta['pagination']['total']
         
         return total   
-                                        
+                  
+    @measure_execution_time                      
     def get_all_objects(self, data="", table='', 
                         limit=0, cursor={}, raw=False, ddcol="",
-                        dataframe=True, filter="",
-                        **kwargs):
-
+                        dataframe=True, **kwargs):
+         
+        query_filter = ""
+        for k in ['query_filter', 'filter', 'filters']:
+            if k in kwargs.keys():
+                query_filter = kwargs.pop(k)
+                break
+        
         kwargs.update({'dataframe':dataframe, 'raw':raw})
-        logger.debug(f'-------> get_all_objects kwargs {kwargs}', level=10)
         
-        
+        #caller_filename = kwargs.get('caller', "")
+        #logger.good(f'-------> `{caller_filename}->get_all_objects` cursor={cursor}', fg='pink')
+                            
         if limit == 0:
             limit = kwargs.get('maxobjs', limit)      
         
         # set return cursor
+        cursor = copy.deepcopy(cursor)
         return_cursor = False
         if cursor:
+            limit = 0
             return_cursor = True
             
-        if cursor and isinstance(cursor, dict):
-            logger.good('Continue from existing cursor object:')
-            print({cursor for k, v in cursor.items() if k != 'query'})
+        res = pd.DataFrame() if dataframe else []
+        
+        # empty return object
+        if return_cursor:
+            empty_return = res, cursor
+        else:
+            empty_return = res
             
-            filter = cursor.get('filter', filter)
-            query = cursor.get('query', "")
-            notal = cursor.get('ntotal', 0)            
-            page = cursor.get('page', 1)
-            page_size = cursor.get('page_size', limit)
-            
-            #
-            x = f"page={page}, page_size={page_size}, ntotal_so_far={notal}"
-            logger.info(f"Continue from existing cursor to get objects: {x} ...", bold=True, fg='pink')
-                                                
-        else:           
+        # set empty output object
+        if dataframe:
+            tenxdf = pd.DataFrame()
+        else:
+            tenxdf = []            
+        
+        # ensure cursor is a dictionary                
+        if not isinstance(cursor, dict):
             cursor = {}
+        else:
+            logger.good('Continue from existing cursor object:')            
+        
+        
+        #
+        #print(f'----> limit:{limit}',{k:v for k, v in cursor.items() if k != 'query'})
             
-            #
-            page = 1            
-            page_size  = min(1000, limit) if limit > 0 else 1000                         
-            logger.info(f"Using page_size={page_size} ...")
-                    
-            # process filter and extra data  
-            filter, extra_data = self.construct_filter(filter, **kwargs) 
-            if len([x for x in extra_data if x['name']=='createdAt'])==0:
-                v = {"name":'createdAt', "dtype":"DateTime", "value":'createdAt'}                
-                extra_data.append(v)  
+        
+        query_filter = cursor.get('filter', query_filter)
+        query = cursor.get('query', "")         
+        page = cursor.get('page', 1)         
+        if return_cursor:   
+            page_size = cursor.get('page_size', 20)
+        else:
+            if limit == 0:
+                page_size = kwargs.get('page_size', 1000)
+            else:
+                page_size = kwargs.get('page_size', min(limit,1000))
             
-            logger.info(f"----> `self.get_all_objects` filter: {filter}")
+        if limit>0 and limit < page_size:
+            page_size = limit
+            
+        offset_start = int((page-1)*page_size)
+                                                   
+        if not query:                       
+            #                    
+            # process query_filter and extra data  
+            kwargs['prefix'] =  ", "
+            query_filter, extra_data = self.construct_query_filter(query_filter=query_filter, 
+                                                                   **kwargs)                 
+            
+            logger.good(f"----> `self.get_all_objects` filter: {query_filter}", fg='pink')
 
             
             # process extra data                            
@@ -820,22 +957,25 @@ class LeapBaseClass:
                 data = self.data
             if not data:
                 logger.error("No data schema provided!")
-                return []            
+                return empty_return         
                         
             if not table:
                 table = self.table
             if not table:
                 logger.error("Table name is not provided!")
-                return []
+                return empty_return  
             
                 
             logger.info(f"Getting all {table} objects ...", bold=True, fg='pink')
                     
     
-            # prepare query            
+            # prepare query
+            #$page: Int!            
+            #$pageSize: Int!
+            #{ page: $page, pageSize: $pageSize }
             query = '''
-            query get%s( $page: Int!, $pageSize: Int!) {
-                %s( pagination: { page: $page, pageSize: $pageSize }, sort: "createdAt:desc"  %s ) {     
+            query get%s( $offsetStart: Int!, $pageSize: Int!) {
+                %s( pagination: { start: $offsetStart, limit: $pageSize }, sort: "createdAt:desc"  %s ) {     
                     meta {
                         pagination {
                             page
@@ -847,24 +987,11 @@ class LeapBaseClass:
                     %s
                 }
             }
-            '''%(capitalize(table), table, filter, data)
+            '''%(capitalize(table), table, query_filter, data)
         
-        
-        # define variables
-        variables = {"page": page, "pageSize": page_size}
-        
-        # set empty output object
-        if dataframe:
-            tenxdf = pd.DataFrame()
-        else:
-            tenxdf = []
-            
-        
+         
+                 
         logger.info(f"Getting objects from Tenx `table={table}`... ")
-        if logger.log_level<10:
-            logger.info("Using the following variables and query: ")
-            print(variables)
-            print(query) 
             
         if not query:
             logger.error("Invalid query for `table={table}`!")
@@ -876,13 +1003,39 @@ class LeapBaseClass:
         reslist = []
         res = []                
         ntotal = 0
-        while True:
-            res, meta = self.sg.execute_query(query, variables, **kwargs)
+        navailable = -1
+        page_count = -1
+        
+        # define variables
+        #variables = {"page": page, "pageSize": page_size}
+        variables = {"offsetStart": offset_start, "pageSize": page_size}       
+        
+        nloop = 0
+        max_loop = 100 
+        while True:                      
+            nloop += 1
+            if nloop > max_loop and max_loop > 0:
+                logger.error(f"************Exceeded max loop count: {max_loop}!******")
+                break   
+            if nloop>10:
+                logger.warn(f"While Loop count: {nloop} ...")
+                      
+            try:             
+                res, meta = self.sg.execute_query(query, variables, **kwargs)
+            except Exception as e:
+                logger.error(f"Error executing query: {e}")
+                raise
+            
             ntotal += len(res)
             
-            if len(res)>0:                
-                res = self.map_id_to_object_id(res)
-                if isinstance(res, (dict, pd.DataFrame)):                    
+            if len(res)>0:      
+                try:          
+                    res = self.map_id_to_object_id(res)
+                except Exception as e:
+                    logger.error(f"Error mapping id to object id: {e}")
+                    raise
+                
+                if isinstance(res, (dict, pd.DataFrame)):                            
                     reslist.append(res)
                 elif isinstance(res, (list,tuple)):
                     reslist.extend(res)
@@ -890,28 +1043,50 @@ class LeapBaseClass:
                     logger.error(f"Invalid query result data format for `table={table}`: type(res)={type(res)}!")
                     break
 
-            # feedback
-            sss = f"n={ntotal}, ntotal={meta['pagination']['total']}, page_count={meta['pagination']['pageCount']}"
-            logger.info(f'Got the following so far ==> {sss}')  
-                    
-            cursor['query'] = query
-            cursor['filter'] = filter                     
-            cursor['page'] = meta['pagination']['page']
-            cursor['page_size'] = meta['pagination']['pageSize']
-            cursor['total'] = meta['pagination']['total']
-            cursor['page_count'] = meta['pagination']['pageCount']
-            
-            if meta['pagination']['page'] == meta['pagination']['pageCount'] \
-                or meta['pagination']['pageCount']==0 \
-                    or meta['pagination']['total']==0:      
-                break
-            variables['page'] += 1
-                                                  
-            
-            if ntotal >= limit and limit > 0:
-                break
-            
+            try:
+                page = meta['pagination']['page']
+                page_count = meta['pagination']['pageCount']
+                page_size = meta['pagination']['pageSize']
+                navailable = meta['pagination']['total']
+                
+                # feedback
+                sss = f"n={ntotal}, navailable={navailable}"
+                sss2 = f"page_count={page_count}, page={page}, page_size={page_size}"
+                logger.info(f'Got the following so far ==> {sss}, {sss2}')                  
+                                    
+                cursor['query'] = query
+                cursor['filter'] = query_filter                     
+                cursor['page'] = page
+                cursor['page_size'] = page_size
+                cursor['total'] = navailable
+                cursor['page_count'] = page_count
+                
+            except Exception as e:
+                logger.error(f"Error extracting pagination info: {e}")
+                break            
 
+            #print(f'-{nloop}--> page, page_count, page_size, navailable, variables, len(res):', 
+            #      page, page_count, page_size, navailable, variables, len(res))
+         
+            if  page >= page_count  or page_count==0 or navailable==0:      
+                break
+                                                         
+            
+            offset_start += page_size + 1
+            variables["offsetStart"] = offset_start  
+                  
+            if return_cursor:      
+                if ntotal >= page_size:
+                    break
+            else:
+                if limit>0 and ntotal >= limit:
+                    break
+                
+            if max_loop > 0:
+                break
+                
+            
+        #print('Returning reslist:', len(reslist))
         tenxdf = reslist
         if len(reslist) > 0 and dataframe:
             if kwargs.get('sort', 'asc'):
@@ -926,15 +1101,14 @@ class LeapBaseClass:
                                                 ignore_index=True, 
                                                 keep='last')  
                                              
-        if logger.log_level<20:         
-            print("---------------------->")
         
         if return_cursor:
             return tenxdf, cursor
         else:
+            cursor = {}
             return tenxdf          
     
-
+    @measure_execution_time
     def delete_objects_by_id(self, object_ids, table='', **kwargs):  
         
         if not table:
@@ -981,7 +1155,7 @@ class LeapBaseClass:
 
         return deleted_job_matches
 
-        
+    @measure_execution_time
     def save_or_update_object(self, params, data="", return_object=False, **kwargs):
         '''
         This function saves or updates a single object in the database.
@@ -1007,7 +1181,7 @@ class LeapBaseClass:
 
         # process extra data
         _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)        
-        
+
         table = self.table_single
         
         if not table:
@@ -1115,6 +1289,7 @@ class LeapBaseClass:
                          
                     logger.good(f"Successfully registered entry to Tenx `table={table}`!")
                 else:
+                    print(res)
                     logger.error(f"Unable to register entry to Tenx `table={table}`!")
             except Exception as e:
                 logger.error(f"Error: {e}")
@@ -1126,6 +1301,7 @@ class LeapBaseClass:
                 
         return added_item_ids    
 
+    @measure_execution_time
     def get_tenx_id_if_exists(self, scol, params, table='', **kwargs):
         
         # deterimine the filtering columns and their values
@@ -1197,7 +1373,8 @@ class LeapBaseClass:
         else:
             logger.info(f"Entry with {scol}={params[scol]} in Tenx `table={table}` ...")
             return "", {}            
-                    
+              
+    @measure_execution_time      
     def save_if_new(self, scol, params, table='', return_object=False, **kwargs):
         
         #

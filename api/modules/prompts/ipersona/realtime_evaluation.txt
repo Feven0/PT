@@ -13,15 +13,6 @@ VERY IMPORTANT: Use These Guideline for Filling Evaluation JSON
         - 70-89%: Most responses were relevant, with minor irrelevant elements.
         - 50-69%: Some relevant answers, but many did not directly address the questions.
         - Below 50%: Responses mostly irrelevant to the questions.
-2. Communication Skills
-    - Clarity:
-        - Excellent: Responses were coherent and easily understood.
-        - Good: Some parts were clear, but others were confusing.
-        - Poor: Many responses were difficult to follow.
-    - Engagement:
-        - Excellent: Actively participated and showed enthusiasm.
-        - Good: Participated but lacked enthusiasm or responsiveness.
-        - Poor: Did not show interest or engagement during the interview.
 
 
 YOU MUST RESPOND IN ONLY ONE JSON FORMAT:
@@ -37,19 +28,7 @@ example:
                 "level": "30",
                 "reason":"Justify the relevant_answer level value given"
             }
-        ],
-        "communication_skills": [
-            {
-                "skill": "clarity",
-                "level": "eg: Good",
-                "reason": "Justify the clarity level given"
-            },
-            {
-                "skill": "engagement",
-                "level": "eg: Poor",
-                "reason": "Justify the engagement level given"
-            }
-        ],  
+        ]  
     }  
 }
 

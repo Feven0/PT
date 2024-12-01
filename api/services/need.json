@@ -1,0 +1,263 @@
+[
+  {
+    "id": "46",
+    "attributes": {
+      "attributes": {
+        "level": "Mid-Senior level",
+        "title": "AI/ML Engineer",
+        "purpose": "To develop and implement secure, scalable, and robust AI/ML product features, handle large-scale data, and ensure the smooth operation of healthcare applications.",
+        "location": "Remote, USA",
+        "company_info": {
+          "name": "Reveille Technologies",
+          "size": "201-500 employees",
+          "values": [
+            "Innovation",
+            "Integrity",
+            "Customer Focus"
+          ],
+          "mission": "To deliver innovative technology solutions that drive business success.",
+          "summary": "Reveille Technologies is a leading provider of technology solutions, specializing in software development and IT services."
+        },
+        "company_name": "Reveille Technologies",
+        "competencies": [
+          {
+            "name": "Industrialization Algorithms",
+            "skills": [
+              "Algorithm Development"
+            ],
+            "summary": "senior level of Industrialization Algorithms competency is required",
+            "abilities": [
+              "Problem Solving"
+            ],
+            "knowledge": [
+              "Algorithm Optimization"
+            ],
+            "relevance": "very relevant",
+            "sfia_level": "5",
+            "rationale_name": "job explicitly requires experience in Industrialization Algorithms",
+            "other_attributes": [
+              "Attention to Detail"
+            ],
+            "rationale_sfia_level": [
+              "autonomy=level-5",
+              "complexity=level-5",
+              "influence=level-5"
+            ]
+          },
+          {
+            "name": "Python",
+            "skills": [
+              "Python Programming"
+            ],
+            "summary": "senior level of Python competency is required",
+            "abilities": [
+              "Code Optimization"
+            ],
+            "knowledge": [
+              "Python Libraries"
+            ],
+            "relevance": "very relevant",
+            "sfia_level": "5",
+            "rationale_name": "job explicitly requires Python programming language",
+            "other_attributes": [
+              "Analytical Thinking"
+            ],
+            "rationale_sfia_level": [
+              "autonomy=level-5",
+              "complexity=level-5",
+              "influence=level-5"
+            ]
+          },
+          {
+            "name": "AWS",
+            "skills": [
+              "AWS Services"
+            ],
+            "summary": "senior level of AWS competency is required",
+            "abilities": [
+              "Infrastructure Management"
+            ],
+            "knowledge": [
+              "Cloud Computing"
+            ],
+            "relevance": "very relevant",
+            "sfia_level": "5",
+            "rationale_name": "job explicitly requires AWS experience",
+            "other_attributes": [
+              "Scalability"
+            ],
+            "rationale_sfia_level": [
+              "autonomy=level-5",
+              "complexity=level-5",
+              "influence=level-5"
+            ]
+          },
+          {
+            "name": "Spark",
+            "skills": [
+              "Data Processing"
+            ],
+            "summary": "senior level of Spark competency is required",
+            "abilities": [
+              "Data Integration"
+            ],
+            "knowledge": [
+              "Big Data"
+            ],
+            "relevance": "very relevant",
+            "sfia_level": "5",
+            "rationale_name": "job explicitly requires Spark experience",
+            "other_attributes": [
+              "Efficiency"
+            ],
+            "rationale_sfia_level": [
+              "autonomy=level-5",
+              "complexity=level-5",
+              "influence=level-5"
+            ]
+          },
+          {
+            "name": "Machine Learning",
+            "skills": [
+              "Model Development"
+            ],
+            "summary": "senior level of Machine Learning competency is required",
+            "abilities": [
+              "Predictive Analysis"
+            ],
+            "knowledge": [
+              "ML Algorithms"
+            ],
+            "relevance": "very relevant",
+            "sfia_level": "5",
+            "rationale_name": "job explicitly requires ML experience",
+            "other_attributes": [
+              "Innovation"
+            ],
+            "rationale_sfia_level": [
+              "autonomy=level-5",
+              "complexity=level-5",
+              "influence=level-5"
+            ]
+          },
+          {
+            "name": "Data Integration",
+            "skills": [
+              "Data Integration"
+            ],
+            "summary": "senior level of Data Integration competency is required",
+            "abilities": [
+              "Data Handling"
+            ],
+            "knowledge": [
+              "Data Sources"
+            ],
+            "relevance": "very relevant",
+            "sfia_level": "5",
+            "rationale_name": "job explicitly requires data integration experience",
+            "other_attributes": [
+              "Attention to Detail"
+            ],
+            "rationale_sfia_level": [
+              "autonomy=level-5",
+              "complexity=level-5",
+              "influence=level-5"
+            ]
+          },
+          {
+            "name": "Data Processing",
+            "skills": [
+              "Data Processing"
+            ],
+            "summary": "senior level of Data Processing competency is required",
+            "abilities": [
+              "Data Handling"
+            ],
+            "knowledge": [
+              "Data Pipelines"
+            ],
+            "relevance": "very relevant",
+            "sfia_level": "5",
+            "rationale_name": "job explicitly requires data processing experience",
+            "other_attributes": [
+              "Efficiency"
+            ],
+            "rationale_sfia_level": [
+              "autonomy=level-5",
+              "complexity=level-5",
+              "influence=level-5"
+            ]
+          },
+          {
+            "name": "Agile Methodology",
+            "skills": [
+              "Agile Practices"
+            ],
+            "summary": "mid-senior level of Agile Methodology competency is required",
+            "abilities": [
+              "Team Collaboration"
+            ],
+            "knowledge": [
+              "Scrum"
+            ],
+            "relevance": "relevant",
+            "sfia_level": "4",
+            "rationale_name": "job requires working within self-organizing Agile teams",
+            "other_attributes": [
+              "Adaptability"
+            ],
+            "rationale_sfia_level": [
+              "autonomy=level-4",
+              "complexity=level-4",
+              "influence=level-4"
+            ]
+          },
+          {
+            "name": "Professional Communication",
+            "skills": [
+              "Oral Communication"
+            ],
+            "summary": "mid-senior level of Professional Communication competency is required",
+            "abilities": [
+              "Interpersonal Skills"
+            ],
+            "knowledge": [
+              "Written Communication"
+            ],
+            "relevance": "relevant",
+            "sfia_level": "4",
+            "rationale_name": "job requires effective communication within teams",
+            "other_attributes": [
+              "Clarity"
+            ],
+            "rationale_sfia_level": [
+              "autonomy=level-4",
+              "complexity=level-4",
+              "influence=level-4"
+            ]
+          }
+        ],
+        "salary_range": "Not specified",
+        "duties_responsibilities": [
+          "Implement product features that are secure, scalable, robust, and easy to maintain.",
+          "Handle terabytes of data and multiple data sources.",
+          "Write and industrialize algorithms.",
+          "Provide bug fixes and ensure features work well at cloud scale.",
+          "Work with minimal supervision within self-organizing Agile teams.",
+          "Take ownership of code."
+        ],
+        "required_qualifications": [
+          "10+ years of healthcare product/application development experience.",
+          "Experience in Industrialization Algorithms, Python, AWS, Spark, and ML.",
+          "Experience in handling terabytes of data.",
+          "Experience in writing algorithms."
+        ],
+        "preferred_qualifications": [
+          "Experience with tools such as JIRA, Bitbucket, Confluence.",
+          "Understanding of AWS Security, API Gateway.",
+          "Knowledge of design patterns."
+        ]
+      }
+    }
+  }
+]

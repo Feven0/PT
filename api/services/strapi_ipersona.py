@@ -1,135 +1,72 @@
 
-import pandas as pd
-import re
+import copy, os
 from api.services.strapi_graphql import StrapiGraphql
+from api.modules.leap_base import LeapBaseClass
+from api.utils.logger import LLPackerLogger
+logger = LLPackerLogger(os.path.basename(__file__))
+from collections import defaultdict
+capitalize = lambda x: x[0].upper() + x[1:]
 
 
-class IpersonaManager:
+class IpersonaManager(LeapBaseClass):
     def __init__(self, **kwargs):
         self.sessionId = kwargs.get("sessionId", 1)  
-        self.alluser = kwargs.get("alluser", 16)
-        self.jobId = kwargs.get("jobId", 1045)
-        self.sg = StrapiGraphql(run_stage=kwargs.get("run_stage", "dev"))
+        self.alluserId = kwargs.get("alluserId", 1974)
+        self.jobId = kwargs.get("jobId", 46)
+        self.sg = StrapiGraphql(run_stage=kwargs.get("run_stage", "dev"))        
     
     def get_alluser_sessions(self):
         """
-        Function to get all sessions from Strapi GraphQL with pagination.
+        Function to get all sessions from Strapi GraphQL with pagination, 
+        filtered by `alluserId`'s `tinder_user_profile_id`.
 
         Returns:
-            List containing all the sessions filtered by `alluser`.
+            List containing session data with extracted observer attributes.
         """
-        page_size = 100 
+        page_size = 100
         page = 1  
         all_sessions = []  
-        
+
+        # Getting the `tinder_user_profile_id` from the trainee user profile
+        data = self.get_trainee_user_profile()
+        if not data:
+            logger.warn("No trainee user profiles found.")
+            return []
+
+        tinder_user_profile_id = data[0]['id']
+
         while True:
             sessions_query = """
-                query GetIPersonaSessions($page: Int, $pageSize: Int) {
+                query GetIPersonaSessions($tinder_user_profile_id: ID!, $page: Int, $pageSize: Int) {
                     iPersonaSessions(
+                        filters: {
+                            tinder_user_profile: {
+                                id: { eq: $tinder_user_profile_id }  
+                            }
+                        },
                         pagination: { page: $page, pageSize: $pageSize },
-                        sort: "createdAt:desc"  # Sort by createdAt in descending order
+                        sort: "createdAt:desc"
                     ) {
                         data {
                             id
                             attributes {
-                                slug
                                 status
                                 attributes
-                                createdAt  
+                                createdAt
                                 i_persona_observer {
                                     data {
                                         attributes {
                                             attributes
                                             metadata
                                         }
-                                    }        	
-                                }
-                                # i_persona_messages {
-                                #     data {
-                                #         attributes {
-                                #             attributes,
-                                #             metadata
-                                #         }
-                                #     }        	
-                                # }
-                            }     
-                        }
-                        meta {
-                            pagination {
-                                total
-                                page
-                                pageSize
-                                pageCount
-                            }
-                        }
-                    }
-                }
-            """
-            
-            sessions_json = self.sg.Select_from_table(
-                query=sessions_query,
-                variables={"page": page, "pageSize": page_size}  
-            )
-
-            if 'data' in sessions_json and 'iPersonaSessions' in sessions_json['data']:
-                sessions_data = sessions_json['data']['iPersonaSessions']['data']
-                all_sessions.extend(sessions_data) 
-
-                pagination = sessions_json['data']['iPersonaSessions']['meta']['pagination']
-                if pagination['page'] >= pagination['pageCount']:
-                    break  
-                else:
-                    page += 1  
-            else:
-                print("No data received or error in response.")
-                break
-                
-        filtered_data = [
-            item for item in all_sessions 
-            if item['attributes']['attributes']['alluser'] == self.alluser
-        ] 
-                
-        extracted_observers = []
-        for message in filtered_data:
-            if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
-                message_data = message['attributes']['i_persona_observer']['data']            
-                message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
-                message_attributes['createdAt'] = message['attributes']['createdAt']          
-                extracted_observers.append(message_attributes)
-
-        return extracted_observers
-        
-    def get_job_sessions_observers(self):
-        """
-        Function to get all sessions from Strapi GraphQL with pagination.
-
-        Returns:
-            List containing filtered sessions in ascending order based on createdAt.
-        """
-        page_size = 100 
-        page = 1  
-        all_sessions = []  
-        
-        while True:
-            sessions_query = """
-                query GetIPersonaSessions($page: Int, $pageSize: Int) {
-                    iPersonaSessions(pagination: { page: $page, pageSize: $pageSize }, sort: "createdAt:desc") {
-                        data {
-                            id
-                            attributes {
-                                slug
-                                status
-                                attributes
-                                createdAt  
-                                i_persona_observer {
-                                    data {
-                                        attributes {
-                                            attributes
-                                            metadata
-                                        }
-                                    }        	
+                                    }        
                                 } 
-                            }     
+                                tinder_job_profile {
+                                    data {
+                                        id
+                                    }
+                                }                               
+                            }
                         }
                         meta {
                             pagination {
@@ -145,37 +82,24 @@ class IpersonaManager:
             
             sessions_json = self.sg.Select_from_table(
                 query=sessions_query,
-                variables={"page": page, "pageSize": page_size}  
+                variables={"tinder_user_profile_id": tinder_user_profile_id, "page": page, "pageSize": page_size}
             )
 
             if 'data' in sessions_json and 'iPersonaSessions' in sessions_json['data']:
                 sessions_data = sessions_json['data']['iPersonaSessions']['data']
-                all_sessions.extend(sessions_data) 
+                all_sessions.extend(sessions_data)
 
                 pagination = sessions_json['data']['iPersonaSessions']['meta']['pagination']
                 if pagination['page'] >= pagination['pageCount']:
-                    break  
+                    break
                 else:
                     page += 1  
             else:
-                print("No data received or error in response.")
+                logger.error("No data received or error in response.")
                 break
-            
-        filtered_data = [
-            item for item in all_sessions
-            if item['attributes']['attributes']['alluser'] == self.alluser and item['attributes']['attributes']['jobId'] == self.jobId
-        ]   
-                    
-        extracted_observers = []
-        for message in filtered_data:
-            if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
-                message_data = message['attributes']['i_persona_observer']['data']
-                message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
-                message_attributes['createdAt'] = message['attributes']['createdAt']
-                extracted_observers.append(message_attributes)
+        
+        return all_sessions
 
-        return extracted_observers
-    
     def get_job_sessions(self):
         """
         Function to get all sessions from Strapi GraphQL with pagination.
@@ -187,10 +111,27 @@ class IpersonaManager:
         page = 1  
         all_sessions = []  
         
+        # Getting the `tinder_user_profile_id` from the trainee user profile
+        data = self.get_trainee_user_profile()
+        if not data:
+            logger.warn("No trainee user profiles found.")
+            return []
+
+        tinder_user_profile_id = data[0]['id']
+        tinder_job_profile_id = self.jobId
         while True:
             sessions_query = """
-                query GetIPersonaSessions($page: Int, $pageSize: Int) {
-                    iPersonaSessions(pagination: { page: $page, pageSize: $pageSize }, sort: "createdAt:desc") {
+                query GetIPersonaSessions($tinder_user_profile_id: ID!, $tinder_job_profile_id: ID!, $page: Int, $pageSize: Int) {
+                    iPersonaSessions(
+                        filters: {
+                            tinder_user_profile: {
+                                id: { eq: $tinder_user_profile_id }  
+                            },
+                            tinder_job_profile: {
+                                id: { eq: $tinder_job_profile_id }  
+                            }
+                        },
+                        pagination: { page: $page, pageSize: $pageSize }, sort: "createdAt:desc") {
                         data {
                             id
                             attributes {
@@ -200,11 +141,22 @@ class IpersonaManager:
                                 createdAt  
                                 i_persona_observer {
                                     data {
+                                        id
                                         attributes {
                                             attributes
                                             metadata
                                         }
                                     }        	
+                                } 
+                                tinder_user_profile {
+                                    data {
+                                        id
+                                    }
+                                } 
+                                tinder_job_profile {
+                                    data {
+                                        id
+                                    }
                                 } 
                             }     
                         }
@@ -222,7 +174,7 @@ class IpersonaManager:
             
             sessions_json = self.sg.Select_from_table(
                 query=sessions_query,
-                variables={"page": page, "pageSize": page_size}  
+                variables={"tinder_user_profile_id": str(tinder_user_profile_id), "tinder_job_profile_id": str(tinder_job_profile_id), "page": page, "pageSize": page_size}           
             )
 
             if 'data' in sessions_json and 'iPersonaSessions' in sessions_json['data']:
@@ -238,12 +190,8 @@ class IpersonaManager:
                 print("No data received or error in response.")
                 break
             
-        filtered_data = [
-            item for item in all_sessions
-            if item['attributes']['attributes']['alluser'] == self.alluser and item['attributes']['attributes']['jobId'] == self.jobId
-        ]   
-                    
-        return filtered_data
+                 
+        return all_sessions
 
     def get_session(self):
         """
@@ -431,6 +379,344 @@ class IpersonaManager:
             
         return result
     
+    def get_trainee_user_profile(self):
+        page_size = 10
+        page = 1  
+        all_sessions = [] 
+        
+        while True:
+            query = """
+            query GetTinderUserProfiles($alluserId: ID!, $page: Int, $pageSize: Int) {
+                    tinderUserProfiles(
+                        filters: {
+                            all_users: {
+                                id: { 
+                                    eq: $alluserId
+                                }  
+                            }                            
+                        },
+                        pagination: { page: $page, pageSize: $pageSize }
+                    ) {
+                        data {
+                            id
+                            attributes {
+                                attributes
+                                all_users {
+                                    data {
+                                        id
+                                    }        	
+                                }                                 
+                            }
+                        }
+                        meta {
+                            pagination {
+                                total
+                                page
+                                pageSize
+                                pageCount
+                            }
+                        }
+                    }
+                }                
+            """
+            
+            res_json = self.sg.Select_from_table(
+                query=query,
+                variables={"alluserId": str(self.alluserId), "page": page, "pageSize": page_size}
+            )
+            
+            if 'data' in res_json and 'tinderUserProfiles' in res_json['data']:
+                messages = res_json['data']['tinderUserProfiles']['data']
+                if messages:
+                    all_sessions.extend(messages)  
+                
+                pagination = res_json['data']['tinderUserProfiles']['meta']['pagination']
+                
+                if pagination['page'] >= pagination['pageCount']:
+                    break  
+                else:
+                    page += 1 
+            else:
+                print("No data received or error in response.")
+                break
+                        
+        return all_sessions
+    
+    def get_trainee_job_profile(self):
+        page_size = 10
+        page = 1  
+        all_sessions = []  
+        
+        while True:
+            sessions_query = """
+            query GetTinderJobProfiles($jobId: ID!, $page: Int, $pageSize: Int) {
+                    tinderJobProfiles(
+                        filters: {
+                            id: { 
+                                eq: $jobId
+                            } 
+                        },
+                        pagination: { page: $page, pageSize: $pageSize }
+                    ) {
+                        data {
+                            id
+                            attributes {
+                                attributes                                
+                            }
+                        }
+                        meta {
+                            pagination {
+                                total
+                                page
+                                pageSize
+                                pageCount
+                            }
+                        }
+                    }
+                }
+            """
+            
+            res_json = self.sg.Select_from_table(
+                query=sessions_query,
+                variables={"jobId": str(self.jobId), "page": page, "pageSize": page_size}
+            )
+            
+            if 'data' in res_json and 'tinderJobProfiles' in res_json['data']:
+                messages = res_json['data']['tinderJobProfiles']['data']
+                if messages:
+                    all_sessions.extend(messages)  
+                
+                pagination = res_json['data']['tinderJobProfiles']['meta']['pagination']
+                
+                if pagination['page'] >= pagination['pageCount']:
+                    break  
+                else:
+                    page += 1 
+            else:
+                print("No data received or error in response.")
+                break
+                        
+        return all_sessions
+    
+    def get_match(self, tinder_user_profile_id, tinder_job_profile_id):
+        page_size = 10
+        page = 1  
+        all_matches = []  
+        
+        while True:
+            query = """
+            query GetTinderUserJobMatch($tinder_user_profile_id: ID!, $tinder_job_profile_id: ID!, $page: Int, $pageSize: Int) {
+                tinderUserJobMatches(
+                    filters: {
+                        tinder_user_profile: {
+                            id: { eq: $tinder_user_profile_id }  
+                        },
+                        tinder_job_profile: {
+                            id: { eq: $tinder_job_profile_id }  
+                        }
+                    },
+                    pagination: { page: $page, pageSize: $pageSize }
+                ) {
+                    data {
+                        id
+                        attributes {
+                            match_score
+                            match_level                               
+                        }
+                    }
+                    meta {
+                        pagination {
+                            total
+                            page
+                            pageSize
+                            pageCount
+                        }
+                    }
+                }
+            }
+            """
+            
+            res_json = self.sg.Select_from_table(
+                query=query,
+                variables={"tinder_user_profile_id": str(tinder_user_profile_id), "tinder_job_profile_id": str(tinder_job_profile_id), "page": page, "pageSize": page_size}
+            )
+            
+            
+            if 'data' in res_json and 'tinderUserJobMatches' in res_json['data']:
+                matches = res_json['data']['tinderUserJobMatches']['data']
+                if matches:
+                    all_matches.extend(matches)
+                
+                pagination = res_json['data']['tinderUserJobMatches']['meta']['pagination']
+                
+                if pagination['page'] >= pagination['pageCount']:
+                    break  
+                else:
+                    page += 1 
+            else:
+                print("No data received or error in response.")
+                break
+                        
+        return all_matches
+
+             
+    def session_overall_observer_by_user_and_job(self):
+        page_size = 100
+        page = 1
+        all_sessions = []
+        id = None
+        
+        # Getting the `tinder_user_profile_id` from the trainee user profile
+        data = self.get_trainee_user_profile()
+        if not data:
+            logger.warn("No trainee user profiles found.")
+            return []
+
+        tinder_user_profile_id = data[0]['id']
+        tinder_job_profile_id = self.jobId
+            
+
+        while True:
+            sessions_query = """
+                query GetIPersonaSessionOverallObservers($tinder_user_profile_id: ID!, $tinder_job_profile_id: ID!, $page: Int, $pageSize: Int) {
+                    iPersonaSessionOverallObservers(
+                        filters: {
+                            tinder_user_profile: {
+                                id: { eq: $tinder_user_profile_id }  
+                            },
+                            tinder_job_profile: {
+                                id: { eq: $tinder_job_profile_id }  
+                            }
+                        },
+                        pagination: { page: $page, pageSize: $pageSize },
+                        sort: "createdAt:desc"
+                    ) {
+                        data {
+                            id
+                            attributes {
+                                attributes
+                                tinder_user_profile {
+                                    data {
+                                        id
+                                    }
+                                } 
+                                tinder_job_profile {
+                                    data {
+                                        id
+                                    }
+                                } 
+                            }
+                        }
+                        meta {
+                            pagination {
+                                total
+                                page
+                                pageSize
+                                pageCount
+                            }
+                        }
+                    }
+                }
+            """
+            
+            sessions_json = self.sg.Select_from_table(
+                query=sessions_query,
+                variables={"tinder_user_profile_id": str(tinder_user_profile_id), "tinder_job_profile_id": str(tinder_job_profile_id), "page": page, "pageSize": page_size}  
+            )            
+
+            #return sessions_json
+            if 'data' in sessions_json and 'iPersonaSessionOverallObservers' in sessions_json['data']:
+                sessions_data = sessions_json['data']['iPersonaSessionOverallObservers']['data']
+
+                for session in sessions_data:
+                    attributes = session.get('attributes', {}).get('attributes', {})
+                    id = session.get('id', '')
+                    all_sessions.append(attributes)            
+
+                if page >= sessions_json['data']['iPersonaSessionOverallObservers']['meta']['pagination']['pageCount']:
+                    break
+                
+                page += 1
+            else:
+                break
+            
+        result = {
+            "id": id,
+            "all_sessions": all_sessions
+        }
+        return result
+    
+    
+    def session_overall_observer_by_user(self):
+        page_size = 100
+        page = 1
+        all_sessions = []
+
+        # Getting the `tinder_user_profile_id` from the trainee user profile
+        data = self.get_trainee_user_profile()
+        if not data:
+            logger.warn("No trainee user profiles found.")
+            return []
+
+        tinder_user_profile_id = data[0]['id']
+        
+        while True:
+            sessions_query = """
+                query GetIPersonaSessionOverallObservers($tinder_user_profile_id: ID!, $page: Int, $pageSize: Int) {
+                    iPersonaSessionOverallObservers(
+                        filters: {
+                            tinder_user_profile: {
+                                id: { eq: $tinder_user_profile_id }  
+                            }
+                        },
+                        pagination: { page: $page, pageSize: $pageSize },
+                        sort: "createdAt:desc"
+                    ) {
+                        data {
+                            id
+                            attributes {
+                                attributes
+                                tinder_user_profile {
+                                    data {
+                                        id
+                                    }
+                                }
+                            }
+                        }
+                        meta {
+                            pagination {
+                                total
+                                page
+                                pageSize
+                                pageCount
+                            }
+                        }
+                    }
+                }
+            """
+
+            sessions_json = self.sg.Select_from_table(
+                query=sessions_query,
+                variables={"tinder_user_profile_id": tinder_user_profile_id, "page": page, "pageSize": page_size}
+            )
+
+            #return sessions_json
+            if 'data' in sessions_json and 'iPersonaSessionOverallObservers' in sessions_json['data']:
+                sessions_data = sessions_json['data']['iPersonaSessionOverallObservers']['data']
+                for session in sessions_data:
+                    session_attributes = session.get('attributes', {}).get('attributes', {})
+                    all_sessions = session_attributes 
+                
+                if page >= sessions_json['data']['iPersonaSessionOverallObservers']['meta']['pagination']['pageCount']:
+                    break
+                
+                page += 1
+            else:
+                break
+        
+        return all_sessions
+
+
     def create_session(self, message_data):
         """
         Function to insert a new session into the iPersonaSession table in Strapi using a GraphQL mutation.
@@ -443,11 +729,13 @@ class IpersonaManager:
         """
 
         mutation_query = """
-            mutation CreateIPersonaSession($slug: String!, $attributes: JSON!, $metadata: JSON!, $status: String!) {
+            mutation CreateIPersonaSession($slug: String!, $attributes: JSON!, $metadata: JSON!, $status: String!, $jobId: ID!, $alluserId: ID!) {
                 createIPersonaSession(data: {
                     slug: $slug,
                     attributes: $attributes,
                     metadata: $metadata,
+                    tinder_user_profile: $alluserId,
+                    tinder_job_profile: $jobId,
                     status: $status
                 }) {
                     data {
@@ -455,9 +743,19 @@ class IpersonaManager:
                         attributes {
                             slug
                             attributes
-                            metadata
+                            metadata                            
+                            tinder_user_profile {
+                                data {
+                                    id
+                                }
+                            }
+                            tinder_job_profile {
+                                data {
+                                    id
+                                }
+                            }
                             status
-                        }
+                        }                        
                     }
                 }
             }
@@ -467,7 +765,9 @@ class IpersonaManager:
             "slug": message_data.get("slug"),
             "attributes": message_data.get("attributes"),
             "metadata": message_data.get("metadata"),
-            "status": 'Incomplete'  
+            "status": 'Incomplete',
+            "alluserId": message_data.get("alluserId"),
+            "jobId": message_data.get("jobId"),  
         }
 
         res_json = self.sg.insert_table(query=mutation_query, variables=variables)
@@ -495,7 +795,7 @@ class IpersonaManager:
                 createIPersonaMessage(data: {
                     attributes: $attributes,
                     metadata: $metadata,
-                    i_persona_session: $sessionId  # Fix typo here
+                    i_persona_session: $sessionId  
                 }) {
                     data {
                         id
@@ -574,7 +874,118 @@ class IpersonaManager:
         else:
             print("Error inserting observer:", res_json)  
             raise ValueError("Failed to insert observer. Response: {}".format(res_json))
-        
+    
+    def create_session_overall_observer(self, message_data):
+        """
+        Function to insert a new overall session status metrics into the iPersonSessionOverallObserver table in Strapi.
+
+        Args:
+            message_data (dict): A dictionary containing the data to be inserted, including slug, attributes, and metadata.
+
+        Returns:
+            result_json (Json): The response from Strapi after the mutation.
+        """
+
+        mutation_query = """
+            mutation CreateIPersonaSessionOverallObserver($attributes: JSON!, $metadata: JSON!, $jobId: ID!, $alluserId: ID!, $sessionIds: [ID]!) {
+                createIPersonaSessionOverallObserver(data: {
+                    attributes: $attributes,
+                    metadata: $metadata,
+                    tinder_user_profile: $alluserId,
+                    tinder_job_profile: $jobId,
+                    i_persona_observers: $sessionIds
+                }) {
+                    data {
+                        id
+                        attributes {
+                            attributes
+                            metadata
+                            tinder_user_profile {
+                                data {
+                                    id
+                                }
+                            }
+                            tinder_job_profile {
+                                data {
+                                    id
+                                }
+                            }
+                            i_persona_observers {
+                                data {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """
+
+        variables = {
+            "attributes": message_data.get("attributes"),
+            "metadata": message_data.get("metadata"),
+            "alluserId": message_data.get("alluserId"),
+            "jobId": message_data.get("jobId"),  
+            "sessionIds": message_data.get("sessionIds")       
+        }
+
+        # Execute the GraphQL mutation
+        res_json = self.sg.insert_table(query=mutation_query, variables=variables)
+
+        return res_json
+    
+    def update_session_job_observer(self, attributes):
+        """
+        Function to update the status of a session job in Strapi GraphQL.
+
+        Args:
+            attributes (dict): The new attributes to update in the session.
+
+        Returns:
+            JSON response of the updated session.
+        """
+
+        uquery = """
+            mutation UpdateIPersonaSessionOverallObserver(
+                $sessionId: ID!,
+                $attributes: JSON!
+            ) {
+                updateIPersonaSessionOverallObserver(
+                    id: $sessionId,
+                    data: {
+                        attributes: $attributes
+                    }
+                ) {
+                    data {
+                        id
+                        attributes {
+                            attributes
+                            tinder_user_profile {
+                                data {
+                                    id
+                                }
+                            }
+                            tinder_job_profile {
+                                data {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """
+
+        variables = {
+            "sessionId": str(self.sessionId),
+            "attributes": attributes 
+        }
+
+        updatedSession = self.sg.Select_from_table(query=uquery, variables=variables)
+
+        return updatedSession
+
+
     def update_session_status(self):
         """
         Function to update the status of a session in Strapi GraphQL.

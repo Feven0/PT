@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react'
 import Api from '../Services/Services'
-import { useParams } from 'react-router-dom'
 import { ProgressBarChart } from './index'
 
 const AllProgress = () => {
-    const {userId} = useParams()
     const [progress, setAllProgress] = useState({});
     const [refresh, setRefresh] = useState(0);
 
 
     const fetchOverall = async() => {
         const data = {
-          alluser: userId
+          alluserId: 1974
         }
         const response = await Api.UserAllSessionMetrics(data)
         setAllProgress(response.data)

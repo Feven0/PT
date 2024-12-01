@@ -19,7 +19,17 @@ VERY IMPORTANT: Use These Guideline for Filling Evaluation Metrics JSON
 3. Strength
     - Identify specific skills that were demonstrated well (e.g., Problem-Solving, Team Collaboration).
     - Describe what the candidate did well in these areas, with examples from the interview.
+4. Communication Skills
+    - Clarity:
+        - Excellent: Responses were coherent and easily understood.
+        - Good: Some parts were clear, but others were confusing.
+        - Poor: Many responses were difficult to follow.
+    - Engagement:
+        - Excellent: Actively participated and showed enthusiasm.
+        - Good: Participated but lacked enthusiasm or responsiveness.
+        - Poor: Did not show interest or engagement during the interview.
 
+Note: If the mock interview is not provided, return an empty JSON.
 
 Your evaluation should be structured in the following single JSON format:
 example: 
@@ -41,9 +51,21 @@ example:
         ],        
         "strength": [
             {
-                "skill": "skill name that was demonstrated well, give a specific skill name they should improve based on the info you have about the candidate interview to qualify for the job role. example: Communication Skill",
+                "skill": "skill name that was demonstrated well in the mock interview, provide a specific skill name. example: Communication Skill.  However if there is no particular candidate strength seen from the given interview data you should not specify anything",
                 
-                "description": "what was done well regarding this skill"
+                "description": "what was done well regarding this skill However if there is no strength there should not be any description"
+            }
+        ],
+        "communication_skills": [
+            {
+                "skill": "clarity",
+                "level": "eg: Good",
+                "reason": "Justify the clarity level given"
+            },
+            {
+                "skill": "engagement",
+                "level": "eg: Poor",
+                "reason": "Justify the engagement level given"
             }
         ]
     }

@@ -2,20 +2,19 @@ import {useState, useEffect} from 'react';
 import { Row, Col } from 'antd';
 import { BarChart, LineChartOverall, RadarChart, SankeyTime, LoadingIndicator } from './index'; 
 import Api from '../Services/Services';
-import { useParams } from 'react-router-dom';
 
 const AllStatus = () => {
-    const {userId, jobId} = useParams()
     const [refresh, setRefresh] = useState(0);
     const [overall, setOverall] = useState<any>({});
     const [currentIndex, setCurrentIndex] = useState(0);
 
     const fetchOverall = async() => {
       const data = {
-        alluser: userId,
-        jobId: jobId
+        jobId: 46,
+        alluserId: 1974
       }
       const response = await Api.OverallSesssionMetrics(data)
+      console.log("techicrunch", response?.data)
       setOverall(response.data)
       console.log(response.data)
     }

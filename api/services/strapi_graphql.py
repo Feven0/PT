@@ -18,10 +18,10 @@ class StrapiGraphql():
         else:
             run_stage = config.strapi.stage
             
-        self.run_stage = run_stage
-        
+        self.run_stage = run_stage        
         # define url
-        root, ssmkey = config.get_strapi_params(run_stage)            
+        root, ssmkey = config.get_strapi_params(run_stage)    
+   
         self.apiroot = f"https://{root}.10academy.org/graphql" 
         self.ssmkey = ssmkey
         

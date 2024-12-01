@@ -316,6 +316,7 @@ async def audio_end_point(sid, data):
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
     print("interview_session-data", type(data['user_session']), data['user_session']['id'] )
+
     try:
         start_time = time.time()
         global chat_count
@@ -339,10 +340,7 @@ async def interview_endpoint(sid, data):
             strapi.step1_insert_message(data)
 
         response = await util.generate_interview_question(data)  
-        
-        print("generate_question_response")
-        print(response)         
-
+     
         if(response != 'None'):
             assistant_next_question = "" if response.get("interview") is None else response["interview"]       
             accumulated_message = ""              
@@ -383,9 +381,7 @@ async def interview_endpoint(sid, data):
                 print(f"Chunk Time taken: {elapsed_time:.2f} seconds")
 
                 await sio.emit("interview chat", message, room=sid) 
-                
-            print('marchel', accumulated_message, type(accumulated_message), accumulated_message != "", accumulated_message != 'None')
-            
+                            
             if(data['response']):
                 start_time02 = time.time()  
                 realtime_evaluation_response_json = util.realtime_response_evaluation(data)

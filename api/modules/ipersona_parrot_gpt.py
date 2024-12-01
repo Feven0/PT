@@ -2,6 +2,7 @@ from openai import OpenAI
 import json, os
 import os
 import json_repair
+from collections import defaultdict
 from api.services.strapi_ipersona import IpersonaManager
 from datetime import datetime
 from api.utils.logger import LLPackerLogger
@@ -118,7 +119,6 @@ async def choose_interview_question(collection: dict, data: dict):
         if an exception occurs during processing.
     """
     try: 
-        print("rehmettttttttttttttt")
         ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
         session_chathistory = ipersona_manager.get_messages()
         chat = session_chathistory['count']
@@ -130,9 +130,9 @@ async def choose_interview_question(collection: dict, data: dict):
             chat = session_chathistory['total']
             assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
             chat_count += assistant_count 
-            print("Number of assistant entries:", chat_count)
+            logger.info("Number of assistant entries:", chat_count)
         else:
-            print("Chat is empty.")
+            logger.error("Chat is empty.")
         
         section = None
         question_type = None
@@ -230,7 +230,7 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
    
         else:  
             await overall_interview_evaluations(data)
-            #
+            
                 
         response = {
             "interview": interview_question_json
@@ -410,9 +410,9 @@ def realtime_response_evaluation(data: dict) -> dict:
                 break  
 
         if last_assistant_response:
-            print("Last assistant response:", last_assistant_response)
+            logger.info("Last assistant response")
         else:
-            print("No assistant response found in the chat history.")
+            logger.warn("No assistant response found in the chat history.")
             
         evaluation_prompt = file_reader(prompt_path('ipersona/realtime_evaluation.txt'))
         evaluation_context = str(evaluation_prompt)
@@ -420,11 +420,9 @@ def realtime_response_evaluation(data: dict) -> dict:
             .replace("{question}", last_assistant_response)\
             .replace("{candidate_response}", data['response'])
                 
-        # Evaluate the real-time chat response for the last response data["previous_question"]
         
         content = data['user_session']['attributes']['attributes']['persona'] + evaluation_msg
 
-        # realtime_evaluation_response = await hr_agent.evaluate_candidate_response(evaluation_msg)
         realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
 
         realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False)
@@ -515,6 +513,14 @@ async def overall_interview_evaluations(data: dict) -> dict:
         ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
         ipersona_manager.insert_observer(overall_json)
         ipersona_manager.update_session_status()
+        
+                        #-----------------------------------------------------------#
+        ipersona_manager = IpersonaManager(sessionId=42, alluserId=1974, jobId=46, run_stage="dev")
+        session = ipersona_manager.get_job_sessions()   
+        session_chatobserver = extract_observers_metrics(session)
+                    
+        calculate_overall_progress(data, session_chatobserver) 
+    
         #################################################################################################
       
         response = {
@@ -609,12 +615,38 @@ def identify_class(all_class: list, jd: str) -> dict:
     
 
 #-------------------------------------------- Helper function for Time Function -------------------------------------
+# def time_to_seconds(time_str):
+#     """Convert time in 'HH:MM' format to seconds."""
+#     if time_str == "00:00":
+#         return 0
+#     h, m = map(int, time_str.split(':'))
+#     return h * 3600 + m * 60
+
 def time_to_seconds(time_str):
-    """Convert time in 'HH:MM' format to seconds."""
-    if time_str == "00:00":
+    """Convert time in 'HH:MM:SS' or 'MM:SS' format to seconds."""
+    try:
+        if not time_str or time_str == "00:00" or time_str == "00:00:00":
+            return 0
+        time_parts = time_str.split(':')
+        
+        if len(time_parts) == 2:
+            m, s = map(int, time_parts)
+            return m * 60 + s
+        elif len(time_parts) == 3:
+            h, m, s = map(int, time_parts)
+            return h * 3600 + m * 60 + s
+        else:
+            raise ValueError(f"Invalid time format: {time_str}")
+    except ValueError as e:
+        print(f"Error converting time: {e}")
         return 0
-    h, m = map(int, time_str.split(':'))
-    return h * 3600 + m * 60
+
+def seconds_to_time(seconds):
+    """Convert seconds back to 'HH:MM:SS' format."""
+    h = seconds // 3600
+    m = (seconds % 3600) // 60
+    s = seconds % 60
+    return f"{h:02}:{m:02}:{s:02}"
 
 
 #----------------------------------------- Overall Time Data Calculator ----------------------------------------- 
@@ -641,6 +673,7 @@ def calculate_time(interview: list) -> dict:
     try:
         exceeded_count = 0
         not_exceeded_count = 0
+        total_time_taken_by_candidate = 0
         
         for i in range(len(interview)):
             if interview[i]['user_type'] == 'assistant':
@@ -650,25 +683,30 @@ def calculate_time(interview: list) -> dict:
                     time_limit_seconds = time_to_seconds(time_limit)
                     
                     if i + 1 < len(interview) and interview[i+1]['user_type'] == 'candidate':
-                        time_taken = interview[i + 1]['content']['time_taken']                        
+                        candidate_response = interview[i + 1]['content']
+                        time_taken = candidate_response.get('time_taken', '00:00:00')  
                         time_taken_seconds = time_to_seconds(time_taken)
+                    
+                        total_time_taken_by_candidate += time_taken_seconds
 
                         if time_taken_seconds > time_limit_seconds:
                             exceeded_count += 1
                         else:
                             not_exceeded_count += 1
         
+        total_time_taken_formatted = seconds_to_time(total_time_taken_by_candidate)
+
         time_data = {
             "fail": exceeded_count,
-            "pass": not_exceeded_count
+            "pass": not_exceeded_count,
+            "total_time_taken_by_candidate": total_time_taken_formatted
         }
+        
         return time_data
     
     except Exception as e:
-        logger.error(f"Calculating overall time failed: ${str(e)}")
-
+        print(f"Calculating overall time failed: {str(e)}")
         return {'error': str(e)}
-        
  
 #----------------------------------------- Overall Answer Relevancy Data Calculator -----------------------------------------   
 def filter_the_relevancies(data: list) -> dict:
@@ -782,7 +820,7 @@ def percentage_term(percent: float) -> dict:
     
 
 #----------------------------------------- Entire Data Progress Calculator -----------------------------------------   
-def calculate_overall_progress(data: list) -> dict:
+def calculate_overall_progress(userdata, data: list):
     try:
         confidence_overtime = []  
         clarity_overtime = []     
@@ -790,7 +828,8 @@ def calculate_overall_progress(data: list) -> dict:
         overall_time_managements = []
         overall_competencies = []
         overall_performance_scores = []
-        
+        session_ids = []         
+
         for entry in data:
             iso_time = entry.get("createdAt", "")
             created_time = convert_iso_to_readable_format(iso_time)
@@ -799,6 +838,9 @@ def calculate_overall_progress(data: list) -> dict:
             time = entry.get('time_management', {})
             competency = entry.get('competency', [])
             overall_performance_score = entry.get("overall_performance_score", "")
+            obs_id = entry.get("obs_id")  
+            if obs_id:
+                session_ids.append(int(obs_id))  
             obj_time = {
                 "time": created_time,
                 "time_management": time
@@ -814,7 +856,7 @@ def calculate_overall_progress(data: list) -> dict:
                 "score": overall_performance_score
             }
             overall_performance_scores.append(obj_score)   
-            
+             
             if isinstance(performance, list):
                 for item in performance:
                     confidence_level = item.get('level', '').lower()
@@ -826,7 +868,7 @@ def calculate_overall_progress(data: list) -> dict:
                         value = 3
                     confidence = {"time": created_time, "level": confidence_level, "value": value}
                     confidence_overtime.append(confidence)                        
-        
+           
             if isinstance(realtime, list):
                 for communication in realtime:  
                     if communication.get('skill') == "clarity":  
@@ -850,31 +892,63 @@ def calculate_overall_progress(data: list) -> dict:
                             value = 3
                         engagement = {"time": created_time, "level": engagement_level, "value": value}
                         engagement_overtime.append(engagement)
+      
+        
+        alluserId=userdata['alluserId']
+        jobId=userdata['jobId']
+       
+        ipersona_manager = IpersonaManager(alluserId=alluserId, jobId=jobId, run_stage="dev")
+        session_chatobserver = ipersona_manager.session_overall_observer_by_user_and_job()
+        session_chatobserver_sessions = session_chatobserver['all_sessions']
+
+        if len(session_chatobserver_sessions) > 0:
+            attributes = {
+                "overall_confidence": confidence_overtime,
+                "overall_clarity": clarity_overtime,
+                "overall_engagement": engagement_overtime,
+                "overall_time_management": overall_time_managements,
+                "overall_competency": overall_competencies,
+                "overall_performance": overall_performance_scores
+            }
+            
+            ipersona_manager = IpersonaManager(sessionId=str(session_chatobserver['id']), run_stage="dev")
+            response = ipersona_manager.update_session_job_observer(attributes)
+            
+        else:            
+            message_data = {
+                "attributes": {
+                    "overall_confidence": confidence_overtime,
+                    "overall_clarity": clarity_overtime,
+                    "overall_engagement": engagement_overtime,
+                    "overall_time_management": overall_time_managements,
+                    "overall_competency": overall_competencies,
+                    "overall_performance": overall_performance_scores
+                },
+                "metadata": {
+                    "createdBy": "parrot"
+                },
+                "jobId": str(jobId),  
+                "alluserId": str(alluserId),  
+                "sessionIds": session_ids
+            }
+        
+            ipersona_manager = IpersonaManager(run_stage="dev")
+            response = ipersona_manager.create_session_overall_observer(message_data)    
     
-        response = {
-            "overall_confidence": confidence_overtime,
-            "overall_clarity": clarity_overtime,
-            "overall_engagement": engagement_overtime,
-            "overall_time_management": overall_time_managements,
-            "overall_competency": overall_competencies,
-            "overall_performance": overall_performance_scores
-        }
         return response
     
     except Exception as e:
-        logger.error(f"File reading process failed: ${str(e)}")
-
+        logger.error(f"Process failed: ${str(e)}")
         return f'Error: {str(e)}'  
     
 
 #----------------------------- Entire User Session Progress Over All Types of Jobs -----------------------------
 def all_session_jobs_average_metrics(data):
     try:
-        response = calculate_overall_progress(data)
-        avg_confidence = calculate_average(response['overall_confidence'])
-        avg_clarity = calculate_average(response['overall_clarity'])
-        avg_engagment = calculate_average(response['overall_engagement'])
-        avg_time_management = calculate_average_time_management(response['overall_time_management'])
+        avg_confidence = calculate_average(data['overall_confidence'])
+        avg_clarity = calculate_average(data['overall_clarity'])
+        avg_engagment = calculate_average(data['overall_engagement'])
+        avg_time_management = calculate_average_time_management(data['overall_time_management'])
  
         
         overall_data = {
@@ -889,7 +963,7 @@ def all_session_jobs_average_metrics(data):
 
         
     except Exception as e:
-        logger.error(f"File reading process failed: ${str(e)}")
+        logger.error(f"process failed: ${str(e)}")
     
     
 def calculate_average(data):
@@ -929,7 +1003,83 @@ def calculate_average_time_management(data):
         "average_fail_rate": average_fail_rate
     }
 
+#-------------------------------------------- user engagment jobs --------------------------------------------
+def summarize_interviews(alluserId):
+    ipersona_manager = IpersonaManager(alluserId=alluserId, run_stage="dev")
+    data = ipersona_manager.get_alluser_sessions()
+    data = extracted_needed_metrics(data)
 
+    job_summary = defaultdict(list)
+    
+    for record in data:
+        jobId = record['jobId']
+        job_summary[jobId].append(record)
+    
+    summary_response = []
+    
+    for jobId, records in job_summary.items():
+        total_score = sum(record['overall_performance_score'] for record in records)
+        interviews_count = len(records)
+        average_score = total_score / interviews_count if interviews_count > 0 else 0
+        
+        ipersona_manager = IpersonaManager(alluser=alluserId, jobId=jobId, run_stage="dev")
+        job_title_data = ipersona_manager.get_trainee_job_profile()
+        if job_title_data and len(job_title_data) > 0:
+            job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
+        else:
+            job_title = 'Unknown Job Title'  
+        
+        trainee_data = ipersona_manager.get_trainee_user_profile()
+        if not trainee_data:
+            logger.warn("No trainee user profiles found.")
+            return []
+
+        tinder_user_profile_id = trainee_data[0]['id']
+        tinder_job_profile_id = jobId
+      
+        job_match_data = ipersona_manager.get_match(tinder_user_profile_id, tinder_job_profile_id)
+        if job_match_data and len(job_match_data) > 0:
+            match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
+            job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
+        else:
+            match_score = 'Unknown'  
+            job_match = 'Unknown'    
+        
+        summary_response.append({
+            "jobId": jobId,
+            "job_title": job_title,
+            "job_match_score": match_score,
+            "job_match": job_match,
+            "interviews": interviews_count,
+            "score": round(average_score, 2)
+        })
+    
+    return summary_response
+
+def extracted_needed_metrics(data):
+    extracted_observers = []
+    for session in data:
+        observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
+        if observer_data:
+            observer_attributes = observer_data.get('attributes', {}).get('attributes', {}).get('interview_evaluation_metrics', {})
+            session['overall_performance_score'] = observer_attributes.get('overall_performance_score', None)
+            session['createdAt'] = session['attributes']['createdAt']
+            session['jobId'] = session['attributes']['tinder_job_profile']['data']['id']
+            extracted_observers.append(session)
+
+    return extracted_observers
+
+def extract_observers_metrics(data):
+    extracted_observers = []
+    for message in data:
+        if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
+            message_data = message['attributes']['i_persona_observer']['data']
+            message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
+            message_attributes['createdAt'] = message['attributes']['createdAt']
+            message_attributes['obs_id'] = message['attributes']['i_persona_observer']['data']['id']
+            extracted_observers.append(message_attributes)
+
+    return extracted_observers
 #-------------------------------------------- FIle reader --------------------------------------------
 def convert_iso_to_readable_format(iso_time):
     dt = datetime.strptime(iso_time, '%Y-%m-%dT%H:%M:%S.%fZ')    
@@ -960,7 +1110,8 @@ def extract_json(response, quite=False):
     elif isinstance(response, str):
         # Method 1
         try:
-            # try simple to load it as json
+            # try simple to load it as jsonfrom collections import defaultdict
+
             res = json.loads(response)
             # if not quite: print("extract_json", "response is already in jsons format")
             return res
@@ -998,3 +1149,93 @@ def extract_json(response, quite=False):
     else:
         # if not quite: print("extract_json", "response is not a string or a dictionary")
         return {}
+    
+    
+#------------------------------------------- Extraction Function --------------------------------------------
+def extract_trainee_neccessary_values(data):
+        extracted_values = {
+            "basics.attributes": [],
+            "projects.attributes": [],
+            "education.attributes": [],
+            "work_experience.attributes": []
+        }
+
+        if isinstance(data, list):
+            for item in data:  
+                attributes = item.get('attributes', {}).get('attributes', {})
+
+                if 'basics' in attributes:
+                    lists = attributes['basics'].get('attributes', [])
+                    if isinstance(lists, list): 
+                        for x in lists:
+                            extracted_values["basics.attributes"].append({
+                                "role": x.get("role", ""),
+                                "personal_statement": x.get("personal_statement", "")
+                            })
+                
+                if 'projects' in attributes:
+                    lists = attributes['projects'].get('attributes', [])
+                    if isinstance(lists, list): 
+                        for x in lists:
+                            extracted_values["projects.attributes"].append({
+                                "title": x.get("title", ""),
+                                "summary": x.get("summary", "")
+                            })
+                
+                if 'education' in attributes:
+                    lists = attributes['education'].get('attributes', [])
+                    if isinstance(lists, list): 
+                        for x in lists:
+                            extracted_values["education.attributes"].append({
+                                "study_area": x.get("study_area", ""),
+                                "study_type": x.get("study_type", ""),
+                                "institution_name": x.get("institution_name", ""),
+                                "start_date": x.get("start_date", ""),
+                                "end_date": x.get("end_date", "")
+                            })
+                
+                if 'work_experience' in attributes:
+                    lists = attributes['work_experience'].get('attributes', [])
+                    if isinstance(lists, list):  
+                        for x in lists:
+                            extracted_values["work_experience.attributes"].append({
+                                "role": x.get("role", ""),
+                                "company": x.get("company", ""),
+                                "summary": x.get("summary", ""),
+                                "start_date": x.get("start_date", ""),
+                                "end_date": x.get("end_date", "")
+                            })
+   
+        return extracted_values    
+
+def extract_job_neccessary_values(data):
+    extracted_values = {
+        "role": "",  
+        "purpose": "", 
+        "required_qualifications": "",  
+        "duties_responsibilities": "",  
+        "attributes.apply_link": "",  
+        "competencies": []  
+    }
+
+    if isinstance(data, list):
+        for item in data:  
+            attributes = item.get('attributes', {}).get('attributes', {})
+            
+            extracted_values["role"] = attributes.get("title", "")
+
+            extracted_values["purpose"] = attributes.get("purpose", "")
+
+            extracted_values["required_qualifications"] = ", ".join(attributes.get("required_qualifications", []))
+
+            extracted_values["duties_responsibilities"] = ", ".join(attributes.get("duties_responsibilities", []))
+
+            competencies = attributes.get("competencies", [])
+            for competency in competencies:
+                extracted_values["competencies"].append({
+                    "name": competency.get("name", ""),
+                    "skills": competency.get("skills", []),
+                    "summary": competency.get("summary", "")
+                })
+
+    return extracted_values

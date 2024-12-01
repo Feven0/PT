@@ -21,7 +21,6 @@ const useMiddleSocket = () => {
     setDone, 
     chunk] = useWebSocket(`${import.meta.env.VITE_REACT_APP_SOCKET_URL}`);
   const [startfetching, setStartFetch] = useState(true);
-  const [ready, setReady] = useState<any>(false);
   const [startchat, setChat] = useState<any>(false);
   const [isStarted, setIsStarted] = useState(false);  
   const [count, setCount] = useState();
@@ -52,7 +51,6 @@ const useMiddleSocket = () => {
         socket.on('interview done', (message: any) => {
           console.log("interview done", message)
           setStartFetch(true);
-          setReady(false)
           setChat(false)
           pause()
         })
@@ -86,6 +84,8 @@ const useMiddleSocket = () => {
         response: data.input, 
         user_session: data.user_session,
         time_taken: data.timerValue,
+        jobId: 46,
+        alluserId: 1974
       });
     };
 
@@ -230,8 +230,6 @@ const useMiddleSocket = () => {
 
     startfetching, 
     setStartFetch,
-    ready, 
-    setReady,
     startchat, 
     setChat,
     

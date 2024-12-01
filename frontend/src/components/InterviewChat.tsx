@@ -2,15 +2,12 @@ import { useState, useEffect } from 'react';
 import { Card, Input, Button, Spin, Typography } from 'antd';
 import fade from '../assets/fade-circles.svg';
 import useMiddleSocket from '../hooks/useMiddleSocket';
-import { useParams } from 'react-router-dom';
 import hr from '../assets/hr.jpg';
 import { CgProfile } from 'react-icons/cg'
 import ReactMarkdown from 'react-markdown';
 import {ChatAudioRecorder, RealTimeEvaluation, OverallFeedbackModal, LoadingSpinner} from './index'
 import Api from '../Services/Services';
 import "../styles/InterviewChat/interviewchat.css"
-import users from '../assets/mock-data/user_profiles.json';
-import jobs from '../assets/mock-data/job_profile.json';
 
 const { Paragraph } = Typography;
 
@@ -19,7 +16,6 @@ interface MarkdownContentProps {
 }
 
 const InterviewChat = () => {
-    const {userId, jobId} = useParams()
     const { 
         handleInterview, 
         loading, 
@@ -31,24 +27,21 @@ const InterviewChat = () => {
         setChatInterview, 
         startfetching, 
         setStartFetch,
-        ready, 
-        setReady,
         startchat, 
         setChat } = useMiddleSocket();
     const [input, setInput] = useState<any>("");
     const [dataFromAudio, setDataFromAudio] = useState<any>(false);
     const [loadin, setLoad] = useState<any>(false);
-    const [lastTimerValue, setLastTimerValue] = useState<any>('00:00'); 
     const [clarifications, setClarifications] = useState<any>({}); 
     const [load, setLoading] = useState<any>({}); 
     const [clickCount, setClickCount] = useState<any>({}); 
     const [sessions, setSession] = useState<any>([]);
-    const latest = JSON.parse(localStorage.getItem("userSession") || 'null');        
+    const latest = JSON.parse(localStorage.getItem("userSession") || 'null');       
+    console.log("colledge", latest) 
     const [loadingSessionId, setLoadingSessionId] = useState(null);
     const [isHovered, setIsHovered] = useState(false);
     let timerValue: any;
     const charLimit = 1200; 
-    console.log(lastTimerValue)
 
     const buttonStyle = {
         color: '#ffffff',
@@ -85,39 +78,45 @@ const InterviewChat = () => {
         }
     };   
     
-    const startInterview = () => {
+    const ExecuteInterview = () => {
         timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         const user_session = latest;
         handleInterview({ 
             input, 
             user_session,
-            timerValue
+            timerValue,
+            jobId: 46,
+            alluserId: 1974
         });
         setInput('');
-        setLastTimerValue(timerValue); 
-        setReady(false)
         setChat(true) 
     };
 
     const handler = () => {
-        startInterview();
+        ExecuteInterview();
         pause();
     };
 
     const startSession = async() => {
-        const filteredJob = jobs.filter(match => match.job_profile_id === parseInt(jobId as any));
-        const filteredUser = users.filter(match => match?.user_profile_id === parseInt(userId as any));
         setLoad(true)
         const data = {
-            jobId: jobId,
-            userId: userId,
-            name: filteredUser[0]?.name,
-            cvJson: filteredUser[0],
-            jbJson: filteredJob[0]
+            jobId: 46,
+            alluserId: 1974
         };
         const response = await Api.sessionCreate(data);
         localStorage.setItem("userSession", JSON.stringify(response?.data))
-        setReady(true)
+        if(response?.data){  
+            timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            handleInterview({ 
+                input, 
+                user_session: response?.data,
+                timerValue,
+                jobId: 46,
+                alluserId: 1974
+            });
+            setInput('');
+            setChat(true) 
+        }
         setChatInterview([])
         setLoad(false)
     }
@@ -148,7 +147,6 @@ const InterviewChat = () => {
 
     const fetchChatHistory = async (session: any) => {
         const sessionId = session?.id
-        setReady(false)
         setLoadingSessionId(sessionId)
         setChat(false) 
         setChatInterview([])
@@ -159,14 +157,12 @@ const InterviewChat = () => {
             const fetched_session = await Api.fetchSingleSession(data)
             localStorage.setItem("userSession", JSON.stringify(fetched_session?.data))
 
-            console.log("fetching data...", response?.data)
+            // console.log("fetching data...", response?.data)
+            // console.log("fetching data observers...", fetched_session?.data)
+
         setChatInterview(response?.data?.total)
         setLoadingSessionId(null);
-        if(response?.data?.count == 0) {
-            setReady(true)
-        }
         if(fetched_session?.data?.attributes?.status == 'Complete'){
-            setReady(false)
             setChat(false)
             reset() 
         }
@@ -176,10 +172,9 @@ const InterviewChat = () => {
     }
 
     const fetchSession = async() =>{
-        const userId= localStorage.getItem("userId")
         const data = {
-            alluser: userId,
-            jobId: jobId
+            jobId: 46,
+            alluserId: 1974
         }
         const response = await Api.fetchSession(data)
         console.log("sessions", response?.data)
@@ -395,27 +390,7 @@ const InterviewChat = () => {
             </Card>
             
             <div className='chat-timer-box' style={{}}>
-                <div>
-                    {ready && (
-                        <Button 
-                        style={{ 
-                            margin:'7rem', 
-                            textAlign:'center', 
-                            width: '30vh', 
-                            height: '10vh', 
-                            color:'#ffffff', 
-                            fontWeight: 'bolder', 
-                            fontSize: '1.42rem'
-                        }}
-                        className='start-btn' 
-                        onClick={startInterview}
-                        >
-                            Ready
-                        </Button>
-                    )}
-                </div>
-
-                {(ready || startchat) && (
+                {(startchat) && (
                     <div>
                         <div style={{ fontSize: '50px', textAlign: 'center' }}>
                             {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}

@@ -134,6 +134,10 @@ const strengthData = metricsData?.strength?.map((item: any, index: any) => ({
 
             <Col>
               <Card title="Time Management">
+                  <Text>
+                    <small>Total Taken Time:</small>
+                    <span>{timeData?.total_time_taken_by_candidate}</span>
+                  </Text><br/>
                   <Text className="card-text">
                     <small>Questions Completed on Time:</small> 
                   <ProgressIndicator currentValue={timeData?.pass} maxValue={timeData?.pass + timeData?.fail} /> 
