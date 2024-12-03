@@ -10,7 +10,7 @@ const AllStatus = () => {
 
     const fetchOverall = async() => {
       const data = {
-        jobId: 46,
+        jobId: 47,
         alluserId: 1974
       }
       const response = await Api.OverallSesssionMetrics(data)

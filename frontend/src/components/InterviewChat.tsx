@@ -37,7 +37,7 @@ const InterviewChat = () => {
     const [clickCount, setClickCount] = useState<any>({}); 
     const [sessions, setSession] = useState<any>([]);
     const latest = JSON.parse(localStorage.getItem("userSession") || 'null');       
-    console.log("colledge", latest) 
+    console.log("latest_session_info", latest) 
     const [loadingSessionId, setLoadingSessionId] = useState(null);
     const [isHovered, setIsHovered] = useState(false);
     let timerValue: any;
@@ -85,8 +85,10 @@ const InterviewChat = () => {
             input, 
             user_session,
             timerValue,
-            jobId: 46,
-            alluserId: 1974
+            // jobId: 46,
+            // alluserId: 1974
+            jobId: 48,
+            alluserId: 1959
         });
         setInput('');
         setChat(true) 
@@ -100,8 +102,10 @@ const InterviewChat = () => {
     const startSession = async() => {
         setLoad(true)
         const data = {
-            jobId: 46,
-            alluserId: 1974
+            // jobId: 46,
+            // alluserId: 1974
+            jobId: 48,
+            alluserId: 1959
         };
         const response = await Api.sessionCreate(data);
         localStorage.setItem("userSession", JSON.stringify(response?.data))
@@ -111,8 +115,10 @@ const InterviewChat = () => {
                 input, 
                 user_session: response?.data,
                 timerValue,
-                jobId: 46,
-                alluserId: 1974
+                // jobId: 46,
+                // alluserId: 1974
+                jobId: 48,
+                alluserId: 1959
             });
             setInput('');
             setChat(true) 
@@ -173,8 +179,10 @@ const InterviewChat = () => {
 
     const fetchSession = async() =>{
         const data = {
-            jobId: 46,
-            alluserId: 1974
+            // jobId: 46,
+            // alluserId: 1974
+            jobId: 48,
+            alluserId: 1959
         }
         const response = await Api.fetchSession(data)
         console.log("sessions", response?.data)

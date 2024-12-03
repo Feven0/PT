@@ -23,6 +23,11 @@ export {default as LoadingIndicator} from './LoadingIndicator'
 export {default as UserOverallProgress} from './UserOverallProgress'
 export {default as AudioSentence} from './AudioSentence'
 export {default as Audio2Chunk} from './Audio2Chunk'
+export {default as AdminDashboard} from './AdminDashboard'
+export {default as StatusDashboard} from './StatusDashboard'
+export {default as DashboardLayout} from './DashboardLayout'
+export {default as UserOverall} from './UserOverall'
+
 
 
 

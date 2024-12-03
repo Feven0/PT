@@ -54,7 +54,7 @@ app = FastAPI()
 @routes_test.post("/strapi_db_test")
 async def strapi_methods():
     try:
-        ipersona_manager = IpersonaManager(sessionId=42, alluserId=1974, jobId=46, run_stage="dev")
+        ipersona_manager = IpersonaManager(sessionId=120, userprofileId=167, alluserId=1974, jobId=46, run_stage="dev")
         # ipersona_manager = IpersonaManager(sessionId=42, alluser=16, jobId=1045, run_stage="dev")
 
         # data = ipersona_manager.get_messages()
@@ -63,19 +63,14 @@ async def strapi_methods():
         # data = ipersona_manager.get_match(tinder_user_profile_id = 190, tinder_job_profile_id = 46)
         # data = ipersona_manager.get_job_sessions_observers()
         # data = ipersona_manager.get_job_sessions()
-        session_chatobserver = ipersona_manager.session_overall_observer_by_user_and_job()
-        session_chatobserver_sessions = session_chatobserver['all_sessions']
-        print(len(session_chatobserver_sessions))
-        attributes = {
-                "overall_confidence": "confidence_overtime",
-                "overall_clarity": "clarity_overtime",
-                "overall_engagement": "engagement_overtime",
-                "overall_time_management": "overall_time_managements",
-                "overall_competency": "overall_competencies",
-                "overall_performance": "overall_performance_scores"
-        }
-        ipersona_manager = IpersonaManager(sessionId = session_chatobserver['id'], run_stage="dev")
-        data = ipersona_manager.update_session_job_observer(attributes)
+        
+        data = ipersona_manager.get_all_sessions()
+        data = util.summarize_allusers_data(data)
+        
+        # data = ipersona_manager.get_alluserid_from_user_profile()
+        # data = util.calculate_session_metrics(data)
+        # data = ipersona_manager.get_session()
+        # data = ipersona_manager.get_all_user_data()
         # data = ipersona_manager.session_overall_observer()
         # data = ipersona_manager.get_trainee_user_profile()
         # data = ipersona_manager.get_trainee_job_profile()
@@ -135,6 +130,7 @@ async def strapi_methods():
     except Exception as e:
         print(f"Error processing files: {e}")
         return {"error": str(e)}
+
 
 @routes_test.post("/synthesize-audio/")
 async def synthesize_audio(recieved: pemodel.audioRequestRecieved):

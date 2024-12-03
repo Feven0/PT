@@ -1,4 +1,11 @@
-import { JobOverallProgress, InterviewChat, Audio, UserOverallProgress, AudioSentence, Audio2Chunk } from '../components/index'
+import { 
+    JobOverallProgress, 
+    InterviewChat, 
+    // Audio, 
+    UserOverallProgress, 
+    AudioSentence, 
+    // Audio2Chunk,
+    DashboardLayout } from '../components/index'
 import { useState} from 'react';
 import { Layout, Row, Col, Tabs } from 'antd';
 import { useEffect } from 'react';
@@ -20,12 +27,14 @@ const JobDetail = () => {
         return <JobOverallProgress/>;
         case 'interview':
         return <InterviewChat/>;
-        case 'audio-1-chunk':
-        return <Audio/>;
-        case 'audio-2-chunk':
-        return <Audio2Chunk/>;
+        // case 'audio-1-chunk':
+        // return <Audio/>;
+        // case 'audio-2-chunk':
+        // return <Audio2Chunk/>;
         case 'audio-sentence':
         return <AudioSentence/>;
+        case 'admin-dashboard':
+        return <DashboardLayout/>;
         default:
         return null; 
     }
@@ -52,9 +61,10 @@ const JobDetail = () => {
                         <TabPane tab="All Status" key="all-stat"/>
                         <TabPane tab="Overall Job Progress" key="overall-progress"/>
                         <TabPane tab="Chat Interview" key="interview" />
-                        <TabPane tab="Audio Test-1" key="audio-1-chunk" />
-                        <TabPane tab="Audio Test-2" key="audio-2-chunk" />
-                        <TabPane tab="Audio Test-3" key="audio-sentence" />
+                        {/* <TabPane tab="Audio Test-1" key="audio-1-chunk" />
+                        <TabPane tab="Audio Test-2" key="audio-2-chunk" /> */}
+                        <TabPane tab="Audio" key="audio-sentence" />
+                        <TabPane tab="Admin Dashboard" key="admin-dashboard" />
                         </Tabs>
                         {renderContent()} 
                     </Col>

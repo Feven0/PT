@@ -13,6 +13,8 @@ class IpersonaManager(LeapBaseClass):
         self.sessionId = kwargs.get("sessionId", 1)  
         self.alluserId = kwargs.get("alluserId", 1974)
         self.jobId = kwargs.get("jobId", 46)
+        self.userprofileId = kwargs.get("userprofileId", "")
+        self.id = kwargs.get("id", "")
         self.sg = StrapiGraphql(run_stage=kwargs.get("run_stage", "dev"))        
     
     def get_alluser_sessions(self):
@@ -61,11 +63,16 @@ class IpersonaManager(LeapBaseClass):
                                         }
                                     }        
                                 } 
+                                tinder_user_profile {
+                                    data {
+                                        id
+                                    }
+                                }  
                                 tinder_job_profile {
                                     data {
                                         id
                                     }
-                                }                               
+                                }                                
                             }
                         }
                         meta {
@@ -237,6 +244,123 @@ class IpersonaManager(LeapBaseClass):
         
         return session
     
+    def get_all_sessions(self):
+        """
+        Function to get all sessions from Strapi GraphQL
+        """
+
+        session_query = """
+            query GetIPersonaSessions {
+                iPersonaSessions {
+                    data {
+                        id
+                        attributes {
+                            status
+                            # attributes
+                            createdAt
+                            i_persona_observer {
+                                data {
+                                    attributes {
+                                        attributes
+                                        metadata
+                                    }
+                                }
+                            }
+                            tinder_user_profile {
+                                data {
+                                    id
+                                }
+                            }
+                            tinder_job_profile {
+                                data {
+                                    id
+                                }
+                            } 
+                        }
+                    }
+                }
+            }
+        """
+
+        try:
+            session_json = self.sg.Select_from_table(query=session_query, variables={})
+
+            if 'data' in session_json and 'iPersonaSessions' in session_json['data']:
+                session = session_json['data']['iPersonaSessions']['data']
+                return session
+            else:
+                return None
+
+        except Exception as e:
+            print(f"Error fetching sessions: {str(e)}")
+            return None
+
+    def get_all_user_data(self):
+        """
+        Function to get alluser basic infos from Strapi GraphQL        
+        """
+        alluser_info_query = """
+            query GetAllUser($id: ID!) {
+                allUser(id: $id) {
+                    data {
+                        id
+                        attributes {
+                            name
+                            role
+                            Batch                            
+                        }                        
+                    }
+                }
+            }
+        """
+        
+        profile_info_query = """
+            query GetProfileInformation($alluserId: ID!) {
+                profileInformations(
+                    filters: {
+                        all_user: {
+                            id: { 
+                                eq: $alluserId
+                            }  
+                        }                            
+                    }
+                ) {
+                    data {
+                        id
+                        attributes {
+                            gender
+                            nationality                         
+                        }                        
+                    }
+                }
+            }
+        """
+
+        alluser_info_json = self.sg.Select_from_table(
+            query=alluser_info_query,
+            variables={"id": self.alluserId}  
+        )
+        
+        profile_info_json = self.sg.Select_from_table(
+            query=profile_info_query,
+            variables={"alluserId": self.alluserId}
+        )
+
+        alluser_info = alluser_info_json['data']['allUser']['data']
+        profile_info = profile_info_json['data']['profileInformations']['data'][0]  
+        
+        result = {
+            "name": alluser_info['attributes']['name'],
+            "role": alluser_info['attributes']['role'],
+            "Batch": alluser_info['attributes']['Batch'],
+            "gender": profile_info['attributes']['gender'],
+            "nationality": profile_info['attributes']['nationality']
+        }
+
+        return result
+
+    
+    
     def get_observers(self):
         all_observers = [] 
         page = 1  
@@ -378,6 +502,35 @@ class IpersonaManager(LeapBaseClass):
         }
             
         return result
+    
+    def get_alluserid_from_user_profile(self):
+        
+        query = """
+            query GetTinderUserProfile($id: ID!) {
+                tinderUserProfile(id: $id) {
+                    data {
+                        id
+                        attributes {
+                            all_users {
+                                data {
+                                    id
+                                }        	
+                            }                                 
+                        }
+                    }
+                }
+                }                
+            """
+            
+        res_json = self.sg.Select_from_table(
+            query=query,
+            variables={"id": self.userprofileId}
+        )
+        
+        session = res_json['data']['tinderUserProfile']['data']
+        all_user_id = session.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
+
+        return all_user_id
     
     def get_trainee_user_profile(self):
         page_size = 10
@@ -646,7 +799,6 @@ class IpersonaManager(LeapBaseClass):
         }
         return result
     
-    
     def session_overall_observer_by_user(self):
         page_size = 100
         page = 1
@@ -885,7 +1037,14 @@ class IpersonaManager(LeapBaseClass):
         Returns:
             result_json (Json): The response from Strapi after the mutation.
         """
+        data = self.get_trainee_user_profile()
+        if not data:
+            logger.warn("No trainee user profiles found.")
+            return []
 
+        tinder_user_profile_id = data[0]['id']
+        tinder_job_profile_id = self.jobId
+        
         mutation_query = """
             mutation CreateIPersonaSessionOverallObserver($attributes: JSON!, $metadata: JSON!, $jobId: ID!, $alluserId: ID!, $sessionIds: [ID]!) {
                 createIPersonaSessionOverallObserver(data: {
@@ -924,8 +1083,8 @@ class IpersonaManager(LeapBaseClass):
         variables = {
             "attributes": message_data.get("attributes"),
             "metadata": message_data.get("metadata"),
-            "alluserId": message_data.get("alluserId"),
-            "jobId": message_data.get("jobId"),  
+            "alluserId": tinder_user_profile_id,
+            "jobId": tinder_job_profile_id,  
             "sessionIds": message_data.get("sessionIds")       
         }
 
@@ -934,7 +1093,7 @@ class IpersonaManager(LeapBaseClass):
 
         return res_json
     
-    def update_session_job_observer(self, attributes):
+    def update_session_job_overallobserver(self, attributes):
         """
         Function to update the status of a session job in Strapi GraphQL.
 
@@ -947,11 +1106,11 @@ class IpersonaManager(LeapBaseClass):
 
         uquery = """
             mutation UpdateIPersonaSessionOverallObserver(
-                $sessionId: ID!,
+                $id: ID!,
                 $attributes: JSON!
             ) {
                 updateIPersonaSessionOverallObserver(
-                    id: $sessionId,
+                    id: $id,
                     data: {
                         attributes: $attributes
                     }
@@ -977,14 +1136,13 @@ class IpersonaManager(LeapBaseClass):
         """
 
         variables = {
-            "sessionId": str(self.sessionId),
+            "id": str(self.id),
             "attributes": attributes 
         }
 
         updatedSession = self.sg.Select_from_table(query=uquery, variables=variables)
 
         return updatedSession
-
 
     def update_session_status(self):
         """

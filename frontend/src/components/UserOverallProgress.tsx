@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import Api from '../Services/Services'
-import { ProgressBarChart } from './index'
+import { ProgressBarChart, UserOverall } from './index'
+import { Row, Col } from 'antd';
 
 const AllProgress = () => {
     const [progress, setAllProgress] = useState({});
+    const [status, setStatus] = useState([]);
     const [refresh, setRefresh] = useState(0);
 
 
@@ -12,6 +14,8 @@ const AllProgress = () => {
           alluserId: 1974
         }
         const response = await Api.UserAllSessionMetrics(data)
+        const responsestatus = await Api.UserStatus(data)
+        setStatus(responsestatus.data)
         setAllProgress(response.data)
       }
   
@@ -26,13 +30,26 @@ const AllProgress = () => {
   
   return (
     <div style={{
-        display: 'flex', 
-        gap: '40px', 
-        justifyContent: 'center', 
-        marginTop: '3rem', 
-        backgroundColor:'#ffffff'}}
-    >
-        <ProgressBarChart data={progress}/>
+      display: 'flex', 
+      justifyContent: 'center',  
+      alignItems: 'center',    
+      backgroundColor: '#f0f2f5'
+    }}>
+        <Row gutter={60}>
+          <Col span={30}>
+            <UserOverall data={status}/>
+          </Col>
+          <Col 
+            style={{
+              display: 'flex', 
+              gap: '40px', 
+              justifyContent: 'center', 
+              marginTop: '3rem', 
+              backgroundColor:'#ffffff'}}
+          >
+              <ProgressBarChart data={progress}/>
+          </Col>
+        </Row>
     </div>
   )
 }

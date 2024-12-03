@@ -130,7 +130,7 @@ async def choose_interview_question(collection: dict, data: dict):
             chat = session_chathistory['total']
             assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
             chat_count += assistant_count 
-            logger.info("Number of assistant entries:", chat_count)
+            logger.info(f"Number of assistant entries: {chat_count}")
         else:
             logger.error("Chat is empty.")
         
@@ -229,6 +229,7 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
                 interview_question_json = await fetch_interview_question(section, data) 
    
         else:  
+            logger.info("Calculate the overall and save to database.")
             await overall_interview_evaluations(data)
             
                 
@@ -410,7 +411,7 @@ def realtime_response_evaluation(data: dict) -> dict:
                 break  
 
         if last_assistant_response:
-            logger.info("Last assistant response")
+            logger.info("Last assistant response For Realtime Evaluation")
         else:
             logger.warn("No assistant response found in the chat history.")
             
@@ -515,11 +516,11 @@ async def overall_interview_evaluations(data: dict) -> dict:
         ipersona_manager.update_session_status()
         
                         #-----------------------------------------------------------#
-        ipersona_manager = IpersonaManager(sessionId=42, alluserId=1974, jobId=46, run_stage="dev")
+        ipersona_manager = IpersonaManager(sessionId=42, alluserId=data['alluserId'], jobId=data['jobId'], run_stage="dev")
         session = ipersona_manager.get_job_sessions()   
         session_chatobserver = extract_observers_metrics(session)
                     
-        calculate_overall_progress(data, session_chatobserver) 
+        await calculate_overall_progress(data, session_chatobserver) 
     
         #################################################################################################
       
@@ -820,8 +821,9 @@ def percentage_term(percent: float) -> dict:
     
 
 #----------------------------------------- Entire Data Progress Calculator -----------------------------------------   
-def calculate_overall_progress(userdata, data: list):
+async def calculate_overall_progress(userdata, data: list):
     try:
+        logger.info(f"calculating overall progress for a job overtime")
         confidence_overtime = []  
         clarity_overtime = []     
         engagement_overtime = [] 
@@ -893,15 +895,14 @@ def calculate_overall_progress(userdata, data: list):
                         engagement = {"time": created_time, "level": engagement_level, "value": value}
                         engagement_overtime.append(engagement)
       
-        
-        alluserId=userdata['alluserId']
-        jobId=userdata['jobId']
        
-        ipersona_manager = IpersonaManager(alluserId=alluserId, jobId=jobId, run_stage="dev")
+        ipersona_manager = IpersonaManager(alluserId=userdata['alluserId'], jobId=userdata['jobId'], run_stage="dev")
         session_chatobserver = ipersona_manager.session_overall_observer_by_user_and_job()
         session_chatobserver_sessions = session_chatobserver['all_sessions']
-
+        logger.info(f"Value of session_overall_observer_by_user_and_job: {len(session_chatobserver_sessions)}")
+            
         if len(session_chatobserver_sessions) > 0:
+            logger.info(f"Updating session job overall observer data")
             attributes = {
                 "overall_confidence": confidence_overtime,
                 "overall_clarity": clarity_overtime,
@@ -911,10 +912,11 @@ def calculate_overall_progress(userdata, data: list):
                 "overall_performance": overall_performance_scores
             }
             
-            ipersona_manager = IpersonaManager(sessionId=str(session_chatobserver['id']), run_stage="dev")
-            response = ipersona_manager.update_session_job_observer(attributes)
+            ipersona_manager = IpersonaManager(id=str(session_chatobserver['id']), run_stage="dev")
+            response = ipersona_manager.update_session_job_overallobserver(attributes)
             
-        else:            
+        else:  
+            logger.info(f"Creating a new session job overall observer data")          
             message_data = {
                 "attributes": {
                     "overall_confidence": confidence_overtime,
@@ -927,12 +929,9 @@ def calculate_overall_progress(userdata, data: list):
                 "metadata": {
                     "createdBy": "parrot"
                 },
-                "jobId": str(jobId),  
-                "alluserId": str(alluserId),  
                 "sessionIds": session_ids
             }
-        
-            ipersona_manager = IpersonaManager(run_stage="dev")
+            ipersona_manager = IpersonaManager(alluserId=userdata['alluserId'], jobId=userdata['jobId'], run_stage="dev")
             response = ipersona_manager.create_session_overall_observer(message_data)    
     
         return response
@@ -1065,6 +1064,7 @@ def extracted_needed_metrics(data):
             session['overall_performance_score'] = observer_attributes.get('overall_performance_score', None)
             session['createdAt'] = session['attributes']['createdAt']
             session['jobId'] = session['attributes']['tinder_job_profile']['data']['id']
+            session['userprofileId'] = session['attributes']['tinder_user_profile']['data']['id']
             extracted_observers.append(session)
 
     return extracted_observers
@@ -1080,6 +1080,146 @@ def extract_observers_metrics(data):
             extracted_observers.append(message_attributes)
 
     return extracted_observers
+
+def calculate_session_metrics(sessions):
+    session_count = 0
+    job_profile_count = 0
+    user_profile_count = 0
+    complete_sessions = 0
+    incomplete_sessions = 0
+    job_profile_frequency = defaultdict(int)
+    user_profile_frequency = defaultdict(int)
+
+    unique_job_profiles = set()
+    unique_user_profiles = set()
+
+    for session in sessions:
+        session_count += 1
+
+        attributes = session.get('attributes', {})
+        if not isinstance(attributes, dict):
+            logger.warn(f"Skipping session due to invalid 'attributes': {session}")
+            continue
+
+        job_profile = attributes.get('tinder_job_profile', {}).get('data', {})
+        user_profile = attributes.get('tinder_user_profile', {}).get('data', {})
+
+        if not isinstance(job_profile, dict):
+            logger.warn(f"Skipping session due to invalid 'tinder_job_profile': {session}")
+            continue
+
+        if not isinstance(user_profile, dict):
+            logger.warn(f"Skipping session due to invalid 'tinder_user_profile': {session}")
+            continue
+
+        job_profile_id = job_profile.get('id')
+        user_profile_id = user_profile.get('id')
+
+        if not job_profile_id or not user_profile_id:
+            logger.warn(f"Skipping session due to missing job/user profile: {session}")
+            continue
+
+        if job_profile_id not in unique_job_profiles:
+            unique_job_profiles.add(job_profile_id)
+            job_profile_count += 1
+
+        if user_profile_id not in unique_user_profiles:
+            unique_user_profiles.add(user_profile_id)
+            user_profile_count += 1
+
+        job_profile_frequency[job_profile_id] += 1
+        user_profile_frequency[user_profile_id] += 1
+
+        i_persona_observer = attributes.get('i_persona_observer', {}).get('data')
+        if i_persona_observer is None:
+            incomplete_sessions += 1
+        else:
+            complete_sessions += 1
+
+    result = {
+        'session_count': session_count,
+        'job_profile_count': job_profile_count,
+        'user_profile_count': user_profile_count,
+        'complete_sessions': complete_sessions,
+        'incomplete_sessions': incomplete_sessions,
+        'job_profile_frequency': dict(job_profile_frequency),
+        'user_profile_frequency': dict(user_profile_frequency),
+    }
+
+    return result
+
+def summarize_allusers_data(data):
+    data = extracted_needed_metrics(data)
+    
+    job_summary = defaultdict(list)
+    processed_pairs = set()
+
+    for record in data:
+        jobId = record['jobId']
+        userprofileId = record['userprofileId']
+        
+        job_summary[jobId].append(record)
+    
+    summary_response = []
+
+    for jobId, records in job_summary.items():
+        total_score = sum(record['overall_performance_score'] for record in records)
+        interviews_count = len(records)
+        average_score = total_score / interviews_count if interviews_count > 0 else 0
+        
+        ipersona_manager = IpersonaManager(jobId=jobId, run_stage="dev")
+        job_title_data = ipersona_manager.get_trainee_job_profile()
+        
+        if job_title_data and len(job_title_data) > 0:
+            job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
+        else:
+            job_title = 'Unknown Job Title'
+        
+        for record in records:
+            userprofileId = record['userprofileId']
+            ipersona_manager = IpersonaManager(userprofileId=userprofileId, run_stage="dev")
+            alluserId = ipersona_manager.get_alluserid_from_user_profile()
+            ipersona_manager = IpersonaManager(alluserId=alluserId, run_stage="dev")
+            userdata = ipersona_manager.get_all_user_data()
+            
+            if (jobId, userprofileId) in processed_pairs:
+                continue  
+            
+            trainee_data = ipersona_manager.get_trainee_user_profile()
+            if not trainee_data:
+                logger.warn("No trainee user profiles found.")
+                continue  
+            
+            tinder_user_profile_id = trainee_data[0]['id']
+            tinder_job_profile_id = jobId
+
+            job_match_data = ipersona_manager.get_match(tinder_user_profile_id, tinder_job_profile_id)
+            if job_match_data and len(job_match_data) > 0:
+                match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
+                job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
+            else:
+                match_score = 'Unknown'
+                job_match = 'Unknown'
+            
+            processed_pairs.add((jobId, userprofileId))
+            
+            summary_response.append({
+                "jobId": jobId,
+                "userprofileId": userprofileId,
+                "job_title": job_title,
+                "job_match_score": match_score,
+                "job_match": job_match,
+                "interviews": interviews_count,
+                "score": round(average_score, 2),
+                "name": userdata['name'],
+                "role": userdata['role'],
+                "batch": userdata['Batch'],
+                "gender": userdata['gender'],
+                "nationality": userdata['nationality']
+            })
+    
+    return summary_response
+
 #-------------------------------------------- FIle reader --------------------------------------------
 def convert_iso_to_readable_format(iso_time):
     dt = datetime.strptime(iso_time, '%Y-%m-%dT%H:%M:%S.%fZ')    

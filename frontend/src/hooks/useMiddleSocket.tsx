@@ -84,8 +84,8 @@ const useMiddleSocket = () => {
         response: data.input, 
         user_session: data.user_session,
         time_taken: data.timerValue,
-        jobId: 46,
-        alluserId: 1974
+        jobId: data.jobId,
+        alluserId: data.alluserId
       });
     };
 

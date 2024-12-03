@@ -285,6 +285,48 @@ async def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionReque
         elapsed_time = end_time - start_time 
         logger.info(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
 
+@routes.post("/admin_overview_status")
+async def calculate_admin_data_status():
+    """
+    """
+    start_time = time.time()    
+    try:      
+        ipersona_manager = IpersonaManager(run_stage="dev")
+
+        data = ipersona_manager.get_all_sessions()
+        result = util.calculate_session_metrics(data)           
+        return result
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return JSONResponse(status_code=500, content={"error": "Error processing files"})
+
+    finally:
+        end_time = time.time() 
+        elapsed_time = end_time - start_time 
+        logger.info(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
+
+@routes.post("/admin_user_data")
+async def calculate_admin_user_data():
+    """
+    """
+    start_time = time.time()    
+    try:      
+        ipersona_manager = IpersonaManager(run_stage="dev")
+
+        data = ipersona_manager.get_all_sessions()
+        result = util.summarize_allusers_data(data)        
+        return result
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return JSONResponse(status_code=500, content={"error": "Error processing files"})
+
+    finally:
+        end_time = time.time() 
+        elapsed_time = end_time - start_time 
+        logger.info(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
+
 
 @routes.post("/fetch_user_session")
 async def fetch_session(recieved: pemodel.UserSessionRequestRecieved):
