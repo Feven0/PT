@@ -7,15 +7,13 @@ interface Data {
   data: any
 }
 
-const AdminDashboard: React.FC<Data> = ({data}) => {
-  console.log("propose", data)
+const AllDataFilterAdmin: React.FC<Data> = ({data}) => {
   const [filters, setFilters] = useState<any>({
     name: '',
     batch: null,
     gender: '',
     nationality: '',
-    role: '',
-    scoreThreshold: null,
+    role: ''
   });
 
   const [filteredDataCount, setFilteredDataCount] = useState<any>(data.length || 0); 
@@ -28,7 +26,6 @@ const AdminDashboard: React.FC<Data> = ({data}) => {
   }));
 
   const applyFilters = (newFilters: any) => {
-    // Ensure data is an array before proceeding
     let tempData = Array.isArray(data) ? [...data] : [];
 
     if (newFilters.name) {
@@ -53,10 +50,6 @@ const AdminDashboard: React.FC<Data> = ({data}) => {
 
     if (newFilters.role) {
       tempData = tempData.filter((item) => item.role === newFilters.role);
-    }
-
-    if (newFilters.scoreThreshold !== null) {
-      tempData = tempData.filter((item) => item.score >= newFilters.scoreThreshold);
     }
 
     filteredDataRef.current = tempData;
@@ -107,21 +100,6 @@ const AdminDashboard: React.FC<Data> = ({data}) => {
     });
   };
 
-  const handleSliderChange = (value: any) => {
-    setFilters((prevFilters: any) => {
-      const newFilters = { ...prevFilters, scoreThreshold: value };
-
-      Object.keys(newFilters).forEach((key) => {
-        if (key !== 'scoreThreshold') {
-          newFilters[key] = key === 'batch' ? null : ''; 
-        }
-      });
-
-      applyFilters(newFilters);
-      return newFilters;
-    });
-  };
-
   useEffect(() => {
     if (Array.isArray(data)) {
       applyFilters(filters); 
@@ -132,14 +110,11 @@ const AdminDashboard: React.FC<Data> = ({data}) => {
 
   const columns = [
     { title: 'Name', dataIndex: 'name', key: 'name' },
-    { title: 'Job Title', dataIndex: 'job_title', key: 'job_title' },
-    { title: 'Job Match Score', dataIndex: 'job_match_score', key: 'job_match_score' },
     { title: 'Batch', dataIndex: 'batch', key: 'batch' },
     { title: 'Gender', dataIndex: 'gender', key: 'gender' },
     { title: 'Nationality', dataIndex: 'nationality', key: 'nationality' },
     { title: 'Role', dataIndex: 'role', key: 'role' },
-    { title: 'Interviews', dataIndex: 'interviews', key: 'interviews' },
-    { title: 'Score', dataIndex: 'score', key: 'score' }
+    { title: 'Interviews', dataIndex: 'interviews', key: 'interviews' }
   ];
 
   return (
@@ -199,16 +174,6 @@ const AdminDashboard: React.FC<Data> = ({data}) => {
             <Option value="role">Role</Option>
           </AntSelect>
         </Col>
-        <Col span={6}>
-          <p>Score</p>
-          <Slider
-            min={0}
-            max={100}
-            onChange={handleSliderChange}
-            value={filters?.scoreThreshold || 0}
-            marks={{ 0: '0', 50: '50', 80: '80', 100: '100' }}
-          />
-        </Col>
       </Row>
 
       <div style={{ marginBottom: 16 }}>
@@ -218,11 +183,11 @@ const AdminDashboard: React.FC<Data> = ({data}) => {
       <Table 
         dataSource={filteredData || []} 
         columns={columns} 
-        rowKey="jobId"  
+        rowKey="alluserId"  
         scroll={{ y: 1000 }} 
       />
     </div>
   );
 };
 
-export default AdminDashboard;
+export default AllDataFilterAdmin;

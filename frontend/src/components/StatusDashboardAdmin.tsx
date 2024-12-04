@@ -28,9 +28,9 @@ const StatusDashboard: React.FC<Data> = ({ statusData }) => {
               <Statistic title="Total Job Profiles" value={statusData?.job_profile_count} />
               <div style={{ marginTop: 8 }}>
                 <h4>Job Profile Frequency:</h4>
-                {Object.entries(statusData?.job_profile_frequency ?? {}).map(([jobId, frequency]) => (
-                  <Tag key={jobId} color="blue" style={{ marginBottom: 8 }}>
-                    Job Role: {jobId} - {frequency} times
+                {statusData?.job_profile_frequency?.map((item: any, index:any) => (
+                  <Tag key={index} color="blue" style={{ marginBottom: 8 }}>
+                    Job Role: {item?.job_title} - {item?.count} times
                   </Tag>
                 ))}
               </div>
@@ -40,9 +40,9 @@ const StatusDashboard: React.FC<Data> = ({ statusData }) => {
               <Statistic title="Total User Profiles" value={statusData?.user_profile_count} />
               <div style={{ marginTop: 8 }}>
                 <h4>User Profile Frequency:</h4>
-                {Object.entries(statusData?.user_profile_frequency ?? {}).map(([userId, frequency]) => (
-                  <Tag key={userId} color="green" style={{ marginBottom: 8 }}>
-                    Trainee: {userId} - {frequency} times
+                {statusData?.user_profile_frequency.map((item: any, index: any) => (
+                  <Tag key={index} color="green" style={{ marginBottom: 8 }}>
+                    Trainee: {item.name} - {item.count} times
                   </Tag>
                 ))}
               </div>

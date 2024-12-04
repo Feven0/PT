@@ -13,7 +13,6 @@ class IpersonaManager(LeapBaseClass):
         self.sessionId = kwargs.get("sessionId", 1)  
         self.alluserId = kwargs.get("alluserId", 1974)
         self.jobId = kwargs.get("jobId", 46)
-        self.userprofileId = kwargs.get("userprofileId", "")
         self.id = kwargs.get("id", "")
         self.sg = StrapiGraphql(run_stage=kwargs.get("run_stage", "dev"))        
     
@@ -244,6 +243,37 @@ class IpersonaManager(LeapBaseClass):
         
         return session
     
+    
+    def get_alluserId(self):
+        """
+        """
+
+        session_query = """
+            query GetTinderUserProfile($id: ID!) {
+                tinderUserProfile(id: $id) {
+                    data {
+                        id
+                        attributes {
+                            all_users {
+                                data {
+                                    id
+                                }        	
+                            }                                 
+                        }
+                    }
+                }
+            }
+        """
+
+        session_json = self.sg.Select_from_table(
+            query=session_query,
+            variables={"id": str(self.id)}  
+        )
+
+        session = session_json['data']['tinderUserProfile']['data']
+        
+        return session
+    
     def get_all_sessions(self):
         """
         Function to get all sessions from Strapi GraphQL
@@ -358,8 +388,6 @@ class IpersonaManager(LeapBaseClass):
         }
 
         return result
-
-    
     
     def get_observers(self):
         all_observers = [] 
@@ -524,7 +552,7 @@ class IpersonaManager(LeapBaseClass):
             
         res_json = self.sg.Select_from_table(
             query=query,
-            variables={"id": self.userprofileId}
+            variables={"id": self.id}
         )
         
         session = res_json['data']['tinderUserProfile']['data']

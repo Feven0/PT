@@ -5,6 +5,7 @@ import {
     UserOverallProgress, 
     AudioSentence, 
     // Audio2Chunk,
+    AdminDashboard,
     DashboardLayout } from '../components/index'
 import { useState} from 'react';
 import { Layout, Row, Col, Tabs } from 'antd';

@@ -33,10 +33,11 @@ const AllProgress = () => {
       display: 'flex', 
       justifyContent: 'center',  
       alignItems: 'center',    
-      backgroundColor: '#f0f2f5'
+      backgroundColor: '#f0f2f5',
+      margin: '0px 3rem 0px 3rem'
     }}>
-        <Row gutter={60}>
-          <Col span={30}>
+        <Row gutter={50}>
+          <Col span={16}>
             <UserOverall data={status}/>
           </Col>
           <Col 

@@ -54,7 +54,7 @@ app = FastAPI()
 @routes_test.post("/strapi_db_test")
 async def strapi_methods():
     try:
-        ipersona_manager = IpersonaManager(sessionId=120, userprofileId=167, alluserId=1974, jobId=46, run_stage="dev")
+        ipersona_manager = IpersonaManager(sessionId=120, id=167, alluserId=1974, jobId=46, run_stage="dev")
         # ipersona_manager = IpersonaManager(sessionId=42, alluser=16, jobId=1045, run_stage="dev")
 
         # data = ipersona_manager.get_messages()
@@ -64,8 +64,8 @@ async def strapi_methods():
         # data = ipersona_manager.get_job_sessions_observers()
         # data = ipersona_manager.get_job_sessions()
         
-        data = ipersona_manager.get_all_sessions()
-        data = util.summarize_allusers_data(data)
+        # data = ipersona_manager.get_all_sessions()
+        # data = util.summarize_allusers_data(data)
         
         # data = ipersona_manager.get_alluserid_from_user_profile()
         # data = util.calculate_session_metrics(data)
@@ -74,6 +74,8 @@ async def strapi_methods():
         # data = ipersona_manager.session_overall_observer()
         # data = ipersona_manager.get_trainee_user_profile()
         # data = ipersona_manager.get_trainee_job_profile()
+        data = ipersona_manager.get_alluserId()
+
         # data = ipersona_manager.get_trainee_user_profile()  
         # data = extract_job_neccessary_values(data)
     

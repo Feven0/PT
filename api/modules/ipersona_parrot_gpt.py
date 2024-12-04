@@ -1081,14 +1081,15 @@ def extract_observers_metrics(data):
 
     return extracted_observers
 
+
 def calculate_session_metrics(sessions):
     session_count = 0
     job_profile_count = 0
     user_profile_count = 0
     complete_sessions = 0
     incomplete_sessions = 0
-    job_profile_frequency = defaultdict(int)
-    user_profile_frequency = defaultdict(int)
+    job_profile_frequency = []  
+    user_profile_frequency = []  
 
     unique_job_profiles = set()
     unique_user_profiles = set()
@@ -1114,6 +1115,17 @@ def calculate_session_metrics(sessions):
 
         job_profile_id = job_profile.get('id')
         user_profile_id = user_profile.get('id')
+        ipersona_manager = IpersonaManager(id=user_profile_id, jobId=job_profile_id, run_stage="dev")
+        job_title_data = ipersona_manager.get_trainee_job_profile()
+        alluserdata = ipersona_manager.get_alluserId()
+        alluserId = alluserdata["attributes"]["all_users"]["data"][0]["id"]
+        ipersona_manager = IpersonaManager(alluserId=alluserId, run_stage="dev")
+        userdata = ipersona_manager.get_all_user_data()
+        
+        if job_title_data and len(job_title_data) > 0:
+            job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
+        else:
+            job_title = 'Unknown Job Title'
 
         if not job_profile_id or not user_profile_id:
             logger.warn(f"Skipping session due to missing job/user profile: {session}")
@@ -1122,13 +1134,30 @@ def calculate_session_metrics(sessions):
         if job_profile_id not in unique_job_profiles:
             unique_job_profiles.add(job_profile_id)
             job_profile_count += 1
+            job_profile_frequency.append({
+                'count': 1,
+                'job_title': job_title,
+                'job_profile_id': job_profile_id
+            })
+        else:
+            for profile in job_profile_frequency:
+                if profile['job_profile_id'] == job_profile_id:
+                    profile['count'] += 1
+                    break
 
         if user_profile_id not in unique_user_profiles:
             unique_user_profiles.add(user_profile_id)
             user_profile_count += 1
-
-        job_profile_frequency[job_profile_id] += 1
-        user_profile_frequency[user_profile_id] += 1
+            user_profile_frequency.append({
+                'count': 1,
+                'name': userdata['name'],
+                'user_profile_id': user_profile_id
+            })
+        else:
+            for profile in user_profile_frequency:
+                if profile['user_profile_id'] == user_profile_id:
+                    profile['count'] += 1
+                    break
 
         i_persona_observer = attributes.get('i_persona_observer', {}).get('data')
         if i_persona_observer is None:
@@ -1136,17 +1165,21 @@ def calculate_session_metrics(sessions):
         else:
             complete_sessions += 1
 
+    job_profile_frequency = sorted(job_profile_frequency, key=lambda x: x['count'], reverse=True)
+    user_profile_frequency = sorted(user_profile_frequency, key=lambda x: x['count'], reverse=True)
+
     result = {
         'session_count': session_count,
         'job_profile_count': job_profile_count,
         'user_profile_count': user_profile_count,
         'complete_sessions': complete_sessions,
         'incomplete_sessions': incomplete_sessions,
-        'job_profile_frequency': dict(job_profile_frequency),
-        'user_profile_frequency': dict(user_profile_frequency),
+        'job_profile_frequency': job_profile_frequency,
+        'user_profile_frequency': user_profile_frequency,
     }
 
     return result
+
 
 def summarize_allusers_data(data):
     data = extracted_needed_metrics(data)
@@ -1177,7 +1210,7 @@ def summarize_allusers_data(data):
         
         for record in records:
             userprofileId = record['userprofileId']
-            ipersona_manager = IpersonaManager(userprofileId=userprofileId, run_stage="dev")
+            ipersona_manager = IpersonaManager(id=userprofileId, run_stage="dev")
             alluserId = ipersona_manager.get_alluserid_from_user_profile()
             ipersona_manager = IpersonaManager(alluserId=alluserId, run_stage="dev")
             userdata = ipersona_manager.get_all_user_data()
@@ -1206,6 +1239,7 @@ def summarize_allusers_data(data):
             summary_response.append({
                 "jobId": jobId,
                 "userprofileId": userprofileId,
+                "alluserId": alluserId,
                 "job_title": job_title,
                 "job_match_score": match_score,
                 "job_match": job_match,
@@ -1217,8 +1251,36 @@ def summarize_allusers_data(data):
                 "gender": userdata['gender'],
                 "nationality": userdata['nationality']
             })
+            aggregated = aggregate_user_data(summary_response)
+            
+            result = {
+                "summary_response": summary_response,
+                "aggregated": aggregated
+            }
     
-    return summary_response
+    return result
+
+def aggregate_user_data(data):
+    aggregated_data = {}
+
+    for entry in data:
+        alluser_id = entry['alluserId']
+
+        if alluser_id in aggregated_data:
+            aggregated_data[alluser_id]['interviews'] += entry['interviews']
+        else:
+            aggregated_data[alluser_id] = {
+                'name': entry['name'],
+                'role': entry['role'],
+                'batch': entry['batch'],
+                'gender': entry['gender'],
+                'nationality': entry['nationality'],
+                'interviews': entry['interviews'],  
+            }
+
+    result = [{'alluserId': key, **value} for key, value in aggregated_data.items()]
+
+    return result
 
 #-------------------------------------------- FIle reader --------------------------------------------
 def convert_iso_to_readable_format(iso_time):

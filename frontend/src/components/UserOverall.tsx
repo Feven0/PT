@@ -51,6 +51,7 @@ const UserOverall: React.FC<Data> = ({ data }) => {
         columns={columns}
         rowKey="jobId" 
         pagination={false}
+        scroll={{ y: 1000 }} 
       />
     </div>
   );
