@@ -11,10 +11,11 @@ const AllProgress = () => {
 
     const fetchOverall = async() => {
         const data = {
-          alluserId: 1974
+          all_user_id: 1920
         }
         const response = await Api.UserAllSessionMetrics(data)
         const responsestatus = await Api.UserStatus(data)
+        console.log("useroveralldata", responsestatus.data)
         setStatus(responsestatus.data)
         setAllProgress(response.data)
       }

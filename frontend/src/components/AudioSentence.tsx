@@ -117,10 +117,7 @@ const AudioSentence = () => {
             wavesurferRef.current = null;
           }
         };
-      }, [isOn]); 
-
-
-    
+      }, [isOn]);    
 
     useEffect(() => {
         const delay = 6000;  

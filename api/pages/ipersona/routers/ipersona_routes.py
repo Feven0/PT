@@ -96,7 +96,7 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
             A dictionary containing a success message with the uploaded filenames 
             or an error response if an exception occurs during processing.
         """
-        ipersona_manager = IpersonaManager(alluserId=recieved.alluserId, run_stage="dev")
+        ipersona_manager = IpersonaManager(all_user_id=recieved.all_user_id, run_stage="dev")
         trainee_profile_data = ipersona_manager.get_trainee_user_profile()
         if not trainee_profile_data:
                 logger.warn("No trainee user profiles found.")
@@ -140,7 +140,7 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
         
 
         message_data = {
-            "slug": str(f"all_user_id: {recieved.alluserId}"), 
+            "slug": str(f"all_user_id: {recieved.all_user_id}"), 
             "attributes": {
                 "persona": generated_persona,  
                 "generated_questions": generated_question_json
@@ -148,8 +148,8 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
             "metadata": {
                 "createdBy": "parrot"
             },
-            "alluserId": tinder_user_profile_id,
-            "jobId": recieved.jobId
+            "all_user_id": tinder_user_profile_id,
+            "job_profile_id": recieved.job_profile_id
         }
 
 
@@ -214,7 +214,7 @@ async def calculate_overall_progress(recieved: pemodel.UserSessionRequestRecieve
     """
     start_time = time.time()    
     try:  
-        ipersona_manager = IpersonaManager(alluserId=recieved.alluserId, jobId=recieved.jobId, run_stage="dev")
+        ipersona_manager = IpersonaManager(all_user_id=recieved.all_user_id, job_profile_id=recieved.job_profile_id, run_stage="dev")
         session_chatobserver = ipersona_manager.session_overall_observer_by_user_and_job()
                             
         return session_chatobserver["all_sessions"][0]
@@ -251,7 +251,7 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
     """
     start_time = time.time()    
     try:  
-        ipersona_manager = IpersonaManager(alluserId=recieved.alluserId, run_stage="dev")
+        ipersona_manager = IpersonaManager(all_user_id=recieved.all_user_id, run_stage="dev")
         session_chatobserver = ipersona_manager.session_overall_observer_by_user()
                
         result =  util.all_session_jobs_average_metrics(session_chatobserver) 
@@ -273,7 +273,7 @@ async def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionReque
     """
     start_time = time.time()    
     try:                 
-        result =  util.summarize_interviews(recieved.alluserId) 
+        result =  util.summarize_interviews(recieved.all_user_id) 
         return result
     
     except Exception as e:
@@ -348,7 +348,7 @@ async def fetch_session(recieved: pemodel.UserSessionRequestRecieved):
         error response if an exception occurs during processing.
     """
     try:
-        ipersona_manager = IpersonaManager(alluserId=recieved.alluserId, jobId=recieved.jobId, run_stage="dev")
+        ipersona_manager = IpersonaManager(all_user_id=recieved.all_user_id, job_profile_id=recieved.job_profile_id, run_stage="dev")
         user_data = ipersona_manager.get_job_sessions()
 
         return user_data
@@ -395,7 +395,7 @@ async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):
 @routes.post("/fetch_user_session_observers")
 async def fetch_user_session_observer(recieved: pemodel.UserSessionRequestRecieved):  
     try:
-        ipersona_manager = IpersonaManager(sessionId=recieved.alluser, jobId=recieved.jobId, run_stage="dev")
+        ipersona_manager = IpersonaManager(job_profile_id=recieved.job_profile_id, run_stage="dev")
         session_chatobserver = ipersona_manager.get_job_sessions()
          
         return session_chatobserver

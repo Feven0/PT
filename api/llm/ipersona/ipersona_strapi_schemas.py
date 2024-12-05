@@ -19,21 +19,22 @@ from collections import defaultdict
 capitalize = lambda x: x[0].upper() + x[1:]
 
 
-class IpersonaSchema(LeapBaseClass):
+class IpersonaSessionSchema(LeapBaseClass):
     '''
     Schema Name:
-        AllUser
+        IPersonaSession
     Attributes:
-        all_user: Relation with Trainee 	
-        batch: Relation with Job 	
-        email: Text 	
-        trainee_id: Text
+        i_persona_observer: Relation with IPersonaObserver
+        tinder_user_profile: Relation with TinderUserProfile
+        tinder_job_profile: Relation with TInderJobProfile
+        slug: Text	
+        attributes: Json	
+        status: Text
     '''
     def __init__(self, **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
         super().__init__(**kwargs)
         
-        #
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
         self.data = kwargs.get('data', "")
@@ -83,18 +84,13 @@ class IpersonaSchema(LeapBaseClass):
             "i_persona_observer": "ID"
         }
 
-        self.id_names_map = {
-            # 'Batch': 'batch',
-            # 'createdAt': 'created_at',
-            # 'updatedAt': 'updated_at'            
-            }
+        self.id_names_map = {  }
          
-        # process extra data
         self.data_template = copy.deepcopy(self.data)
         self.data = self.data%""
         _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)
     
-    def get_trainee(self, idval, **kwargs):
+    def get_session_by_id(self, idval, **kwargs):
         return self.exists(scol='id', sval=idval, op='eq', stype="ID", **kwargs)        
     
     def filter_by_id(self, vid, **kwargs):
@@ -105,7 +101,7 @@ class IpersonaSchema(LeapBaseClass):
         """
         return self.get_all_objects(filter=session_filter , **kwargs)
     
-    def filter_by_2id(self, vid, tid, **kwargs):
+    def filter_by_with_more_ids(self, vid, tid, **kwargs):
         session_filter = f"""
             filters: {{
                 i_persona_observer : {{ id: {{ eq: {vid} }} }},
@@ -114,45 +110,20 @@ class IpersonaSchema(LeapBaseClass):
         """
         return self.get_all_objects(filter=session_filter , **kwargs)
 
-        
-    def get_tid_from_auid(self, auid, **kwargs):
-        res = self.exists(scol='slug', sval=auid, op='eq', stype="ID", **kwargs)
-        if res:
-            if isinstance(res, list):
-                res = res[0]
-            return res.get('trainee_id', "")
-        else:
-            logger.error(f"Trainee not found for iPersonaSession: {auid}")            
-            return ""
-        
-    def get_sessions(self,  **kwargs):
+    def get_all_sessions(self, **kwargs):
         return self.get_all_objects(**kwargs)
-    
-    def get_all_users(self, **kwargs):
-        return self.get_all_objects(**kwargs)
-    
-    def delete_users(self, ids, **kwargs):
-        return self.delete_objects_by_id(ids, **kwargs)
-    
-    def save_user(self, params, **kwargs):
+        
+    def save_session(self, params, **kwargs):
         return self.save_or_update_object(params, **kwargs)
     
     def save_if_new_user(self, scol, params, **kwargs):
         return self.save_if_new(scol, params, **kwargs)
     
-    def update_user(self, params, **kwargs):
+    def update_session(self, params, **kwargs):
         if self.id_name() not in params:
             logger.error("Id is missing for update!")
             return []
         return self.save_or_update_object(params, **kwargs)
 
-    
-    def preprocess_single_user_entry(self, payload, **kwargs):
-        pass
-    
-    def create_single_entry(self, payload, **kwargs):
-        pass
-    
-    def create_multiple_entries(self, payload, **kwargs):
-        pass
-    
+    def delete_session(self, ids, **kwargs):
+        return self.delete_objects_by_id(ids, **kwargs)

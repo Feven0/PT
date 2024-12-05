@@ -10,11 +10,11 @@ const AllStatus = () => {
 
     const fetchOverall = async() => {
       const data = {
-        jobId: 47,
-        alluserId: 1974
+        job_profile_id: 128,
+        all_user_id: 1920
       }
       const response = await Api.OverallSesssionMetrics(data)
-      console.log("techicrunch", response?.data)
+      // console.log("techicrunch", response?.data)
       setOverall(response.data)
       console.log(response.data)
     }

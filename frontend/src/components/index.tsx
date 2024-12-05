@@ -29,5 +29,7 @@ export {default as DashboardLayout} from './DashboardLayout'
 export {default as UserOverall} from './UserOverall'
 export {default as AllDataFilterAdmin} from './AllDataFilterAdmin'
 
+export {default as Messages} from './Messages'
+
 
 

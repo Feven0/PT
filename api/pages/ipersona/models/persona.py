@@ -5,18 +5,18 @@ class UserRequestRecieved(BaseModel):
     
 class SessionRequestRecieved(BaseModel):
     alluser: int
-    jobId: int
+    job_profile_id: int
     
 class SessionJobRequestRecieved(BaseModel):
     sessionId: str
     jbId: str
     
 class UserSessionRequestRecieved(BaseModel):
-    jobId: int
-    alluserId: int
+    job_profile_id: int
+    all_user_id: int
        
 class AllUserSessionRequestRecieved(BaseModel):
-    alluserId: int
+    all_user_id: int
 
 class ChatHistoryRequestRecieved(BaseModel):
     sessionId: int

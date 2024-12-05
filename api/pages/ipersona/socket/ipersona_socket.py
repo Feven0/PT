@@ -91,7 +91,7 @@ from concurrent.futures import ThreadPoolExecutor
 executor = ThreadPoolExecutor(max_workers=105)  
 
 async def synthesize_text(text):
-    print("Received text for synthesis:")
+    print("Received text for synthesis:", text)
     try:
         response = client.audio.speech.create(
             model="tts-1",
@@ -109,6 +109,50 @@ async def synthesize_text(text):
     except Exception as e:
         return {"error": str(e)}
 
+# @sio.on("audio chat")
+# async def audio_endpoint(sid, data):
+#     try:
+#         start_time = time.time()        
+#         response = await copy.generate_interview_question(data)
+#         assistant_next_question = response.get("interview", "")
+
+#         #tasks = [synthesize_text(chunk) for chunk in assistant_next_question]
+
+#         tasks = []
+#         for chunk in assistant_next_question:
+#             await sio.emit("audio-single-text-chunk", chunk, room=sid)
+#             tasks.append(synthesize_text(chunk))
+            
+        
+#         await sio.emit("audio-single-text-chunk-done", room=sid)
+
+#         audio_chunks = await asyncio.gather(*tasks)
+
+#         for audio_data in audio_chunks:
+#             if isinstance(audio_data, dict) and 'error' in audio_data:
+#                 print(f"Error: {audio_data['error']}")
+#                 continue
+
+#             await sio.emit("audio-single-chunk", audio_data, room=sid)
+       
+#         ## Optional
+#         # valid_audio_chunks = [chunk for chunk in audio_chunks if not isinstance(chunk, dict) or 'error' not in chunk]
+
+#         # # Concatenate all audio chunks then pass it
+#         # final_audio_data = b''.join(valid_audio_chunks)
+#         # await sio.emit("audio-single-chunk", audio_chunks, room=sid)
+
+#     except Exception as e:
+#         print(f"Error processing audio: {e}")
+
+#     finally:
+#         message = 'over'
+#         await sio.emit("interview done", message, room=sid)
+#         end_time = time.time()
+#         elapsed_time = end_time - start_time
+#         print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
+
+
 @sio.on("audio chat")
 async def audio_endpoint(sid, data):
     try:
@@ -117,11 +161,27 @@ async def audio_endpoint(sid, data):
         assistant_next_question = response.get("interview", "")
 
         #tasks = [synthesize_text(chunk) for chunk in assistant_next_question]
+        accumulated_message = ""             
 
         tasks = []
         for chunk in assistant_next_question:
-            await sio.emit("audio-single-text-chunk", chunk, room=sid)
-            tasks.append(synthesize_text(chunk))
+            accumulated_message += chunk
+            
+            while True:
+                last_period = accumulated_message.rfind('.')
+                last_question = accumulated_message.rfind('?')
+
+                last_end_pos = max(last_period, last_question)
+                
+                if last_end_pos != -1:
+                    complete_sentence = accumulated_message[:last_end_pos + 1]
+                    await sio.emit("audio-single-text-chunk", complete_sentence, room=sid)
+                    tasks.append(synthesize_text(complete_sentence))
+                    
+                    accumulated_message = accumulated_message[last_end_pos + 1:].strip()                        
+                else:
+                    break   
+        
         
         await sio.emit("audio-single-text-chunk-done", room=sid)
 
@@ -134,13 +194,6 @@ async def audio_endpoint(sid, data):
 
             await sio.emit("audio-single-chunk", audio_data, room=sid)
        
-        ## Optional
-        # valid_audio_chunks = [chunk for chunk in audio_chunks if not isinstance(chunk, dict) or 'error' not in chunk]
-
-        # # Concatenate all audio chunks then pass it
-        # final_audio_data = b''.join(valid_audio_chunks)
-        # await sio.emit("audio-single-chunk", audio_chunks, room=sid)
-
     except Exception as e:
         print(f"Error processing audio: {e}")
 
@@ -150,44 +203,6 @@ async def audio_endpoint(sid, data):
         end_time = time.time()
         elapsed_time = end_time - start_time
         print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
-
-
-@sio.on("audio double chunk")
-async def audio_endpoint(sid, data):
-    try:
-        start_time = time.time()        
-        response = await copy.generate_interview_question(data)
-        assistant_next_question = "" if response.get("interview") is None else response["interview"]
-         
-        accumulated_message = ""  
-        accumulated_tokens = []  
-        token_chunk_size = 20 
-
-        for chunk in assistant_next_question:  
-            accumulated_message += chunk
-            # Emit the 1-token chunk through the socket
-            await sio.emit("audio-double-single-chunk", chunk, room=sid)
-
-            tokens = chunk.split()  
-            accumulated_tokens.extend(tokens)
-
-            while len(accumulated_tokens) >= token_chunk_size:
-                chunk_to_emit = " ".join(accumulated_tokens[:token_chunk_size])
-                print(f"Token Chunk: {chunk_to_emit}")
-                # Emit the 20-token chunk through the socket
-                await sio.emit("audio-double-ten-chunks", chunk_to_emit, room=sid)
-
-                accumulated_tokens = accumulated_tokens[token_chunk_size:]       
-
-        if accumulated_tokens:
-            chunk_to_emit = " ".join(accumulated_tokens)
-            print(f"Remaining Tokens Chunk: {chunk_to_emit}")
-            await sio.emit("audio-double-ten-chunks", chunk_to_emit, room=sid)
-
-        await sio.emit("audio double chunk", accumulated_message, room=sid)
-        
-    except Exception as e:
-        print(f'Error: {str(e)}')
 
 
 @sio.on("audio chat sentence")
@@ -272,8 +287,28 @@ async def audio_end_point(sid, data):
                                 
                         await sio.emit("audio-single-chunk-sentence", complete_sentence, room=sid)
                         await sio.emit("audio chat sentence", message, room=sid)
+                        
+                            #-----------------------------------------------------------------#
+                        # tasks = []
+                        # for chunk in assistant_next_question:
+                        #     await sio.emit("audio-single-chunk-sentence", complete_sentence, room=sid)
+                        #     await sio.emit("audio chat sentence", message, room=sid)
+                        #     tasks.append(synthesize_text(complete_sentence))
+                        
+                        # await sio.emit("audio-single-text-chunk-done", room=sid)
+
+                        # audio_chunks = await asyncio.gather(*tasks)
+
+                        # for audio_data in audio_chunks:
+                        #     if isinstance(audio_data, dict) and 'error' in audio_data:
+                        #         print(f"Error: {audio_data['error']}")
+                        #         continue
+
+                        #     await sio.emit("audio-single-chunk", audio_data, room=sid)
+                            #-----------------------------------------------------------------#
 
                         accumulated_message = accumulated_message[last_end_pos + 1:].strip()
+                        
                     else:
                         break   
             

@@ -516,7 +516,7 @@ async def overall_interview_evaluations(data: dict) -> dict:
         ipersona_manager.update_session_status()
         
                         #-----------------------------------------------------------#
-        ipersona_manager = IpersonaManager(sessionId=42, alluserId=data['alluserId'], jobId=data['jobId'], run_stage="dev")
+        ipersona_manager = IpersonaManager(sessionId=42, all_user_id=data['all_user_id'], job_profile_id=data['job_profile_id'], run_stage="dev")
         session = ipersona_manager.get_job_sessions()   
         session_chatobserver = extract_observers_metrics(session)
                     
@@ -896,7 +896,7 @@ async def calculate_overall_progress(userdata, data: list):
                         engagement_overtime.append(engagement)
       
        
-        ipersona_manager = IpersonaManager(alluserId=userdata['alluserId'], jobId=userdata['jobId'], run_stage="dev")
+        ipersona_manager = IpersonaManager(all_user_id=userdata['all_user_id'], job_profile_id=userdata['job_profile_id'], run_stage="dev")
         session_chatobserver = ipersona_manager.session_overall_observer_by_user_and_job()
         session_chatobserver_sessions = session_chatobserver['all_sessions']
         logger.info(f"Value of session_overall_observer_by_user_and_job: {len(session_chatobserver_sessions)}")
@@ -931,7 +931,7 @@ async def calculate_overall_progress(userdata, data: list):
                 },
                 "sessionIds": session_ids
             }
-            ipersona_manager = IpersonaManager(alluserId=userdata['alluserId'], jobId=userdata['jobId'], run_stage="dev")
+            ipersona_manager = IpersonaManager(all_user_id=userdata['all_user_id'], job_profile_id=userdata['job_profile_id'], run_stage="dev")
             response = ipersona_manager.create_session_overall_observer(message_data)    
     
         return response
@@ -1003,25 +1003,25 @@ def calculate_average_time_management(data):
     }
 
 #-------------------------------------------- user engagment jobs --------------------------------------------
-def summarize_interviews(alluserId):
-    ipersona_manager = IpersonaManager(alluserId=alluserId, run_stage="dev")
+def summarize_interviews(all_user_id):
+    ipersona_manager = IpersonaManager(all_user_id=all_user_id, run_stage="dev")
     data = ipersona_manager.get_alluser_sessions()
     data = extracted_needed_metrics(data)
 
     job_summary = defaultdict(list)
     
     for record in data:
-        jobId = record['jobId']
-        job_summary[jobId].append(record)
+        job_profile_id = record['job_profile_id']
+        job_summary[job_profile_id].append(record)
     
     summary_response = []
     
-    for jobId, records in job_summary.items():
+    for job_profile_id, records in job_summary.items():
         total_score = sum(record['overall_performance_score'] for record in records)
         interviews_count = len(records)
         average_score = total_score / interviews_count if interviews_count > 0 else 0
-        
-        ipersona_manager = IpersonaManager(alluser=alluserId, jobId=jobId, run_stage="dev")
+   
+        ipersona_manager = IpersonaManager(all_user_id=all_user_id, job_profile_id=job_profile_id, run_stage="dev")
         job_title_data = ipersona_manager.get_trainee_job_profile()
         if job_title_data and len(job_title_data) > 0:
             job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
@@ -1034,9 +1034,12 @@ def summarize_interviews(alluserId):
             return []
 
         tinder_user_profile_id = trainee_data[0]['id']
-        tinder_job_profile_id = jobId
-      
+        tinder_job_profile_id = job_profile_id
+        
         job_match_data = ipersona_manager.get_match(tinder_user_profile_id, tinder_job_profile_id)
+        ipersona_manager = IpersonaManager(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, run_stage="dev")
+        reaction_id = ipersona_manager.get_user_reaction_id()
+        
         if job_match_data and len(job_match_data) > 0:
             match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
             job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
@@ -1045,7 +1048,8 @@ def summarize_interviews(alluserId):
             job_match = 'Unknown'    
         
         summary_response.append({
-            "jobId": jobId,
+            "job_profile_id": job_profile_id,
+            "reaction_id": reaction_id,
             "job_title": job_title,
             "job_match_score": match_score,
             "job_match": job_match,
@@ -1063,7 +1067,7 @@ def extracted_needed_metrics(data):
             observer_attributes = observer_data.get('attributes', {}).get('attributes', {}).get('interview_evaluation_metrics', {})
             session['overall_performance_score'] = observer_attributes.get('overall_performance_score', None)
             session['createdAt'] = session['attributes']['createdAt']
-            session['jobId'] = session['attributes']['tinder_job_profile']['data']['id']
+            session['job_profile_id'] = session['attributes']['tinder_job_profile']['data']['id']
             session['userprofileId'] = session['attributes']['tinder_user_profile']['data']['id']
             extracted_observers.append(session)
 
@@ -1115,12 +1119,14 @@ def calculate_session_metrics(sessions):
 
         job_profile_id = job_profile.get('id')
         user_profile_id = user_profile.get('id')
-        ipersona_manager = IpersonaManager(id=user_profile_id, jobId=job_profile_id, run_stage="dev")
+        ipersona_manager = IpersonaManager(id=user_profile_id, job_profile_id=job_profile_id, run_stage="dev")
         job_title_data = ipersona_manager.get_trainee_job_profile()
-        alluserdata = ipersona_manager.get_alluserId()
-        alluserId = alluserdata["attributes"]["all_users"]["data"][0]["id"]
-        ipersona_manager = IpersonaManager(alluserId=alluserId, run_stage="dev")
+        alluserdata = ipersona_manager.get_all_user_id()
+        all_user_id = alluserdata["attributes"]["all_users"]["data"][0]["id"]
+        ipersona_manager = IpersonaManager(all_user_id=all_user_id, run_stage="dev")
         userdata = ipersona_manager.get_all_user_data()
+        ipersona_manager = IpersonaManager(user_profile_id=user_profile_id, job_profile_id=job_profile_id, run_stage="dev")
+        reaction_id = ipersona_manager.get_user_reaction_id()
         
         if job_title_data and len(job_title_data) > 0:
             job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
@@ -1137,7 +1143,8 @@ def calculate_session_metrics(sessions):
             job_profile_frequency.append({
                 'count': 1,
                 'job_title': job_title,
-                'job_profile_id': job_profile_id
+                'job_profile_id': job_profile_id,
+                "reaction_id": reaction_id
             })
         else:
             for profile in job_profile_frequency:
@@ -1188,19 +1195,19 @@ def summarize_allusers_data(data):
     processed_pairs = set()
 
     for record in data:
-        jobId = record['jobId']
+        job_profile_id = record['job_profile_id']
         userprofileId = record['userprofileId']
         
-        job_summary[jobId].append(record)
+        job_summary[job_profile_id].append(record)
     
     summary_response = []
 
-    for jobId, records in job_summary.items():
+    for job_profile_id, records in job_summary.items():
         total_score = sum(record['overall_performance_score'] for record in records)
         interviews_count = len(records)
         average_score = total_score / interviews_count if interviews_count > 0 else 0
         
-        ipersona_manager = IpersonaManager(jobId=jobId, run_stage="dev")
+        ipersona_manager = IpersonaManager(job_profile_id=job_profile_id, run_stage="dev")
         job_title_data = ipersona_manager.get_trainee_job_profile()
         
         if job_title_data and len(job_title_data) > 0:
@@ -1211,11 +1218,11 @@ def summarize_allusers_data(data):
         for record in records:
             userprofileId = record['userprofileId']
             ipersona_manager = IpersonaManager(id=userprofileId, run_stage="dev")
-            alluserId = ipersona_manager.get_alluserid_from_user_profile()
-            ipersona_manager = IpersonaManager(alluserId=alluserId, run_stage="dev")
+            all_user_id = ipersona_manager.get_alluserid_from_user_profile()
+            ipersona_manager = IpersonaManager(all_user_id=all_user_id, run_stage="dev")
             userdata = ipersona_manager.get_all_user_data()
             
-            if (jobId, userprofileId) in processed_pairs:
+            if (job_profile_id, userprofileId) in processed_pairs:
                 continue  
             
             trainee_data = ipersona_manager.get_trainee_user_profile()
@@ -1224,22 +1231,25 @@ def summarize_allusers_data(data):
                 continue  
             
             tinder_user_profile_id = trainee_data[0]['id']
-            tinder_job_profile_id = jobId
+            tinder_job_profile_id = job_profile_id
 
             job_match_data = ipersona_manager.get_match(tinder_user_profile_id, tinder_job_profile_id)
             if job_match_data and len(job_match_data) > 0:
                 match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
                 job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
+                ipersona_manager = IpersonaManager(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, run_stage="dev")
+                reaction_id = ipersona_manager.get_user_reaction_id()
             else:
                 match_score = 'Unknown'
                 job_match = 'Unknown'
             
-            processed_pairs.add((jobId, userprofileId))
+            processed_pairs.add((job_profile_id, userprofileId))
             
             summary_response.append({
-                "jobId": jobId,
+                "job_profile_id": job_profile_id,
                 "userprofileId": userprofileId,
-                "alluserId": alluserId,
+                "reaction_id": reaction_id,
+                "all_user_id": all_user_id,
                 "job_title": job_title,
                 "job_match_score": match_score,
                 "job_match": job_match,
@@ -1264,7 +1274,7 @@ def aggregate_user_data(data):
     aggregated_data = {}
 
     for entry in data:
-        alluser_id = entry['alluserId']
+        alluser_id = entry['all_user_id']
 
         if alluser_id in aggregated_data:
             aggregated_data[alluser_id]['interviews'] += entry['interviews']
@@ -1278,7 +1288,7 @@ def aggregate_user_data(data):
                 'interviews': entry['interviews'],  
             }
 
-    result = [{'alluserId': key, **value} for key, value in aggregated_data.items()]
+    result = [{'all_user_id': key, **value} for key, value in aggregated_data.items()]
 
     return result
 

@@ -10,16 +10,20 @@ capitalize = lambda x: x[0].upper() + x[1:]
 
 class IpersonaManager(LeapBaseClass):
     def __init__(self, **kwargs):
-        self.sessionId = kwargs.get("sessionId", 1)  
-        self.alluserId = kwargs.get("alluserId", 1974)
-        self.jobId = kwargs.get("jobId", 46)
+        self.sessionId = kwargs.get("sessionId")  
+        self.all_user_id = kwargs.get("all_user_id")
+        self.job_profile_id = kwargs.get("job_profile_id")
+        self.user_profile_id = kwargs.get("user_profile_id")
         self.id = kwargs.get("id", "")
         self.sg = StrapiGraphql(run_stage=kwargs.get("run_stage", "dev"))        
-    
+
+        # Debugging output to verify initialization
+        print(f"Initialized IpersonaManager with sessionId={self.sessionId}, all_user_id={self.all_user_id}, job_profile_id={self.job_profile_id}, id={self.id}")
+
     def get_alluser_sessions(self):
         """
         Function to get all sessions from Strapi GraphQL with pagination, 
-        filtered by `alluserId`'s `tinder_user_profile_id`.
+        filtered by `all_user_id`'s `tinder_user_profile_id`.
 
         Returns:
             List containing session data with extracted observer attributes.
@@ -124,7 +128,7 @@ class IpersonaManager(LeapBaseClass):
             return []
 
         tinder_user_profile_id = data[0]['id']
-        tinder_job_profile_id = self.jobId
+        tinder_job_profile_id = self.job_profile_id
         while True:
             sessions_query = """
                 query GetIPersonaSessions($tinder_user_profile_id: ID!, $tinder_job_profile_id: ID!, $page: Int, $pageSize: Int) {
@@ -244,7 +248,7 @@ class IpersonaManager(LeapBaseClass):
         return session
     
     
-    def get_alluserId(self):
+    def get_all_user_id(self):
         """
         """
 
@@ -345,12 +349,12 @@ class IpersonaManager(LeapBaseClass):
         """
         
         profile_info_query = """
-            query GetProfileInformation($alluserId: ID!) {
+            query GetProfileInformation($all_user_id: ID!) {
                 profileInformations(
                     filters: {
                         all_user: {
                             id: { 
-                                eq: $alluserId
+                                eq: $all_user_id
                             }  
                         }                            
                     }
@@ -368,12 +372,12 @@ class IpersonaManager(LeapBaseClass):
 
         alluser_info_json = self.sg.Select_from_table(
             query=alluser_info_query,
-            variables={"id": self.alluserId}  
+            variables={"id": self.all_user_id}  
         )
         
         profile_info_json = self.sg.Select_from_table(
             query=profile_info_query,
-            variables={"alluserId": self.alluserId}
+            variables={"all_user_id": self.all_user_id}
         )
 
         alluser_info = alluser_info_json['data']['allUser']['data']
@@ -451,6 +455,72 @@ class IpersonaManager(LeapBaseClass):
                         
         return all_observers
      
+    def get_user_reaction_id(self):
+        match = None  
+        
+        tinder_user_profile_id = self.user_profile_id
+        tinder_job_profile_id = self.job_profile_id
+        while True:
+            query = """
+                query GetTinderUserReactions($tinder_user_profile_id: ID!, $tinder_job_profile_id: ID!) {
+                    tinderUserReactions(
+                        filters: {
+                            tinder_user_profile: {
+                                id: { eq: $tinder_user_profile_id }  
+                            },
+                            tinder_job_profile: {
+                                id: { eq: $tinder_job_profile_id }  
+                            }
+                        },
+                    ) {
+                        data {
+                            id
+                            attributes {
+                                tinder_user_profile {
+                                    data {
+                                        id
+                                    }
+                                } 
+                                tinder_job_profile {
+                                    data {
+                                        id
+                                    }
+                                }                              
+                            }
+                        }
+                    }
+                }
+            """
+            
+            try:
+                res_json = self.sg.Select_from_table(
+                    query=query,
+                    variables={
+                        "tinder_user_profile_id": tinder_user_profile_id, 
+                        "tinder_job_profile_id": tinder_job_profile_id
+                    }
+                )
+                
+                if 'data' in res_json and 'tinderUserReactions' in res_json['data']:
+                    user_reactions = res_json['data']['tinderUserReactions']['data']
+
+                    if len(user_reactions) != 0:
+                        reaction_id = user_reactions[0]['id']
+                        match = reaction_id
+                        break  
+                    else:
+                        return match   
+
+                else:
+                    return {'error': str(e)}    
+                    break
+                    
+            except Exception as e:
+                    return {'error': str(e)}    
+            
+        return match
+
+    
     def get_messages(self):
         all_messages = [] 
         page = 1  
@@ -565,14 +635,16 @@ class IpersonaManager(LeapBaseClass):
         page = 1  
         all_sessions = [] 
         
+        print(f"Fetching user profile for all_user_id={self.all_user_id}")
+        
         while True:
             query = """
-            query GetTinderUserProfiles($alluserId: ID!, $page: Int, $pageSize: Int) {
+            query GetTinderUserProfiles($all_user_id: ID!, $page: Int, $pageSize: Int) {
                     tinderUserProfiles(
                         filters: {
                             all_users: {
                                 id: { 
-                                    eq: $alluserId
+                                    eq: $all_user_id
                                 }  
                             }                            
                         },
@@ -601,9 +673,13 @@ class IpersonaManager(LeapBaseClass):
                 }                
             """
             
+            if not self.all_user_id:
+                print("Error: all_user_id is empty")
+                break
+
             res_json = self.sg.Select_from_table(
                 query=query,
-                variables={"alluserId": str(self.alluserId), "page": page, "pageSize": page_size}
+                variables={"all_user_id": self.all_user_id, "page": page, "pageSize": page_size}
             )
             
             if 'data' in res_json and 'tinderUserProfiles' in res_json['data']:
@@ -630,11 +706,11 @@ class IpersonaManager(LeapBaseClass):
         
         while True:
             sessions_query = """
-            query GetTinderJobProfiles($jobId: ID!, $page: Int, $pageSize: Int) {
+            query GetTinderJobProfiles($job_profile_id: ID!, $page: Int, $pageSize: Int) {
                     tinderJobProfiles(
                         filters: {
                             id: { 
-                                eq: $jobId
+                                eq: $job_profile_id
                             } 
                         },
                         pagination: { page: $page, pageSize: $pageSize }
@@ -659,7 +735,7 @@ class IpersonaManager(LeapBaseClass):
             
             res_json = self.sg.Select_from_table(
                 query=sessions_query,
-                variables={"jobId": str(self.jobId), "page": page, "pageSize": page_size}
+                variables={"job_profile_id": str(self.job_profile_id), "page": page, "pageSize": page_size}
             )
             
             if 'data' in res_json and 'tinderJobProfiles' in res_json['data']:
@@ -754,7 +830,7 @@ class IpersonaManager(LeapBaseClass):
             return []
 
         tinder_user_profile_id = data[0]['id']
-        tinder_job_profile_id = self.jobId
+        tinder_job_profile_id = self.job_profile_id
             
 
         while True:
@@ -909,13 +985,13 @@ class IpersonaManager(LeapBaseClass):
         """
 
         mutation_query = """
-            mutation CreateIPersonaSession($slug: String!, $attributes: JSON!, $metadata: JSON!, $status: String!, $jobId: ID!, $alluserId: ID!) {
+            mutation CreateIPersonaSession($slug: String!, $attributes: JSON!, $metadata: JSON!, $status: String!, $job_profile_id: ID!, $all_user_id: ID!) {
                 createIPersonaSession(data: {
                     slug: $slug,
                     attributes: $attributes,
                     metadata: $metadata,
-                    tinder_user_profile: $alluserId,
-                    tinder_job_profile: $jobId,
+                    tinder_user_profile: $all_user_id,
+                    tinder_job_profile: $job_profile_id,
                     status: $status
                 }) {
                     data {
@@ -946,8 +1022,8 @@ class IpersonaManager(LeapBaseClass):
             "attributes": message_data.get("attributes"),
             "metadata": message_data.get("metadata"),
             "status": 'Incomplete',
-            "alluserId": message_data.get("alluserId"),
-            "jobId": message_data.get("jobId"),  
+            "all_user_id": message_data.get("all_user_id"),
+            "job_profile_id": message_data.get("job_profile_id"),  
         }
 
         res_json = self.sg.insert_table(query=mutation_query, variables=variables)
@@ -1071,15 +1147,15 @@ class IpersonaManager(LeapBaseClass):
             return []
 
         tinder_user_profile_id = data[0]['id']
-        tinder_job_profile_id = self.jobId
+        tinder_job_profile_id = self.job_profile_id
         
         mutation_query = """
-            mutation CreateIPersonaSessionOverallObserver($attributes: JSON!, $metadata: JSON!, $jobId: ID!, $alluserId: ID!, $sessionIds: [ID]!) {
+            mutation CreateIPersonaSessionOverallObserver($attributes: JSON!, $metadata: JSON!, $job_profile_id: ID!, $all_user_id: ID!, $sessionIds: [ID]!) {
                 createIPersonaSessionOverallObserver(data: {
                     attributes: $attributes,
                     metadata: $metadata,
-                    tinder_user_profile: $alluserId,
-                    tinder_job_profile: $jobId,
+                    tinder_user_profile: $all_user_id,
+                    tinder_job_profile: $job_profile_id,
                     i_persona_observers: $sessionIds
                 }) {
                     data {
@@ -1111,8 +1187,8 @@ class IpersonaManager(LeapBaseClass):
         variables = {
             "attributes": message_data.get("attributes"),
             "metadata": message_data.get("metadata"),
-            "alluserId": tinder_user_profile_id,
-            "jobId": tinder_job_profile_id,  
+            "all_user_id": tinder_user_profile_id,
+            "job_profile_id": tinder_job_profile_id,  
             "sessionIds": message_data.get("sessionIds")       
         }
 

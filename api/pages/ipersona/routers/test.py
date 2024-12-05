@@ -4,14 +4,12 @@ import copy
 import json
 from datetime import datetime, timedelta
 
-
 #from .pathfig import *
-
 
 from api import config
 from api.modules.leap_base import LeapBaseClass
 #from api.modules.leap_trainee import TraineeSchema
-#
+
 from api.utils.logger import LLPackerLogger
 logger = LLPackerLogger(__file__)
 from collections import defaultdict

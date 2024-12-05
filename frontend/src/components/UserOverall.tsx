@@ -7,8 +7,8 @@ const UserOverall: React.FC<Data> = ({ data }) => {
   const columns = [
     {
       title: 'Job ID',
-      dataIndex: 'jobId',
-      key: 'jobId',
+      dataIndex: 'job_profile_id',
+      key: 'job_profile_id',
     },
     {
       title: 'Job Title',
@@ -49,7 +49,7 @@ const UserOverall: React.FC<Data> = ({ data }) => {
       <Table
         dataSource={data}
         columns={columns}
-        rowKey="jobId" 
+        rowKey="job_profile_id" 
         pagination={false}
         scroll={{ y: 1000 }} 
       />

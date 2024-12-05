@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Table, Input, Select as AntSelect, Slider, Row, Col, Tag } from 'antd';
+import { Table, Input, Select as AntSelect, Row, Col, Tag } from 'antd';
 import Select from 'react-select'; 
 import countries from 'world-countries'; 
 const { Option } = AntSelect;
@@ -183,7 +183,7 @@ const AllDataFilterAdmin: React.FC<Data> = ({data}) => {
       <Table 
         dataSource={filteredData || []} 
         columns={columns} 
-        rowKey="alluserId"  
+        rowKey="all_user_id"  
         scroll={{ y: 1000 }} 
       />
     </div>

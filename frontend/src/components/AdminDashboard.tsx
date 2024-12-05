@@ -218,7 +218,7 @@ const AdminDashboard: React.FC<Data> = ({data}) => {
       <Table 
         dataSource={filteredData || []} 
         columns={columns} 
-        rowKey="jobId"  
+        rowKey="job_profile_id"  
         scroll={{ y: 1000 }} 
       />
     </div>

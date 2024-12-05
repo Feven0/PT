@@ -806,9 +806,13 @@ class LeapBaseClass:
         
         if res:
             logger.good(f"----> Found object with {scol}={sval} in `table={table}`!")
-            res = self.map_id_to_object_id(res) 
-            #logger.good(f'Returned object type: {type(res)} - >[0]-> {type(res[0])}')            
-            return res[0]
+            if not kwargs.get('nopp', False):
+                res = self.map_id_to_object_id(res) 
+            #logger.good(f'Returned object tyFound objectpe: {type(res)} - >[0]-> {type(res[0])}')   
+            if isinstance(res,list):
+                return res[0]  
+            else:       
+                return res
         else:
             logger.info(f"----> No Object found with {scol}={sval} in `table={table}`!")
             return {}

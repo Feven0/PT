@@ -1,6 +1,4 @@
-import os, time, json, sys
-import base64
-import uuid
+import os, sys
 curdir = os.path.dirname(os.path.realpath(__file__))
 cpath = os.path.dirname(curdir)
 if not cpath in sys.path:
@@ -8,10 +6,9 @@ if not cpath in sys.path:
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 import api.modules.ipersona_parrot_gpt as util
-import api.llm.ipersona.ipersona_gpt as gpt
+import api.pages.ipersona.routers.test2 as IpersonaSchema
 import api.pages.ipersona.models.persona as pemodel
 import assemblyai as aai
-import ast
 from openai import OpenAI
 from api.services.secret import get_auth
 from api.utils.logger import LLPackerLogger
@@ -43,6 +40,7 @@ from fastapi.responses import StreamingResponse
 from api.services.strapi_ipersona import IpersonaManager
 from api.pages.ipersona.routers.test import AllUserSchema
 from api.pages.ipersona.routers.test2 import IpersonaSchema
+from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionSchema
 
 from io import BytesIO
 from api.services.secret import get_auth
@@ -51,11 +49,28 @@ import pandas as pd
 OPENAI_API_KEY  = get_auth(ssmkey='TENX_DEV_STRAPI_TOKEN')
 app = FastAPI()
 
+@routes_test.post("/leapbase_test")
+async def leapstrapi_methods():
+    try:      
+        # schema = IpersonaSchema()
+        schema = IpersonaSessionSchema()
+        data = schema.get_all_sessions(nopp=True,dataframe=False)
+        # data = schema.get_trainee(idval='136',nopp=True,dataframe=False)
+        # data = schema.filter_by_2id(vid='64', tid=167, nopp=True,dataframe=False)
+        return data
+        
+    
+    except Exception as e:
+        print(f"Error processing files: {e}")
+    except Exception as e:
+        print(f"Error processing files: {e}")
+        return {"error": str(e)}
+    
 @routes_test.post("/strapi_db_test")
 async def strapi_methods():
     try:
-        ipersona_manager = IpersonaManager(sessionId=120, id=167, alluserId=1974, jobId=46, run_stage="dev")
-        # ipersona_manager = IpersonaManager(sessionId=42, alluser=16, jobId=1045, run_stage="dev")
+        ipersona_manager = IpersonaManager(sessionId=120, id=14, all_user_id=1920, user_profile_id=164, job_profile_id=128, run_stage="dev")
+        # ipersona_manager = IpersonaManager(sessionId=42, alluser=16, job_profile_id=1045, run_stage="dev")
 
         # data = ipersona_manager.get_messages()
         # data = ipersona_manager.get_observers()
@@ -64,7 +79,8 @@ async def strapi_methods():
         # data = ipersona_manager.get_job_sessions_observers()
         # data = ipersona_manager.get_job_sessions()
         
-        # data = ipersona_manager.get_all_sessions()
+        #data = ipersona_manager.get_all_sessions()
+        data = ipersona_manager.get_user_reaction_id()
         # data = util.summarize_allusers_data(data)
         
         # data = ipersona_manager.get_alluserid_from_user_profile()
@@ -74,7 +90,7 @@ async def strapi_methods():
         # data = ipersona_manager.session_overall_observer()
         # data = ipersona_manager.get_trainee_user_profile()
         # data = ipersona_manager.get_trainee_job_profile()
-        data = ipersona_manager.get_alluserId()
+        # data = ipersona_manager.get_alluserId()
 
         # data = ipersona_manager.get_trainee_user_profile()  
         # data = extract_job_neccessary_values(data)
@@ -96,36 +112,13 @@ async def strapi_methods():
         #         "createdBy": "parrot"
         #     },
         #     "jobprofileId": 1080,   # This should be an integer
-        #     "alluserId": 187,      # 2241This should be an integer
+        #     "all_user_id": 187,      # 2241This should be an integer
         #     "sessionIds": [35, 36]  # This should be a list of integers
         # }
 
         # data = ipersona_manager.create_session_overall_observer(message_data)
         return data
-        # schema = AllUserSchema()
-        # # data = schema.get_all_trainees_gmeets_data(week='8', batch='6')
-        # data = schema.get_all_gmeets()
-        
-        # schema = IpersonaSchema()
-        # # data = schema.get_tid_from_auid("42")
-        # data = schema.get_all_users()
-        # sessions = []
-        # # print("checking strapi222222222222222")
-        # for t in data:
-        #     print(t)
-        #     all_user_id = data['slug']
-        #     name = data['status']
-        #     # email = data['attributes']
-        #     # number_days = data['number_days']
-            
-        #     # Append the information to the list
-        #     sessions.append({
-        #         'all_user_id': all_user_id,
-        #         # 'eemail': email,
-        #         'name': name,
-        #         # 'number_days': number_days
-        #     })    
-        # return sessions
+       
     
     except Exception as e:
         print(f"Error processing files: {e}")
