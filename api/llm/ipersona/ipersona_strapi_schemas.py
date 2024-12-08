@@ -118,7 +118,7 @@ class IpersonaSessionSchema(LeapBaseClass):
             }}
         """
         data_json = self.get_all_objects(filter=session_filter , **kwargs)
-        data = self.get_session_data(data_json)
+        data = self.get_sessions_data(data_json)
         return data
     
     def filter_by_with_user_job_id(self, user_profile_id, job_profile_id, **kwargs):
@@ -691,7 +691,7 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
                 i_persona_session : {{ id: {{ eq: {sessionId} }} }}
             }}
         """
-        data_json = self.get_all_objects(filter=session_filter , **kwargs)
+        data_json = self.get_all_objects(filter=session_filter, **kwargs)
         data = self.get_session_msg_data(data_json)
         return data
     

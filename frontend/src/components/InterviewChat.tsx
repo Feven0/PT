@@ -24,7 +24,7 @@ const InterviewChat = () => {
     const [loadin, setLoad] = useState<any>(false);
     const [sessions, setSession] = useState<any>([]);
     const latest = JSON.parse(localStorage.getItem("userSession") || 'null');       
-    console.log("latest_session_info", interview) 
+    // console.log("latest_session_info", interview) 
     const [loadingSessionId, setLoadingSessionId] = useState(null);
     const [isHovered, setIsHovered] = useState(false);
     let timerValue: any;
@@ -69,7 +69,6 @@ const InterviewChat = () => {
         };
         const response = await Api.sessionCreate(data);
         localStorage.setItem("userSession", JSON.stringify(response?.data))
-        console.log("creature", response)
         if(response?.data){  
             timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             handleInterview({ 
@@ -133,7 +132,7 @@ const InterviewChat = () => {
             all_user_id: 1959
         }
         const response = await Api.fetchSession(data)
-        console.log("sessions", response?.data)
+        // console.log("sessions", response?.data)
         setSession(response?.data)
         setStartFetch(false);
     }

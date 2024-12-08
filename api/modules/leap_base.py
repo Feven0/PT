@@ -879,7 +879,7 @@ class LeapBaseClass:
                   
     @measure_execution_time                      
     def get_all_objects(self, data="", table='', 
-                        limit=0, cursor={}, raw=False, ddcol="",
+                        limit=0, cursor={}, raw=False, ddcol="", 
                         dataframe=True, **kwargs):
          
         query_filter = ""
@@ -977,9 +977,12 @@ class LeapBaseClass:
             #$page: Int!            
             #$pageSize: Int!
             #{ page: $page, pageSize: $pageSize }
+            
+            sort_order = kwargs.get('sort', 'desc')  
+
             query = '''
             query get%s( $offsetStart: Int!, $pageSize: Int!) {
-                %s( pagination: { start: $offsetStart, limit: $pageSize }, sort: "createdAt:desc"  %s ) {     
+                %s( pagination: { start: $offsetStart, limit: $pageSize }, sort: "createdAt:%s"  %s ) {     
                     meta {
                         pagination {
                             page
@@ -991,7 +994,8 @@ class LeapBaseClass:
                     %s
                 }
             }
-            '''%(capitalize(table), table, query_filter, data)
+            ''' % (capitalize(table), table, sort_order, query_filter, data)
+
         
          
                  

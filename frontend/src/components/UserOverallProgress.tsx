@@ -15,7 +15,6 @@ const AllProgress = () => {
         }
         const response = await Api.UserAllSessionMetrics(data)
         const responsestatus = await Api.UserStatus(data)
-        console.log("useroveralldata", responsestatus.data)
         setStatus(responsestatus.data)
         setAllProgress(response.data)
       }

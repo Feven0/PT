@@ -295,8 +295,8 @@ async def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionReque
                 logger.warn("No trainee user profiles found.")
                 return []
         tinder_user_profile_id = trainee_profile_data[0]['id'] 
-                       
-        result =  util.summarize_interviews(tinder_user_profile_id) 
+                
+        result = util.summarize_interviews(tinder_user_profile_id) 
         return result
     
     except Exception as e:
