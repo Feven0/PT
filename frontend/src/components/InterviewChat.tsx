@@ -24,7 +24,7 @@ const InterviewChat = () => {
     const [loadin, setLoad] = useState<any>(false);
     const [sessions, setSession] = useState<any>([]);
     const latest = JSON.parse(localStorage.getItem("userSession") || 'null');       
-    // console.log("latest_session_info", latest) 
+    console.log("latest_session_info", interview) 
     const [loadingSessionId, setLoadingSessionId] = useState(null);
     const [isHovered, setIsHovered] = useState(false);
     let timerValue: any;
@@ -50,7 +50,7 @@ const InterviewChat = () => {
             user_session,
             timerValue,
             job_profile_id: 128,
-            all_user_id: 1920
+            all_user_id: 1959
         });
         setInput('');
         setChat(true) 
@@ -65,10 +65,11 @@ const InterviewChat = () => {
         setLoad(true)
         const data = {
             job_profile_id: 128,
-            all_user_id: 1920
+            all_user_id: 1959
         };
         const response = await Api.sessionCreate(data);
         localStorage.setItem("userSession", JSON.stringify(response?.data))
+        console.log("creature", response)
         if(response?.data){  
             timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             handleInterview({ 
@@ -76,7 +77,7 @@ const InterviewChat = () => {
                 user_session: response?.data,
                 timerValue,
                 job_profile_id: 128,
-                all_user_id: 1920
+                all_user_id: 1959
             });
             setInput('');
             setChat(true) 
@@ -129,10 +130,10 @@ const InterviewChat = () => {
     const fetchSession = async() =>{
         const data = {
             job_profile_id: 128,
-            all_user_id: 1920
+            all_user_id: 1959
         }
         const response = await Api.fetchSession(data)
-        // console.log("sessions", response?.data)
+        console.log("sessions", response?.data)
         setSession(response?.data)
         setStartFetch(false);
     }
@@ -179,7 +180,7 @@ const InterviewChat = () => {
                                 cursor: 'pointer'
                             }}
                         >
-                        {sessions.map((session: any, index: any) => (
+                        {sessions?.map((session: any, index: any) => (
                             <div 
                                 key={session.id} 
                                 className="session" 

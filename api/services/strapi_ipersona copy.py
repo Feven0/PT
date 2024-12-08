@@ -4,9 +4,7 @@ from api.services.strapi_graphql import StrapiGraphql
 from api.modules.leap_base import LeapBaseClass
 from api.utils.logger import LLPackerLogger
 logger = LLPackerLogger(os.path.basename(__file__))
-from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionSchema
-schema = IpersonaSessionSchema()
-
+from collections import defaultdict
 capitalize = lambda x: x[0].upper() + x[1:]
 
 
@@ -17,8 +15,7 @@ class IpersonaManager(LeapBaseClass):
         self.job_profile_id = kwargs.get("job_profile_id")
         self.user_profile_id = kwargs.get("user_profile_id")
         self.id = kwargs.get("id", "")
-        self.sg = StrapiGraphql(run_stage=kwargs.get("run_stage", "dev"))  
-      
+        self.sg = StrapiGraphql(run_stage=kwargs.get("run_stage", "dev"))        
 
         # Debugging output to verify initialization
         print(f"Initialized IpersonaManager with sessionId={self.sessionId}, all_user_id={self.all_user_id}, job_profile_id={self.job_profile_id}, id={self.id}")
@@ -34,6 +31,7 @@ class IpersonaManager(LeapBaseClass):
         page_size = 100
         page = 1  
         all_sessions = []  
+
         # Getting the `tinder_user_profile_id` from the trainee user profile
         data = self.get_trainee_user_profile()
         if not data:
@@ -41,10 +39,7 @@ class IpersonaManager(LeapBaseClass):
             return []
 
         tinder_user_profile_id = data[0]['id']
-        
-        # data = schema.filter_by_tinder_user_profile_id(tid=tinder_user_profile_id, nopp=True, dataframe=False)
 
-        # return data
         while True:
             sessions_query = """
                 query GetIPersonaSessions($tinder_user_profile_id: ID!, $page: Int, $pageSize: Int) {

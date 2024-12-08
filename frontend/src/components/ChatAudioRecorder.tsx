@@ -13,7 +13,7 @@ const AudioRecorder: React.FC<Data> = ({ sendDataParent, sendDataToParent }) => 
     const mediaRecorderRef = useRef<any>(null);
     const audioChunksRef = useRef<any>([]);
     const [data, setData] = useState("");
-    // console.log(audioURL, data)
+    console.log(audioURL, data)
     function handleClick(audio: any) {
         sendDataToParent(audio);
     }

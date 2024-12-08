@@ -7,7 +7,8 @@ from api.services.strapi_ipersona import IpersonaManager
 from datetime import datetime
 from api.utils.logger import LLPackerLogger
 import api.llm.ipersona.ipersona_gpt as gpt
-
+from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionTinderUserJobMatchSchema, IpersonaSessionTinderUserReactionSchema, IpersonaSessionSchema, IpersonaTraineeSchema, IpersonaJobSchema, IpersonaSessionOverallObserverSchema, IpersonaSessionMessageSchema, IpersonaSessionObserverSchema, IpersonaAllUserSchema, IpersonaProfileInformationSchema
+        
 logger = LLPackerLogger(os.path.basename(__file__))
 
 from api.services.secret import get_auth
@@ -119,8 +120,9 @@ async def choose_interview_question(collection: dict, data: dict):
         if an exception occurs during processing.
     """
     try: 
-        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
-        session_chathistory = ipersona_manager.get_messages()
+        ipersona_message = IpersonaSessionMessageSchema()
+        session_chathistory = ipersona_message.filter_by_session_id(sessionId=data['user_session']['id'], nopp=True, dataframe=False)
+  
         chat = session_chathistory['count']
   
         global chat_count
@@ -229,8 +231,9 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
                 interview_question_json = await fetch_interview_question(section, data) 
    
         else:  
-            logger.info("Calculate the overall and save to database.")
             await overall_interview_evaluations(data)
+            logger.info("Calculate the overall and save to database done.")
+
             
                 
         response = {
@@ -399,8 +402,9 @@ def realtime_response_evaluation(data: dict) -> dict:
         or an error message if an exception occurs during processing.
     """
     try:
-        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
-        session_chathistory = ipersona_manager.get_messages()
+        ipersona_message = IpersonaSessionMessageSchema()
+        session_chathistory = ipersona_message.filter_by_session_id(sessionId=data['user_session']['id'], nopp=True, dataframe=False)
+        
         history = session_chathistory['total']
         
         last_assistant_response = None
@@ -460,8 +464,8 @@ async def overall_interview_evaluations(data: dict) -> dict:
         or an error message if an exception occurs during processing.
     """
     try:
-        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'] , run_stage="dev")
-        all_chat_history = ipersona_manager.get_messages()
+        ipersona_message = IpersonaSessionMessageSchema()
+        all_chat_history = ipersona_message.filter_by_session_id(sessionId=data['user_session']['id'], nopp=True, dataframe=False)
         history = all_chat_history['total']
         
         overall_evaluation_prompt = file_reader(prompt_path('ipersona/overall_evaluation.txt'))
@@ -507,17 +511,35 @@ async def overall_interview_evaluations(data: dict) -> dict:
                     "interview_evaluation": overall_evaluation_response_json,
                     "interview_evaluation_metrics": overall_interview_metrics_json,
                 },
-                "metadata": {
-                    "createdBy": "parrot"
-                }                
+                "i_persona_session": data['user_session']['id']
+            
             }
-        ipersona_manager = IpersonaManager(sessionId=data['user_session']['id'], run_stage="dev")
-        ipersona_manager.insert_observer(overall_json)
-        ipersona_manager.update_session_status()
+        ipersona_observer = IpersonaSessionObserverSchema()
+        save_observer = ipersona_observer.save_observer(params=overall_json, nopp=True, dataframe=False)
+        ipersona_session = IpersonaSessionSchema()
+        if save_observer:
+            logger.info("session observer to database")
+
+        session_data = {
+            "i_persona_session_id": data['user_session']['id'], 
+            "status": "Complete",
+        }
         
-                        #-----------------------------------------------------------#
-        ipersona_manager = IpersonaManager(sessionId=42, all_user_id=data['all_user_id'], job_profile_id=data['job_profile_id'], run_stage="dev")
-        session = ipersona_manager.get_job_sessions()   
+        updated_session = ipersona_session.update_session(params=session_data, nopp=True, dataframe=False, return_object=True)
+        if updated_session:
+            logger.info("session status updated to completed")
+            
+            #------------------------------------------------------------------------------------#
+    
+        ipersona_user = IpersonaTraineeSchema()
+
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=data['all_user_id'], nopp=True, dataframe=False)
+        if not trainee_profile_data:
+                logger.warn("No trainee user profiles found.")
+                return []
+        tinder_user_profile_id = trainee_profile_data[0]['id'] 
+                      
+        session = ipersona_session.filter_by_with_user_job_id(user_profile_id=tinder_user_profile_id,job_profile_id=data['job_profile_id'], nopp=True, dataframe=False) 
         session_chatobserver = extract_observers_metrics(session)
                     
         await calculate_overall_progress(data, session_chatobserver) 
@@ -639,16 +661,19 @@ def time_to_seconds(time_str):
         else:
             raise ValueError(f"Invalid time format: {time_str}")
     except ValueError as e:
-        print(f"Error converting time: {e}")
+        logger.error(f"Error converting time: {e}")
         return 0
 
 def seconds_to_time(seconds):
-    """Convert seconds back to 'HH:MM:SS' format."""
-    h = seconds // 3600
-    m = (seconds % 3600) // 60
-    s = seconds % 60
-    return f"{h:02}:{m:02}:{s:02}"
-
+    try:
+        """Convert seconds back to 'HH:MM:SS' format."""
+        h = seconds // 3600
+        m = (seconds % 3600) // 60
+        s = seconds % 60
+        return f"{h:02}:{m:02}:{s:02}"
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
 
 #----------------------------------------- Overall Time Data Calculator ----------------------------------------- 
 def calculate_time(interview: list) -> dict:
@@ -895,10 +920,18 @@ async def calculate_overall_progress(userdata, data: list):
                         engagement = {"time": created_time, "level": engagement_level, "value": value}
                         engagement_overtime.append(engagement)
       
-       
-        ipersona_manager = IpersonaManager(all_user_id=userdata['all_user_id'], job_profile_id=userdata['job_profile_id'], run_stage="dev")
-        session_chatobserver = ipersona_manager.session_overall_observer_by_user_and_job()
+        ipersona_overall = IpersonaSessionOverallObserverSchema()
+        ipersona_user = IpersonaTraineeSchema()
+
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=userdata['all_user_id'], nopp=True, dataframe=False)
+        if not trainee_profile_data:
+                logger.warn("No trainee user profiles found.")
+                return []
+        tinder_user_profile_id = trainee_profile_data[0]['id']    
+            
+        session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=userdata['job_profile_id'], nopp=True, dataframe=False)
         session_chatobserver_sessions = session_chatobserver['all_sessions']
+        
         logger.info(f"Value of session_overall_observer_by_user_and_job: {len(session_chatobserver_sessions)}")
             
         if len(session_chatobserver_sessions) > 0:
@@ -911,12 +944,26 @@ async def calculate_overall_progress(userdata, data: list):
                 "overall_competency": overall_competencies,
                 "overall_performance": overall_performance_scores
             }
-            
-            ipersona_manager = IpersonaManager(id=str(session_chatobserver['id']), run_stage="dev")
-            response = ipersona_manager.update_session_job_overallobserver(attributes)
+                        
+            overall_data = {
+                "i_persona_session_overall_observer_id": session_chatobserver['id'], 
+                "attributes": attributes,
+            }
+            response = ipersona_overall.update_session(params=overall_data, nopp=True, dataframe=False, return_object=True)
+            if response:
+                logger.info(f"session overall observer data update with new insert anlaysis")
             
         else:  
             logger.info(f"Creating a new session job overall observer data")          
+                       
+            ipersona_overall = IpersonaSessionOverallObserverSchema()
+            ipersona_user = IpersonaTraineeSchema()
+
+            trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=userdata['all_user_id'], nopp=True, dataframe=False)
+            if not trainee_profile_data:
+                    logger.warn("No trainee user profiles found.")
+                    return []
+            tinder_user_profile_id = trainee_profile_data[0]['id']    
             message_data = {
                 "attributes": {
                     "overall_confidence": confidence_overtime,
@@ -926,13 +973,12 @@ async def calculate_overall_progress(userdata, data: list):
                     "overall_competency": overall_competencies,
                     "overall_performance": overall_performance_scores
                 },
-                "metadata": {
-                    "createdBy": "parrot"
-                },
-                "sessionIds": session_ids
+                "sessionIds": session_ids,
+                "tinder_user_profile": tinder_user_profile_id,
+                "tinder_job_profile": userdata['job_profile_id']
             }
-            ipersona_manager = IpersonaManager(all_user_id=userdata['all_user_id'], job_profile_id=userdata['job_profile_id'], run_stage="dev")
-            response = ipersona_manager.create_session_overall_observer(message_data)    
+            
+            response = ipersona_overall.save_Session_Overall_Observer(params=message_data, nopp=True, dataframe=False)
     
         return response
     
@@ -941,7 +987,7 @@ async def calculate_overall_progress(userdata, data: list):
         return f'Error: {str(e)}'  
     
 
-#----------------------------- Entire User Session Progress Over All Types of Jobs -----------------------------
+#-------------- Entire User Session Progress Over All Types of Jobs ---------------
 def all_session_jobs_average_metrics(data):
     try:
         avg_confidence = calculate_average(data['overall_confidence'])
@@ -958,345 +1004,419 @@ def all_session_jobs_average_metrics(data):
                         }
         
         return overall_data
-
-
         
     except Exception as e:
         logger.error(f"process failed: ${str(e)}")
     
     
 def calculate_average(data):
-    total_score = 0
-    count = 0
-    
-    for entry in data:
-        value = entry.get("value", 0)          
-        total_score += value 
-        count += 1 
-    
-    average_confidence = total_score / count if count > 0 else 0
-    return round(average_confidence, 2)
+    try:
+        total_score = 0
+        count = 0
+        
+        for entry in data:
+            value = entry.get("value", 0)          
+            total_score += value 
+            count += 1 
+        
+        average_confidence = total_score / count if count > 0 else 0
+        return round(average_confidence, 2)
+
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
 
 
 def calculate_average_time_management(data):
-    total_passes = 0
-    total_fails = 0
-    
-    for entry in data:
-        time_management = entry.get("time_management", {})
-        passes = time_management.get("pass", 0)  
-        fails = time_management.get("fail", 0)    
+    try:
+        total_passes = 0
+        total_fails = 0
         
-        total_passes += passes  
-        total_fails += fails     
-    
-    total_questions = total_passes + total_fails
-    
-    average_pass_rate = round((total_passes / total_questions) * 100, 2) if total_questions > 0 else 0
-    average_fail_rate = round((total_fails / total_questions) * 100, 2) if total_questions > 0 else 0
+        for entry in data:
+            time_management = entry.get("time_management", {})
+            passes = time_management.get("pass", 0)  
+            fails = time_management.get("fail", 0)    
+            
+            total_passes += passes  
+            total_fails += fails     
+        
+        total_questions = total_passes + total_fails
+        
+        average_pass_rate = round((total_passes / total_questions) * 100, 2) if total_questions > 0 else 0
+        average_fail_rate = round((total_fails / total_questions) * 100, 2) if total_questions > 0 else 0
 
-    return {
-        "total_passes": total_passes,
-        "total_fails": total_fails,
-        "average_pass_rate": average_pass_rate,
-        "average_fail_rate": average_fail_rate
-    }
+        return {
+            "total_passes": total_passes,
+            "total_fails": total_fails,
+            "average_pass_rate": average_pass_rate,
+            "average_fail_rate": average_fail_rate
+        }
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
 
 #-------------------------------------------- user engagment jobs --------------------------------------------
-def summarize_interviews(all_user_id):
-    ipersona_manager = IpersonaManager(all_user_id=all_user_id, run_stage="dev")
-    data = ipersona_manager.get_alluser_sessions()
-    data = extracted_needed_metrics(data)
+def summarize_interviews(user_profile_id):  
+    try:  
+        ipersona_session = IpersonaSessionSchema()
+        data = ipersona_session.filter_by_tinder_user_profile_id(user_profile_id=user_profile_id, nopp=True, dataframe=False)
+        data = extracted_needed_metrics(data)
 
-    job_summary = defaultdict(list)
-    
-    for record in data:
-        job_profile_id = record['job_profile_id']
-        job_summary[job_profile_id].append(record)
-    
-    summary_response = []
-    
-    for job_profile_id, records in job_summary.items():
-        total_score = sum(record['overall_performance_score'] for record in records)
-        interviews_count = len(records)
-        average_score = total_score / interviews_count if interviews_count > 0 else 0
-   
-        ipersona_manager = IpersonaManager(all_user_id=all_user_id, job_profile_id=job_profile_id, run_stage="dev")
-        job_title_data = ipersona_manager.get_trainee_job_profile()
-        if job_title_data and len(job_title_data) > 0:
-            job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
-        else:
-            job_title = 'Unknown Job Title'  
-        
-        trainee_data = ipersona_manager.get_trainee_user_profile()
-        if not trainee_data:
-            logger.warn("No trainee user profiles found.")
+        if len(data) == 0:
+            logger.info("The given trainee has no observer data")
             return []
 
-        tinder_user_profile_id = trainee_data[0]['id']
-        tinder_job_profile_id = job_profile_id
-        
-        job_match_data = ipersona_manager.get_match(tinder_user_profile_id, tinder_job_profile_id)
-        ipersona_manager = IpersonaManager(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, run_stage="dev")
-        reaction_id = ipersona_manager.get_user_reaction_id()
-        
-        if job_match_data and len(job_match_data) > 0:
-            match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
-            job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
-        else:
-            match_score = 'Unknown'  
-            job_match = 'Unknown'    
-        
-        summary_response.append({
-            "job_profile_id": job_profile_id,
-            "reaction_id": reaction_id,
-            "job_title": job_title,
-            "job_match_score": match_score,
-            "job_match": job_match,
-            "interviews": interviews_count,
-            "score": round(average_score, 2)
-        })
-    
-    return summary_response
+        job_summary = defaultdict(list)
 
-def extracted_needed_metrics(data):
-    extracted_observers = []
-    for session in data:
-        observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
-        if observer_data:
-            observer_attributes = observer_data.get('attributes', {}).get('attributes', {}).get('interview_evaluation_metrics', {})
-            session['overall_performance_score'] = observer_attributes.get('overall_performance_score', None)
-            session['createdAt'] = session['attributes']['createdAt']
-            session['job_profile_id'] = session['attributes']['tinder_job_profile']['data']['id']
-            session['userprofileId'] = session['attributes']['tinder_user_profile']['data']['id']
-            extracted_observers.append(session)
+        for record in data:
+            job_profile_id = record['job_profile_id']
+            job_summary[job_profile_id].append(record)
 
-    return extracted_observers
+        summary_response = []
 
-def extract_observers_metrics(data):
-    extracted_observers = []
-    for message in data:
-        if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
-            message_data = message['attributes']['i_persona_observer']['data']
-            message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
-            message_attributes['createdAt'] = message['attributes']['createdAt']
-            message_attributes['obs_id'] = message['attributes']['i_persona_observer']['data']['id']
-            extracted_observers.append(message_attributes)
-
-    return extracted_observers
-
-
-def calculate_session_metrics(sessions):
-    session_count = 0
-    job_profile_count = 0
-    user_profile_count = 0
-    complete_sessions = 0
-    incomplete_sessions = 0
-    job_profile_frequency = []  
-    user_profile_frequency = []  
-
-    unique_job_profiles = set()
-    unique_user_profiles = set()
-
-    for session in sessions:
-        session_count += 1
-
-        attributes = session.get('attributes', {})
-        if not isinstance(attributes, dict):
-            logger.warn(f"Skipping session due to invalid 'attributes': {session}")
-            continue
-
-        job_profile = attributes.get('tinder_job_profile', {}).get('data', {})
-        user_profile = attributes.get('tinder_user_profile', {}).get('data', {})
-
-        if not isinstance(job_profile, dict):
-            logger.warn(f"Skipping session due to invalid 'tinder_job_profile': {session}")
-            continue
-
-        if not isinstance(user_profile, dict):
-            logger.warn(f"Skipping session due to invalid 'tinder_user_profile': {session}")
-            continue
-
-        job_profile_id = job_profile.get('id')
-        user_profile_id = user_profile.get('id')
-        ipersona_manager = IpersonaManager(id=user_profile_id, job_profile_id=job_profile_id, run_stage="dev")
-        job_title_data = ipersona_manager.get_trainee_job_profile()
-        alluserdata = ipersona_manager.get_all_user_id()
-        all_user_id = alluserdata["attributes"]["all_users"]["data"][0]["id"]
-        ipersona_manager = IpersonaManager(all_user_id=all_user_id, run_stage="dev")
-        userdata = ipersona_manager.get_all_user_data()
-        ipersona_manager = IpersonaManager(user_profile_id=user_profile_id, job_profile_id=job_profile_id, run_stage="dev")
-        reaction_id = ipersona_manager.get_user_reaction_id()
-        
-        if job_title_data and len(job_title_data) > 0:
-            job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
-        else:
-            job_title = 'Unknown Job Title'
-
-        if not job_profile_id or not user_profile_id:
-            logger.warn(f"Skipping session due to missing job/user profile: {session}")
-            continue
-
-        if job_profile_id not in unique_job_profiles:
-            unique_job_profiles.add(job_profile_id)
-            job_profile_count += 1
-            job_profile_frequency.append({
-                'count': 1,
-                'job_title': job_title,
-                'job_profile_id': job_profile_id,
-                "reaction_id": reaction_id
-            })
-        else:
-            for profile in job_profile_frequency:
-                if profile['job_profile_id'] == job_profile_id:
-                    profile['count'] += 1
-                    break
-
-        if user_profile_id not in unique_user_profiles:
-            unique_user_profiles.add(user_profile_id)
-            user_profile_count += 1
-            user_profile_frequency.append({
-                'count': 1,
-                'name': userdata['name'],
-                'user_profile_id': user_profile_id
-            })
-        else:
-            for profile in user_profile_frequency:
-                if profile['user_profile_id'] == user_profile_id:
-                    profile['count'] += 1
-                    break
-
-        i_persona_observer = attributes.get('i_persona_observer', {}).get('data')
-        if i_persona_observer is None:
-            incomplete_sessions += 1
-        else:
-            complete_sessions += 1
-
-    job_profile_frequency = sorted(job_profile_frequency, key=lambda x: x['count'], reverse=True)
-    user_profile_frequency = sorted(user_profile_frequency, key=lambda x: x['count'], reverse=True)
-
-    result = {
-        'session_count': session_count,
-        'job_profile_count': job_profile_count,
-        'user_profile_count': user_profile_count,
-        'complete_sessions': complete_sessions,
-        'incomplete_sessions': incomplete_sessions,
-        'job_profile_frequency': job_profile_frequency,
-        'user_profile_frequency': user_profile_frequency,
-    }
-
-    return result
-
-
-def summarize_allusers_data(data):
-    data = extracted_needed_metrics(data)
-    
-    job_summary = defaultdict(list)
-    processed_pairs = set()
-
-    for record in data:
-        job_profile_id = record['job_profile_id']
-        userprofileId = record['userprofileId']
-        
-        job_summary[job_profile_id].append(record)
-    
-    summary_response = []
-
-    for job_profile_id, records in job_summary.items():
-        total_score = sum(record['overall_performance_score'] for record in records)
-        interviews_count = len(records)
-        average_score = total_score / interviews_count if interviews_count > 0 else 0
-        
-        ipersona_manager = IpersonaManager(job_profile_id=job_profile_id, run_stage="dev")
-        job_title_data = ipersona_manager.get_trainee_job_profile()
-        
-        if job_title_data and len(job_title_data) > 0:
-            job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
-        else:
-            job_title = 'Unknown Job Title'
-        
-        for record in records:
-            userprofileId = record['userprofileId']
-            ipersona_manager = IpersonaManager(id=userprofileId, run_stage="dev")
-            all_user_id = ipersona_manager.get_alluserid_from_user_profile()
-            ipersona_manager = IpersonaManager(all_user_id=all_user_id, run_stage="dev")
-            userdata = ipersona_manager.get_all_user_data()
+        for job_profile_id, records in job_summary.items():
+            interviews_count = len(records)
+            total_score = sum(
+                record.get('overall_performance_score', 0) for record in records if record.get('overall_performance_score') is not None
+            )
             
-            if (job_profile_id, userprofileId) in processed_pairs:
-                continue  
+            if total_score > 0:
+                average_score = round(total_score / interviews_count, 2)
+            else:
+                average_score = 'Not Available'
             
-            trainee_data = ipersona_manager.get_trainee_user_profile()
-            if not trainee_data:
-                logger.warn("No trainee user profiles found.")
-                continue  
+            ipersona_job = IpersonaJobSchema()
+            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
             
-            tinder_user_profile_id = trainee_data[0]['id']
+            if job_title_data and len(job_title_data) > 0:
+                job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
+            else:
+                job_title = 'Unknown Job Title'
+
+            tinder_user_profile_id = user_profile_id
             tinder_job_profile_id = job_profile_id
 
-            job_match_data = ipersona_manager.get_match(tinder_user_profile_id, tinder_job_profile_id)
+            ipersona_match = IpersonaSessionTinderUserJobMatchSchema()
+            job_match_data = ipersona_match.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
+            
+            ipersona_reaction = IpersonaSessionTinderUserReactionSchema()
+            reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
+
             if job_match_data and len(job_match_data) > 0:
                 match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
                 job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
-                ipersona_manager = IpersonaManager(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, run_stage="dev")
-                reaction_id = ipersona_manager.get_user_reaction_id()
             else:
                 match_score = 'Unknown'
                 job_match = 'Unknown'
-            
-            processed_pairs.add((job_profile_id, userprofileId))
-            
+
             summary_response.append({
                 "job_profile_id": job_profile_id,
-                "userprofileId": userprofileId,
                 "reaction_id": reaction_id,
-                "all_user_id": all_user_id,
                 "job_title": job_title,
                 "job_match_score": match_score,
                 "job_match": job_match,
                 "interviews": interviews_count,
-                "score": round(average_score, 2),
-                "name": userdata['name'],
-                "role": userdata['role'],
-                "batch": userdata['Batch'],
-                "gender": userdata['gender'],
-                "nationality": userdata['nationality']
+                "score": average_score
             })
-            aggregated = aggregate_user_data(summary_response)
+
+        return summary_response
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+
+def extracted_needed_metrics(data):
+    try:
+        extracted_observers = []
+        
+        for session in data:
+            observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
             
-            result = {
-                "summary_response": summary_response,
-                "aggregated": aggregated
-            }
+            # Extract necessary data if observer data exists
+            if observer_data:
+                observer_attributes = observer_data.get('attributes', {}).get('attributes', {}).get('interview_evaluation_metrics', {})
+                session['overall_performance_score'] = observer_attributes.get('overall_performance_score', None)
+            else:
+                # Handle case where observer data does not exist
+                session['not_found'] = True
+                session['overall_performance_score'] = None
+
+            # Always assign job_profile_id and createdAt, even if observer data is missing
+            session['createdAt'] = session['attributes'].get('createdAt')
+            session['job_profile_id'] = session['attributes']['tinder_job_profile']['data']['id']
+            session['userprofileId'] = session['attributes']['tinder_user_profile']['data']['id']
+            extracted_observers.append(session)
+        
+        return extracted_observers
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
     
-    return result
+def extract_observers_metrics(data):
+    try:
+        extracted_observers = []
+        for message in data:
+            if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
+                message_data = message['attributes']['i_persona_observer']['data']
+                message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
+                message_attributes['createdAt'] = message['attributes']['createdAt']
+                message_attributes['obs_id'] = message['attributes']['i_persona_observer']['data']['id']
+                extracted_observers.append(message_attributes)
+
+        return extracted_observers
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+
+def calculate_session_metrics(sessions):
+    try:
+        session_count = 0
+        job_profile_count = 0
+        user_profile_count = 0
+        complete_sessions = 0
+        incomplete_sessions = 0
+        job_profile_frequency = []  
+        user_profile_frequency = []  
+
+        unique_job_profiles = set()
+        unique_user_profiles = set()
+
+        for session in sessions:
+            session_count += 1
+
+            attributes = session.get('attributes', {})
+            if not isinstance(attributes, dict):
+                logger.warn(f"Skipping session due to invalid 'attributes': {session}")
+                continue
+
+            job_profile = attributes.get('tinder_job_profile', {}).get('data', {})
+            user_profile = attributes.get('tinder_user_profile', {}).get('data', {})
+
+            if not isinstance(job_profile, dict):
+                logger.warn(f"Skipping session due to invalid 'tinder_job_profile': {session}")
+                continue
+
+            if not isinstance(user_profile, dict):
+                logger.warn(f"Skipping session due to invalid 'tinder_user_profile': {session}")
+                continue
+
+            job_profile_id = job_profile.get('id')
+            user_profile_id = user_profile.get('id')
+            
+        
+            ipersona_job = IpersonaJobSchema()
+            ipersona_user = IpersonaTraineeSchema()
+            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
+            
+            alluserdata = ipersona_user.get_trainee_by_id(user_profile_id=197, nopp=True, dataframe=False)
+            all_user_id = alluserdata["attributes"]["all_users"]["data"][0]["id"]
+            
+
+            ipersona_alluser = IpersonaAllUserSchema()
+            ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
+            ipersona_profile = IpersonaProfileInformationSchema()
+            ipersona_profile_data = ipersona_profile .filter_by_all_user_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
+            userdata = {**ipersona_alluser_data, **ipersona_profile_data}
+            
+     
+            ipersona_reaction = IpersonaSessionTinderUserReactionSchema()
+            reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=user_profile_id, job_profile_id=job_profile_id, nopp=True, dataframe=False)
+
+            
+            if job_title_data and len(job_title_data) > 0:
+                job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
+            else:
+                job_title = 'Unknown Job Title'
+
+            if not job_profile_id or not user_profile_id:
+                logger.warn(f"Skipping session due to missing job/user profile: {session}")
+                continue
+
+            if job_profile_id not in unique_job_profiles:
+                unique_job_profiles.add(job_profile_id)
+                job_profile_count += 1
+                job_profile_frequency.append({
+                    'count': 1,
+                    'job_title': job_title,
+                    'job_profile_id': job_profile_id,
+                    "reaction_id": reaction_id
+                })
+            else:
+                for profile in job_profile_frequency:
+                    if profile['job_profile_id'] == job_profile_id:
+                        profile['count'] += 1
+                        break
+
+            if user_profile_id not in unique_user_profiles:
+                unique_user_profiles.add(user_profile_id)
+                user_profile_count += 1
+                user_profile_frequency.append({
+                    'count': 1,
+                    'name': userdata['name'],
+                    'user_profile_id': user_profile_id
+                })
+            else:
+                for profile in user_profile_frequency:
+                    if profile['user_profile_id'] == user_profile_id:
+                        profile['count'] += 1
+                        break
+
+            i_persona_observer = attributes.get('i_persona_observer', {}).get('data')
+            if i_persona_observer is None:
+                incomplete_sessions += 1
+            else:
+                complete_sessions += 1
+
+        job_profile_frequency = sorted(job_profile_frequency, key=lambda x: x['count'], reverse=True)
+        user_profile_frequency = sorted(user_profile_frequency, key=lambda x: x['count'], reverse=True)
+
+        result = {
+            'session_count': session_count,
+            'job_profile_count': job_profile_count,
+            'user_profile_count': user_profile_count,
+            'complete_sessions': complete_sessions,
+            'incomplete_sessions': incomplete_sessions,
+            'job_profile_frequency': job_profile_frequency,
+            'user_profile_frequency': user_profile_frequency,
+        }
+
+        return result
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+
+def summarize_allusers_data(data):
+    try:
+        data = extracted_needed_metrics(data)
+        job_summary = defaultdict(list)
+        processed_pairs = set()
+
+        for record in data:
+            job_profile_id = record['job_profile_id']
+            userprofileId = record['userprofileId']
+            job_summary[job_profile_id].append(record)
+        
+        summary_response = []
+
+        for job_profile_id, records in job_summary.items():
+            # Sum only valid scores (exclude None)
+            total_score = sum(record['overall_performance_score'] for record in records if record['overall_performance_score'] is not None)
+            
+            interviews_count = len(records)
+            average_score = total_score / interviews_count if interviews_count > 0 else 0
+                       
+            ipersona_job = IpersonaJobSchema()
+            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
+            
+            if job_title_data and len(job_title_data) > 0:
+                job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
+            else:
+                job_title = 'Unknown Job Title'
+            
+            for record in records:
+                userprofileId = record['userprofileId']
+                
+                ipersona_user = IpersonaTraineeSchema()
+                all_user_data = ipersona_user.get_trainee_by_id(user_profile_id=userprofileId, nopp=True, dataframe=False, return_object=True)
+                all_user_id = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
+                
+                ipersona_alluser = IpersonaAllUserSchema()
+                ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
+                ipersona_profile = IpersonaProfileInformationSchema()
+                ipersona_profile_data = ipersona_profile .filter_by_all_user_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
+                userdata = {**ipersona_alluser_data, **ipersona_profile_data}
+                
+                if (job_profile_id, userprofileId) in processed_pairs:
+                    continue  
+                
+                ipersona_user = IpersonaTraineeSchema()
+                trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=all_user_id, nopp=True, dataframe=False)
+                if not trainee_profile_data:
+                        logger.warn("No trainee user profiles found.")
+                        return []
+                tinder_user_profile_id = trainee_profile_data[0]['id']
+                tinder_job_profile_id = job_profile_id
+
+                ipersona_match = IpersonaSessionTinderUserJobMatchSchema()
+                job_match_data = ipersona_match.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
+            
+                if job_match_data and len(job_match_data) > 0:
+                    match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
+                    job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
+                   
+                    ipersona_reaction = IpersonaSessionTinderUserReactionSchema()
+                    reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
+                else:
+                    match_score = 'Unknown'
+                    job_match = 'Unknown'
+                
+                processed_pairs.add((job_profile_id, userprofileId))
+                
+                summary_response.append({
+                    "job_profile_id": job_profile_id,
+                    "userprofileId": userprofileId,
+                    "reaction_id": reaction_id,
+                    "all_user_id": all_user_id,
+                    "job_title": job_title,
+                    "job_match_score": match_score,
+                    "job_match": job_match,
+                    "interviews": interviews_count,
+                    "score": round(average_score, 2),
+                    "name": userdata['name'],
+                    "role": userdata['role'],
+                    "batch": userdata['Batch'],
+                    "gender": userdata['gender'],
+                    "nationality": userdata['nationality']
+                })
+                
+                aggregated = aggregate_user_data(summary_response)
+                result = {
+                    "summary_response": summary_response,
+                    "aggregated": aggregated
+                }
+        
+        return result
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
 
 def aggregate_user_data(data):
-    aggregated_data = {}
+    try:
+        aggregated_data = {}
 
-    for entry in data:
-        alluser_id = entry['all_user_id']
+        for entry in data:
+            alluser_id = entry['all_user_id']
 
-        if alluser_id in aggregated_data:
-            aggregated_data[alluser_id]['interviews'] += entry['interviews']
-        else:
-            aggregated_data[alluser_id] = {
-                'name': entry['name'],
-                'role': entry['role'],
-                'batch': entry['batch'],
-                'gender': entry['gender'],
-                'nationality': entry['nationality'],
-                'interviews': entry['interviews'],  
-            }
+            if alluser_id in aggregated_data:
+                aggregated_data[alluser_id]['interviews'] += entry['interviews']
+            else:
+                aggregated_data[alluser_id] = {
+                    'name': entry['name'],
+                    'role': entry['role'],
+                    'batch': entry['batch'],
+                    'gender': entry['gender'],
+                    'nationality': entry['nationality'],
+                    'interviews': entry['interviews'],  
+                }
 
-    result = [{'all_user_id': key, **value} for key, value in aggregated_data.items()]
+        result = [{'all_user_id': key, **value} for key, value in aggregated_data.items()]
 
-    return result
+        return result
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
 
 #-------------------------------------------- FIle reader --------------------------------------------
 def convert_iso_to_readable_format(iso_time):
-    dt = datetime.strptime(iso_time, '%Y-%m-%dT%H:%M:%S.%fZ')    
-    readable_time = dt.strftime('%d %b %Y %I:%M %p')
-    return readable_time
+    try:
+        dt = datetime.strptime(iso_time, '%Y-%m-%dT%H:%M:%S.%fZ')    
+        readable_time = dt.strftime('%d %b %Y %I:%M %p')
+        return readable_time
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
 
 def file_reader(path: str) -> str:
     """ File Reader """
@@ -1308,63 +1428,67 @@ def file_reader(path: str) -> str:
     
     except Exception as e:
         logger.error(f"File reading process failed: ${str(e)}")
-
         return f'Error: {str(e)}'  
       
 
 #------------------------------------- Json Extraction --------------------------------------------
-def extract_json(response, quite=False):   
-    """ Json Extraction """ 
-    if isinstance(response, (dict, list)):
-        # return as it is 
-        # if not quite: print("extract_json", "response is already in json format")
-        return response       
-    elif isinstance(response, str):
-        # Method 1
-        try:
-            # try simple to load it as jsonfrom collections import defaultdict
+def extract_json(response, quite=False):
+    try:   
+        """ Json Extraction """ 
+        if isinstance(response, (dict, list)):
+            # return as it is 
+            # if not quite: print("extract_json", "response is already in json format")
+            return response       
+        elif isinstance(response, str):
+            # Method 1
+            try:
+                # try simple to load it as jsonfrom collections import defaultdict
 
-            res = json.loads(response)
-            # if not quite: print("extract_json", "response is already in jsons format")
-            return res
-        except:
-            pass
-            # if not quite: print("extract_json: simple json load failed. Trying to fix json string ...")
-           
-        # Method 2 
-        try:
-            # if not quite: print("extract_json", "response is not in json format. Trying to extract json from response")
-            if '```json' in text:                
-                out = text.split('```json')[1].split('```')[0].replace('\n','')
-            elif '```' in text:
-                out = text.split('```')[1].split('```')[0].replace('\n','')
-            else:
-                out = text
-
-            res = json.loads(out)
-            return res        
-        except Exception as e:
-            # if not quite: print(f"extract_json: unable to fix json string. Trying with json_repair ...")
-            pass         
-            # it is not in json string format
-            
-            # Method 3
-            text = response
-            try:                
-                res = json_repair.loads(text)
-                if isinstance(res, (dict, list)):
-                    # if not quite: print("extract_json: result obtained using repair json")
-                    return res
+                res = json.loads(response)
+                # if not quite: print("extract_json", "response is already in jsons format")
+                return res
             except:
-                if not quite: print("extract_json: unable to repair json string using json_repair. Raise exception")
-                raise
-    else:
-        # if not quite: print("extract_json", "response is not a string or a dictionary")
-        return {}
-    
+                pass
+                # if not quite: print("extract_json: simple json load failed. Trying to fix json string ...")
+            
+            # Method 2 
+            try:
+                # if not quite: print("extract_json", "response is not in json format. Trying to extract json from response")
+                if '```json' in text:                
+                    out = text.split('```json')[1].split('```')[0].replace('\n','')
+                elif '```' in text:
+                    out = text.split('```')[1].split('```')[0].replace('\n','')
+                else:
+                    out = text
+
+                res = json.loads(out)
+                return res        
+            except Exception as e:
+                # if not quite: print(f"extract_json: unable to fix json string. Trying with json_repair ...")
+                pass         
+                # it is not in json string format
+                
+                # Method 3
+                text = response
+                try:                
+                    res = json_repair.loads(text)
+                    if isinstance(res, (dict, list)):
+                        # if not quite: print("extract_json: result obtained using repair json")
+                        return res
+                except:
+                    if not quite: print("extract_json: unable to repair json string using json_repair. Raise exception")
+                    raise
+        else:
+            # if not quite: print("extract_json", "response is not a string or a dictionary")
+            return {}
+        
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
     
 #------------------------------------------- Extraction Function --------------------------------------------
 def extract_trainee_neccessary_values(data):
+    try:
         extracted_values = {
             "basics.attributes": [],
             "projects.attributes": [],
@@ -1418,36 +1542,45 @@ def extract_trainee_neccessary_values(data):
                                 "end_date": x.get("end_date", "")
                             })
    
-        return extracted_values    
+        return extracted_values  
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}  
 
 def extract_job_neccessary_values(data):
-    extracted_values = {
-        "role": "",  
-        "purpose": "", 
-        "required_qualifications": "",  
-        "duties_responsibilities": "",  
-        "attributes.apply_link": "",  
-        "competencies": []  
-    }
+    try:
+        extracted_values = {
+            "role": "",  
+            "purpose": "", 
+            "required_qualifications": "",  
+            "duties_responsibilities": "",  
+            "attributes.apply_link": "",  
+            "competencies": []  
+        }
 
-    if isinstance(data, list):
-        for item in data:  
-            attributes = item.get('attributes', {}).get('attributes', {})
-            
-            extracted_values["role"] = attributes.get("title", "")
+        if isinstance(data, list):
+            for item in data:  
+                attributes = item.get('attributes', {}).get('attributes', {})
+                
+                extracted_values["role"] = attributes.get("title", "")
 
-            extracted_values["purpose"] = attributes.get("purpose", "")
+                extracted_values["purpose"] = attributes.get("purpose", "")
 
-            extracted_values["required_qualifications"] = ", ".join(attributes.get("required_qualifications", []))
+                extracted_values["required_qualifications"] = ", ".join(attributes.get("required_qualifications", []))
 
-            extracted_values["duties_responsibilities"] = ", ".join(attributes.get("duties_responsibilities", []))
+                extracted_values["duties_responsibilities"] = ", ".join(attributes.get("duties_responsibilities", []))
 
-            competencies = attributes.get("competencies", [])
-            for competency in competencies:
-                extracted_values["competencies"].append({
-                    "name": competency.get("name", ""),
-                    "skills": competency.get("skills", []),
-                    "summary": competency.get("summary", "")
-                })
+                competencies = attributes.get("competencies", [])
+                for competency in competencies:
+                    extracted_values["competencies"].append({
+                        "name": competency.get("name", ""),
+                        "skills": competency.get("skills", []),
+                        "summary": competency.get("summary", "")
+                    })
 
-    return extracted_values
+        return extracted_values
+
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}

@@ -18,7 +18,7 @@ class UserSessionRequestRecieved(BaseModel):
 class AllUserSessionRequestRecieved(BaseModel):
     all_user_id: int
 
-class ChatHistoryRequestRecieved(BaseModel):
+class SessionIdRequestRecieved(BaseModel):
     sessionId: int
                
 class MetricsRequestRecieved(BaseModel):

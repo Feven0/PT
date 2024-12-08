@@ -25,7 +25,6 @@ const Messages: React.FC<Data> = ({interview}) => {
     const [clickCount, setClickCount] = useState<any>({}); 
 
 
-    console.log("loading log", loading)
     const MarkdownContent: React.FC<MarkdownContentProps> =  ({ content }) => {
         const formattedContent = content?.replace(/---/g, ' ');
         return (

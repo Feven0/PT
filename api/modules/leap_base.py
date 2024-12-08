@@ -1165,7 +1165,7 @@ class LeapBaseClass:
         This function saves or updates a single object in the database.
         To update an object, the object must have an 'id' attribute.
         '''
-        #
+        
         kwargs.update({'dataframe':False, 'raw':True})
         logger.debug(f'-------> save_or_update kwargs {kwargs}', level=11)
         

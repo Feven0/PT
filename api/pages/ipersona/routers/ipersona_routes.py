@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import StreamingResponse, JSONResponse
+from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionSchema, IpersonaTraineeSchema, IpersonaJobSchema, IpersonaSessionOverallObserverSchema, IpersonaSessionMessageSchema, IpersonaSessionObserverSchema
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_gpt as gpt
 import api.pages.ipersona.models.persona as pemodel
@@ -96,15 +97,16 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
             A dictionary containing a success message with the uploaded filenames 
             or an error response if an exception occurs during processing.
         """
-        ipersona_manager = IpersonaManager(all_user_id=recieved.all_user_id, run_stage="dev")
-        trainee_profile_data = ipersona_manager.get_trainee_user_profile()
+        ipersona_user = IpersonaTraineeSchema()
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=recieved.all_user_id, nopp=True, dataframe=False)
         if not trainee_profile_data:
                 logger.warn("No trainee user profiles found.")
                 return []
         tinder_user_profile_id = trainee_profile_data[0]['id']
         tinder_user_profile_data = util.extract_trainee_neccessary_values(trainee_profile_data)
         
-        tinder_job_data = ipersona_manager.get_trainee_job_profile()
+        ipersona_job = IpersonaJobSchema()
+        tinder_job_data = ipersona_job.filter_by_job_id(job_profile_id=recieved.job_profile_id, nopp=True, dataframe=False)
         if not tinder_job_data:
                 logger.warn("No Job data found.")
                 return []
@@ -139,28 +141,27 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
                 question_number += 1 
         
 
-        message_data = {
+        session_data = {
             "slug": str(f"all_user_id: {recieved.all_user_id}"), 
+            "status": "Incomplete",
             "attributes": {
                 "persona": generated_persona,  
                 "generated_questions": generated_question_json
             },
-            "metadata": {
-                "createdBy": "parrot"
-            },
-            "all_user_id": tinder_user_profile_id,
+            "user_profile_id": tinder_user_profile_id,
             "job_profile_id": recieved.job_profile_id
         }
 
-
-        ipersona_manager = IpersonaManager(run_stage="dev")
-
-        response = ipersona_manager.create_session(message_data)           
-
-        return response
+          
+        ipersona_session = IpersonaSessionSchema()
+        saved_session = ipersona_session.save_session(params=session_data, return_object=True, nopp=True, dataframe=False)
+        if saved_session:
+            logger.success("Session saved and created successfully!")
+            
+        return saved_session
     
     except Exception as e:
-        print(f"Error processing files: {e}")
+        logger.error(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error occur": f"Error processing files: {e}"})
         
         
@@ -193,13 +194,13 @@ async def clarify_question(recieved: pemodel.ClarificationRequestRecieved) -> di
         return result
     
     except Exception as e:
-        print(f"Error processing files: {e}")
+        logger.error(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
 
     finally:
         end_time = time.time() 
         elapsed_time = end_time - start_time 
-        print(f"Time taken for question clarififcation processing: {elapsed_time:.2f} seconds")
+        logger.info(f"Time taken for question clarififcation processing: {elapsed_time:.2f} seconds")
 
 
 @routes.post("/calculate_session_overall_progress")
@@ -214,19 +215,26 @@ async def calculate_overall_progress(recieved: pemodel.UserSessionRequestRecieve
     """
     start_time = time.time()    
     try:  
-        ipersona_manager = IpersonaManager(all_user_id=recieved.all_user_id, job_profile_id=recieved.job_profile_id, run_stage="dev")
-        session_chatobserver = ipersona_manager.session_overall_observer_by_user_and_job()
+        ipersona_overall = IpersonaSessionOverallObserverSchema()
+        ipersona_user = IpersonaTraineeSchema()
+
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=recieved.all_user_id, nopp=True, dataframe=False)
+        if not trainee_profile_data:
+                logger.warn("No trainee user profiles found.")
+                return []
+        tinder_user_profile_id = trainee_profile_data[0]['id']        
+        session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=recieved.job_profile_id, nopp=True, dataframe=False)
                             
         return session_chatobserver["all_sessions"][0]
     
     except Exception as e:
-        print(f"Error processing files: {e}")
+        logger.error(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
 
     finally:
         end_time = time.time() 
         elapsed_time = end_time - start_time 
-        print(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
+        logger.info(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
 
 
 @routes.post("/calculate_allstat_progress")
@@ -240,7 +248,7 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
 
     Parameters:
     ----------
-    recieved : pemodel.ChatHistoryRequestRecieved
+    recieved : pemodel.SessionIdRequestRecieved
         An object containing the necessary information to fetch chat history.
 
     Returns:
@@ -251,20 +259,27 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
     """
     start_time = time.time()    
     try:  
-        ipersona_manager = IpersonaManager(all_user_id=recieved.all_user_id, run_stage="dev")
-        session_chatobserver = ipersona_manager.session_overall_observer_by_user()
-               
+        ipersona_overall = IpersonaSessionOverallObserverSchema()
+        ipersona_user = IpersonaTraineeSchema()
+
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=recieved.all_user_id, nopp=True, dataframe=False)
+        if not trainee_profile_data:
+                logger.warn("No trainee user profiles found.")
+                return []
+        tinder_user_profile_id = trainee_profile_data[0]['id'] 
+        
+        session_chatobserver = ipersona_overall.filter_by_tinder_user_profile_id(user_profile_id=tinder_user_profile_id, nopp=True, dataframe=False)
         result =  util.all_session_jobs_average_metrics(session_chatobserver) 
         return result
     
     except Exception as e:
-        print(f"Error processing files: {e}")
+        logger.error(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
 
     finally:
         end_time = time.time() 
         elapsed_time = end_time - start_time 
-        print(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
+        logger.info(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
 
 
 @routes.post("/engagement_jobs_status")
@@ -272,8 +287,16 @@ async def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionReque
     """
     """
     start_time = time.time()    
-    try:                 
-        result =  util.summarize_interviews(recieved.all_user_id) 
+    try:  
+        ipersona_user = IpersonaTraineeSchema()
+
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=recieved.all_user_id, nopp=True, dataframe=False)
+        if not trainee_profile_data:
+                logger.warn("No trainee user profiles found.")
+                return []
+        tinder_user_profile_id = trainee_profile_data[0]['id'] 
+                       
+        result =  util.summarize_interviews(tinder_user_profile_id) 
         return result
     
     except Exception as e:
@@ -291,9 +314,8 @@ async def calculate_admin_data_status():
     """
     start_time = time.time()    
     try:      
-        ipersona_manager = IpersonaManager(run_stage="dev")
-
-        data = ipersona_manager.get_all_sessions()
+        ipersona_session = IpersonaSessionSchema()
+        data = ipersona_session.get_all_sessions(nopp=True, dataframe=False)
         result = util.calculate_session_metrics(data)           
         return result
     
@@ -312,9 +334,8 @@ async def calculate_admin_user_data():
     """
     start_time = time.time()    
     try:      
-        ipersona_manager = IpersonaManager(run_stage="dev")
-
-        data = ipersona_manager.get_all_sessions()
+        ipersona_session = IpersonaSessionSchema()
+        data = ipersona_session.get_all_sessions(nopp=True, dataframe=False)
         result = util.summarize_allusers_data(data)        
         return result
     
@@ -348,18 +369,26 @@ async def fetch_session(recieved: pemodel.UserSessionRequestRecieved):
         error response if an exception occurs during processing.
     """
     try:
-        ipersona_manager = IpersonaManager(all_user_id=recieved.all_user_id, job_profile_id=recieved.job_profile_id, run_stage="dev")
-        user_data = ipersona_manager.get_job_sessions()
+        ipersona_user = IpersonaTraineeSchema()
+
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=recieved.all_user_id, nopp=True, dataframe=False)
+        if not trainee_profile_data:
+                logger.warn("No trainee user profiles found.")
+                return []
+        tinder_user_profile_id = trainee_profile_data[0]['id'] 
+                                              
+        ipersona_session = IpersonaSessionSchema()
+        user_data = ipersona_session.filter_by_with_user_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=recieved.job_profile_id, nopp=True, dataframe=False)
 
         return user_data
     
     except Exception as e:
-        print(f"Error processing files: {e}")
+        logger.error(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
    
    
 @routes.post("/fetch_chat_history")
-async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):  
+async def fetch_chat_history(recieved: pemodel.SessionIdRequestRecieved):  
     """
     Fetches the chat history from the database.
 
@@ -368,7 +397,7 @@ async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):
 
     Parameters:
     ----------
-    recieved : pemodel.ChatHistoryRequestRecieved
+    recieved : pemodel.SessionIdRequestRecieved
         An object containing the necessary information to fetch the chat history.
 
     Returns:
@@ -378,30 +407,13 @@ async def fetch_chat_history(recieved: pemodel.ChatHistoryRequestRecieved):
         exception occurs during processing.
     """
     try:
-        ipersona_manager = IpersonaManager(sessionId=recieved.sessionId, run_stage="dev")
-        session_chathistory = ipersona_manager.get_messages()
+        ipersona_message = IpersonaSessionMessageSchema()
+        session_chathistory = ipersona_message.filter_by_session_id(sessionId=recieved.sessionId, nopp=True, dataframe=False, sort='asc')
   
         return session_chathistory
 
     except Exception as e:
-        print(f"Error fetching chat history: {e}")
-        return None  
-    
-    except Exception as e:
-        print(f"Error processing files: {e}")
-        return JSONResponse(status_code=500, content={"error": "Error processing files"})
-    
-
-@routes.post("/fetch_user_session_observers")
-async def fetch_user_session_observer(recieved: pemodel.UserSessionRequestRecieved):  
-    try:
-        ipersona_manager = IpersonaManager(job_profile_id=recieved.job_profile_id, run_stage="dev")
-        session_chatobserver = ipersona_manager.get_job_sessions()
-         
-        return session_chatobserver
-
-    except Exception as e:
-        print(f"Error fetching chat observer: {e}")
+        logger.error(f"Error fetching chat history: {e}")
         return None  
     
     except Exception as e:
@@ -409,33 +421,31 @@ async def fetch_user_session_observer(recieved: pemodel.UserSessionRequestReciev
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
     
 @routes.post("/fetch_user_all_observer")
-async def fetch_user_all_observer(recieved: pemodel.ChatHistoryRequestRecieved):  
+async def fetch_user_all_observer(recieved: pemodel.SessionIdRequestRecieved):  
     try:
-        ipersona_manager = IpersonaManager(sessionId=recieved.sessionId, run_stage="dev")
-        session_chatobserver = ipersona_manager.get_observers()
-         
+        ipersona_observer = IpersonaSessionObserverSchema()
+        session_chatobserver = ipersona_observer.filter_by_observer_session_id(sessionId=recieved.sessionId, nopp=True, dataframe=False)
         return session_chatobserver
 
     except Exception as e:
-        print(f"Error fetching chat observer: {e}")
+        logger.error(f"Error fetching chat observer: {e}")
         return None  
     
     except Exception as e:
-        print(f"Error processing files: {e}")
+        logger.error(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})
     
 @routes.post("/fetch_single_session")
-async def fetch_single_session(recieved: pemodel.ChatHistoryRequestRecieved):  
-    try:
-        ipersona_manager = IpersonaManager(sessionId=recieved.sessionId, run_stage="dev")
-        session_fetched = ipersona_manager.get_session()
-         
+async def fetch_single_session(recieved: pemodel.SessionIdRequestRecieved):  
+    try:        
+        ipersona_user = IpersonaSessionSchema()
+        session_fetched = ipersona_user.get_session_by_id(sessionId=recieved.sessionId, nopp=True, dataframe=False)
         return session_fetched
 
     except Exception as e:
-        print(f"Error fetching chat observer: {e}")
+        logger.error(f"Error fetching single session: {e}")
         return None  
     
     except Exception as e:
-        print(f"Error processing files: {e}")
+        logger.error(f"Error processing files: {e}")
         return JSONResponse(status_code=500, content={"error": "Error processing files"})

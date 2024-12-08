@@ -7,12 +7,15 @@ import api.modules.ipersona_parrot_audio as audio
 import api.modules.ipersona_parrot_audio_copy as copy
 import api.llm.ipersona.ipersona_strapi as strapi
 from api.services.strapi_ipersona import IpersonaManager
+from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionMessageSchema
 from openai import OpenAI
 from fastapi.responses import StreamingResponse, JSONResponse
 import assemblyai as aai
 from api import config
-import asyncio
-import io
+import asyncio, os
+from api.utils.logger import LLPackerLogger
+
+logger = LLPackerLogger(os.path.basename(__file__))
 aai.settings.api_key = "436bc16c4e474f47ae116cbe17041966"
 
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
@@ -316,6 +319,8 @@ async def audio_end_point(sid, data):
                 start_time02 = time.time()  
                 realtime_evaluation_response_json = audio.realtime_response_evaluation(data)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
+                logger.info(f"Realtime done {realtime_evaluation}")
+
                 end_time02 = time.time() 
                 elapsed_time02 = end_time02 - start_time02
                 print(f"Realtime future exec Time taken: {elapsed_time02:.2f} seconds")
@@ -350,7 +355,7 @@ async def audio_end_point(sid, data):
 
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
-    print("interview_session-data", type(data['user_session']), data['user_session']['id'] )
+    print("interview_session-data", data['all_user_id'], data['job_profile_id'], data['user_session']['id'] )
 
     try:
         start_time = time.time()
@@ -359,8 +364,8 @@ async def interview_endpoint(sid, data):
         sessionId =  data['user_session']['id'] 
         realtime_evaluation = "null"
    
-        ipersona_manager = IpersonaManager(sessionId=sessionId, run_stage="dev")
-        session_chathistory = ipersona_manager.get_messages()
+        ipersona_message = IpersonaSessionMessageSchema()
+        session_chathistory = ipersona_message.filter_by_session_id(sessionId=data['user_session']['id'], nopp=True, dataframe=False)
 
         chat = session_chathistory['count']       
             
@@ -376,7 +381,7 @@ async def interview_endpoint(sid, data):
 
         response = await util.generate_interview_question(data)  
      
-        if(response != 'None'):
+        if response:
             assistant_next_question = "" if response.get("interview") is None else response["interview"]       
             accumulated_message = ""              
             message = [
@@ -421,6 +426,8 @@ async def interview_endpoint(sid, data):
                 start_time02 = time.time()  
                 realtime_evaluation_response_json = util.realtime_response_evaluation(data)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
+                logger.warn(f"Realtime done: {realtime_evaluation}")
+
                 end_time02 = time.time() 
                 elapsed_time02 = end_time02 - start_time02
                 print(f"Realtime future exec Time taken: {elapsed_time02:.2f} seconds")
