@@ -187,60 +187,106 @@ async def clarify_question(recieved: pemodel.ClarificationRequestRecieved) -> di
     """
 
     question = recieved.question
-    start_time = time.time()    
-    try:                      
-        result = await util.clarify_question(question)           
-       
+    start_time = time.time()
+
+    if not question or not isinstance(question, str):
+        logger.error("Invalid or missing question in request.")
+        return JSONResponse(status_code=400, content={"error": "Invalid or missing question."})
+
+    try:
+        result = await util.clarify_question(question)
+
+        if not result or not isinstance(result, dict):
+            logger.warn(f"Clarification result is invalid or empty for question: {question}")
+            return JSONResponse(status_code=500, content={"error": "Clarification result is invalid."})
+
+        logger.info(f"Clarification successful for question: {question}")
         return result
-    
+
+    except KeyError as e:
+        logger.error(f"Key error during clarification: {str(e)} for question: {question}")
+        return JSONResponse(status_code=500, content={"error": f"Key error: {str(e)}"})
+
+    except TypeError as e:
+        logger.error(f"Type error during clarification: {str(e)} for question: {question}")
+        return JSONResponse(status_code=500, content={"error": f"Type error: {str(e)}"})
+
     except Exception as e:
-        logger.error(f"Error processing files: {e}")
-        return JSONResponse(status_code=500, content={"error": "Error processing files"})
+        logger.error(f"Unexpected error during question clarification: {str(e)} for question: {question}")
+        return JSONResponse(status_code=500, content={"error": f"An unexpected error occurred: {str(e)}"})
 
     finally:
-        end_time = time.time() 
-        elapsed_time = end_time - start_time 
-        logger.info(f"Time taken for question clarififcation processing: {elapsed_time:.2f} seconds")
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        logger.info(f"Time taken for question clarification processing: {elapsed_time:.2f} seconds")
 
 
 @routes.post("/calculate_session_overall_progress")
-async def calculate_overall_progress(recieved: pemodel.UserSessionRequestRecieved):
+async def calculate_overall_progress(received: pemodel.UserSessionRequestRecieved):
     """
     Fetch overall progress metrics for a job.
+
+    Parameters:
+    ----------
+    received : pemodel.UserSessionRequestRecieved
+        The request object containing user and job profile data.
+
     Returns:
     -------
-    dict
-        A dictionary containing the overall progress metrics or an 
-        error message if an exception occurs during processing.
+    JSONResponse or dict
+        A dictionary containing the overall progress metrics, or an error message if an exception occurs.
     """
-    start_time = time.time()    
-    try:  
+    start_time = time.time()
+    try:
         ipersona_overall = IpersonaSessionOverallObserverSchema()
         ipersona_user = IpersonaTraineeSchema()
 
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=recieved.all_user_id, nopp=True, dataframe=False)
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=received.all_user_id, nopp=True, dataframe=False)
         if not trainee_profile_data:
-                logger.warn("No trainee user profiles found.")
-                return []
-        tinder_user_profile_id = trainee_profile_data[0]['id']        
-        session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=recieved.job_profile_id, nopp=True, dataframe=False)
-                            
+            logger.warn(f"No trainee profiles found for user_id: {received.all_user_id}")
+            return JSONResponse(status_code=404, content={"error": "No trainee profiles found."})
+
+        tinder_user_profile_id = trainee_profile_data[0].get('id', None)
+        if not tinder_user_profile_id:
+            logger.error(f"Trainee profile missing 'id' for user_id: {received.all_user_id}")
+            return JSONResponse(status_code=500, content={"error": "Trainee profile is invalid."})
+
+        session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(
+            user_profile_id=tinder_user_profile_id,
+            job_profile_id=received.job_profile_id,
+            nopp=True,
+            dataframe=False
+        )
+
+        if "all_sessions" not in session_chatobserver or not session_chatobserver["all_sessions"]:
+            logger.warn(f"No session data found for user_profile_id: {tinder_user_profile_id}, job_profile_id: {received.job_profile_id}")
+            return JSONResponse(status_code=404, content={"error": "No session overall observer data found."})
+
+        logger.info(f"Successfully fetched overall session data for user_profile_id: {tinder_user_profile_id}, job_profile_id: {received.job_profile_id}")
         return session_chatobserver["all_sessions"][0]
-    
+
+    except KeyError as e:
+        logger.error(f"Key error during session progress calculation: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": f"Key error: {str(e)}"})
+
+    except TypeError as e:
+        logger.error(f"Type error during session progress calculation: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": f"Type error: {str(e)}"})
+
     except Exception as e:
-        logger.error(f"Error processing files: {e}")
-        return JSONResponse(status_code=500, content={"error": "Error processing files"})
+        logger.error(f"Unexpected error during session progress calculation: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": f"Unexpected error: {str(e)}"})
 
     finally:
-        end_time = time.time() 
-        elapsed_time = end_time - start_time 
-        logger.info(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        logger.info(f"Time taken for analysis processing: {elapsed_time:.2f} seconds")
 
 
 @routes.post("/calculate_allstat_progress")
 async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestRecieved):
     """
-    Calculates overall users progress metrics for all job types.
+    Calculates overall users' progress metrics for all job types.
 
     This asynchronous function retrieves chat history data from the database and 
     calculates overall progress metrics using a utility function. It returns the 
@@ -248,7 +294,7 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
 
     Parameters:
     ----------
-    recieved : pemodel.SessionIdRequestRecieved
+    recieved : pemodel.AllUserSessionRequestRecieved
         An object containing the necessary information to fetch chat history.
 
     Returns:
@@ -257,30 +303,55 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
         A dictionary containing the calculated overall progress metrics or an 
         error message if an exception occurs during processing.
     """
-    start_time = time.time()    
-    try:  
+    start_time = time.time()
+
+    if not recieved or not isinstance(recieved, pemodel.AllUserSessionRequestRecieved):
+        logger.error("Invalid request format.")
+        return JSONResponse(status_code=400, content={"error": "Invalid request format."})
+
+    try:
         ipersona_overall = IpersonaSessionOverallObserverSchema()
         ipersona_user = IpersonaTraineeSchema()
 
         trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=recieved.all_user_id, nopp=True, dataframe=False)
-        if not trainee_profile_data:
-                logger.warn("No trainee user profiles found.")
-                return []
-        tinder_user_profile_id = trainee_profile_data[0]['id'] 
-        
+        if not trainee_profile_data or not isinstance(trainee_profile_data, list) or len(trainee_profile_data) == 0:
+            logger.warn(f"No trainee user profiles found for all_user_id: {recieved.all_user_id}")
+            return JSONResponse(status_code=404, content={"error": "No trainee user profiles found."})
+
+        tinder_user_profile_id = trainee_profile_data[0].get('id')
+        if not tinder_user_profile_id:
+            logger.error("Missing tinder_user_profile_id in trainee profile data.")
+            return JSONResponse(status_code=500, content={"error": "Error fetching user profile."})
+
         session_chatobserver = ipersona_overall.filter_by_tinder_user_profile_id(user_profile_id=tinder_user_profile_id, nopp=True, dataframe=False)
-        result =  util.all_session_jobs_average_metrics(session_chatobserver) 
+        if not session_chatobserver or not isinstance(session_chatobserver, list) or len(session_chatobserver) == 0:
+            logger.warn(f"No session data found for user_profile_id: {tinder_user_profile_id}")
+            return JSONResponse(status_code=404, content={"error": "No session data found."})
+
+        result = util.all_session_jobs_average_metrics(session_chatobserver)
+        if not result or not isinstance(result, dict):
+            logger.warn(f"Failed to calculate metrics for user_profile_id: {tinder_user_profile_id}")
+            return JSONResponse(status_code=500, content={"error": "Error calculating progress metrics."})
+
+        logger.info(f"Progress metrics successfully calculated for user_profile_id: {tinder_user_profile_id}")
         return result
-    
+
+    except KeyError as e:
+        logger.error(f"KeyError while processing request: {str(e)} for all_user_id: {recieved.all_user_id}")
+        return JSONResponse(status_code=500, content={"error": f"KeyError: {str(e)}"})
+
+    except TypeError as e:
+        logger.error(f"TypeError while processing request: {str(e)} for all_user_id: {recieved.all_user_id}")
+        return JSONResponse(status_code=500, content={"error": f"TypeError: {str(e)}"})
+
     except Exception as e:
-        logger.error(f"Error processing files: {e}")
-        return JSONResponse(status_code=500, content={"error": "Error processing files"})
+        logger.error(f"Unexpected error during processing: {str(e)} for all_user_id: {recieved.all_user_id}")
+        return JSONResponse(status_code=500, content={"error": f"Unexpected error occurred: {str(e)}"})
 
     finally:
-        end_time = time.time() 
-        elapsed_time = end_time - start_time 
-        logger.info(f"Time taken for Analysis processing: {elapsed_time:.2f} seconds")
-
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        logger.info(f"Time taken for overall progress calculation: {elapsed_time:.2f} seconds")
 
 @routes.post("/engagement_jobs_status")
 async def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionRequestRecieved):
@@ -301,7 +372,7 @@ async def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionReque
     
     except Exception as e:
         logger.error(f"Error processing files: {e}")
-        return JSONResponse(status_code=500, content={"error": "Error processing files"})
+        return JSONResponse(status_code=500, content={"error": f"Error processing files {e}"})
 
     finally:
         end_time = time.time() 

@@ -990,58 +990,73 @@ async def calculate_overall_progress(userdata, data: list):
 #-------------- Entire User Session Progress Over All Types of Jobs ---------------
 def all_session_jobs_average_metrics(data):
     try:
-        avg_confidence = calculate_average(data['overall_confidence'])
-        avg_clarity = calculate_average(data['overall_clarity'])
-        avg_engagment = calculate_average(data['overall_engagement'])
-        avg_time_management = calculate_average_time_management(data['overall_time_management'])
- 
-        
+        if not isinstance(data, list) or len(data) == 0:
+            raise ValueError("Data is empty or not in the expected list format")
+
+        data = data[0]
+
+        avg_confidence = calculate_average(data.get('overall_confidence', []))
+        avg_clarity = calculate_average(data.get('overall_clarity', []))
+        avg_engagement = calculate_average(data.get('overall_engagement', []))
+        avg_time_management = calculate_average_time_management(data.get('overall_time_management', []))
+
         overall_data = {
-                            "avg_confidence": avg_confidence,
-                            "avg_clarity": avg_clarity,
-                            "avg_engagment": avg_engagment,
-                            "avg_time_management": avg_time_management
-                        }
-        
+            "avg_confidence": avg_confidence,
+            "avg_clarity": avg_clarity,
+            "avg_engagement": avg_engagement,
+            "avg_time_management": avg_time_management
+        }
+
         return overall_data
-        
+
     except Exception as e:
-        logger.error(f"process failed: ${str(e)}")
-    
+        logger.error(f"Process failed in all_session_jobs_average_metrics: {str(e)}")
+        return {"error": f"Process failed: {str(e)}"}
     
 def calculate_average(data):
     try:
+        if not isinstance(data, list) or len(data) == 0:
+            raise ValueError("Data is empty or not in the expected list format")
+
         total_score = 0
         count = 0
-        
+
         for entry in data:
-            value = entry.get("value", 0)          
-            total_score += value 
-            count += 1 
-        
-        average_confidence = total_score / count if count > 0 else 0
-        return round(average_confidence, 2)
+            if isinstance(entry, dict):
+                value = entry.get("value", 0)
+                total_score += value
+                count += 1
+            else:
+                logger.warn(f"Skipping invalid entry in calculate_average: {entry}")
+
+        average = total_score / count if count > 0 else 0
+        return round(average, 2)
 
     except Exception as e:
-        logger.error(f"Error processing files: {e}")
-        return {'error': str(e)}
-
+        logger.error(f"Error calculating average: {str(e)}")
+        return {'error': f"Error calculating average: {str(e)}"}
 
 def calculate_average_time_management(data):
     try:
+        if not isinstance(data, list) or len(data) == 0:
+            raise ValueError("Data is empty or not in the expected list format")
+
         total_passes = 0
         total_fails = 0
-        
+
         for entry in data:
-            time_management = entry.get("time_management", {})
-            passes = time_management.get("pass", 0)  
-            fails = time_management.get("fail", 0)    
-            
-            total_passes += passes  
-            total_fails += fails     
-        
+            if isinstance(entry, dict):
+                time_management = entry.get("time_management", {})
+                passes = time_management.get("pass", 0)
+                fails = time_management.get("fail", 0)
+
+                total_passes += passes
+                total_fails += fails
+            else:
+                logger.warn(f"Skipping invalid entry in calculate_average_time_management: {entry}")
+
         total_questions = total_passes + total_fails
-        
+
         average_pass_rate = round((total_passes / total_questions) * 100, 2) if total_questions > 0 else 0
         average_fail_rate = round((total_fails / total_questions) * 100, 2) if total_questions > 0 else 0
 
@@ -1051,9 +1066,10 @@ def calculate_average_time_management(data):
             "average_pass_rate": average_pass_rate,
             "average_fail_rate": average_fail_rate
         }
+
     except Exception as e:
-        logger.error(f"Error processing files: {e}")
-        return {'error': str(e)}
+        logger.error(f"Error calculating time management averages: {str(e)}")
+        return {'error': f"Error calculating time management averages: {str(e)}"}
 
 #-------------------------------------------- user engagment jobs --------------------------------------------
 def summarize_interviews(user_profile_id):  
