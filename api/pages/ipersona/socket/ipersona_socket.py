@@ -1,18 +1,25 @@
+import asyncio, os
 import socketio, time
+from openai import OpenAI
+from fastapi.responses import StreamingResponse, JSONResponse
+import assemblyai as aai
+
+#
+from concurrent.futures import ThreadPoolExecutor
+
 # import api.pages.ipersona.socket.ipersona_parrot_gpt as util
 # import api.pages.ipersona.socket.ipersona_parrot_audio as audio
 # import api.pages.ipersona.socket.ipersona_parrot_audio_copy as copy
+from api import config
 import api.modules.ipersona_parrot_gpt as util
 import api.modules.ipersona_parrot_audio as audio
 import api.modules.ipersona_parrot_audio_copy as copy
 import api.llm.ipersona.ipersona_strapi as strapi
 from api.services.strapi_ipersona import IpersonaManager
 from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionMessageSchema
-from openai import OpenAI
-from fastapi.responses import StreamingResponse, JSONResponse
-import assemblyai as aai
-from api import config
-import asyncio, os
+
+
+
 from api.utils.logger import LLPackerLogger
 
 logger = LLPackerLogger(os.path.basename(__file__))
@@ -88,8 +95,6 @@ async def audio_endpoint(sid, data):
     except Exception as e:
         print(f"Error in audio streaming: {str(e)}")
 
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
 
 executor = ThreadPoolExecutor(max_workers=105)  
 
@@ -218,8 +223,10 @@ async def audio_end_point(sid, data):
         sessionId =  data['user_session']['id'] 
         realtime_evaluation = "null"
    
-        ipersona_manager = IpersonaManager(sessionId=sessionId, run_stage="dev")
-        session_chathistory = ipersona_manager.get_messages()
+        ipersona_message = IpersonaSessionMessageSchema()
+        session_chathistory = ipersona_message.filter_by_session_id(sessionId=sessionId, 
+                                                                    nopp=True, 
+                                                                    dataframe=False)
 
         chat = session_chathistory['count']       
             
@@ -365,7 +372,9 @@ async def interview_endpoint(sid, data):
         realtime_evaluation = "null"
    
         ipersona_message = IpersonaSessionMessageSchema()
-        session_chathistory = ipersona_message.filter_by_session_id(sessionId=data['user_session']['id'], nopp=True, dataframe=False)
+        session_chathistory = ipersona_message.filter_by_session_id(sessionId=data['user_session']['id'], 
+                                                                    nopp=True, 
+                                                                    dataframe=False)
 
         chat = session_chathistory['count']       
             

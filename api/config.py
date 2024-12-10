@@ -533,8 +533,12 @@ class fastapi:
         "http://localhost",
         "http://localhost:5500",
         "http://localhost:5000",
-        "*"
     ]
+    root_origins = ['10academy.org', 
+                    'localhost',
+                    '127.0.0.1']
+    user_info = {}    
+    
 @dataclass
 class cache:
     MEMCACHED_HOST = os.getenv("MEMCACHED_HOST", "localhost")
