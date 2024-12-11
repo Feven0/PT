@@ -31,7 +31,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 #
 from api.pages.base import api_router as pages_router
-from api.pages.ipersona.routers.ipersona_test import routes_test
 from api.pages.ipersona.routers.ipersona_routes import routes
 from api.pages.ipersona.socket.ipersona_socket import get_socketio_app
 from api.utils.logger import LLPackerLogger
@@ -102,14 +101,6 @@ def start_application():
     #print('add routes..')
     #fast_app = include_router(fast_app)
 
-    print('add middleware..')
-    routes_test.add_middleware(
-        CORSMiddleware,
-        allow_origins=['*'],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
     routes.add_middleware(
         CORSMiddleware,
@@ -119,7 +110,6 @@ def start_application():
         allow_headers=["*"],
     )
 
-    fast_app.mount("/test", routes_test)
     fast_app.mount("/api", routes)
 
     print('start socket')
@@ -221,9 +211,6 @@ async def check_authentication(request: Request, call_next):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     
     return response
-
-
-
 
 
 

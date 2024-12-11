@@ -1,23 +1,15 @@
 import asyncio, os
 import socketio, time
 from openai import OpenAI
-from fastapi.responses import StreamingResponse, JSONResponse
 import assemblyai as aai
 
-#
 from concurrent.futures import ThreadPoolExecutor
-
-# import api.pages.ipersona.socket.ipersona_parrot_gpt as util
-# import api.pages.ipersona.socket.ipersona_parrot_audio as audio
-# import api.pages.ipersona.socket.ipersona_parrot_audio_copy as copy
 from api import config
 import api.modules.ipersona_parrot_gpt as util
 import api.modules.ipersona_parrot_audio as audio
-import api.modules.ipersona_parrot_audio_copy as copy
 import api.llm.ipersona.ipersona_strapi as strapi
-from api.services.strapi_ipersona import IpersonaManager
 from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionMessageSchema
-
+import api.modules.ipersona_parrot_audio as audio
 
 
 from api.utils.logger import LLPackerLogger
@@ -117,55 +109,11 @@ async def synthesize_text(text):
     except Exception as e:
         return {"error": str(e)}
 
-# @sio.on("audio chat")
-# async def audio_endpoint(sid, data):
-#     try:
-#         start_time = time.time()        
-#         response = await copy.generate_interview_question(data)
-#         assistant_next_question = response.get("interview", "")
-
-#         #tasks = [synthesize_text(chunk) for chunk in assistant_next_question]
-
-#         tasks = []
-#         for chunk in assistant_next_question:
-#             await sio.emit("audio-single-text-chunk", chunk, room=sid)
-#             tasks.append(synthesize_text(chunk))
-            
-        
-#         await sio.emit("audio-single-text-chunk-done", room=sid)
-
-#         audio_chunks = await asyncio.gather(*tasks)
-
-#         for audio_data in audio_chunks:
-#             if isinstance(audio_data, dict) and 'error' in audio_data:
-#                 print(f"Error: {audio_data['error']}")
-#                 continue
-
-#             await sio.emit("audio-single-chunk", audio_data, room=sid)
-       
-#         ## Optional
-#         # valid_audio_chunks = [chunk for chunk in audio_chunks if not isinstance(chunk, dict) or 'error' not in chunk]
-
-#         # # Concatenate all audio chunks then pass it
-#         # final_audio_data = b''.join(valid_audio_chunks)
-#         # await sio.emit("audio-single-chunk", audio_chunks, room=sid)
-
-#     except Exception as e:
-#         print(f"Error processing audio: {e}")
-
-#     finally:
-#         message = 'over'
-#         await sio.emit("interview done", message, room=sid)
-#         end_time = time.time()
-#         elapsed_time = end_time - start_time
-#         print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
-
-
 @sio.on("audio chat")
 async def audio_endpoint(sid, data):
     try:
         start_time = time.time()        
-        response = await copy.generate_interview_question(data)
+        response = await audio.generate_interview_question(data)
         assistant_next_question = response.get("interview", "")
 
         #tasks = [synthesize_text(chunk) for chunk in assistant_next_question]
@@ -359,113 +307,118 @@ async def audio_end_point(sid, data):
         print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
     
 
-
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
-    print("interview_session-data", data['all_user_id'], data['job_profile_id'], data['user_session']['id'] )
-
     try:
+        logger.info(f"Processing interview chat for session: {data['user_session']['id']}")
+        
         start_time = time.time()
         global chat_count
         chat_count = 1  
-        sessionId =  data['user_session']['id'] 
+        sessionId = data['user_session']['id']
         realtime_evaluation = "null"
-   
-        ipersona_message = IpersonaSessionMessageSchema()
-        session_chathistory = ipersona_message.filter_by_session_id(sessionId=data['user_session']['id'], 
-                                                                    nopp=True, 
-                                                                    dataframe=False)
 
-        chat = session_chathistory['count']       
-            
+        # Fetch session chat history
+        ipersona_message = IpersonaSessionMessageSchema()
+        session_chathistory = ipersona_message.filter_by_session_id(
+            sessionId=sessionId, 
+            nopp=True, 
+            dataframe=False
+        )
+
+        chat = session_chathistory['count']
+
         if chat != 0:  
             chat_total = session_chathistory['total']
             assistant_count = sum(1 for entry in chat_total if entry["user_type"] == "assistant")
-            chat_count += assistant_count 
+            chat_count += assistant_count
         else:
-            pass        
+            logger.info(f"No chat history found for session ID: {sessionId}")
 
-        if(data['response']):
+        # Insert the user's response if provided
+        if data['response']:
             strapi.step1_insert_message(data)
 
-        response = await util.generate_interview_question(data)  
-     
+        # Generate the next interview question
+        response = await util.generate_interview_question(data)
+
         if response:
-            assistant_next_question = "" if response.get("interview") is None else response["interview"]       
-            accumulated_message = ""              
+            assistant_next_question = response.get("interview", "")
+            accumulated_message = ""
+
+            # Emit the assistant's next question
             message = [
                 {
                     "user_type": "assistant",
                     "content_type": "question",
                     "content": {
                         "time_taken": "null",
-                        "time_limit":  "null",
+                        "time_limit": "null",
                         "chunk_response": accumulated_message,
                         "full_response": "",
                         "realtime_evaluation": "null"
                     }
                 }
             ]
-            
-            await sio.emit("interview chat", message, room=sid)   
-        
+            await sio.emit("interview chat", message, room=sid)
+
+            # Calculate and emit the time limit for the next question
             timelimit = strapi.calculate_time_limit(response)
             message = [{
                         "content": {
                             "time_limit": timelimit.get("time_limit", "null"),
                         }
                     }]
-                    
-            await sio.emit("time_limit", message, room=sid)      
-            
+            await sio.emit("time_limit", message, room=sid)
+
+            # Process and emit the assistant's next question in chunks
             for chunk in assistant_next_question:
-                accumulated_message += chunk     
+                accumulated_message += chunk
                 message = [{
                     "content": {
                         "chunk_response": chunk
                     }
-                }]     
-                end_time = time.time() 
-                elapsed_time = end_time - start_time  
-                print(f"Chunk Time taken: {elapsed_time:.2f} seconds")
+                }]
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                logger.info(f"Chunk emitted, time taken: {elapsed_time:.2f} seconds")
 
-                await sio.emit("interview chat", message, room=sid) 
-                            
-            if(data['response']):
-                start_time02 = time.time()  
+                await sio.emit("interview chat", message, room=sid)
+
+            # Perform real-time response evaluation if applicable
+            if data['response']:
+                start_time02 = time.time()
                 realtime_evaluation_response_json = util.realtime_response_evaluation(data)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
-                logger.warn(f"Realtime done: {realtime_evaluation}")
 
-                end_time02 = time.time() 
+                end_time02 = time.time()
                 elapsed_time02 = end_time02 - start_time02
-                print(f"Realtime future exec Time taken: {elapsed_time02:.2f} seconds")
+                logger.info(f"Realtime evaluation processed, time taken: {elapsed_time02:.2f} seconds")
+
                 message = [{
                     "content": {
                         "realtime_evaluation": realtime_evaluation,
                         "full_response": accumulated_message
-
                     }
-                }]            
+                }]
                 await sio.emit("realtime", message, room=sid)
 
-        
+        # Insert the message or conclude the interview if the chat count exceeds the limit
         if chat_count < 9:
             strapi.step2_insert_message(data, timelimit, accumulated_message, realtime_evaluation)
-            
         else:
             message = 'interview over'
             await sio.emit("interview done", message, room=sid)
             strapi.step3_insert_message(data, realtime_evaluation)
 
-     
     except Exception as e:
-        return f'Error: {str(e)}'
-        
+        logger.error(f"Error processing interview chat for session {data['user_session']['id']}: {str(e)}", exc_info=True)
+        await sio.emit("error", {"error": f"Error: {str(e)}"}, room=sid)
+
     finally:
-        end_time = time.time() 
-        elapsed_time = end_time - start_time  
-        print(f"Time taken for interview processing: {elapsed_time:.2f} seconds")
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        logger.info(f"Time taken for interview processing: {elapsed_time:.2f} seconds")
 
 
 def get_socketio_app(fast_app):
