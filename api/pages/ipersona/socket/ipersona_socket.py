@@ -185,7 +185,7 @@ async def audio_end_point(sid, data):
         if(data['response']):
             strapi.step1_insert_message(data)
                  
-        response = await audio.generate_interview_question(data) 
+        response = await util.generate_interview_question(data) 
       
         
         if(response != 'None'):
@@ -269,7 +269,7 @@ async def audio_end_point(sid, data):
             
             if(data['response']):
                 start_time02 = time.time()  
-                realtime_evaluation_response_json = audio.realtime_response_evaluation(data)
+                realtime_evaluation_response_json = util.realtime_response_evaluation(data)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
                 logger.info(f"Realtime done {realtime_evaluation}")
 
@@ -303,6 +303,7 @@ async def audio_end_point(sid, data):
         elapsed_time = end_time - start_time  
         print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
     
+    
 # handle for text to text chat
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
@@ -314,6 +315,7 @@ async def interview_endpoint(sid, data):
         chat_count = 1  
         sessionId = data['user_session']['id']
         realtime_evaluation = "null"
+        accumulated_message = ""
 
         # Fetch session chat history
         ipersona_message = IpersonaSessionMessageSchema()
@@ -336,13 +338,12 @@ async def interview_endpoint(sid, data):
         if data['response']:
             strapi.step1_insert_message(data)
 
-        # Generate the next interview question
+        # Generate the next interview question   ["interview"] is not None
         response = await util.generate_interview_question(data)
-
-        if response:
+          
+        if response.get("interview") is not None:
             assistant_next_question = response.get("interview", "")
-            accumulated_message = ""
-
+            
             # Emit the assistant's next question
             message = [
                 {
@@ -383,15 +384,15 @@ async def interview_endpoint(sid, data):
                 await sio.emit("interview chat", message, room=sid)
 
             # Perform real-time response evaluation if applicable
-            if data['response']:
+            if data['response'] is not [None, ""]:
                 start_time02 = time.time()
                 realtime_evaluation_response_json = util.realtime_response_evaluation(data)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
-
+                # logger.info(f"Realtime evaluation is: {realtime_evaluation}")
                 end_time02 = time.time()
                 elapsed_time02 = end_time02 - start_time02
                 logger.info(f"Realtime evaluation processed, time taken: {elapsed_time02:.2f} seconds")
-
+                
                 message = [{
                     "content": {
                         "realtime_evaluation": realtime_evaluation,
@@ -399,6 +400,20 @@ async def interview_endpoint(sid, data):
                     }
                 }]
                 await sio.emit("realtime", message, room=sid)
+                
+        if response.get("status") is not None:
+            message = [{
+                    "user_type": "assistant",
+                    "content_type": "question",
+                    "content": {
+                        "time_taken": "null",
+                        "time_limit": "null",
+                        "chunk_response": "",
+                        "full_response": accumulated_message,
+                        "realtime_evaluation": response.get("realtime")
+                    }
+                }]
+            await sio.emit("last_realtime_evaluation", message, room=sid)          
 
         # Insert the message or conclude the interview if the chat count exceeds the limit
         if chat_count < 9:

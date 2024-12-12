@@ -1,263 +1,1750 @@
 [
   {
-    "id": "46",
-    "attributes": {
-      "attributes": {
-        "level": "Mid-Senior level",
-        "title": "AI/ML Engineer",
-        "purpose": "To develop and implement secure, scalable, and robust AI/ML product features, handle large-scale data, and ensure the smooth operation of healthcare applications.",
-        "location": "Remote, USA",
-        "company_info": {
-          "name": "Reveille Technologies",
-          "size": "201-500 employees",
-          "values": [
-            "Innovation",
-            "Integrity",
-            "Customer Focus"
-          ],
-          "mission": "To deliver innovative technology solutions that drive business success.",
-          "summary": "Reveille Technologies is a leading provider of technology solutions, specializing in software development and IT services."
-        },
-        "company_name": "Reveille Technologies",
-        "competencies": [
-          {
-            "name": "Industrialization Algorithms",
-            "skills": [
-              "Algorithm Development"
-            ],
-            "summary": "senior level of Industrialization Algorithms competency is required",
-            "abilities": [
-              "Problem Solving"
-            ],
-            "knowledge": [
-              "Algorithm Optimization"
-            ],
-            "relevance": "very relevant",
-            "sfia_level": "5",
-            "rationale_name": "job explicitly requires experience in Industrialization Algorithms",
-            "other_attributes": [
-              "Attention to Detail"
-            ],
-            "rationale_sfia_level": [
-              "autonomy=level-5",
-              "complexity=level-5",
-              "influence=level-5"
+    "data": [
+      {
+        "id": "164",
+        "attributes": {
+          "attributes": {
+            "name": "user_profile",
+            "awards": {
+              "code": "awards",
+              "name": "awards",
+              "display": "Awards",
+              "template": "form",
+              "attributes": [],
+              "description": "Awards received by the user",
+              "profile_type": "awards"
+            },
+            "basics": {
+              "code": "basics",
+              "name": "basics",
+              "display": "Basics",
+              "template": "form",
+              "attributes": [
+                {
+                  "role": "Gen AI Engineer | Developing Innovative AI Solutions",
+                  "uuid": "94d720ab-5c9e-452f-8933-2fbb526e8b20",
+                  "email": "abdimussa87@gmail.com",
+                  "image": "",
+                  "media": [
+                    {
+                      "icon": "",
+                      "link": "https://www.linkedin.com/in/abdulhamid-mussa/",
+                      "name": "LinkedIn"
+                    }
+                  ],
+                  "phone": [
+                    {
+                      "icon": "https://pngimg.com/uploads/phone/phone_PNG48988.png",
+                      "name": "Main",
+                      "value": "+251945412775"
+                    }
+                  ],
+                  "status": "approved",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-11T17:41:13.264374"
+                    }
+                  ],
+                  "location": {
+                    "city": "",
+                    "icon": "https://th.bing.com/th/id/OIP.Vr0IsnNZaY3cxmBtOtSqqAHaNN?w=2555&h=4557&rs=1&pid=ImgDetMain",
+                    "region": "",
+                    "address": "Ethiopia",
+                    "country": "US",
+                    "postal_code": ""
+                  },
+                  "full_name": "Abdulhamid Mussa",
+                  "name_title": "",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "personal_statement": "Generative AI enthusiast and Full Stack Developer with 3+ years of experience leveraging technology to solve complex problems and drive innovation. Proficient in Python, JavaScript, and various web & mobile development frameworks. Passionate about exploring the potential of GenAI in natural language processing, computer vision, and content generation."
+                }
+              ],
+              "description": "Basic information about the user",
+              "profile_type": "basics"
+            },
+            "display": "User Profile",
+            "projects": {
+              "code": "projects",
+              "name": "projects",
+              "display": "Projects",
+              "template": "form",
+              "attributes": [
+                {
+                  "url": "None",
+                  "uuid": "6fddbfdf-0bf0-4d3b-8792-e59069f7638b",
+                  "title": "Fine-tuning for Amharic Ad Generation",
+                  "tools": [],
+                  "status": "approved",
+                  "history": [],
+                  "summary": "Fine-tuned a pretrained Llama 2 model to generate advertisements catered for\nTelegram channels with Amharic-speaking audience.",
+                  "end_date": "",
+                  "focus_area": "",
+                  "highlights": [],
+                  "start_date": "",
+                  "verified_by": "",
+                  "requested_by": ""
+                },
+                {
+                  "url": "None",
+                  "uuid": "21db01ab-a770-447d-87d3-0e0d8efc09f9",
+                  "title": "Open-AI/Mistral-7b Based Chatbot",
+                  "tools": [],
+                  "status": "approved",
+                  "history": [],
+                  "summary": "Designed a conversational agent for Legal Contract documents, helping\nusers get instant answers to their questions regarding their contract.",
+                  "end_date": "",
+                  "focus_area": "",
+                  "highlights": [],
+                  "start_date": "",
+                  "verified_by": "",
+                  "requested_by": ""
+                }
+              ],
+              "description": "Projects the user has worked on",
+              "profile_type": "projects"
+            },
+            "education": {
+              "code": "education",
+              "name": "education",
+              "display": "Education",
+              "template": "form",
+              "attributes": [
+                {
+                  "uuid": "12efecee-a9f5-4b57-9e20-502aa147492f",
+                  "score": "",
+                  "remark": "",
+                  "status": "approved",
+                  "country": "",
+                  "courses": [],
+                  "history": [],
+                  "end_date": "2022-12-31",
+                  "start_date": "2017-12-31",
+                  "study_area": "Computer Software Engineering",
+                  "study_type": "Software Engineering",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "institution_url": "",
+                  "institution_name": "Addis Ababa University"
+                },
+                {
+                  "uuid": "6e231a93-94b9-4b35-89b8-efea4600ab2a",
+                  "score": "",
+                  "remark": "",
+                  "status": "approved",
+                  "country": "",
+                  "courses": [],
+                  "history": [],
+                  "end_date": "2024-06-30",
+                  "start_date": "2023-12-31",
+                  "study_area": "Artificial Intelligence",
+                  "study_type": "",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "institution_url": "",
+                  "institution_name": "10 Academy"
+                }
+              ],
+              "description": "Educational background of the user",
+              "profile_type": "education"
+            },
+            "interests": {
+              "code": "interests",
+              "name": "interests",
+              "display": "Interests",
+              "template": "form",
+              "attributes": [],
+              "description": "Interests of the user",
+              "profile_type": "interests"
+            },
+            "languages": {
+              "code": "languages",
+              "name": "languages",
+              "display": "Languages",
+              "template": "form",
+              "attributes": [
+                {
+                  "uuid": "a897aaf0-b066-4658-82b4-9f467cfa009a",
+                  "status": "approved",
+                  "fluency": "Native Speaker",
+                  "history": [],
+                  "language": "English",
+                  "verified_by": "",
+                  "requested_by": ""
+                }
+              ],
+              "description": "Languages spoken by the user",
+              "profile_type": "languages"
+            },
+            "volunteer": {
+              "code": "volunteer",
+              "name": "volunteer",
+              "display": "Volunteer Work",
+              "template": "form",
+              "attributes": [],
+              "description": "Volunteer work of the user",
+              "profile_type": "volunteer"
+            },
+            "references": {
+              "code": "references",
+              "name": "references",
+              "display": "References",
+              "template": "form",
+              "attributes": [],
+              "description": "References of the user",
+              "profile_type": "references"
+            },
+            "description": "User profile information",
+            "achievements": {
+              "code": "achievements",
+              "name": "achievements",
+              "display": "Achievements",
+              "template": "form",
+              "attributes": [],
+              "description": "Achievements of the user",
+              "profile_type": "achievements"
+            },
+            "certificates": {
+              "code": "certificates",
+              "name": "certificates",
+              "display": "Certificates",
+              "template": "form",
+              "attributes": [
+                {
+                  "url": "https://training.cloudinary.com/c/3TeOecQTT4KLs-1qfQNFPQ",
+                  "date": "",
+                  "name": "Introduction to Cloudinary for Node.js Developers (90-Minute Course)",
+                  "uuid": "0ed82dad-bf2d-4bb3-8afc-fa4286cb9364",
+                  "issuer": "Cloudinary",
+                  "status": "approved",
+                  "history": [],
+                  "verified_by": "",
+                  "requested_by": ""
+                },
+                {
+                  "url": "https://learn.mongodb.com/c/SZyH4v16U4Wh_Dy1AZ7tMQ",
+                  "date": "",
+                  "name": "M320: MongoDB Data Modeling",
+                  "uuid": "93e33c60-7f78-4585-a09a-d4bd0fc7966e",
+                  "issuer": "MongoDB",
+                  "status": "approved",
+                  "history": [],
+                  "verified_by": "",
+                  "requested_by": ""
+                }
+              ],
+              "description": "Certificates and awards of the user",
+              "profile_type": "certificates"
+            },
+            "competencies": {
+              "code": "competencies",
+              "name": "competencies",
+              "display": "Competencies",
+              "template": "form",
+              "attributes": [
+                {
+                  "name": "programming language",
+                  "uuid": "7a3ab0cc-e891-4416-99d8-4ba2496a626e",
+                  "others": [],
+                  "skills": [
+                    "python",
+                    "javaScript",
+                    "django"
+                  ],
+                  "status": "approved",
+                  "display": "Programming Language",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-14T12:12:36.655665"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": "positive",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": "high",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "test",
+                      "source": {
+                        "link": "http://localhost:5173/trainee/trainee-profile",
+                        "name": "test"
+                      },
+                      "status": "Request for approval",
+                      "sentiment": "",
+                      "verified_by": "",
+                      "requested_by": "",
+                      "confidence_degree": "",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": [
+                        {
+                          "name": "Autonomy",
+                          "level": "4"
+                        }
+                      ]
+                    },
+                    {
+                      "remark": "test",
+                      "source": {
+                        "link": "http://localhost:5173/trainee/trainee-profile",
+                        "name": "test3"
+                      },
+                      "status": "approved",
+                      "sentiment": "neutral",
+                      "verified_by": "Staff",
+                      "requested_by": "Trainee",
+                      "confidence_degree": "medium",
+                      "sfia_level_approved": "4",
+                      "sfia_level_requested": "4",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": [
+                        {
+                          "name": "Complexity",
+                          "level": "4"
+                        }
+                      ]
+                    },
+                    {
+                      "remark": "test5",
+                      "source": {
+                        "link": "https://dev-leap.10academy.org/trainee/trainee-profile",
+                        "name": "test5"
+                      },
+                      "status": "approved",
+                      "sentiment": "positive",
+                      "verified_by": "Staff",
+                      "requested_by": "Trainee",
+                      "confidence_degree": "medium",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "5",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": [
+                        {
+                          "name": "Knowledge",
+                          "level": "4"
+                        }
+                      ]
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "A programming language is a way for programmers (developers) to communicate with computers. Programming languages consist of a set of rules that allows string values to be converted into various ways of generating machine code, or, in the case of visual programming languages, graphical elements.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": ""
+                },
+                {
+                  "name": "data engineering",
+                  "uuid": "39f2736e-1674-4f9f-ac3d-64e7a54abedd",
+                  "others": [],
+                  "skills": [
+                    "big data"
+                  ],
+                  "status": "approved",
+                  "display": "Data Engineering",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.570566"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": "positive",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": "high",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": "positive",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": "high",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Data engineering is the process of designing and building systems that let people collect and analyze raw data from multiple sources and formats.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "analytics engineering",
+                  "uuid": "a04a39cc-97d4-4d2c-b321-645f56866766",
+                  "others": [],
+                  "skills": [],
+                  "status": "approved",
+                  "display": "Analytics Engineering",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.570801"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Analytics engineering is a discipline that focuses on designing, constructing, and maintaining data infrastructure and data pipelines. Analytics engineers bridge the gap between data science and data engineering by transforming raw data into clean, reliable datasets that can be easily analyzed by data analysts and data scientists",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "automation ",
+                  "uuid": "bc14ac2e-ca66-424e-9dc4-492531d55c5e",
+                  "others": [],
+                  "skills": [
+                    "hyper parameter tuning",
+                    "unit testng"
+                  ],
+                  "status": "approved",
+                  "display": "Automation ",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.571019"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": " Automation in machine learning (ML) and data engineering involves using tools and processes to streamline, simplify and enhance the development, deployment, and maintenance of ML models and data pipelines. This automation aims to improve efficiency, reduce errors, and enable scalability",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "mathematics",
+                  "uuid": "297a4d59-df58-4077-8f58-1346fbd20824",
+                  "others": [],
+                  "skills": [
+                    "algorithm",
+                    "deep learning",
+                    "machine learning",
+                    "mathematics"
+                  ],
+                  "status": "approved",
+                  "display": "Mathematics",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.571227"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Mathematics plays a foundational role in machine learning (ML). It provides the theoretical underpinnings that enable the development of algorithms, models, and methods for learning from data.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "statistics",
+                  "uuid": "be391660-1813-499d-9a85-bb1a168f085a",
+                  "others": [],
+                  "skills": [
+                    "data analysis",
+                    "sampling"
+                  ],
+                  "status": "approved",
+                  "display": "Statistics",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.571429"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Statistics is integral to machine learning (ML), providing the framework and tools for analyzing and interpreting data, modeling uncertainty, and making predictions. Statistics is integral to machine learning (ML), providing the framework and tools for analyzing and interpreting data, modeling uncertainty, and making predictions. ",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "deep learning",
+                  "uuid": "2a24d901-7a25-4de3-a27f-9b7d646110ed",
+                  "others": [],
+                  "skills": [
+                    "computer vision",
+                    "deep learning",
+                    "image segmentation",
+                    "natural language processing",
+                    "object detection"
+                  ],
+                  "status": "approved",
+                  "display": "Deep Learning",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.571630"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Deep learning is a subfield of machine learning that focuses on using neural networks with many layers to model and solve complex problems. It is inspired by the structure and function of the human brain, consisting of neurons and synapses.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "machine learning",
+                  "uuid": "21021306-8d95-41ea-82f1-cb9476abbc11",
+                  "others": [],
+                  "skills": [
+                    "algorithm",
+                    "deep learning",
+                    "hyper parameter tuning",
+                    "llm",
+                    "machine learning",
+                    "natural language processing",
+                    "semi supervised learning",
+                    "supervised learning"
+                  ],
+                  "status": "approved",
+                  "display": "Machine Learning",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.571835"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Machine learning is the use and development of computer systems that are able to learn and adapt without following explicit instructions, by using algorithms and statistical models to analyze and draw inferences from patterns in data.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "database",
+                  "uuid": "039ad951-1dc0-4676-9f94-b974ae0d3574",
+                  "others": [],
+                  "skills": [
+                    "big data"
+                  ],
+                  "status": "approved",
+                  "display": "Database",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.572037"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "A database is an organized collection of structured information, or data, typically stored electronically in a computer system. Databases are managed by database management systems (DBMS), which provide tools and interfaces to help users store, modify, and query the data.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "software development",
+                  "uuid": "d0d15f0a-d666-4d80-84fd-0bf6796a243c",
+                  "others": [],
+                  "skills": [
+                    "unit testng"
+                  ],
+                  "status": "approved",
+                  "display": "Software Development",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.572384"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": " Software development is the process of designing, creating, deploying, and maintaining software applications and systems. It involves a series of steps or phases that include the conception of the software idea, planning, coding, testing, deployment, and maintenance.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "python programming",
+                  "uuid": "6a82516e-cfba-4fe7-9b21-ffd6d41de553",
+                  "others": [],
+                  "skills": [
+                    "big data",
+                    "computer vision",
+                    "data analysis",
+                    "hyper parameter tuning",
+                    "image segmentation",
+                    "machine learning",
+                    "matplotlib",
+                    "natural language processing",
+                    "object detection",
+                    "plotly",
+                    "seaborn",
+                    "semi supervised learning",
+                    "supervised learning",
+                    "unit testng",
+                    "visualization"
+                  ],
+                  "status": "approved",
+                  "display": "Python Programming",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.572590"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": " Python is a high-level, interpreted programming language known for its readability, simplicity, and versatility. It supports multiple programming paradigms, including procedural, object-oriented, and functional programming.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "bi analytics",
+                  "uuid": "cf5bf18a-a4cb-455f-919f-e2921e1a9f3b",
+                  "others": [],
+                  "skills": [
+                    "algorithm",
+                    "big data",
+                    "data analysis",
+                    "machine learning",
+                    "mathematics",
+                    "matplotlib",
+                    "plotly",
+                    "sampling",
+                    "seaborn",
+                    "visualization"
+                  ],
+                  "status": "approved",
+                  "display": "Bi Analytics",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.572789"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Business Intelligence (BI) Analytics is the process of analyzing data to help organizations make informed business decisions. It involves the use of various tools, technologies, and methodologies to collect, process, and present data in a way that reveals actionable insights.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "frontend development",
+                  "uuid": "805e2c58-cabd-4243-a959-b8684a6dfe36",
+                  "others": [],
+                  "skills": [
+                    "java script"
+                  ],
+                  "status": "approved",
+                  "display": "Frontend Development",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.572989"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Frontend development refers to the practice of creating the user interface (UI) and user experience (UX) of a web application or website.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "backend development",
+                  "uuid": "500a67fd-e2f2-4577-be45-1d0732f11bbc",
+                  "others": [],
+                  "skills": [],
+                  "status": "approved",
+                  "display": "Backend Development",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.573185"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": " Backend development refers to the server-side development of web applications, focusing on the logic, database interactions, authentication, server configuration, and other aspects that enable the frontend (client-side) to function properly.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "full stack development",
+                  "uuid": "c253ed79-0c7b-42ed-91e9-0ffa29a011c8",
+                  "others": [],
+                  "skills": [
+                    "java script"
+                  ],
+                  "status": "approved",
+                  "display": "Full Stack Development",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.573376"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Full stack development refers to the practice of developing both the frontend (client-side) and backend (server-side) portions of a web application or software product.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "web3",
+                  "uuid": "56e93150-3f35-4f48-9a01-8e37f29994e4",
+                  "others": [],
+                  "skills": [
+                    "algorithm",
+                    "java script",
+                    "mathematics",
+                    "unit testng"
+                  ],
+                  "status": "approved",
+                  "display": "Web3",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.573592"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": 0,
+                  "description": " Web3 refers to the third iteration of the internet, focusing on decentralization, blockchain technology, and peer-to-peer interactions. It represents a vision where the internet is not controlled by central authorities but rather operates on decentralized protocols, allowing users to interact directly with each other and with digital assets through cryptographic principles.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "deploying genai systems",
+                  "uuid": "ec729e03-b8e4-4cfe-998c-37dfeb2cf1f3",
+                  "others": [],
+                  "skills": [
+                    "llm",
+                    "prompt design",
+                    "prompt evaluation",
+                    "prompt testing",
+                    "prompt tuning"
+                  ],
+                  "status": "approved",
+                  "display": "Deploying Genai Systems",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.573791"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Deploying General Artificial Intelligence (GenAI) systems refers to the process of making artificial intelligence (AI) systems operational and available for use in various applications and environments. GenAI systems typically refer to AI models or systems that are designed to exhibit human-level intelligence across a broad range of tasks, rather than specialized AI models focused on specific tasks or domains.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "collaboration",
+                  "uuid": "b2ba5614-cc3f-4c9f-a57d-827c36e15b79",
+                  "others": [],
+                  "skills": [
+                    "google calendar",
+                    "tools for remote work"
+                  ],
+                  "status": "approved",
+                  "display": "Collaboration",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.573985"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Collaboration refers to the ability of individuals or groups to work together effectively towards a common goal or outcome, leveraging their collective knowledge, skills, and resources.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "communication",
+                  "uuid": "97f277fc-0e34-484e-aa14-6d781e9cef2c",
+                  "others": [],
+                  "skills": [
+                    "business english",
+                    "how to ask questions",
+                    "making presentation",
+                    "participation"
+                  ],
+                  "status": "approved",
+                  "display": "Communication",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.574178"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": "Communication refers to the ability of individuals to effectively convey and exchange information, ideas, and messages in various contexts and settings. It encompasses both verbal and non-verbal communication skills, as well as the ability to listen actively and respond appropriately.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "management",
+                  "uuid": "428d28ba-f544-4950-8b58-8c184b65ea85",
+                  "others": [],
+                  "skills": [
+                    "change management",
+                    "how to be mentored",
+                    "how to mentor"
+                  ],
+                  "status": "approved",
+                  "display": "Management",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.574370"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": " Management refers to the ability of individuals to effectively organize, coordinate, and oversee tasks, projects, or teams to achieve specific goals or objectives. It encompasses a range of skills and behaviors that enable individuals to lead, delegate, and prioritize effectively within their roles.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                },
+                {
+                  "name": "professionalism",
+                  "uuid": "2d3330ff-5def-4f01-84d2-f2c6d19c3e80",
+                  "others": [],
+                  "skills": [
+                    "business english",
+                    "change management",
+                    "conflict resolution",
+                    "critical thinking",
+                    "google calendar",
+                    "how to ask questions",
+                    "how to be mentored",
+                    "how to mentor",
+                    "self motivation",
+                    "tools for remote work",
+                    "writing effective email"
+                  ],
+                  "status": "approved",
+                  "display": "Professionalism",
+                  "history": [
+                    {
+                      "blob": "",
+                      "user": "1920",
+                      "status": "approved",
+                      "timestamp": "2024-08-05T02:25:55.574562"
+                    }
+                  ],
+                  "attitude": [],
+                  "evidence": [
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "github"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    },
+                    {
+                      "remark": "",
+                      "source": {
+                        "link": "",
+                        "name": "grade"
+                      },
+                      "status": "verified",
+                      "sentiment": " ",
+                      "verified_by": "staff",
+                      "requested_by": "",
+                      "confidence_degree": " ",
+                      "sfia_level_approved": "",
+                      "sfia_level_requested": "",
+                      "sfia_dimensions_approved": [],
+                      "sfia_dimensions_requested": []
+                    }
+                  ],
+                  "abilities": [],
+                  "knowledge": [],
+                  "rationale": "Possesses basic generic knowledge relevant to the area of work. Applies newly acquired knowledge to develop new skills. Has sufficient communication skills for effective engagement with immediate colleagues. Performs routine activities in a structured environment and requires assistance in resolving unexpected problems. May work alone or with immediate colleagues, using little discretion in handling inquiries.",
+                  "sfia_level": "1",
+                  "description": " Professionalism in terms of user competence refers to the set of behaviors, attitudes, and qualities that individuals demonstrate in their professional roles and interactions. It encompasses a range of attributes that contribute to ethical conduct, effective communication, and the ability to perform competently within a specific profession or organizational context.",
+                  "verified_by": "",
+                  "requested_by": "",
+                  "experience_level": "",
+                  "sfia_estimation_method": "observed"
+                }
+              ],
+              "description": "Skills and competencies of the user",
+              "profile_type": "competencies"
+            },
+            "profile_type": "user_profile",
+            "publications": {
+              "code": "publications",
+              "name": "publications",
+              "display": "Publications",
+              "template": "form",
+              "attributes": [],
+              "description": "Publications of the user",
+              "profile_type": "publications"
+            },
+            "work_experience": {
+              "code": "work_experience",
+              "name": "work_experience",
+              "display": "Work Experiences",
+              "template": "form",
+              "attributes": [
+                {
+                  "role": "Full Stack Engineer",
+                  "uuid": "56f56c30-4e18-401b-b6b0-a16609f150c9",
+                  "status": "approved",
+                  "company": "Masero Insights",
+                  "history": [],
+                  "summary": "• Developed an agriculture-focused equipment rental Android application utilizing Flutter, Node.js, and MongoDB, integrating Firebase Cloud Storage for image management, projected to reduce equipment search time for farmers by up to 45% upon launch.\n• Enhanced the application's usability and functionality through effective UI/UX design strategies, achieving a 100% satisfaction rate among stakeholders during the testing phase.",
+                  "end_date": "2023-08-31",
+                  "location": "Addis Ababa, Ethiopia",
+                  "highlights": [],
+                  "start_date": "2023-04-30",
+                  "company_url": "https://www.linkedin.com/company/74297386",
+                  "verified_by": "",
+                  "requested_by": ""
+                },
+                {
+                  "role": "Lead Mobile Developer",
+                  "uuid": "1b4fd365-5b41-44b5-84f3-f386a7ae7566",
+                  "status": "approved",
+                  "company": "Platform Technologies",
+                  "history": [],
+                  "summary": "• Enhanced Tiki app user engagement and team productivity by developing new features, mentoring junior engineers, and fostering a culture of innovation.\n• Achieved a 20% increase in daily active users and 25% improvement in team productivity over 6 months.",
+                  "end_date": "2023-08-31",
+                  "location": "Addis Ababa, Ethiopia",
+                  "highlights": [],
+                  "start_date": "2023-02-28",
+                  "company_url": "",
+                  "verified_by": "",
+                  "requested_by": ""
+                },
+                {
+                  "role": "Full Stack Mobile Application Developer",
+                  "uuid": "51b7c7e2-319e-4444-b1fd-e51833246e5a",
+                  "status": "approved",
+                  "company": "Platform Technologies",
+                  "history": [],
+                  "summary": "• Led development of the Cache food ordering app, a cross-platform solution deployed on Android, iOS, Web, and Windows\n•Accomplished deployment of backend for the app using Node.js, enabling the company to serve over 300 restaurants and hotels, resulting in its first recurring paying customers",
+                  "end_date": "2023-01-31",
+                  "location": "Addis Ababa, Ethiopia",
+                  "highlights": [],
+                  "start_date": "2021-04-30",
+                  "company_url": "",
+                  "verified_by": "",
+                  "requested_by": ""
+                }
+              ],
+              "description": "Work experiences of the user",
+              "profile_type": "work_experience"
+            },
+            "programing_languages": {
+              "code": "programing_languages",
+              "name": "programing_languages",
+              "display": "Programming Languages",
+              "template": "form",
+              "attributes": [],
+              "description": "Programming languages the user is familiar with",
+              "profile_type": "programing_languages"
+            }
+          },
+          "all_users": {
+            "data": [
+              {
+                "id": "1920"
+              }
             ]
           },
-          {
-            "name": "Python",
-            "skills": [
-              "Python Programming"
-            ],
-            "summary": "senior level of Python competency is required",
-            "abilities": [
-              "Code Optimization"
-            ],
-            "knowledge": [
-              "Python Libraries"
-            ],
-            "relevance": "very relevant",
-            "sfia_level": "5",
-            "rationale_name": "job explicitly requires Python programming language",
-            "other_attributes": [
-              "Analytical Thinking"
-            ],
-            "rationale_sfia_level": [
-              "autonomy=level-5",
-              "complexity=level-5",
-              "influence=level-5"
-            ]
-          },
-          {
-            "name": "AWS",
-            "skills": [
-              "AWS Services"
-            ],
-            "summary": "senior level of AWS competency is required",
-            "abilities": [
-              "Infrastructure Management"
-            ],
-            "knowledge": [
-              "Cloud Computing"
-            ],
-            "relevance": "very relevant",
-            "sfia_level": "5",
-            "rationale_name": "job explicitly requires AWS experience",
-            "other_attributes": [
-              "Scalability"
-            ],
-            "rationale_sfia_level": [
-              "autonomy=level-5",
-              "complexity=level-5",
-              "influence=level-5"
-            ]
-          },
-          {
-            "name": "Spark",
-            "skills": [
-              "Data Processing"
-            ],
-            "summary": "senior level of Spark competency is required",
-            "abilities": [
-              "Data Integration"
-            ],
-            "knowledge": [
-              "Big Data"
-            ],
-            "relevance": "very relevant",
-            "sfia_level": "5",
-            "rationale_name": "job explicitly requires Spark experience",
-            "other_attributes": [
-              "Efficiency"
-            ],
-            "rationale_sfia_level": [
-              "autonomy=level-5",
-              "complexity=level-5",
-              "influence=level-5"
-            ]
-          },
-          {
-            "name": "Machine Learning",
-            "skills": [
-              "Model Development"
-            ],
-            "summary": "senior level of Machine Learning competency is required",
-            "abilities": [
-              "Predictive Analysis"
-            ],
-            "knowledge": [
-              "ML Algorithms"
-            ],
-            "relevance": "very relevant",
-            "sfia_level": "5",
-            "rationale_name": "job explicitly requires ML experience",
-            "other_attributes": [
-              "Innovation"
-            ],
-            "rationale_sfia_level": [
-              "autonomy=level-5",
-              "complexity=level-5",
-              "influence=level-5"
-            ]
-          },
-          {
-            "name": "Data Integration",
-            "skills": [
-              "Data Integration"
-            ],
-            "summary": "senior level of Data Integration competency is required",
-            "abilities": [
-              "Data Handling"
-            ],
-            "knowledge": [
-              "Data Sources"
-            ],
-            "relevance": "very relevant",
-            "sfia_level": "5",
-            "rationale_name": "job explicitly requires data integration experience",
-            "other_attributes": [
-              "Attention to Detail"
-            ],
-            "rationale_sfia_level": [
-              "autonomy=level-5",
-              "complexity=level-5",
-              "influence=level-5"
-            ]
-          },
-          {
-            "name": "Data Processing",
-            "skills": [
-              "Data Processing"
-            ],
-            "summary": "senior level of Data Processing competency is required",
-            "abilities": [
-              "Data Handling"
-            ],
-            "knowledge": [
-              "Data Pipelines"
-            ],
-            "relevance": "very relevant",
-            "sfia_level": "5",
-            "rationale_name": "job explicitly requires data processing experience",
-            "other_attributes": [
-              "Efficiency"
-            ],
-            "rationale_sfia_level": [
-              "autonomy=level-5",
-              "complexity=level-5",
-              "influence=level-5"
-            ]
-          },
-          {
-            "name": "Agile Methodology",
-            "skills": [
-              "Agile Practices"
-            ],
-            "summary": "mid-senior level of Agile Methodology competency is required",
-            "abilities": [
-              "Team Collaboration"
-            ],
-            "knowledge": [
-              "Scrum"
-            ],
-            "relevance": "relevant",
-            "sfia_level": "4",
-            "rationale_name": "job requires working within self-organizing Agile teams",
-            "other_attributes": [
-              "Adaptability"
-            ],
-            "rationale_sfia_level": [
-              "autonomy=level-4",
-              "complexity=level-4",
-              "influence=level-4"
-            ]
-          },
-          {
-            "name": "Professional Communication",
-            "skills": [
-              "Oral Communication"
-            ],
-            "summary": "mid-senior level of Professional Communication competency is required",
-            "abilities": [
-              "Interpersonal Skills"
-            ],
-            "knowledge": [
-              "Written Communication"
-            ],
-            "relevance": "relevant",
-            "sfia_level": "4",
-            "rationale_name": "job requires effective communication within teams",
-            "other_attributes": [
-              "Clarity"
-            ],
-            "rationale_sfia_level": [
-              "autonomy=level-4",
-              "complexity=level-4",
-              "influence=level-4"
-            ]
-          }
-        ],
-        "salary_range": "Not specified",
-        "duties_responsibilities": [
-          "Implement product features that are secure, scalable, robust, and easy to maintain.",
-          "Handle terabytes of data and multiple data sources.",
-          "Write and industrialize algorithms.",
-          "Provide bug fixes and ensure features work well at cloud scale.",
-          "Work with minimal supervision within self-organizing Agile teams.",
-          "Take ownership of code."
-        ],
-        "required_qualifications": [
-          "10+ years of healthcare product/application development experience.",
-          "Experience in Industrialization Algorithms, Python, AWS, Spark, and ML.",
-          "Experience in handling terabytes of data.",
-          "Experience in writing algorithms."
-        ],
-        "preferred_qualifications": [
-          "Experience with tools such as JIRA, Bitbucket, Confluence.",
-          "Understanding of AWS Security, API Gateway.",
-          "Knowledge of design patterns."
-        ]
+          "createdAt": "2024-07-29T07:34:20.476Z",
+          "updatedAt": "2024-08-22T12:53:19.880Z"
+        }
       }
-    }
+    ]
   }
 ]

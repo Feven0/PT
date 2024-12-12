@@ -3,12 +3,12 @@ import json, os
 import os
 import json_repair
 from collections import defaultdict
-from api.services.strapi_ipersona import IpersonaManager
+import api.llm.ipersona.ipersona_strapi as strapi
 from datetime import datetime
 from api.utils.logger import LLPackerLogger
 import api.llm.ipersona.ipersona_gpt as gpt
 from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionTinderUserJobMatchSchema, IpersonaSessionTinderUserReactionSchema, IpersonaSessionSchema, IpersonaTraineeSchema, IpersonaJobSchema, IpersonaSessionOverallObserverSchema, IpersonaSessionMessageSchema, IpersonaSessionObserverSchema, IpersonaAllUserSchema, IpersonaProfileInformationSchema
-        
+  
 logger = LLPackerLogger(os.path.basename(__file__))
 
 from api.services.secret import get_auth
@@ -214,6 +214,8 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
     """
     try:
         interview_question_json = None
+        realtime_evaluation = None
+        status = None
                 
         if chat_count < 9:
             if data['response']:
@@ -231,13 +233,22 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
                 interview_question_json = await fetch_interview_question(section, data) 
    
         else:  
+            realtime_evaluation_response_json = realtime_response_evaluation(data)
+            realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
+            logger.info(f"Realtime evaluation is: {realtime_evaluation}")
+            if realtime_evaluation != "null":
+                status = "final"
+                strapi.step3_insert_message(data, realtime_evaluation)
+
             await overall_interview_evaluations(data)
             logger.info("Calculate the overall and save to database done.")
 
             
                 
         response = {
-            "interview": interview_question_json
+            "interview": interview_question_json,
+            "status": status,
+            "realtime": realtime_evaluation
         }
         
         return response
@@ -465,7 +476,11 @@ async def overall_interview_evaluations(data: dict) -> dict:
     """
     try:
         ipersona_message = IpersonaSessionMessageSchema()
-        all_chat_history = ipersona_message.filter_by_session_id(sessionId=data['user_session']['id'], nopp=True, dataframe=False)
+        all_chat_history = ipersona_message.filter_by_session_id(
+            sessionId=data['user_session']['id'], 
+            nopp=True, 
+            dataframe=False,
+            sort='asc')
         history = all_chat_history['total']
         
         overall_evaluation_prompt = file_reader(prompt_path('ipersona/overall_evaluation.txt'))
@@ -489,8 +504,7 @@ async def overall_interview_evaluations(data: dict) -> dict:
         content = data['user_session']['attributes']['attributes']['persona'] + overall_metrics_msg
         overall_interview_metrics_response = gpt.openai_gpt_assistant_without_streaming(content)
         overall_interview_metrics_json = extract_json(overall_interview_metrics_response, quite=False)
-         
-        
+           
         time_array = calculate_time(history)
         relevancy = filter_the_relevancies(history)
         percent_term = percentage_term(relevancy["average"])
@@ -537,13 +551,13 @@ async def overall_interview_evaluations(data: dict) -> dict:
         if not trainee_profile_data:
                 logger.warn("No trainee user profiles found.")
                 return []
-        tinder_user_profile_id = trainee_profile_data[0]['id'] 
+        tinder_user_profile_id = trainee_profile_data['id'] 
                       
         session = ipersona_session.filter_by_with_user_job_id(user_profile_id=tinder_user_profile_id,job_profile_id=data['job_profile_id'], nopp=True, dataframe=False) 
         session_chatobserver = extract_observers_metrics(session)
                     
         await calculate_overall_progress(data, session_chatobserver) 
-    
+      
         #################################################################################################
       
         response = {
@@ -761,7 +775,7 @@ def filter_the_relevancies(data: list) -> dict:
         index_counter = 1
         
         for entry in data:
-            if entry['user_type'] == 'assistant' and 'realtime_evaluation' in entry['content']:
+            if entry['user_type'] == 'assistant' and entry['content'].get('realtime_evaluation'):
                 evaluation = entry['content']['realtime_evaluation']
                 if 'answer_relevancy' in evaluation:
                     for relevance in evaluation['answer_relevancy']:
@@ -785,7 +799,7 @@ def filter_the_relevancies(data: list) -> dict:
         return data
     
     except Exception as e:
-        logger.error(f"Filtering overall relevance process failed: {str(e)}")
+        print(f"Filtering overall relevance process failed: {str(e)}")
         return {'error': str(e)}
 
 #----------------------------------------- Assigning Rating Metrics Value Range -----------------------------------------   
@@ -858,68 +872,63 @@ async def calculate_overall_progress(userdata, data: list):
         session_ids = []         
 
         for entry in data:
-            iso_time = entry.get("createdAt", "")
-            created_time = convert_iso_to_readable_format(iso_time)
-            performance = entry.get("performance", [])
-            realtime = entry.get('communication_skills', []) 
-            time = entry.get('time_management', {})
-            competency = entry.get('competency', [])
-            overall_performance_score = entry.get("overall_performance_score", "")
-            obs_id = entry.get("obs_id")  
-            if obs_id:
-                session_ids.append(int(obs_id))  
-            obj_time = {
-                "time": created_time,
-                "time_management": time
-            }
-            overall_time_managements.append(obj_time)
-            obj_competency = {
-                "time": created_time,
-                "competency": competency
-            }
-            overall_competencies.append(obj_competency)   
-            obj_score = {
-                "time": created_time,
-                "score": overall_performance_score
-            }
-            overall_performance_scores.append(obj_score)   
-             
-            if isinstance(performance, list):
-                for item in performance:
-                    confidence_level = item.get('level', '').lower()
-                    if(confidence_level == 'poor'):
+            if isinstance(entry, dict):  
+                iso_time = entry.get("createdAt", "")
+                created_time = convert_iso_to_readable_format(iso_time)
+                performance = entry.get("performance", [])
+                realtime = entry.get('communication_skills', []) 
+                time = entry.get('time_management', {})
+                competency = entry.get('competency', [])
+                overall_performance_score = entry.get("overall_performance_score", "")
+                obs_id = entry.get("obs_id")  
+                
+                if obs_id:
+                    session_ids.append(int(obs_id))  
+                
+                obj_time = {
+                    "time": created_time,
+                    "time_management": time
+                }
+                overall_time_managements.append(obj_time)
+                
+                obj_competency = {
+                    "time": created_time,
+                    "competency": competency
+                }
+                overall_competencies.append(obj_competency)   
+                
+                obj_score = {
+                    "time": created_time,
+                    "score": overall_performance_score
+                }
+                overall_performance_scores.append(obj_score)   
+                 
+                if isinstance(performance, list):
+                    for item in performance:
+                        confidence_level = item.get('level', '').lower()
+                        if confidence_level == 'poor':
                             value = 1
-                    elif(confidence_level == 'good'):
-                        value = 2
-                    elif(confidence_level == 'excellent'):
-                        value = 3
-                    confidence = {"time": created_time, "level": confidence_level, "value": value}
-                    confidence_overtime.append(confidence)                        
-           
-            if isinstance(realtime, list):
-                for communication in realtime:  
-                    if communication.get('skill') == "clarity":  
-                        clarity_level = communication['level'].lower() 
-                        if(clarity_level == 'poor'):
-                            value = 1
-                        elif(clarity_level == 'good'):
+                        elif confidence_level == 'good':
                             value = 2
-                        elif(clarity_level == 'excellent'):
+                        elif confidence_level == 'excellent':
                             value = 3
-                        clarity = {"time": created_time, "level": clarity_level, "value": value}
-                        clarity_overtime.append(clarity)
+                        confidence = {"time": created_time, "level": confidence_level, "value": value}
+                        confidence_overtime.append(confidence)                        
+               
+                if isinstance(realtime, list):
+                    for communication in realtime:  
+                        if communication.get('skill') == "clarity":  
+                            clarity_level = communication['level'].lower() 
+                            value = 1 if clarity_level == 'poor' else 2 if clarity_level == 'good' else 3
+                            clarity = {"time": created_time, "level": clarity_level, "value": value}
+                            clarity_overtime.append(clarity)
 
-                    if communication.get('skill') == "engagement":  
-                        engagement_level = communication['level'].lower()  
-                        if(engagement_level == 'poor'):
-                            value = 1
-                        elif(engagement_level == 'good'):
-                            value = 2
-                        elif(engagement_level == 'excellent'):
-                            value = 3
-                        engagement = {"time": created_time, "level": engagement_level, "value": value}
-                        engagement_overtime.append(engagement)
-      
+                        if communication.get('skill') == "engagement":  
+                            engagement_level = communication['level'].lower()  
+                            value = 1 if engagement_level == 'poor' else 2 if engagement_level == 'good' else 3
+                            engagement = {"time": created_time, "level": engagement_level, "value": value}
+                            engagement_overtime.append(engagement)
+                            
         ipersona_overall = IpersonaSessionOverallObserverSchema()
         ipersona_user = IpersonaTraineeSchema()
 
@@ -927,60 +936,65 @@ async def calculate_overall_progress(userdata, data: list):
         if not trainee_profile_data:
                 logger.warn("No trainee user profiles found.")
                 return []
-        tinder_user_profile_id = trainee_profile_data[0]['id']    
+        tinder_user_profile_id = trainee_profile_data['id']    
             
         session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=userdata['job_profile_id'], nopp=True, dataframe=False)
-        session_chatobserver_sessions = session_chatobserver['all_sessions']
-        
-        logger.info(f"Value of session_overall_observer_by_user_and_job: {len(session_chatobserver_sessions)}")
-            
-        if len(session_chatobserver_sessions) > 0:
-            logger.info(f"Updating session job overall observer data")
-            attributes = {
-                "overall_confidence": confidence_overtime,
-                "overall_clarity": clarity_overtime,
-                "overall_engagement": engagement_overtime,
-                "overall_time_management": overall_time_managements,
-                "overall_competency": overall_competencies,
-                "overall_performance": overall_performance_scores
-            }
-                        
-            overall_data = {
-                "i_persona_session_overall_observer_id": session_chatobserver['id'], 
-                "attributes": attributes,
-            }
-            response = ipersona_overall.update_session(params=overall_data, nopp=True, dataframe=False, return_object=True)
-            if response:
-                logger.info(f"session overall observer data update with new insert anlaysis")
-            
-        else:  
-            logger.info(f"Creating a new session job overall observer data")          
-                       
-            ipersona_overall = IpersonaSessionOverallObserverSchema()
-            ipersona_user = IpersonaTraineeSchema()
 
-            trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=userdata['all_user_id'], nopp=True, dataframe=False)
-            if not trainee_profile_data:
-                    logger.warn("No trainee user profiles found.")
-                    return []
-            tinder_user_profile_id = trainee_profile_data[0]['id']    
-            message_data = {
-                "attributes": {
+        if not session_chatobserver.get("error"): 
+            logger.info(f"Session job overall observer data exists, so updating the data")          
+      
+            session_chatobserver_sessions = session_chatobserver['all_sessions']
+            
+            logger.info(f"Value of session_overall_observer_by_user_and_job: {len(session_chatobserver_sessions)}")
+                
+            if len(session_chatobserver_sessions) > 0:
+                logger.info(f"Updating session job overall observer data")
+                attributes = {
                     "overall_confidence": confidence_overtime,
                     "overall_clarity": clarity_overtime,
                     "overall_engagement": engagement_overtime,
                     "overall_time_management": overall_time_managements,
                     "overall_competency": overall_competencies,
                     "overall_performance": overall_performance_scores
-                },
-                "sessionIds": session_ids,
-                "tinder_user_profile": tinder_user_profile_id,
-                "tinder_job_profile": userdata['job_profile_id']
-            }
-            
-            response = ipersona_overall.save_Session_Overall_Observer(params=message_data, nopp=True, dataframe=False)
-    
-        return response
+                }
+                            
+                overall_data = {
+                    "i_persona_session_overall_observer_id": session_chatobserver['id'], 
+                    "attributes": attributes,
+                }
+                response = ipersona_overall.update_session(params=overall_data, nopp=True, dataframe=False, return_object=True)
+                if response:
+                    logger.success(f"session overall observer data update with new insert anlaysis")   
+            else:  
+                logger.info(f"Creating a new session job overall observer data")          
+                        
+                ipersona_overall = IpersonaSessionOverallObserverSchema()
+                ipersona_user = IpersonaTraineeSchema()
+
+                trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=userdata['all_user_id'], nopp=True, dataframe=False)
+                if not trainee_profile_data:
+                        logger.warn("No trainee user profiles found.")
+                        return []
+                tinder_user_profile_id = trainee_profile_data['id']    
+                message_data = {
+                    "attributes": {
+                        "overall_confidence": confidence_overtime,
+                        "overall_clarity": clarity_overtime,
+                        "overall_engagement": engagement_overtime,
+                        "overall_time_management": overall_time_managements,
+                        "overall_competency": overall_competencies,
+                        "overall_performance": overall_performance_scores
+                    },
+                    "sessionIds": session_ids,
+                    "tinder_user_profile": tinder_user_profile_id,
+                    "tinder_job_profile": userdata['job_profile_id']
+                }
+                
+                response = ipersona_overall.save_Session_Overall_Observer(params=message_data, nopp=True, dataframe=False)
+                logger.success(f"new entry make on session overall observer")
+            return response
+        else:
+            logger.error(f"Session chat observer contains an error: {session_chatobserver.get('error')}")
     
     except Exception as e:
         logger.error(f"Process failed: ${str(e)}")
@@ -997,13 +1011,13 @@ def all_session_jobs_average_metrics(data):
 
         avg_confidence = calculate_average(data.get('overall_confidence', []))
         avg_clarity = calculate_average(data.get('overall_clarity', []))
-        avg_engagement = calculate_average(data.get('overall_engagement', []))
+        avg_engagment = calculate_average(data.get('overall_engagement', []))
         avg_time_management = calculate_average_time_management(data.get('overall_time_management', []))
 
         overall_data = {
             "avg_confidence": avg_confidence,
             "avg_clarity": avg_clarity,
-            "avg_engagement": avg_engagement,
+            "avg_engagment": avg_engagment,
             "avg_time_management": avg_time_management
         }
 
@@ -1074,10 +1088,11 @@ def calculate_average_time_management(data):
 #-------------------------------------------- user engagment jobs --------------------------------------------
 def summarize_interviews(user_profile_id):  
     try:  
+        # Fetch a particular user sessions
         ipersona_session = IpersonaSessionSchema()
         data = ipersona_session.filter_by_tinder_user_profile_id(user_profile_id=user_profile_id, nopp=True, dataframe=False)
         data = extracted_needed_metrics(data)
-
+        
         if len(data) == 0:
             logger.info("The given trainee has no observer data")
             return []
@@ -1088,16 +1103,26 @@ def summarize_interviews(user_profile_id):
             job_profile_id = record['job_profile_id']
             job_summary[job_profile_id].append(record)
 
-        summary_response = []
-
+            summary_response = []
+            complete_sessions_count = 0
+            incomplete_sessions_count = 0
+            
         for job_profile_id, records in job_summary.items():
-            interviews_count = len(records)
+           
+            for session in records:
+                attributes = session.get('attributes', {})
+                i_persona_observer = attributes.get('i_persona_observer', {}).get('data')
+                if i_persona_observer is None:
+                    incomplete_sessions_count += 1
+                else:
+                    complete_sessions_count += 1
+                               
             total_score = sum(
                 record.get('overall_performance_score', 0) for record in records if record.get('overall_performance_score') is not None
             )
             
             if total_score > 0:
-                average_score = round(total_score / interviews_count, 2)
+                average_score = round(total_score / complete_sessions_count, 2)
             else:
                 average_score = 'Not Available'
             
@@ -1124,6 +1149,8 @@ def summarize_interviews(user_profile_id):
             else:
                 match_score = 'Unknown'
                 job_match = 'Unknown'
+                        
+            total_session_count = complete_sessions_count + incomplete_sessions_count
 
             summary_response.append({
                 "job_profile_id": job_profile_id,
@@ -1131,7 +1158,9 @@ def summarize_interviews(user_profile_id):
                 "job_title": job_title,
                 "job_match_score": match_score,
                 "job_match": job_match,
-                "interviews": interviews_count,
+                'complete_interviews_count': complete_sessions_count,
+                'incomplete_interviews_count': incomplete_sessions_count,
+                'total_interviews_count': total_session_count,
                 "score": average_score
             })
 
@@ -1146,7 +1175,6 @@ def extracted_needed_metrics(data):
         
         for session in data:
             observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
-            
             # Extract necessary data if observer data exists
             if observer_data:
                 observer_attributes = observer_data.get('attributes', {}).get('attributes', {}).get('interview_evaluation_metrics', {})
@@ -1232,11 +1260,9 @@ def calculate_session_metrics(sessions):
             ipersona_profile = IpersonaProfileInformationSchema()
             ipersona_profile_data = ipersona_profile .filter_by_all_user_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
             userdata = {**ipersona_alluser_data, **ipersona_profile_data}
-            
      
             ipersona_reaction = IpersonaSessionTinderUserReactionSchema()
             reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=user_profile_id, job_profile_id=job_profile_id, nopp=True, dataframe=False)
-
             
             if job_title_data and len(job_title_data) > 0:
                 job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
@@ -1350,7 +1376,7 @@ def summarize_allusers_data(data):
                 if not trainee_profile_data:
                         logger.warn("No trainee user profiles found.")
                         return []
-                tinder_user_profile_id = trainee_profile_data[0]['id']
+                tinder_user_profile_id = trainee_profile_data['id']
                 tinder_job_profile_id = job_profile_id
 
                 ipersona_match = IpersonaSessionTinderUserJobMatchSchema()

@@ -105,6 +105,10 @@ const useWebSocket = (url: string) => {
       });
     });
 
+    newSocket.on('last_realtime_evaluation', (message) => {
+      setChatInterview((prevMessages) => [...prevMessages, ...message]);      
+    });
+
     newSocket.on('interview done', (message) => {
       setDone(true);
       setLoading(false);
