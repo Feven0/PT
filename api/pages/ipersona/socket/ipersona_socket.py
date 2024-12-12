@@ -40,6 +40,7 @@ async def connect(sid):
 async def disconnect(sid):
     print(f"Transcribe Client Disconnected: {sid}")
    
+# assembly streaming
 @sio.on("audio transcribe")
 async def audio_endpoint(sid, data):
     loop = asyncio.get_event_loop()
@@ -84,7 +85,7 @@ async def audio_endpoint(sid, data):
         print(f"Error in audio streaming: {str(e)}")
 
 
-executor = ThreadPoolExecutor(max_workers=105)  
+# executor = ThreadPoolExecutor(max_workers=105)  
 
 async def synthesize_text(text):
     print("Received text for synthesis:", text)
@@ -105,6 +106,7 @@ async def synthesize_text(text):
     except Exception as e:
         return {"error": str(e)}
 
+# distribute streaming text to form sentences and compute tts in async
 @sio.on("audio chat")
 async def audio_endpoint(sid, data):
     try:
@@ -156,7 +158,8 @@ async def audio_endpoint(sid, data):
         elapsed_time = end_time - start_time
         print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
 
-
+# method to save audio chat to database
+# TODO: integrate with audio chat function
 @sio.on("audio chat sentence")
 async def audio_end_point(sid, data):
     print("audio socket response", data["response"])
@@ -302,7 +305,7 @@ async def audio_end_point(sid, data):
         elapsed_time = end_time - start_time  
         print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
     
-
+# handle for text to text chat
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
     try:

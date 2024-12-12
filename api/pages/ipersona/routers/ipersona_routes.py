@@ -695,8 +695,7 @@ async def fetch_user_all_observer(recieved: pemodel.SessionIdRequestRecieved):
         elapsed_time = end_time - start_time
         logger.info(f"Time taken for fetching observers: {elapsed_time:.2f} seconds")
 
-@routes.post("/fetch_single_session")
-async def fetch_single_session(recieved: pemodel.SessionIdRequestRecieved):  
+
     """
     Fetches a single session from the database.
 
