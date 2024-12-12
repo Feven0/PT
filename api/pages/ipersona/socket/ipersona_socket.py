@@ -6,10 +6,8 @@ import assemblyai as aai
 from concurrent.futures import ThreadPoolExecutor
 from api import config
 import api.modules.ipersona_parrot_gpt as util
-import api.modules.ipersona_parrot_audio as audio
 import api.llm.ipersona.ipersona_strapi as strapi
 from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionMessageSchema
-import api.modules.ipersona_parrot_audio as audio
 
 
 from api.utils.logger import LLPackerLogger
@@ -111,7 +109,7 @@ async def synthesize_text(text):
 async def audio_endpoint(sid, data):
     try:
         start_time = time.time()        
-        response = await audio.generate_interview_question(data)
+        response = await util.generate_interview_question(data)
         assistant_next_question = response.get("interview", "")
 
         #tasks = [synthesize_text(chunk) for chunk in assistant_next_question]
