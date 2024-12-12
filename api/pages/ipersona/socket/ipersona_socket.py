@@ -15,22 +15,18 @@ import api.modules.ipersona_parrot_audio as audio
 from api.utils.logger import LLPackerLogger
 
 logger = LLPackerLogger(os.path.basename(__file__))
-aai.settings.api_key = "436bc16c4e474f47ae116cbe17041966"
+aai.settings.api_key = config.assemblyai.api_key
 
-sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
-socket_app = socketio.ASGIApp(sio)
 
 OPENAI_API_KEY = config.openai.api_key
-
-sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
-socket_app = socketio.ASGIApp(sio)
-
-OPENAI_API_KEY = config.openai.api_key
-
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-
 transcriber = None
+
+sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
+socket_app = socketio.ASGIApp(sio)
+
+
 
 @sio.on("initial connect")
 async def connect(sid):

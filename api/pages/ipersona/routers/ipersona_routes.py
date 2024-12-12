@@ -1,24 +1,34 @@
 
+import time, os
+import assemblyai as aai
+
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
-from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionSchema, IpersonaTraineeSchema, IpersonaJobSchema, IpersonaSessionOverallObserverSchema, IpersonaSessionMessageSchema, IpersonaSessionObserverSchema
+
+#
+from api import config
+from api.llm.ipersona.ipersona_strapi_schemas import (
+    IpersonaSessionSchema, 
+    IpersonaTraineeSchema, 
+    IpersonaJobSchema, 
+    IpersonaSessionOverallObserverSchema, 
+    IpersonaSessionMessageSchema, 
+    IpersonaSessionObserverSchema
+)
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_gpt as gpt
 import api.pages.ipersona.models.persona as pemodel
-import time, os
-from api.services.secret import get_auth
-import assemblyai as aai
 from api.utils.logger import LLPackerLogger
 
 logger = LLPackerLogger(os.path.basename(__file__))
-module_dir= os.path.dirname(__file__)
-module_di= os.path.dirname(__file__)
-data_path = lambda x: os.path.join(module_dir, "folders", x)
-prompt_path = lambda x: os.path.join(module_di, "data/prompts", x)
 
-aai.settings.api_key = "49e5f82458584a70b847f477a035ce48"
+module_dir= os.path.dirname(__file__)
+data_path = lambda x: os.path.join(module_dir, "folders", x)
+prompt_path = lambda x: os.path.join(module_dir, "data/prompts", x)
+
+aai.settings.api_key = config.assemblyai.api_key
 transcriber = aai.Transcriber()
 
 routes = FastAPI(root_path="/api")
