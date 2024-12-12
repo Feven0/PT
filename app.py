@@ -112,13 +112,10 @@ def start_application():
 
     fast_app.mount("/api", routes)
 
-    print('start socket')
-    sio_app = get_socketio_app(fast_app)
-
-
-    return sio_app, fast_app
+ 
+    return fast_app
   
-sio_app, app = start_application()
+app = start_application()
 
 
 
@@ -213,6 +210,8 @@ async def check_authentication(request: Request, call_next):
     return response
 
 
+print('start socket')
+app = get_socketio_app(app)
 
 if __name__ == "__main__":
     
@@ -232,5 +231,5 @@ if __name__ == "__main__":
     # else:
     
     # logger.divider(f"Starting FastAPI server on port {port} with 1 worker")
-    uvicorn.run("app:sio_app", host="0.0.0.0", port=port)
+    uvicorn.run("app:app", host="0.0.0.0", port=port)
           
