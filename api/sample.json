@@ -1,0 +1,99 @@
+[
+    {
+      "user_type": "candidate",
+      "content_type": "answer",
+      "complete": false,
+      "content": {
+        "response": "i have a cs background",
+        "time_taken": "00:03",
+        "realtime_evaluation": null
+      }
+    },
+    {
+      "user_type": "assistant",
+      "content_type": "question",
+      "complete": false,
+      "content": {
+        "time_taken": null,
+        "response": {
+          "question": "Can you elaborate on specific courses or projects during your computer science studies that have prepared you for a role in machine learning?",
+          "question_type": "follow-up",
+          "time_limit": "02:00",
+          "end_message": "Please take your time to provide a detailed response"
+        },
+        "realtime_evaluation": null
+      }
+    },
+    {
+      "user_type": "assistant",
+      "content_type": "question_feedback",
+      "complete": false,
+      "content": {
+        "time_taken": null,
+        "response": {
+          "question": "Can you elaborate on specific courses or projects during your computer science studies that have prepared you for a role in machine learning?",
+          "question_type": "follow-up",
+          "time_limit": "02:00",
+          "end_message": "Please take your time to provide a detailed response"
+        },
+        "realtime_evaluation": {
+          "overall": {
+            "relevance": "weak",
+            "feedback": "Your response suggested a very limited explanation of your educational background. It would be beneficial to elaborate on your degree, any relevant coursework, and how these experiences specifically relate to machine learning and computer vision."
+          },
+          "answer_relevancy": [
+            {
+              "level": "30",
+              "reason": "The response only mentions a computer science background without any details or connections to machine learning or computer vision."
+            }
+          ],
+          "communication_skills": [
+            {
+              "skill": "clarity",
+              "level": "Poor",
+              "reason": "The response was vague and lacked detail, making it difficult to understand the full extent of your educational background."
+            },
+            {
+              "skill": "engagement",
+              "level": "Poor",
+              "reason": "The response did not demonstrate enthusiasm or a proactive approach to discussing your qualifications."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "user_type": "assistant",
+      "content_type": "overall_feedback",
+      "complete": true,
+      "content": {
+        "time_taken": "null",
+        "response": "null",
+        "realtime_evaluation": {
+          "overall": {
+            "relevance": "weak",
+            "feedback": "Your response suggested a lack of depth and detail. You did not provide specific examples or insights from your research, which are crucial to demonstrate how it has helped you in your work."
+          },
+          "answer_relevancy": [
+            {
+              "level": "30",
+              "reason": "The response was very brief and did not address the question about how researching helped in your work or what specific areas you focused on."
+            }
+          ],
+          "communication_skills": [
+            {
+              "skill": "clarity",
+              "level": "Poor",
+              "reason": "The response was not coherent and lacked sufficient information to be understood."
+            },
+            {
+              "skill": "engagement",
+              "level": "Poor",
+              "reason": "There was no indication of enthusiasm or engagement in your response."
+            }
+          ]
+        }
+      }
+    }
+  ]
+  

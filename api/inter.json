@@ -1,0 +1,400 @@
+[
+    {
+        "user_type": "assistant",
+        "content_type": "question_feedback",
+        "complete": false,
+        "content": {
+            "time_taken": "null",
+            "response": {
+                "question_number": "2",
+                "question": "What relevant work experiences do you have that align with the responsibilities of a Machine Learning Research Engineer?",
+                "question_type": "Background",
+                "time_limit": "02:00",
+                "end_message": "Please take your time to provide a detailed response"
+            },
+            "realtime_evaluation": "null"
+        }
+    },
+    {
+        "user_type": "candidate",
+        "content_type": "answer",
+        "complete": false,
+        "content": {
+            "response": "1",
+            "time_taken": "00:05",
+            "realtime_evaluation": "null"
+        }
+    },
+    {
+        "user_type": "assistant",
+        "content_type": "question_feedback",
+        "complete": false,
+        "content": {
+            "time_taken": "null",
+            "response": {
+                "question": "Can you provide specific examples of your work experiences that relate to machine learning or computer vision, and describe your role in those projects?",
+                "question_type": "follow-up",
+                "time_limit": "02:00",
+                "end_message": "Please take your time to provide a detailed response"
+            },
+            "realtime_evaluation": {
+                "overall": {
+                    "relevance": "weak",
+                    "feedback": "Your response did not provide any relevant work experiences that align with the responsibilities of a Machine Learning Research Engineer. It is important to highlight specific projects or roles that demonstrate your skills and experience in machine learning, computer vision, or related areas."
+                },
+                "answer_relevancy": [
+                    {
+                        "level": "30",
+                        "reason": "The response did not address the question at all, lacking any relevant details or examples."
+                    }
+                ],
+                "communication_skills": [
+                    {
+                        "skill": "clarity",
+                        "level": "Poor",
+                        "reason": "The response was unclear as it did not provide any information or context."
+                    },
+                    {
+                        "skill": "engagement",
+                        "level": "Poor",
+                        "reason": "There was no engagement or enthusiasm shown in the response, as it did not contain any content."
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "user_type": "candidate",
+        "content_type": "answer",
+        "complete": false,
+        "content": {
+            "response": "2",
+            "time_taken": "00:06",
+            "realtime_evaluation": "null"
+        }
+    },
+    {
+        "user_type": "assistant",
+        "content_type": "question_feedback",
+        "complete": false,
+        "content": {
+            "time_taken": "null",
+            "response": {
+                "question_number": "3",
+                "question": "Can you explain your experience with PyTorch and OpenCV, and how you have applied these tools in your projects?",
+                "question_type": "Technical",
+                "time_limit": "03:00",
+                "end_message": "Please take your time to provide a detailed response"
+            },
+            "realtime_evaluation": {
+                "overall": {
+                    "relevance": "weak",
+                    "feedback": "Your response did not provide specific examples related to machine learning or computer vision. It is important to share concrete experiences that demonstrate your skills and contributions in these areas."
+                },
+                "answer_relevancy": [
+                    {
+                        "level": "30",
+                        "reason": "The response lacked relevant examples and did not directly address the question about work experiences in machine learning or computer vision."
+                    }
+                ],
+                "communication_skills": [
+                    {
+                        "skill": "clarity",
+                        "level": "Poor",
+                        "reason": "The response was vague and did not clearly convey any specific information or examples."
+                    },
+                    {
+                        "skill": "engagement",
+                        "level": "Poor",
+                        "reason": "There was a lack of enthusiasm and detail in the response, which may indicate disinterest or uncertainty."
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "user_type": "candidate",
+        "content_type": "answer",
+        "complete": false,
+        "content": {
+            "response": "3",
+            "time_taken": "00:03",
+            "realtime_evaluation": "null"
+        }
+    },
+    {
+        "user_type": "assistant",
+        "content_type": "question_feedback",
+        "complete": false,
+        "content": {
+            "time_taken": "null",
+            "response": {
+                "question": "Can you provide specific examples of projects where you have used PyTorch and OpenCV, detailing your role and the outcomes of those projects?",
+                "question_type": "follow-up",
+                "time_limit": "02:00",
+                "end_message": "Please take your time to provide a detailed response"
+            },
+            "realtime_evaluation": {
+                "overall": {
+                    "relevance": "weak",
+                    "feedback": "Your response did not provide any relevant information regarding your experience with PyTorch and OpenCV. It is important to elaborate on specific projects or tasks where you utilized these tools to demonstrate your expertise."
+                },
+                "answer_relevancy": [
+                    {
+                        "level": "10",
+                        "reason": "The response did not address the question at all, lacking any relevant details about experience with PyTorch and OpenCV."
+                    }
+                ],
+                "communication_skills": [
+                    {
+                        "skill": "clarity",
+                        "level": "Poor",
+                        "reason": "The response was not clear or coherent, as it did not provide any information related to the question."
+                    },
+                    {
+                        "skill": "engagement",
+                        "level": "Poor",
+                        "reason": "There was no engagement or enthusiasm in the response, as it failed to address the question meaningfully."
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "user_type": "candidate",
+        "content_type": "answer",
+        "complete": false,
+        "content": {
+            "response": "4",
+            "time_taken": "00:05",
+            "realtime_evaluation": "null"
+        }
+    },
+    {
+        "user_type": "assistant",
+        "content_type": "question_feedback",
+        "complete": false,
+        "content": {
+            "time_taken": "null",
+            "response": {
+                "question_number": "6",
+                "question": "Can you provide an example of how you collaborated with software developers to productize a solution? What was the outcome?",
+                "question_type": "Behavioral",
+                "time_limit": "02:30",
+                "end_message": "Please take your time to provide a detailed response"
+            },
+            "realtime_evaluation": {
+                "overall": {
+                    "relevance": "weak",
+                    "feedback": "Your response did not provide specific examples of projects where you used PyTorch and OpenCV. It is essential to detail your role in those projects and the outcomes to demonstrate your experience effectively."
+                },
+                "answer_relevancy": [
+                    {
+                        "level": "30",
+                        "reason": "The response lacked specific examples and details related to the use of PyTorch and OpenCV, which are critical to the question."
+                    }
+                ],
+                "communication_skills": [
+                    {
+                        "skill": "clarity",
+                        "level": "Poor",
+                        "reason": "The response was vague and did not clearly convey any relevant information."
+                    },
+                    {
+                        "skill": "engagement",
+                        "level": "Poor",
+                        "reason": "There was no indication of enthusiasm or interest in discussing the projects."
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "user_type": "candidate",
+        "content_type": "answer",
+        "complete": false,
+        "content": {
+            "response": "5",
+            "time_taken": "00:25",
+            "realtime_evaluation": "null"
+        }
+    },
+    {
+        "user_type": "assistant",
+        "content_type": "question_feedback",
+        "complete": false,
+        "content": {
+            "time_taken": "null",
+            "response": {
+                "question": "Can you elaborate on a specific project where you collaborated with software developers to productize a solution? What was your role, and what was the outcome of that collaboration?",
+                "question_type": "follow-up",
+                "time_limit": "02:00",
+                "end_message": "Please take your time to provide a detailed response"
+            },
+            "realtime_evaluation": {
+                "overall": {
+                    "relevance": "weak",
+                    "feedback": "Your response did not provide any specific example or details regarding collaboration with software developers. It is essential to share a concrete instance that illustrates your experience in productizing a solution, including the context, your role, and the outcome."
+                },
+                "answer_relevancy": [
+                    {
+                        "level": "10",
+                        "reason": "The response lacks any relevant information or context related to the question asked."
+                    }
+                ],
+                "communication_skills": [
+                    {
+                        "skill": "clarity",
+                        "level": "Poor",
+                        "reason": "The response was not coherent or informative, making it difficult to understand your experience."
+                    },
+                    {
+                        "skill": "engagement",
+                        "level": "Poor",
+                        "reason": "There was no demonstration of interest or enthusiasm in your response."
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "user_type": "candidate",
+        "content_type": "answer",
+        "complete": false,
+        "content": {
+            "response": "6",
+            "time_taken": "00:03",
+            "realtime_evaluation": "null"
+        }
+    },
+    {
+        "user_type": "assistant",
+        "content_type": "question_feedback",
+        "complete": false,
+        "content": {
+            "time_taken": "null",
+            "response": {
+                "question_number": "8",
+                "question": "What strategies do you use to manage your time and workload effectively, especially when working on multiple projects?",
+                "question_type": "Ability",
+                "time_limit": "02:00",
+                "end_message": "Please take your time to provide a detailed response"
+            },
+            "realtime_evaluation": {
+                "overall": {
+                    "relevance": "weak",
+                    "feedback": "Your response did not provide any specific details about a project or your role in collaborating with software developers. It is important to share concrete examples that demonstrate your experience and the outcomes of your collaborations."
+                },
+                "answer_relevancy": [
+                    {
+                        "level": "20",
+                        "reason": "The response lacked any relevant information related to the question about a specific project and collaboration."
+                    }
+                ],
+                "communication_skills": [
+                    {
+                        "skill": "clarity",
+                        "level": "Poor",
+                        "reason": "The response was vague and did not convey any clear information."
+                    },
+                    {
+                        "skill": "engagement",
+                        "level": "Poor",
+                        "reason": "There was no indication of enthusiasm or engagement in the response."
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "user_type": "candidate",
+        "content_type": "answer",
+        "complete": false,
+        "content": {
+            "response": "7",
+            "time_taken": "00:05",
+            "realtime_evaluation": "null"
+        }
+    },
+    {
+        "user_type": "assistant",
+        "content_type": "question_feedback",
+        "complete": false,
+        "content": {
+            "time_taken": "null",
+            "response": {
+                "question": "Can you elaborate on the strategies you use to manage your time and workload effectively, especially when working on multiple projects?",
+                "question_type": "follow-up",
+                "time_limit": "02:00",
+                "end_message": "Please take your time to provide a detailed response"
+            },
+            "realtime_evaluation": {
+                "overall": {
+                    "relevance": "weak",
+                    "feedback": "Your response did not provide any strategies or insights into how you manage your time and workload. A more detailed answer would help demonstrate your ability to handle multiple projects effectively."
+                },
+                "answer_relevancy": [
+                    {
+                        "level": "10",
+                        "reason": "The response was a single number, which does not address the question at all."
+                    }
+                ],
+                "communication_skills": [
+                    {
+                        "skill": "clarity",
+                        "level": "Poor",
+                        "reason": "The response was unclear and did not convey any meaningful information."
+                    },
+                    {
+                        "skill": "engagement",
+                        "level": "Poor",
+                        "reason": "There was no engagement or effort to connect with the question asked."
+                    }
+                ]
+            }
+        }
+    },
+    {
+        "user_type": "candidate",
+        "content_type": "answer",
+        "complete": false,
+        "content": {
+            "response": "8",
+            "time_taken": "00:07",
+            "realtime_evaluation": "null"
+        }
+    },
+    {
+        "user_type": "assistant",
+        "content_type": "question_feedback",
+        "complete": false,
+        "content": {
+            "time_taken": "null",
+            "response": "null",
+            "realtime_evaluation": {
+                "overall": {
+                    "relevance": "weak",
+                    "feedback": "Your response did not provide any specific strategies or examples related to time and workload management. It is important to elaborate on how you prioritize tasks, manage deadlines, and handle multiple projects effectively."
+                },
+                "answer_relevancy": [
+                    {
+                        "level": "20",
+                        "reason": "The response lacked relevant content and did not address the question about time management strategies."
+                    }
+                ],
+                "communication_skills": [
+                    {
+                        "skill": "clarity",
+                        "level": "Poor",
+                        "reason": "The response was vague and did not convey any clear ideas or strategies."
+                    },
+                    {
+                        "skill": "engagement",
+                        "level": "Poor",
+                        "reason": "There was no indication of enthusiasm or engagement in the response."
+                    }
+                ]
+            }
+        }
+    }
+]
