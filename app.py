@@ -128,7 +128,7 @@ def check_permission(method, api, token, run_stage=None):
     if isinstance(api, str):
         api = api.strip('/')
     
-    print('api, method, docs in api', api, method, any([x in api for x in ['docs', 'openapi.json', 'favicon.ico']]))
+
     if method == 'GET' and any([x in api for x in ['docs', 'openapi.json', 'favicon.ico']]):
         logger.good(f'method={method}, api={api}, permission=True')
         return True
@@ -159,7 +159,6 @@ async def check_authentication(request: Request, call_next):
     x_real_ip = request.headers.get('x-real-ip', "")
     x_forwarded_for = request.headers.get('x-forwarded-for', "")   
     request_method = request.method
-    print('**origin**', origin)
     
     # Allow OPTIONS requests for CORS preflight checks
     if request_method == 'OPTIONS':
