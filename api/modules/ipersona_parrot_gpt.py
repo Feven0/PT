@@ -8,7 +8,7 @@ from datetime import datetime
 from api.utils.logger import LLPackerLogger
 import api.llm.ipersona.ipersona_gpt as gpt
 from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionTinderUserJobMatchSchema, IpersonaSessionTinderUserReactionSchema, IpersonaSessionSchema, IpersonaTraineeSchema, IpersonaJobSchema, IpersonaSessionOverallObserverSchema, IpersonaSessionMessageSchema, IpersonaSessionObserverSchema, IpersonaAllUserSchema, IpersonaProfileInformationSchema
-  
+        
 logger = LLPackerLogger(os.path.basename(__file__))
 
 from api.services.secret import get_auth
@@ -551,7 +551,7 @@ async def overall_interview_evaluations(data: dict) -> dict:
         if not trainee_profile_data:
                 logger.warn("No trainee user profiles found.")
                 return []
-        tinder_user_profile_id = trainee_profile_data['id'] 
+        tinder_user_profile_id = trainee_profile_data[0]['id'] 
                       
         session = ipersona_session.filter_by_with_user_job_id(user_profile_id=tinder_user_profile_id,job_profile_id=data['job_profile_id'], nopp=True, dataframe=False) 
         session_chatobserver = extract_observers_metrics(session)
@@ -936,7 +936,7 @@ async def calculate_overall_progress(userdata, data: list):
         if not trainee_profile_data:
                 logger.warn("No trainee user profiles found.")
                 return []
-        tinder_user_profile_id = trainee_profile_data['id']    
+        tinder_user_profile_id = trainee_profile_data[0]['id']    
             
         session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=userdata['job_profile_id'], nopp=True, dataframe=False)
 
@@ -964,7 +964,7 @@ async def calculate_overall_progress(userdata, data: list):
                 }
                 response = ipersona_overall.update_session(params=overall_data, nopp=True, dataframe=False, return_object=True)
                 if response:
-                    logger.success(f"session overall observer data update with new insert anlaysis")   
+                    logger.info(f"session overall observer data update with new insert anlaysis")   
             else:  
                 logger.info(f"Creating a new session job overall observer data")          
                         
@@ -975,7 +975,7 @@ async def calculate_overall_progress(userdata, data: list):
                 if not trainee_profile_data:
                         logger.warn("No trainee user profiles found.")
                         return []
-                tinder_user_profile_id = trainee_profile_data['id']    
+                tinder_user_profile_id = trainee_profile_data[0]['id']    
                 message_data = {
                     "attributes": {
                         "overall_confidence": confidence_overtime,
@@ -1175,6 +1175,7 @@ def extracted_needed_metrics(data):
         
         for session in data:
             observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
+            
             # Extract necessary data if observer data exists
             if observer_data:
                 observer_attributes = observer_data.get('attributes', {}).get('attributes', {}).get('interview_evaluation_metrics', {})
@@ -1376,7 +1377,7 @@ def summarize_allusers_data(data):
                 if not trainee_profile_data:
                         logger.warn("No trainee user profiles found.")
                         return []
-                tinder_user_profile_id = trainee_profile_data['id']
+                tinder_user_profile_id = trainee_profile_data[0]['id']
                 tinder_job_profile_id = job_profile_id
 
                 ipersona_match = IpersonaSessionTinderUserJobMatchSchema()

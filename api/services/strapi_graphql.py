@@ -1,7 +1,6 @@
 import os,sys, copy
 import requests
 import json
-import pandas as pd
 
 
 from api import config
@@ -14,43 +13,34 @@ class StrapiGraphql():
     def __init__(self, **kwargs):
         
         # define run environment
-        if config.strapi.stage=='dev':
+        if config.strapi.stage.startswith('dev'):
             run_stage =  kwargs.get('run_stage',config.strapi.stage)
         else:
             run_stage = config.strapi.stage
             
-        self.run_stage = run_stage
-        
+        self.run_stage = run_stage        
         # define url
-        root, ssmkey = config.get_strapi_params(run_stage)            
+        root, ssmkey = config.get_strapi_params(run_stage)    
+   
         self.apiroot = f"https://{root}.10academy.org/graphql" 
         self.ssmkey = ssmkey
         
         # define token
-        
-
-        #logger.info('StrapiGraphql no token passed! Getting token using run_stage:', run_stage, level=9)
-        self.token = get_auth(ssmkey,
-                            envvar='STRAPI_TOKEN',
-                            fconfig=lambda_friendly_path(f'.env/{root}.json'))
-
+        token = kwargs.get('strapi_token',kwargs.get('token',''))
+        if not token:
+            logger.info('StrapiGraphql no token passed! Getting token using run_stage:', run_stage, level=9)
+            self.token = get_auth(ssmkey,
+                                envvar='STRAPI_TOKEN',
+                                fconfig=lambda_friendly_path(f'.env/{root}.json'))
+        else:
+            self.token = token
+            logger.good('StrapiGraphql token passed!', level=9)
 
         # define headers
-        if self.token:                        
+        if self.token:            
             self.headers = {"Authorization": f"Bearer {self.token}"}
         else:
-            logger.error('StrapiGraphql no token passed!')
-            raise 
-        
-        # define user header
-        self.user_token = kwargs.get('strapi_token',kwargs.get('token',''))
-        if self.user_token==self.token:
-            self.user_token = ''
-            
-        self.user_headers = {}
-        if self.user_token:
-            self.user_headers = {"Authorization": f"Bearer {self.user_token}"}
-            
+            raise "Token not passed!"
 
       
     
@@ -94,17 +84,22 @@ class StrapiGraphql():
             
         return r
     
-    def update_data (self, id, data, table, headers=None):
-        
-        if not headers:
-            headers = self.headers
-            
-        headers["Content-Type"] = "application/json"
+    def update_data (self, id, data, table, token=None):
       
         try:
-            r = requests.put(f"{self.apiroot.replace('graphql','api')}/{table}/{id}", 
-                             data = json.dumps({"data":data}),
-                             headers = headers).json()
+            r = requests.put(
+
+                f"{self.apiroot.replace('graphql','api')}/{table}/{id}", 
+
+                data = json.dumps({"data":data}),
+                # self.token['token']
+                headers = {
+
+                "Authorization": f"Bearer {self.token}", 
+
+                "Content-Type": "application/json"}
+
+            ).json()
         except Exception as e:
             print(e)
             raise
@@ -112,7 +107,7 @@ class StrapiGraphql():
         return r
           
         
-    def insert_table (self, query, variables, headers=None):
+    def insert_table (self, query, variables):
         """
 
         Args:
@@ -127,16 +122,11 @@ class StrapiGraphql():
         """
         # use CreateTablename() Mutation query 
         
-        if not headers:
-            headers = self.headers
-            
-        request = requests.post(self.apiroot, 
-                                json={'query': query, 'variables': variables}, 
-                                headers=headers)
-        
+        request = requests.post(self.apiroot, json={'query': query, 'variables': variables}, headers=self.headers)
         if request.status_code == 200:
             r =  request.json()
-            result_json= json.dumps(r, indent=2)
+            # result_json= json.dumps(r, indent=2)
+            result_json = r
             
         else:
             raise Exception("Query failed to run by returning code of {}. {}".format(
@@ -144,7 +134,7 @@ class StrapiGraphql():
         
         return result_json
     
-    def Select_from_table (self,query, variables, headers=None):
+    def Select_from_table (self,query, variables):
         
         """
 
@@ -159,9 +149,6 @@ class StrapiGraphql():
             result_json (Json): Response for your request 
         """
         
-        if not headers:
-            headers = self.headers
-            
         # Use query to select from table  
         if variables in [None, {}, ""]:
             kwargs = {'query': query}
@@ -171,17 +158,17 @@ class StrapiGraphql():
             
         try:
             request = requests.post(self.apiroot, 
-                                    headers=headers,
+                                    headers=self.headers,
                                     json=kwargs)   
             if request.status_code == 200:  
                 r =  request.json()
             else:              
-                # try:
-                #     print('***************Being Eror Message***************') 
-                #     print(json.dumps(request.json(), indent=4))
-                #     print('***************End Eror Message***************')
-                # except:
-                #     pass
+                try:
+                    print('***************Being Eror Message***************') 
+                    print(json.dumps(request.json(), indent=4))
+                    print('***************End Eror Message***************')
+                except:
+                    pass
                 raise Exception("Query failed to run by returning code of {}. {}".format(
                         request.status_code, query))
                                
@@ -191,7 +178,7 @@ class StrapiGraphql():
             
         return r
         
-    def update_table (self, query, variables, headers=None):
+    def update_table (self, query, variables):
         """
 
         Args:
@@ -205,13 +192,11 @@ class StrapiGraphql():
             result_json (Json): Response for your request 
         """
         # use updateTablename() Mutation query 
-        if not headers:
-            headers = self.headers
-            
+        
         request = requests.post(self.apiroot, 
                                 json={'query': query, 
                                       'variables': variables}, 
-                                      headers=headers)
+                                      headers=self.headers)
         if request.status_code == 200:
             r =  request.json()
             result_json= json.dumps(r, indent=2)
@@ -407,11 +392,13 @@ class StrapiGraphql():
             else:
                 filters = '{%s: {%s: %s} %s}' % (scol, op, sval, aofilters)
         else:
-            filters = aofilters                        
+            filters = aofilters
+                        
+
             
         return filters
             
-                             
+                        
     def unrap_dict_wprefix(self, xin, prefix='', yy = {}, irecord=0):
         x = copy.deepcopy(xin)
         xx = copy.deepcopy(yy)
@@ -425,22 +412,18 @@ class StrapiGraphql():
                     newprefix = name
                                 
             if isinstance(xa, dict):                
-                d = self.unrap_dict_wprefix(xa, prefix=newprefix, yy=xx, irecord=irecord)
+                d = self.unrap_dict_wprefix(xa, prefix=newprefix, yy=xx)
                 xx.update(d)
                 
             elif isinstance(xa, list):
-                if irecord > 0:                    
-                    d = {f"newprefix_{irecord}": xa}                
-                    xx.update(d)                    
-                else:                        
-                    if len(xa) > 0 and isinstance(xa[0], dict):
-                        for ix, x in enumerate(xa):
-                            d = self.unrap_dict_wprefix(x, prefix=newprefix, yy=xx, irecord=ix)
-                            xx.update(d)
+                if len(xa) > 0 and isinstance(xa[0], dict):
+                    for ix, x in enumerate(xa):
+                        d = self.unrap_dict_wprefix(x, prefix=newprefix, yy=xx, irecord=ix)
+                        xx.update(d)
                     
             else:
                 if irecord > 0:                    
-                    d = {f"{newprefix}_{irecord}": xa}
+                    d = {f"newprefix_{irecord}": xa}
                 else:
                     d = {newprefix: xa}
                 xx.update(d)
@@ -454,50 +437,18 @@ class StrapiGraphql():
         else:
             table = query.split('{')[1].split('(')[0].strip()
             
-        headers = self.headers
-        if table == 'me':
-            headers = self.user_headers
-            if not headers:
-                logger.warn('No user token passed to query me Table! Returning empty Response')
-                return None, {}
-            
         response = self.Select_from_table(
                             query=query, 
-                            variables=variables,
-                            headers=headers)
+                            variables=variables)
+        
 
-        if 'errors' in response.keys():
-            logger.error('>>>>>>>>>>ERROR START:')
-            print(json.dumps(query, indent=4))
-            print(json.dumps(variables, indent=4))
-            print('headers:', headers)
-            print(json.dumps(response, indent=4))
-            logger.error('>>>>>>>>>>ERROR END:')
-            return None, {}
-                
-        if response is None:
-            logger.error('Got None After EXECUTE_QUERY!')
-            return None, {}
-        
-        if not isinstance(response, dict):
-            logger.error('Expected response to be a dictionary!')
-            return None, {}
-        
-        if 'data' not in response.keys():
-            logger.error('Expected key=data in response!')
-            return None, {}
-        
-        if table == 'me':
-            return response.get('data', {}).get('me', {}), {}
-            
         try:
             newtable = [x for x in response['data'].keys() if x in table or table in x][0]            
             if newtable != table and table != 'me':
                 logger.good('***=======*** Autofix table name from %s to %s'%(table, newtable))
                 table = newtable
         except:
-            return None, {}
-            
+            pass
         
         meta = {}
         try:
@@ -509,13 +460,7 @@ class StrapiGraphql():
         #
         if nopp:
             # No post processing
-            try:
-                res = response['data'][table]
-            except Exception as e:
-                logger.error(f"Get_From_Query: Unable to parse response for table={table}! {e}")
-                return response, meta
-            
-            return res, meta
+            return response, meta
         
         
         if raw:            
@@ -538,8 +483,7 @@ class StrapiGraphql():
                 
             try:
                 rlist = []
-                for ra in res:
-                    
+                for ra in res:                    
                     #
                     rr = {}                   
                     if 'id' in ra.keys():
@@ -549,12 +493,8 @@ class StrapiGraphql():
                     for name, xa in ra.get('attributes', {}).items():           
                         if isinstance(xa, dict):
                             if 'data' in xa.keys():         
-                                d = copy.deepcopy(xa)   
-                                try:            
-                                    dxa = self.unrap_dict_wprefix(d, prefix=name, yy={})
-                                except Exception as e:
-                                    logger.error(f"Get_From_Query: Unable to flatten response for table={table}! {e}")
-                                    raise
+                                d = copy.deepcopy(xa)               
+                                dxa = self.unrap_dict_wprefix(d, prefix=name, yy={})
                                 rr.update(dxa)
                             else:
                                 rr[name] = xa
@@ -590,7 +530,12 @@ class StrapiGraphql():
 
             #
             if dataframe:
-                dfresponse = pd.DataFrame.from_records(dlist).dropna(axis=1, how='all')
+                try:
+                    import pandas as pd
+                    dfresponse = pd.DataFrame.from_records(dlist).dropna(axis=1, how='all')
+                except:
+                    logger.warn(f"Pandas not available! Unable to convert response to dataframe!")
+                    dfresponse = dlist
             else:
                 dfresponse = dlist                                               
                                             
@@ -621,6 +566,7 @@ class StrapiGraphql():
             }
             }        
         '''   
+        logger.good(f"Using run_stage: {self.run_stage}")
         variables = {"id": id, "analysis": analysis, 
                      "analysed": analysed, "remark": remark}
         try:
@@ -674,31 +620,20 @@ class StrapiGraphql():
                 }        
         '''   
         try:
-            response, meta = self.execute_query(query, table_name='me')  
-        except Exception as e:
-            print(e)
-            #print('Failed to get me detail using token:',self.token)
-            return {}
-        
-        if not response:
-            return {}
+            response, meta = self.execute_query(query, table_name='me')
+            if response:
+                try:
+                    response = response[0]
+                except:
+                    print('Me Response', response)
             
-        try:          
-            try:
-                response = response[0]
-            except:
-                pass
-                  
-            if not isinstance(response, dict):
-                response = {'role':{'name':''},
-                            'username':'', 
-                            'email':''} 
-            else:
+            if response:
                 response['role'] = response.pop('role', {}).get('name', "")
-                
         except Exception as e:
-            logger.error(f"{e}")
-            response = {}
+            logger.error(f"Get_User_Info: Unable to get user info! {e}")
+            print('run_stage:', self.run_stage)
+            print('token:', self.token)
+            response = {}        
         
         return response
                 
