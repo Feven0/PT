@@ -125,14 +125,20 @@ app = start_application()
 def check_permission(method, api, token, run_stage=None):
     # The following paths are always allowed:
     
+    if isinstance(api, str):
+        api = api.strip('/')
     
-    if method == 'GET' and api[1:] in ['docs', 'openapi.json', 'favicon.ico']:
+    print('api, method, docs in api', api, method, any([x in api for x in ['docs', 'openapi.json', 'favicon.ico']]))
+    if method == 'GET' and any([x in api for x in ['docs', 'openapi.json', 'favicon.ico']]):
         logger.good(f'method={method}, api={api}, permission=True')
         return True
     else:
         logger.info(f'method={method}, api={api}, permission=Checking ...', fg='pink')
         
     # check validity of token
+    if run_stage is None:
+        run_stage = config.strapi_stage
+        
     sg = StrapiGraphql(run_stage=run_stage, token=token)
     
     user_info = sg.get_user_info() 
@@ -153,6 +159,7 @@ async def check_authentication(request: Request, call_next):
     x_real_ip = request.headers.get('x-real-ip', "")
     x_forwarded_for = request.headers.get('x-forwarded-for', "")   
     request_method = request.method
+    print('**origin**', origin)
     
     # Allow OPTIONS requests for CORS preflight checks
     if request_method == 'OPTIONS':
@@ -185,14 +192,13 @@ async def check_authentication(request: Request, call_next):
     if any([fbase(x) in origin for x in root_origins]):
         permission = True
         prefix += f', root_origin={origin}'
-        logger.good(f'{prefix} presented root origin!')
     else:
         permission = check_permission(request.method, request.url.path, token)
         prefix += f', permission={permission}'
     
     # Simulate token validation logic (replace with actual validation)
     if permission:  # You need to implement is_token_valid
-        logger.good(f'{prefix} presented valid token!')
+        logger.good(f'{prefix} presented valid token or comes from trusted origin!')
     else:
         logger.warn(f'{prefix} does NOT provide valid token!')  
         return JSONResponse(status_code=403, 

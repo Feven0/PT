@@ -485,11 +485,12 @@ class LeapBaseClass:
         
         elif isinstance(res, dict):
             if not res:
-                return res            
-            if 'id' not in res.keys():
+                return res     
+            if 'data' in res.keys():
+                res = res['data']
+                return self.map_id_to_object_id(res)       
+            elif 'id' not in res.keys():
                 logger.error("No ID attribute found in DICT RES object!")
-                if logger.log_level<50:
-                    print(res)
                 return res
             else:
                 res[self.id_name()] = res.pop('id')

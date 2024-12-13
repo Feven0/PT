@@ -622,6 +622,11 @@ class openai:
 
 
 def get_strapi_params(stage):
+    if not stage:
+        print('WARNING: strapi_stage={stage} is not set! Using dev-cms as default.')
+        root='dev-cms'
+        ssmkey="TENX_DEV_STRAPI_TOKEN"
+        
     if stage.lower().startswith('devapply'):
         root='dev-apply-cms'
         ssmkey="APPLY_DEV_STRAPI_TOKEN"
