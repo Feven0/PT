@@ -136,16 +136,10 @@ def check_permission(method, api, token, run_stage=None):
         logger.info(f'method={method}, api={api}, permission=Checking ...', fg='pink')
         
     # check validity of token
-<<<<<<< HEAD
     if run_stage is None:
         run_stage = config.strapi_stage
         
     sg = StrapiGraphql(run_stage=run_stage, token=token)
-||||||| 62ab8f3
-    sg = StrapiGraphql(run_stage=run_stage, token=token)
-=======
-    sg = StrapiGraphql(run_stage="dev", token=token)
->>>>>>> 3cc4acacc4000d2dc951c45789d47a764651ef10
     
     user_info = sg.get_user_info() 
     config.fastapi.user_info = user_info
