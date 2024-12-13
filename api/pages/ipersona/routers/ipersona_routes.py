@@ -1,23 +1,32 @@
 
+import time, os
+import assemblyai as aai
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
-from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionSchema, IpersonaTraineeSchema, IpersonaJobSchema, IpersonaSessionOverallObserverSchema, IpersonaSessionMessageSchema, IpersonaSessionObserverSchema
+
+#
+from api import config
+from api.llm.ipersona.ipersona_strapi_schemas import (
+    IpersonaSessionSchema, 
+    IpersonaTraineeSchema, 
+    IpersonaJobSchema, 
+    IpersonaSessionOverallObserverSchema, 
+    IpersonaSessionMessageSchema, 
+    IpersonaSessionObserverSchema
+)
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_gpt as gpt
 import api.pages.ipersona.models.persona as pemodel
-import time, os
-import assemblyai as aai
 from api.utils.logger import LLPackerLogger
 
 logger = LLPackerLogger(os.path.basename(__file__))
 module_dir= os.path.dirname(__file__)
-module_di= os.path.dirname(__file__)
 data_path = lambda x: os.path.join(module_dir, "folders", x)
-prompt_path = lambda x: os.path.join(module_di, "data/prompts", x)
+prompt_path = lambda x: os.path.join(module_dir, "data/prompts", x)
 
-aai.settings.api_key = "49e5f82458584a70b847f477a035ce48"
+aai.settings.api_key = config.assemblyai.api_key
 transcriber = aai.Transcriber()
 
 routes = FastAPI(root_path="/api")
@@ -333,7 +342,8 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
         ipersona_overall = IpersonaSessionOverallObserverSchema()
         ipersona_user = IpersonaTraineeSchema()
 
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=recieved.all_user_id, nopp=True, dataframe=False)
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=recieved.all_user_id, 
+                                                                  nopp=True, dataframe=False)
 
         if not trainee_profile_data or not isinstance(trainee_profile_data, dict) or len(trainee_profile_data) == 0:
             logger.warn(f"No trainee user profiles found for all_user_id: {recieved.all_user_id}")

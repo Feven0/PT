@@ -488,8 +488,8 @@ class LeapBaseClass:
             if not res:
                 return res     
             if 'data' in res.keys():
-                res = res['data']
-                return self.map_id_to_object_id(res)       
+                logger.warn('`data` key found in when calling map_id_to_object_id with DICT RES object!')
+                return res       
             elif 'id' not in res.keys():
                 logger.error("No ID attribute found in DICT RES object!")
                 return res
@@ -1039,8 +1039,9 @@ class LeapBaseClass:
             ntotal += len(res)
             
             if len(res)>0:      
-                try:          
-                    res = self.map_id_to_object_id(res)
+                try:    
+                    if not kwargs.get('nopp', False):      
+                        res = self.map_id_to_object_id(res)                        
                 except Exception as e:
                     logger.error(f"Error mapping id to object id: {e}")
                     raise
