@@ -241,7 +241,7 @@ class LeapBaseClass:
                         try:
                             new_object[var] = str(val)
                         except Exception as e:
-                            print(e)
+                            # print(e)
                             logger.error(f"Error coarsening STRING object=({var}, {val}). Skipping it ...")                        
                     elif self.type_map[var].startswith('Date'):
                         try:                            
@@ -252,7 +252,7 @@ class LeapBaseClass:
                             except:
                                 new_object[var] = datetime.fromisoformat(val[:-1]).strftime('%Y-%m-%dT%H:%M:%SZ')                                
                         except Exception as e:
-                            print(e)
+                            # print(e)
                             logger.error(f"Error coarsening DATE object=({var}, {val}). Skipping it ...")
                     elif self.type_map[var] in ['Number','Int','Float']:
                         try:
@@ -261,19 +261,19 @@ class LeapBaseClass:
                             else:
                                 new_object[var] = float(val)
                         except Exception as e:
-                            print(e)
+                            # print(e)
                             logger.error(f"Error coarsening {self.type_map[var]} object=({var}, {val}). Skipping it ...")
                     elif self.type_map[var] == 'Boolean':
                         try:
                             new_object[var] = bool(val)
                         except Exception as e:
-                            print(e)
+                            # print(e)
                             logger.error(f"Error coarsening BOOLEAN object=({var}, {val}). Skipping it ...")
                     elif self.type_map[var] == 'JSON':
                         try:
                             new_object[var] = json.loads(val) if isinstance(val, str) else val
                         except Exception as e:
-                            print(e)
+                            # print(e)
                             logger.error(f"Error coarsening JSON object=({var}, {val}). Skipping it ...")  
                     elif 'enum' in self.type_map[var].lower():
                         if val in self.enum_map.get(var, []):
@@ -403,7 +403,7 @@ class LeapBaseClass:
                 #logger.warn(f"Mapping id to *_id for table: {table} ...")
                 return camel_to_snake(table)+'_id'
             except Exception as e:
-                print(e)
+                # print(e)
                 logger.error(f"Invalid table name: {table} to map id to *_id!")
                 return 'id' 
            
@@ -471,7 +471,8 @@ class LeapBaseClass:
             if 'id' not in tenxdf.columns:
                 logger.error("No ID attribute found in DATAFRAME RES object!")
                 if logger.log_level<50:
-                    print(res)
+                    # print(res)
+                    pass
                 return tenxdf
             
             columns={'id': self.id_name()}
@@ -502,7 +503,7 @@ class LeapBaseClass:
                     try:                                           
                         res[newcol] = res.pop(col)
                     except Exception as e:
-                        print(e)
+                        # print(e)
                         logger.error(f"Error mapping {(k, v, col)} to {newcol} in object!")
                         continue
                     
@@ -795,12 +796,12 @@ class LeapBaseClass:
         if scol == 'id' or scol in data:            
             res, _ = self.sg.execute_query(query, variables, **kwargs)
         else:
-            print('==============================')
-            print('exists query:')
-            print(json.dumps(query, indent=4))
-            print('exists variables:')
-            print(json.dumps(variables, indent=4))
-            print('==============================')            
+            # print('==============================')
+            # print('exists query:')
+            # print(json.dumps(query, indent=4))
+            # print('exists variables:')
+            # print(json.dumps(variables, indent=4))
+            # print('==============================')            
             logger.error(f"----> Invalid column={scol} for {table} with attributes: \n {data}!")
             return {}
                       
@@ -1148,8 +1149,8 @@ class LeapBaseClass:
         logger.info(f"Deleting `table={table}` objects ...")
         if logger.log_level<10:
             logger.info("Using the following variables and query: ")
-            print(dvariables)
-            print(dquery)
+            # print(dvariables)
+            # print(dquery)
         
         total = len(object_ids)
         deleted_job_matches = []
@@ -1246,8 +1247,8 @@ class LeapBaseClass:
             
             if logger.log_level<10 and iloop==1:
                 logger.info("1st loop: Using the following variables and query: ")                
-                #print(variables)
-                print(query)
+                # print(variables)
+                # print(query)
                         
             try:
                 res, _ = self.sg.execute_query(query=query, variables=variables, **kwargs) 
@@ -1286,7 +1287,8 @@ class LeapBaseClass:
                             id = self.get_id_from_gql_res(res[0], tname)
                         else:
                             if logger.log_level<20:
-                                print('type(res), res', type(res), res)
+                                # print('type(res), res', type(res), res)
+                                pass
                             id = ""
                             
                         if id:
@@ -1298,14 +1300,14 @@ class LeapBaseClass:
                          
                     logger.good(f"Successfully registered entry to Tenx `table={table}`!")
                 else:
-                    print(res)
+                    # print(res)
                     logger.error(f"Unable to register entry to Tenx `table={table}`!")
             except Exception as e:
                 logger.error(f"Error: {e}")
                 logger.error(f"Unable to register entry to Tenx `table={table}`!")                
                 logger.info(f"---> used the following query and variables: ")
-                #print(variables)
-                print(query)                                
+                # print(variables)
+                # print(query)                                
                 res = []
                 
         return added_item_ids    

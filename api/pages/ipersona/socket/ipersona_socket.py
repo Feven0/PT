@@ -6,10 +6,8 @@ import assemblyai as aai
 from concurrent.futures import ThreadPoolExecutor
 from api import config
 import api.modules.ipersona_parrot_gpt as util
-import api.modules.ipersona_parrot_audio as audio
 import api.llm.ipersona.ipersona_strapi as strapi
 from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionMessageSchema
-import api.modules.ipersona_parrot_audio as audio
 
 
 from api.utils.logger import LLPackerLogger
@@ -40,6 +38,7 @@ async def connect(sid):
 async def disconnect(sid):
     print(f"Transcribe Client Disconnected: {sid}")
    
+# assembly streaming
 @sio.on("audio transcribe")
 async def audio_endpoint(sid, data):
     loop = asyncio.get_event_loop()
@@ -84,7 +83,7 @@ async def audio_endpoint(sid, data):
         print(f"Error in audio streaming: {str(e)}")
 
 
-executor = ThreadPoolExecutor(max_workers=105)  
+# executor = ThreadPoolExecutor(max_workers=105)  
 
 async def synthesize_text(text):
     print("Received text for synthesis:", text)
@@ -105,11 +104,12 @@ async def synthesize_text(text):
     except Exception as e:
         return {"error": str(e)}
 
+# distribute streaming text to form sentences and compute tts in async
 @sio.on("audio chat")
 async def audio_endpoint(sid, data):
     try:
         start_time = time.time()        
-        response = await audio.generate_interview_question(data)
+        response = await util.generate_interview_question(data)
         assistant_next_question = response.get("interview", "")
 
         #tasks = [synthesize_text(chunk) for chunk in assistant_next_question]
@@ -156,7 +156,8 @@ async def audio_endpoint(sid, data):
         elapsed_time = end_time - start_time
         print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
 
-
+# method to save audio chat to database
+# TODO: integrate with audio chat function
 @sio.on("audio chat sentence")
 async def audio_end_point(sid, data):
     print("audio socket response", data["response"])
@@ -184,7 +185,7 @@ async def audio_end_point(sid, data):
         if(data['response']):
             strapi.step1_insert_message(data)
                  
-        response = await audio.generate_interview_question(data) 
+        response = await util.generate_interview_question(data) 
       
         
         if(response != 'None'):
@@ -268,7 +269,7 @@ async def audio_end_point(sid, data):
             
             if(data['response']):
                 start_time02 = time.time()  
-                realtime_evaluation_response_json = audio.realtime_response_evaluation(data)
+                realtime_evaluation_response_json = util.realtime_response_evaluation(data)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
                 logger.info(f"Realtime done {realtime_evaluation}")
 
@@ -302,7 +303,8 @@ async def audio_end_point(sid, data):
         elapsed_time = end_time - start_time  
         print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
     
-
+    
+# handle for text to text chat
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
     try:
@@ -313,6 +315,7 @@ async def interview_endpoint(sid, data):
         chat_count = 1  
         sessionId = data['user_session']['id']
         realtime_evaluation = "null"
+        accumulated_message = ""
 
         # Fetch session chat history
         ipersona_message = IpersonaSessionMessageSchema()
@@ -335,13 +338,12 @@ async def interview_endpoint(sid, data):
         if data['response']:
             strapi.step1_insert_message(data)
 
-        # Generate the next interview question
+        # Generate the next interview question   ["interview"] is not None
         response = await util.generate_interview_question(data)
-
-        if response:
+          
+        if response.get("interview") is not None:
             assistant_next_question = response.get("interview", "")
-            accumulated_message = ""
-
+            
             # Emit the assistant's next question
             message = [
                 {
@@ -382,15 +384,15 @@ async def interview_endpoint(sid, data):
                 await sio.emit("interview chat", message, room=sid)
 
             # Perform real-time response evaluation if applicable
-            if data['response']:
+            if data['response'] is not [None, ""]:
                 start_time02 = time.time()
                 realtime_evaluation_response_json = util.realtime_response_evaluation(data)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
-
+                # logger.info(f"Realtime evaluation is: {realtime_evaluation}")
                 end_time02 = time.time()
                 elapsed_time02 = end_time02 - start_time02
                 logger.info(f"Realtime evaluation processed, time taken: {elapsed_time02:.2f} seconds")
-
+                
                 message = [{
                     "content": {
                         "realtime_evaluation": realtime_evaluation,
@@ -398,6 +400,20 @@ async def interview_endpoint(sid, data):
                     }
                 }]
                 await sio.emit("realtime", message, room=sid)
+                
+        if response.get("status") is not None:
+            message = [{
+                    "user_type": "assistant",
+                    "content_type": "question",
+                    "content": {
+                        "time_taken": "null",
+                        "time_limit": "null",
+                        "chunk_response": "",
+                        "full_response": accumulated_message,
+                        "realtime_evaluation": response.get("realtime")
+                    }
+                }]
+            await sio.emit("last_realtime_evaluation", message, room=sid)          
 
         # Insert the message or conclude the interview if the chat count exceeds the limit
         if chat_count < 9:

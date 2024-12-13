@@ -1,34 +1,23 @@
 
-import time, os
-import assemblyai as aai
-
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
-
-#
-from api import config
-from api.llm.ipersona.ipersona_strapi_schemas import (
-    IpersonaSessionSchema, 
-    IpersonaTraineeSchema, 
-    IpersonaJobSchema, 
-    IpersonaSessionOverallObserverSchema, 
-    IpersonaSessionMessageSchema, 
-    IpersonaSessionObserverSchema
-)
+from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionSchema, IpersonaTraineeSchema, IpersonaJobSchema, IpersonaSessionOverallObserverSchema, IpersonaSessionMessageSchema, IpersonaSessionObserverSchema
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_gpt as gpt
 import api.pages.ipersona.models.persona as pemodel
+import time, os
+import assemblyai as aai
 from api.utils.logger import LLPackerLogger
 
 logger = LLPackerLogger(os.path.basename(__file__))
-
 module_dir= os.path.dirname(__file__)
+module_di= os.path.dirname(__file__)
 data_path = lambda x: os.path.join(module_dir, "folders", x)
-prompt_path = lambda x: os.path.join(module_dir, "data/prompts", x)
+prompt_path = lambda x: os.path.join(module_di, "data/prompts", x)
 
-aai.settings.api_key = config.assemblyai.api_key
+aai.settings.api_key = "49e5f82458584a70b847f477a035ce48"
 transcriber = aai.Transcriber()
 
 routes = FastAPI(root_path="/api")
@@ -124,7 +113,7 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
             logger.warn(f"No trainee user profiles found for all_user_id: {recieved.all_user_id}.")
             return JSONResponse(status_code=404, content={"error": "No trainee user profiles found"})
 
-        tinder_user_profile_id = trainee_profile_data[0]['id']
+        tinder_user_profile_id = trainee_profile_data['id']
         tinder_user_profile_data = util.extract_trainee_neccessary_values(trainee_profile_data)
         logger.info(f"Tinder user profile data extracted for user ID: {tinder_user_profile_id}")
 
@@ -180,7 +169,6 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
             "user_profile_id": tinder_user_profile_id,
             "job_profile_id": recieved.job_profile_id
         }
-
         ipersona_session = IpersonaSessionSchema()
         saved_session = ipersona_session.save_session(
             params=session_data, return_object=True, nopp=True, dataframe=False
@@ -279,7 +267,7 @@ async def calculate_overall_progress(received: pemodel.UserSessionRequestRecieve
             logger.warn(f"No trainee profiles found for user_id: {received.all_user_id}")
             return JSONResponse(status_code=404, content={"error": "No trainee profiles found."})
 
-        tinder_user_profile_id = trainee_profile_data[0].get('id', None)
+        tinder_user_profile_id = trainee_profile_data.get('id', None)
         if not tinder_user_profile_id:
             logger.error(f"Trainee profile missing 'id' for user_id: {received.all_user_id}")
             return JSONResponse(status_code=500, content={"error": "Trainee profile is invalid."})
@@ -315,7 +303,6 @@ async def calculate_overall_progress(received: pemodel.UserSessionRequestRecieve
         elapsed_time = end_time - start_time
         logger.info(f"Time taken for analysis processing: {elapsed_time:.2f} seconds")
 
-
 @routes.post("/calculate_allstat_progress")
 async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestRecieved):
     """
@@ -347,11 +334,12 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
         ipersona_user = IpersonaTraineeSchema()
 
         trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=recieved.all_user_id, nopp=True, dataframe=False)
-        if not trainee_profile_data or not isinstance(trainee_profile_data, list) or len(trainee_profile_data) == 0:
+
+        if not trainee_profile_data or not isinstance(trainee_profile_data, dict) or len(trainee_profile_data) == 0:
             logger.warn(f"No trainee user profiles found for all_user_id: {recieved.all_user_id}")
             return JSONResponse(status_code=404, content={"error": "No trainee user profiles found."})
 
-        tinder_user_profile_id = trainee_profile_data[0].get('id')
+        tinder_user_profile_id = trainee_profile_data.get('id')
         if not tinder_user_profile_id:
             logger.error("Missing tinder_user_profile_id in trainee profile data.")
             return JSONResponse(status_code=500, content={"error": "Error fetching user profile."})
@@ -421,7 +409,7 @@ def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionRequestReci
             logger.warn(f"No trainee user profiles found for all_user_id: {recieved.all_user_id}")
             return JSONResponse(status_code=404, content={"error": "No trainee user profiles found"})
         
-        tinder_user_profile_id = trainee_profile_data[0]['id']
+        tinder_user_profile_id = trainee_profile_data['id']
         logger.info(f"Tinder user profile data extracted for user ID: {tinder_user_profile_id}")
 
         # Step 2: Summarize interview engagement status
@@ -566,8 +554,8 @@ async def fetch_session(recieved: pemodel.UserSessionRequestRecieved):
         logger.info(f"Trainee profile data retrieved for user ID: {recieved.all_user_id}")
 
         # Step 2: Extract user profile ID
-        tinder_user_profile_id = trainee_profile_data[0]['id']
-        
+        tinder_user_profile_id = trainee_profile_data['id']
+         
         # Step 3: Fetch session data by user and job ID
         ipersona_session = IpersonaSessionSchema()
         user_data = ipersona_session.filter_by_with_user_job_id(

@@ -1,12 +1,19 @@
 import time, asyncio
 from openai import OpenAI
 import textwrap
-from api import config
 
-OPENAI_API_KEY = config.openai.api_key
+from api.services.secret import get_auth
+
+OPENAI_API_KEY  = get_auth(ssmkey='OPENAI_PARROT_API_KEY')
+client = OpenAI(api_key=OPENAI_API_KEY )
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+import textwrap
+
+app = FastAPI()
 
 def openai_gpt_assistant_with_streaming(msg):
     model = 'gpt-4o-mini'

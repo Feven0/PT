@@ -245,11 +245,17 @@ class IpersonaSessionSchema(LeapBaseClass):
 
     def get_extracted_data(self, session_json):
         try:
-            if isinstance(session_json, list) and len(session_json) > 0:  
-                first_item = session_json[0]  
-                if 'data' in first_item and 'createIPersonaSession' in first_item['data']:
-                    session = first_item['data']['createIPersonaSession']['data']
-                    return session
+            if isinstance(session_json, list) and len(session_json) > 0:
+                for entry in session_json:
+                    if 'data' in entry:
+                        session = entry.get('data')
+                        return session
+                        
+            # if isinstance(session_json, list) and len(session_json) > 0:  
+            #     first_item = session_json[0]  
+            #     if 'data' in first_item and 'createIPersonaSession' in first_item['data']:
+            #         session = first_item['data']['createIPersonaSession']['data']
+            #         return session
             
             logger.warn("No valid data found in the session JSON.")
             return None
@@ -262,12 +268,17 @@ class IpersonaSessionSchema(LeapBaseClass):
     def get_sessions_data(self, session_json):
         try:
             all_sessions = []
-            if isinstance(session_json, list) and len(session_json) > 0:  
-                first_item = session_json[0]  
-                if 'data' in first_item and 'iPersonaSessions' in first_item['data']:
-                    session = first_item['data']['iPersonaSessions']['data']
-                    all_sessions = session
-                    return all_sessions
+            if isinstance(session_json, list) and len( session_json) > 0:
+                for entry in session_json:
+                    if 'data' in entry:
+                        trainee = entry.get('data')                            
+                        return trainee
+            # if isinstance(session_json, list) and len(session_json) > 0:  
+            #     first_item = session_json[0]  
+            #     if 'data' in first_item and 'iPersonaSessions' in first_item['data']:
+            #         session = first_item['data']['iPersonaSessions']['data']
+            #         all_sessions = session
+            #         return all_sessions
 
             logger.warn("No sessions data found in the session JSON.")
             return None
@@ -280,12 +291,16 @@ class IpersonaSessionSchema(LeapBaseClass):
     def get_session_data(self, session_json):
         try:
             all_sessions = []
-            if isinstance(session_json, dict) and len(session_json) > 0:  
-                first_item = session_json  
-                if 'data' in first_item and 'iPersonaSession' in first_item['data']:
-                    session = first_item['data']['iPersonaSession']['data']
-                    all_sessions = session
-                    return all_sessions
+            if isinstance(session_json, dict) and len(session_json) > 0:
+                if 'data' in session_json:
+                    return session_json['data']
+                        
+            # if isinstance(session_json, dict) and len(session_json) > 0:  
+            #     first_item = session_json  
+            #     if 'data' in first_item and 'iPersonaSession' in first_item['data']:
+            #         session = first_item['data']['iPersonaSession']['data']
+            #         all_sessions = session
+            #         return all_sessions
             
             logger.warn("No session data found in the session JSON.")
             return None
@@ -476,13 +491,17 @@ class IpersonaTraineeSchema(LeapBaseClass):
         """
         try:
             if isinstance(trainee_json, list) and len( trainee_json) > 0:
-                first_item =  trainee_json[0]
-                if 'data' in first_item and 'tinderUserProfiles' in first_item['data']:
-                    trainee = first_item['data']['tinderUserProfiles']['data']
-                    if not trainee:
-                        logger.warn("No trainee profile data found in the extracted data.")
-                        return None
-                    return trainee
+                for entry in trainee_json:
+                    if 'data' in entry:
+                        for trainee in entry.get('data'):                            
+                            return trainee
+                # first_item =  trainee_json[0]
+                # if 'data' in first_item and 'tinderUserProfiles' in first_item['data']:
+                #     trainee = first_item['data']['tinderUserProfiles']['data']
+                #     if not trainee:
+                #         logger.warn("No trainee profile data found in the extracted data.")
+                #         return None
+                #     return trainee
 
             logger.warn("Invalid trainee_json format or missing data.")
             return None
@@ -492,7 +511,7 @@ class IpersonaTraineeSchema(LeapBaseClass):
             return None
     
     
-    def get_extracted_trainee_data(self, data_json):
+    def get_extracted_trainee_data(self, trainee_json):
         """
         Extracts relevant trainee data from a JSON response.
 
@@ -507,14 +526,19 @@ class IpersonaTraineeSchema(LeapBaseClass):
             A dictionary of trainee data or None if no data is found.
         """
         try:
-            if isinstance(data_json, dict) and len(data_json) > 0:
-                first_item = data_json
-                if 'data' in first_item and 'tinderUserProfile' in first_item['data']:
-                    trainee_data = first_item['data']['tinderUserProfile']['data']
-                    if not trainee_data:
-                        logger.warn("No trainee data found in the extracted data.")
-                        return None
-                    return trainee_data
+            if isinstance(trainee_json, list) and len( trainee_json) > 0:
+                for entry in trainee_json:
+                    if 'data' in entry:
+                        for trainee in entry.get('data'):                            
+                            return trainee
+            # if isinstance(data_json, dict) and len(data_json) > 0:
+            #     first_item = data_json
+            #     if 'data' in first_item and 'tinderUserProfile' in first_item['data']:
+            #         trainee_data = first_item['data']['tinderUserProfile']['data']
+            #         if not trainee_data:
+            #             logger.warn("No trainee data found in the extracted data.")
+            #             return None
+            #         return trainee_data
 
             logger.warn("Invalid data_json format or missing data.")
             return None
@@ -604,7 +628,7 @@ class IpersonaJobSchema(LeapBaseClass):
             if not data_json:
                 logger.warn(f"No job data found for job_profile_id: {job_profile_id}")
                 return None
-
+            
             data = self.get_extracted_data(data_json)
             if not data:
                 logger.warn(f"No extracted data for job_profile_id: {job_profile_id}")
@@ -664,21 +688,27 @@ class IpersonaJobSchema(LeapBaseClass):
         """
         try:
             if isinstance(job_json, list) and len(job_json) > 0:
-                first_item = job_json[0]
-                if 'data' in first_item:
-                    if 'tinderJobProfiles' in first_item['data']:
-                        job_data = first_item['data']['tinderJobProfiles']['data']
-                        if not job_data:
-                            logger.warn("No job data found in the extracted data.")
-                            return None
+                for entry in job_json:
+                    if 'data' in entry:
+                        job_data = entry.get('data')
                         return job_data
+                        
+            # if isinstance(job_json, list) and len(job_json) > 0:
+            #     first_item = job_json[0]
+            #     if 'data' in first_item:
+            #         if 'tinderJobProfiles' in first_item['data']:
+            #             job_data = first_item['data']['tinderJobProfiles']['data']
+            #             if not job_data:
+            #                 logger.warn("No job data found in the extracted data.")
+            #                 return None
+            #             return job_data
                     
-                    elif 'tinderUserProfiles' in first_item['data']:
-                        job_data = first_item['data']['tinderUserProfiles']['data']
-                        if not job_data:
-                            logger.warn("No job data found in the extracted data.")
-                            return None
-                        return job_data
+            #         elif 'tinderUserProfiles' in first_item['data']:
+            #             job_data = first_item['data']['tinderUserProfiles']['data']
+            #             if not job_data:
+            #                 logger.warn("No job data found in the extracted data.")
+            #                 return None
+            #             return job_data
 
             logger.warn("Invalid job_json format or missing data.")
             return None
@@ -846,11 +876,16 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
     def get_extracted_data(self, session_json):
         try:
             if isinstance(session_json, list) and len(session_json) > 0:  
-                first_item = session_json[0]
+                # first_item = session_json[0]
 
-                if 'data' in first_item and 'createIPersonaSessionOverallObserver' in first_item['data']:
-                    session = first_item['data']['createIPersonaSessionOverallObserver']['data']
-
+                # if 'data' in first_item and 'createIPersonaSessionOverallObserver' in first_item['data']:
+                #     session = first_item['data']['createIPersonaSessionOverallObserver']['data']
+                
+                if isinstance(session_json, list) and len(session_json) > 0:
+                    for entry in session_json:
+                        if 'data' in entry:
+                            session = entry.get('data')
+                        
                     if not session:
                         logger.warn("No session data found in the extracted data.")
                         return None
@@ -880,16 +915,21 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
                 logger.warn("session_json list is empty")
                 return {"error": "No session data provided."}
 
-            first_item = session_json[0]
-            if 'data' not in first_item:
-                logger.error("First item in session_json is missing the 'data' key")
-                return {"error": "Invalid session data: missing 'data' key."}
+            # first_item = session_json[0]
+            # if 'data' not in first_item:
+            #     logger.error("First item in session_json is missing the 'data' key")
+            #     return {"error": "Invalid session data: missing 'data' key."}
 
-            if 'iPersonaSessionOverallObservers' not in first_item['data']:
-                logger.error("First item 'data' does not contain 'iPersonaSessionOverallObservers'")
-                return {"error": "Invalid session data: missing 'iPersonaSessionOverallObservers' key."}
+            # if 'iPersonaSessionOverallObservers' not in first_item['data']:
+            #     logger.error("First item 'data' does not contain 'iPersonaSessionOverallObservers'")
+            #     return {"error": "Invalid session data: missing 'iPersonaSessionOverallObservers' key."}
 
-            observer_data = first_item['data']['iPersonaSessionOverallObservers'].get('data', [])
+            # observer_data = first_item['data']['iPersonaSessionOverallObservers'].get('data', [])
+            if isinstance(session_json, list) and len(session_json) > 0:
+                for entry in session_json:
+                    if 'data' in entry:
+                        observer_data = entry.get('data')
+                        
             if len(observer_data) == 0:
                 logger.warn("Trainee does not have session overall observer data")
                 return {"error": "No observer data found."}
@@ -923,12 +963,17 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
         try:
             all_datas = []
 
-            if isinstance(data_json, list) and len(data_json) > 0:  
-                first_item = data_json[0]
+            # if isinstance(data_json, list) and len(data_json) > 0:  
+            #     first_item = data_json[0]
 
-                if 'data' in first_item and 'iPersonaSessionOverallObservers' in first_item['data']:
-                    data = first_item['data']['iPersonaSessionOverallObservers']['data']
-
+            #     if 'data' in first_item and 'iPersonaSessionOverallObservers' in first_item['data']:
+            #         data = first_item['data']['iPersonaSessionOverallObservers']['data']
+                    
+            if isinstance(data_json, list) and len(data_json) > 0:
+                for entry in data_json:
+                    if 'data' in entry:
+                        data = entry.get('data')                           
+                            # return trainee
                     if data:
                         for session_item in data:
                             data_attributes = session_item.get('attributes', {}).get('attributes', {})
@@ -1030,20 +1075,24 @@ class IpersonaSessionTinderUserJobMatchSchema(LeapBaseClass):
         try:
             all_datas = []
 
-            if isinstance(data_json, list) and len(data_json) > 0:  
-                first_item = data_json[0]
+            # if isinstance(data_json, list) and len(data_json) > 0:  
+            #     first_item = data_json[0]
 
-                if 'data' in first_item and 'tinderUserJobMatches' in first_item['data']:
-                    data = first_item['data']['tinderUserJobMatches']['data']
-
-                    if data:
-                        all_datas = data
-                    else:
-                        logger.warn("No data data found in 'tinderUserJobMatches'.")
-                        return None
+            #     if 'data' in first_item and 'tinderUserJobMatches' in first_item['data']:
+            #         data = first_item['data']['tinderUserJobMatches']['data']
+            if isinstance(data_json, list) and len(data_json) > 0:
+                for entry in data_json:
+                    if 'data' in entry:
+                        data = entry.get('data')                      
+                        
+                if data:
+                    all_datas = data
                 else:
-                    logger.warn("Missing expected data or 'tinderUserJobMatches' field in data JSON.")
+                    logger.warn("No data data found in 'tinderUserJobMatches'.")
                     return None
+            # else:
+            #     logger.warn("Missing expected data or 'tinderUserJobMatches' field in data JSON.")
+            #     return None
             else:
                 logger.warn("Session JSON is empty or not in the expected list format.")
                 return None
@@ -1142,12 +1191,16 @@ class IpersonaSessionTinderUserReactionSchema(LeapBaseClass):
         try:
             reaction_id = None
 
-            if isinstance(session_json, list) and len(session_json) > 0:  
-                first_item = session_json[0]
+            # if isinstance(session_json, list) and len(session_json) > 0:  
+            #     first_item = session_json[0]
 
-                if 'data' in first_item and 'tinderUserReactions' in first_item['data']:
-                    user_reactions = first_item['data']['tinderUserReactions']['data']
-
+            #     if 'data' in first_item and 'tinderUserReactions' in first_item['data']:
+            #         user_reactions = first_item['data']['tinderUserReactions']['data']
+            if isinstance(session_json, list) and len(session_json) > 0:
+                for entry in session_json:
+                    if 'data' in entry:
+                        user_reactions = entry.get('data')
+                        
                     if len(user_reactions) != 0:
                         reaction_id = user_reactions[0]['id']  
                     else:
@@ -1326,11 +1379,16 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
         try:
             all_sessions_msg = []
 
-            if isinstance(session_json, list) and len(session_json) > 0:  
-                first_item = session_json[0]
-                if 'data' in first_item and 'iPersonaMessages' in first_item['data']:
-                    session_msg = first_item['data']['iPersonaMessages']['data']
-                    all_sessions_msg = session_msg
+            # if isinstance(session_json, list) and len(session_json) > 0:  
+            #     first_item = session_json[0]
+            #     if 'data' in first_item and 'iPersonaMessages' in first_item['data']:
+            #         session_msg = first_item['data']['iPersonaMessages']['data']
+            #         all_sessions_msg = session_msg
+                    
+            if isinstance(session_json, list) and len( session_json) > 0:
+                for entry in session_json:
+                    if 'data' in entry:
+                        all_sessions_msg = entry.get('data')                         
 
                 extracted_messages = []
                 for message in all_sessions_msg:
@@ -1477,11 +1535,17 @@ class IpersonaSessionObserverSchema(LeapBaseClass):
     
     def get_extracted_data(self, session_json):
         try:
-            if isinstance(session_json, list) and len(session_json) > 0:  
-                first_item = session_json[0]
-                if 'data' in first_item and 'createIPersonaObserver' in first_item['data']:
-                    session = first_item['data']['createIPersonaObserver']['data']
-                    return session
+            if isinstance(session_json, list) and len(session_json) > 0:
+                for entry in session_json:
+                    if 'data' in entry:
+                        session = entry.get('data')
+                        return session
+                        
+            # if isinstance(session_json, list) and len(session_json) > 0:  
+            #     first_item = session_json[0]
+            #     if 'data' in first_item and 'createIPersonaObserver' in first_item['data']:
+            #         session = first_item['data']['createIPersonaObserver']['data']
+            #         return session
 
             logger.warn("No valid extracted data found for observer session.")
             return None
@@ -1493,14 +1557,19 @@ class IpersonaSessionObserverSchema(LeapBaseClass):
     def get_session_observer_data(self, session_json):
         try:
             all_sessions_msg = []
+            if isinstance(session_json, list) and len(session_json) > 0:
+                for entry in session_json:
+                    if 'data' in entry:
+                        for session in entry.get('data'):                            
+                            return session
+                        
+            # if isinstance(session_json, list) and len(session_json) > 0:  
+            #     first_item = session_json[0]
+            #     if 'data' in first_item and 'iPersonaObservers' in first_item['data']:
+            #         session_msg = first_item['data']['iPersonaObservers']['data']
+            #         all_sessions_msg = session_msg
 
-            if isinstance(session_json, list) and len(session_json) > 0:  
-                first_item = session_json[0]
-                if 'data' in first_item and 'iPersonaObservers' in first_item['data']:
-                    session_msg = first_item['data']['iPersonaObservers']['data']
-                    all_sessions_msg = session_msg
-
-                    return all_sessions_msg
+            #         return all_sessions_msg
 
             logger.warn("No session observer data found in session JSON.")
             return None
@@ -1590,11 +1659,16 @@ class IpersonaAllUserSchema(LeapBaseClass):
     
     def get_extracted_trainee_data(self, data_json):
         try:
-            if isinstance(data_json, dict) and len(data_json) > 0:  
-                first_item = data_json
-                if 'data' in first_item and 'allUser' in first_item['data']:
-                    data_json = first_item['data']['allUser']['data']
-                    return data_json
+            if isinstance(data_json, list) and len(data_json) > 0:
+                for entry in data_json:
+                    if 'data' in entry:
+                        data_json = entry.get('data')
+                        return data_json
+            # if isinstance(data_json, dict) and len(data_json) > 0:  
+            #     first_item = data_json
+            #     if 'data' in first_item and 'allUser' in first_item['data']:
+            #         data_json = first_item['data']['allUser']['data']
+            #         return data_json
 
             logger.warn("No valid extracted trainee data found.")
             return None
@@ -1686,11 +1760,16 @@ class IpersonaProfileInformationSchema(LeapBaseClass):
     
     def get_extracted_data(self, data_json):
         try:
-            if isinstance(data_json, list) and len(data_json) > 0:  
-                first_item = data_json[0]
-                if 'data' in first_item and 'profileInformations' in first_item['data']:
-                    data_json = first_item['data']['profileInformations']['data'][0]
-                    return data_json
+            if isinstance(data_json, list) and len(data_json) > 0:
+                for entry in data_json:
+                    if 'data' in entry:
+                        data_json = entry.get('data')
+                        return data_json
+            # if isinstance(data_json, list) and len(data_json) > 0:  
+            #     first_item = data_json[0]
+            #     if 'data' in first_item and 'profileInformations' in first_item['data']:
+            #         data_json = first_item['data']['profileInformations']['data'][0]
+            #         return data_json
 
             logger.warn("No valid profile information found in the extracted data.")
             return None
