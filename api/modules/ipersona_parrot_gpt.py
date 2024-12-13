@@ -1246,28 +1246,50 @@ def calculate_session_metrics(sessions):
             job_profile_id = job_profile.get('id')
             user_profile_id = user_profile.get('id')
             
-        
-            ipersona_job = IpersonaJobSchema()
-            ipersona_user = IpersonaTraineeSchema()
-            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
+            # Fetch job title
+            ipersona_job = IpersonaJobSchema()            
+            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, 
+                                                           nopp=True, dataframe=False)            
+            if not job_title_data:
+                logger.warn(f"Skipping session due to missing job data: {session}")
+                continue
             
-            alluserdata = ipersona_user.get_trainee_by_id(user_profile_id=197, nopp=True, dataframe=False)
-            all_user_id = alluserdata["attributes"]["all_users"]["data"][0]["id"]
+            if job_title_data and len(job_title_data) > 0:
+                try:
+                    job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
+                except Exception as e:
+                    logger.error(f"Error processing files: {e}")
+                    job_title = 'Unknown Job Title'
+            else:
+                job_title = 'Unknown Job Title'            
+            
+            # Fetch user data
+            ipersona_user = IpersonaTraineeSchema()
+            alluserdata = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, 
+                                                          nopp=True, dataframe=False)
+            if not alluserdata:
+                logger.warn(f"Skipping session due to missing user data: {session}")
+                continue
+            try:
+                all_user_id = alluserdata["attributes"]["all_users"]["data"][0]["id"]
+            except Exception as e:
+                logger.error(f"Error processing files: {e}")
+                continue
             
 
             ipersona_alluser = IpersonaAllUserSchema()
-            ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
+            ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id = all_user_id, 
+                                                                       nopp=True, dataframe=False, 
+                                                                       return_object=True)
             ipersona_profile = IpersonaProfileInformationSchema()
-            ipersona_profile_data = ipersona_profile .filter_by_all_user_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
+            ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id = all_user_id, 
+                                                                            nopp=True, dataframe=False, 
+                                                                            return_object=True)
             userdata = {**ipersona_alluser_data, **ipersona_profile_data}
      
             ipersona_reaction = IpersonaSessionTinderUserReactionSchema()
             reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=user_profile_id, job_profile_id=job_profile_id, nopp=True, dataframe=False)
             
-            if job_title_data and len(job_title_data) > 0:
-                job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
-            else:
-                job_title = 'Unknown Job Title'
 
             if not job_profile_id or not user_profile_id:
                 logger.warn(f"Skipping session due to missing job/user profile: {session}")
