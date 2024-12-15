@@ -965,36 +965,34 @@ async def calculate_overall_progress(userdata, data: list):
                 response = ipersona_overall.update_session(params=overall_data, nopp=True, dataframe=False, return_object=True)
                 if response:
                     logger.success(f"session overall observer data update with new insert anlaysis")   
-            else:  
-                logger.info(f"Creating a new session job overall observer data")          
-                        
-                ipersona_overall = IpersonaSessionOverallObserverSchema()
-                ipersona_user = IpersonaTraineeSchema()
+        else:  
+            logger.info(f"Creating a new session job overall observer data")          
+                    
+            ipersona_overall = IpersonaSessionOverallObserverSchema()
+            ipersona_user = IpersonaTraineeSchema()
 
-                trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=userdata['all_user_id'], nopp=True, dataframe=False)
-                if not trainee_profile_data:
-                        logger.warn("No trainee user profiles found.")
-                        return []
-                tinder_user_profile_id = trainee_profile_data['id']    
-                message_data = {
-                    "attributes": {
-                        "overall_confidence": confidence_overtime,
-                        "overall_clarity": clarity_overtime,
-                        "overall_engagement": engagement_overtime,
-                        "overall_time_management": overall_time_managements,
-                        "overall_competency": overall_competencies,
-                        "overall_performance": overall_performance_scores
-                    },
-                    "sessionIds": session_ids,
-                    "tinder_user_profile": tinder_user_profile_id,
-                    "tinder_job_profile": userdata['job_profile_id']
-                }
-                
-                response = ipersona_overall.save_Session_Overall_Observer(params=message_data, nopp=True, dataframe=False)
-                logger.success(f"new entry make on session overall observer")
+            trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=userdata['all_user_id'], nopp=True, dataframe=False)
+            if not trainee_profile_data:
+                    logger.warn("No trainee user profiles found.")
+                    return []
+            tinder_user_profile_id = trainee_profile_data['id']    
+            message_data = {
+                "attributes": {
+                    "overall_confidence": confidence_overtime,
+                    "overall_clarity": clarity_overtime,
+                    "overall_engagement": engagement_overtime,
+                    "overall_time_management": overall_time_managements,
+                    "overall_competency": overall_competencies,
+                    "overall_performance": overall_performance_scores
+                },
+                "sessionIds": session_ids,
+                "tinder_user_profile": tinder_user_profile_id,
+                "tinder_job_profile": userdata['job_profile_id']
+            }
+            
+            response = ipersona_overall.save_Session_Overall_Observer(params=message_data, nopp=True, dataframe=False)
+            logger.success(f"new entry make on session overall observer")
             return response
-        else:
-            logger.error(f"Session chat observer contains an error: {session_chatobserver.get('error')}")
     
     except Exception as e:
         logger.error(f"Process failed: ${str(e)}")
