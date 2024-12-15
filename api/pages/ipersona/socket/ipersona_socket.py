@@ -160,30 +160,37 @@ async def audio_endpoint(sid, data):
 # TODO: integrate with audio chat function
 @sio.on("audio chat sentence")
 async def audio_end_point(sid, data):
-    print("audio socket response", data["response"])
+    logger.info("audio socket response", data["response"], data['user_session']['id'])
     try:
-        start_time = time.time()   
+        start_time = time.time()
         global chat_count
         chat_count = 1  
-        sessionId =  data['user_session']['id'] 
+        sessionId = data['user_session']['id']
         realtime_evaluation = "null"
-   
-        ipersona_message = IpersonaSessionMessageSchema()
-        session_chathistory = ipersona_message.filter_by_session_id(sessionId=sessionId, 
-                                                                    nopp=True, 
-                                                                    dataframe=False)
+        accumulated_message = ""
 
-        chat = session_chathistory['count']       
-            
+        # Fetch session chat history
+        ipersona_message = IpersonaSessionMessageSchema()
+        session_chathistory = ipersona_message.filter_by_session_id(
+            sessionId=sessionId, 
+            nopp=True, 
+            dataframe=False
+        )
+
+        chat = session_chathistory['count']
+        logger.info(f"Question Count Is: {chat}")
+
         if chat != 0:  
             chat_total = session_chathistory['total']
             assistant_count = sum(1 for entry in chat_total if entry["user_type"] == "assistant")
-            chat_count += assistant_count 
+            chat_count += assistant_count
         else:
-            pass        
+            logger.info(f"No chat history found for session ID: {sessionId}")
 
-        if(data['response']):
+        # Insert the user's response if provided
+        if data['response']:
             strapi.step1_insert_message(data)
+
                  
         response = await util.generate_interview_question(data) 
       
@@ -205,27 +212,11 @@ async def audio_end_point(sid, data):
                 }
             ]
             
-            await sio.emit("audio chat sentence", message, room=sid)   
-        
-            timelimit = strapi.calculate_time_limit(response)
-            message = [{
-                        "content": {
-                            "time_limit": timelimit.get("time_limit", "null"),
-                        }
-                    }]                    
-            await sio.emit("audio_time_limit", message, room=sid)      
+            await sio.emit("audio chat sentence", message, room=sid)  
             
+            tasks = []
             for chunk in assistant_next_question:
-                accumulated_message += chunk
-                print("Chunk Message")
-                print(chunk)  
-                
-                await sio.emit("audio-one-chunk", chunk, room=sid)
-
-                end_time = time.time() 
-                elapsed_time = end_time - start_time  
-                print(f"Chunk Time taken: {elapsed_time:.2f} seconds")    
-                
+                accumulated_message += chunk                
                 while True:
                     last_period = accumulated_message.rfind('.')
                     last_question = accumulated_message.rfind('?')
@@ -240,69 +231,76 @@ async def audio_end_point(sid, data):
                             }
                         }]  
                                 
-                        await sio.emit("audio-single-chunk-sentence", complete_sentence, room=sid)
                         await sio.emit("audio chat sentence", message, room=sid)
-                        
-                            #-----------------------------------------------------------------#
-                        # tasks = []
-                        # for chunk in assistant_next_question:
-                        #     await sio.emit("audio-single-chunk-sentence", complete_sentence, room=sid)
-                        #     await sio.emit("audio chat sentence", message, room=sid)
-                        #     tasks.append(synthesize_text(complete_sentence))
-                        
-                        # await sio.emit("audio-single-text-chunk-done", room=sid)
-
-                        # audio_chunks = await asyncio.gather(*tasks)
-
-                        # for audio_data in audio_chunks:
-                        #     if isinstance(audio_data, dict) and 'error' in audio_data:
-                        #         print(f"Error: {audio_data['error']}")
-                        #         continue
-
-                        #     await sio.emit("audio-single-chunk", audio_data, room=sid)
-                            #-----------------------------------------------------------------#
-
-                        accumulated_message = accumulated_message[last_end_pos + 1:].strip()
-                        
+                        tasks.append(synthesize_text(complete_sentence))
+                    
+                        accumulated_message = accumulated_message[last_end_pos + 1:].strip()                        
                     else:
                         break   
+             
+            timelimit = strapi.calculate_time_limit(response)
+            message = [{
+                        "content": {
+                            "time_limit": timelimit.get("time_limit", "null"),
+                        }
+                    }]                    
+            await sio.emit("audio_time_limit", message, room=sid)      
+               
+            audio_chunks = await asyncio.gather(*tasks)
             
-            if(data['response']):
-                start_time02 = time.time()  
+            for audio_data in audio_chunks:
+                if isinstance(audio_data, dict) and 'error' in audio_data:
+                    print(f"Error: {audio_data['error']}")
+                    continue
+                
+                await sio.emit("audio-single-chunk", audio_data, room=sid)
+                
+            await sio.emit("audio-single-text-chunk-done", room=sid)
+
+            # Perform real-time response evaluation if applicable
+            if data['response'] is not [None, ""]:
                 realtime_evaluation_response_json = util.realtime_response_evaluation(data)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
-                logger.info(f"Realtime done {realtime_evaluation}")
-
-                end_time02 = time.time() 
-                elapsed_time02 = end_time02 - start_time02
-                print(f"Realtime future exec Time taken: {elapsed_time02:.2f} seconds")
+                logger.success(f"Realtime evaluation is: {realtime_evaluation}")
+            
                 message = [{
                     "content": {
                         "realtime_evaluation": realtime_evaluation,
                         "full_response": accumulated_message
-
                     }
-                }]            
+                }]
                 await sio.emit("audio_realtime", message, room=sid)
+                
+             
+        if response.get("status") is not None:
+            message = [{
+                    "user_type": "assistant",
+                    "content_type": "question",
+                    "content": {
+                        "time_taken": "null",
+                        "time_limit": "null",
+                        "chunk_response": "",
+                        "full_response": accumulated_message,
+                        "realtime_evaluation": response.get("realtime")
+                    }
+                }]
+            await sio.emit("last_audio_realtime_evaluation", message, room=sid)          
 
-        
+        # Insert the message or conclude the interview if the chat count exceeds the limit
         if chat_count < 9:
             strapi.step2_insert_message(data, timelimit, accumulated_message, realtime_evaluation)
-            
         else:
             message = 'interview over'
             await sio.emit("interview done", message, room=sid)
             strapi.step3_insert_message(data, realtime_evaluation)
-          
    
     except Exception as e:
-        print(f'Error: {str(e)}')  
+        logger.error(f'Error: {str(e)}')  
         
     finally:
         end_time = time.time() 
         elapsed_time = end_time - start_time  
-        print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
-    
+        logger.info(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
     
 # handle for text to text chat
 @sio.on("interview chat")

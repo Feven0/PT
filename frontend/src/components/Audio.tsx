@@ -1,286 +1,349 @@
 import { useState, useRef, useEffect } from 'react';
-import { Card, Spin } from 'antd';
+import { AudioOverallFeedbackModal, LoadingSpinner } from './index'
+import { Card, Button, Spin, Collapse, Row, Col } from 'antd';
+const { Panel } = Collapse;
+import WaveSurfer from 'wavesurfer.js';
 import useMiddleSocket from '../hooks/useMiddleSocket';
 import fade from '../assets/fade-circles.svg';
 import '../styles/AudioRecorder/audiorecorder.css'
 import Assembly from './Assembly';
-import AudioPlayer from './AudioPlayer';
+import Api from '../Services/Services';
 
 
 const Audio = () => {
-        const { 
-            handleAudioInterview, 
-            loading, 
-            audiointerview, 
-            audioHistory, 
-            seconds, 
-            minutes, 
-            pause, 
-            setAudioInterview,
-            audioChunk,
-            setAudioInterviewChunk,
-            done,
-            chunk } = useMiddleSocket();
+    const { 
+        handleAudioSentence,
+        loading, 
+        audiointerview, 
+        audioHistory, 
+        seconds, 
+        minutes, 
+        setLoading, 
+        setAudioInterview,} = useMiddleSocket();
+    const latest = JSON.parse(localStorage.getItem("userSession") || 'null');        
+    const [input, setInput] = useState<any>("");
+    const wavesurferRef = useRef<any>(null);
+    const audioQueue = useRef<any>([]); 
+    const isPlayingRef = useRef<any>(false); 
+    const previousLengthRef = useRef<any>(0); 
+    const [sessions, setSession] = useState<any>();
+    const [startfetching, setStartFetch] = useState(true);
+    let timerValue: any;
 
-        const latest = JSON.parse(localStorage.getItem("userSession") || 'null');        
-        const [input, setInput] = useState<any>("");
-        const [show, setShow] = useState<any>(true);
-        const [counter, setCounter] = useState<any>(1);
-        const audioQueue = useRef<any>([]); 
-        // const isPlayingRef = useRef<any>(false); 
-        const previousLengthRef = useRef<any>(0); 
-        let previous_question = "";
-        let timerValue: any;
+    console.log("audio-interview", audiointerview)
+    console.log("audio-history", sessions)
 
     const handleDataFromAudio = (audioTranscript: any) => {
         setInput(audioTranscript);
         if(audioTranscript !== undefined){  
             previousLengthRef.current = 0;
             audioQueue.current = []
-            submitAudio(audioTranscript)
+            ExecuteInterview(audioTranscript)
+        }
+    };
+    
+    const startSession = async() => {
+        setLoading(true)
+        const data = {
+            job_profile_id: 232,
+            all_user_id: 1920
+        };
+        const response = await Api.sessionCreate(data);
+        localStorage.setItem("userSession", JSON.stringify(response?.data))
+        if(response?.data){  
+            timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            handleAudioSentence({ 
+                input, 
+                user_session: response?.data,
+                timerValue,
+                job_profile_id: 232,
+                all_user_id: 1920
+            });
+            setInput('');
+            setLoading(false)
+        }
+        
+    }
+
+    const ExecuteInterview = (audioTranscript: any) => {
+        setAudioInterview([])
+        timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        const user_session = latest;
+        handleAudioSentence({ 
+            input: audioTranscript, 
+            user_session,
+            timerValue,
+            job_profile_id: 232,
+            all_user_id: 1920
+        });
+        setInput('');
+    };
+
+    const handleWaveformClick = (e: any) => {
+        const waveformWidth = e.currentTarget.clientWidth;
+        const clickPosition = e.clientX - e.currentTarget.getBoundingClientRect().left;
+        const seekTo = clickPosition / waveformWidth;
+    
+        if (wavesurferRef.current) {
+          wavesurferRef.current.seekTo(seekTo);
+          wavesurferRef.current.play();
+        }
+      };
+
+      useEffect(() => {
+            wavesurferRef.current = WaveSurfer.create({
+                container: '#waveform',
+                waveColor: '#080808',
+                progressColor: '#f50202',
+                height: 38
+            });        
+
+            wavesurferRef.current.on('finish', () => {
+                if (audioQueue.current.length > 0 && !isPlayingRef.current) {
+                    playNextAudio(); 
+                }
+            });
+
+        return () => {
+            if (wavesurferRef.current) {
+                wavesurferRef.current.destroy();
+                wavesurferRef.current = null;
+            }
+        };
+    }, []);
+
+
+      const playNextAudio = async () => {
+        if (audioQueue.current.length > 0 && !isPlayingRef.current) {
+            const nextUrl = audioQueue.current.shift(); 
+            isPlayingRef.current = true;  
+
+            if (wavesurferRef.current) {
+                wavesurferRef.current.load(nextUrl); 
+
+                wavesurferRef.current.once('ready', () => {
+                    wavesurferRef.current.play();  
+                });
+
+                wavesurferRef.current.once('finish', () => {
+                    isPlayingRef.current = false; 
+                    if (audioQueue.current.length > 0) {
+                        playNextAudio();  
+                    }
+                });
+            } else {
+                console.error("WaveSurfer instance is not initialized.");
+            }
         }
     };
 
-    const startInterview = async() => {
-        if(audiointerview !== undefined){
-            previous_question = audiointerview[0]?.content?.response?.question
-        }
-        const user_session = latest
-        timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        pause();
-        handleAudioInterview({ 
-            input: input, 
-            interview: audioHistory, 
-            user_session: user_session,
-            counter: counter,
-            timerValue: timerValue,
-            previous_question: previous_question
-        });
-        setCounter(counter < 9 ? counter + 1 : 1);
-        setShow(false)
-    }  
+    const synthesizeAudio = async (newChunks: any) => {
+        try {
+            if (newChunks.length > 0) {
+                const concatenatedBlob = await concatenateChunks(newChunks);  
+                const url = URL.createObjectURL(concatenatedBlob);
+                audioQueue.current.push(url);  
 
-    const submitAudio = async(audioTranscript: any) => {;
-        setAudioInterview([])
-        setAudioInterviewChunk([])
-        if(audiointerview !== undefined){
-            previous_question = audiointerview[0]?.content?.response?.question
+                if (!isPlayingRef.current) {
+                    playNextAudio();  
+                }
+            } else {
+                console.error('No audio interview chunks available');
+            }
+        } catch (error) {
+            console.error('Error processing audio:', error);
         }
-        const user_session = latest
-        timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        handleAudioInterview({ 
-            input: audioTranscript, 
-            interview: audioHistory, 
-            user_session: user_session,
-            counter: counter,
-            timerValue: timerValue,
-            previous_question: previous_question
+    };
+
+    const concatenateChunks = async (chunks: any) => {
+        const arrays = await Promise.all(chunks.map(async (chunkUrl: any) => {
+            const response = await fetch(chunkUrl);
+            const arrayBuffer = await response.arrayBuffer();
+            return new Uint8Array(arrayBuffer);
+        }));
+
+        const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
+        const concatenated = new Uint8Array(totalLength);
+
+        let offset = 0;
+        arrays.forEach(arr => {
+            concatenated.set(arr, offset);
+            offset += arr.length;
         });
-        setCounter(counter < 9 ? counter + 1 : 1);
+
+        return new Blob([concatenated], { type: 'audio/mpeg' });
+    };
+
+    const processNewChunks = async () => {
+        const newChunks = audiointerview.slice(previousLengthRef.current);  
+        if (newChunks.length > 0) {
+            await synthesizeAudio(newChunks);
+            previousLengthRef.current = audiointerview.length;  
+            setLoading(false)  
+        }
+    };
+
+    useEffect(() => {
+        if (audiointerview.length > previousLengthRef.current) {
+            setLoading(true)
+            processNewChunks();  
+        }
+    }, [audiointerview]);
+
+    const fetchSession = async() =>{
+        const latest = JSON.parse(localStorage.getItem("userSession") || 'null');        
+        console.log("session", latest)
+
+        const data = {
+            sessionId: latest?.id
+        }
+        const response = await Api.fetchSingleSession(data)
+        // check the storage session match with the new session id
+        console.log("session", latest)
+        setSession(response?.data)
+        // setStartFetch(false);
     }
 
     useEffect(() => {
-        const delay = 6000;  
-        const timer = setTimeout(() => {
-            // setIsVisible(true);  
-        }, delay);
+        if (startfetching) {
+           fetchSession();
+        }
+    }, [startfetching == true]);
 
-        return () => clearTimeout(timer);  
-    }, [audioChunk]);
-    
-
-    // useEffect(() => {
-    //     if (!wavesurferRef.current) {
-    //         wavesurferRef.current = WaveSurfer.create({
-    //             container: '#waveform', // Your container element
-    //             waveColor: 'violet',
-    //             progressColor: 'purple',
-    //             // other options...
-    //         });
-    //     }
-    
-    //     // Clean up WaveSurfer instance on unmount
-    //     return () => {
-    //         if (wavesurferRef.current) {
-    //             wavesurferRef.current.destroy();
-    //             wavesurferRef.current = null;
-    //         }
-    //     };
-    // }, []);
-
-    // // Load the audio URL into WaveSurfer when `aud` changes
-    // useEffect(() => {
-    //     if (aud && wavesurferRef.current) {
-    //         wavesurferRef.current.load(aud); // Load the audio URL into WaveSurfer
-
-    //         // Optional: Play the audio when it's ready
-    //         wavesurferRef.current.once('ready', () => {
-    //             wavesurferRef.current.play();
-    //         });
-    //     }
-    // }, [aud]); // Trigger this effect when `aud` changes
-
-    // // API call to fetch the synthesized audio
-    // const Api = {
-    //     textToSpeech: async () => {
-    //         return axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/synthesize`, {}, {
-    //             responseType: 'blob',  // Expecting binary data (Blob)
-    //         });/tts
-    //     },
-    // };
-
-    // // Function to synthesize audio
-    // const synthesizeAudio = async () => {
-    //     try {
-    //         setLoading(true);
-    
-    //         const response = await Api.textToSpeech();  // Call the FastAPI backend
-    
-    //         if (response && response.data) {
-    //             const blob = response.data;
-    //             console.log("Blob size:", blob.size); // Log the blob size
-    //             if (blob.size === 0) {
-    //                 console.error('Received an empty audio file.');
-    //                 return;
-    //             }
-    
-    //             const audioBlob = new Blob([await blob.arrayBuffer()], { type: 'audio/mpeg' });
-    //             const url = URL.createObjectURL(audioBlob);
-    //             setAudd(url);  // Set the audio URL in state
-    //         } else {
-    //             console.error('Error:', response.data.error);
-    //         }
-    
-    //         setLoading(false);
-    //     } catch (error) {
-    //         console.error('Error generating audio:', error);
-    //         setLoading(false);
-    //     }
-    // };
-    
-
-    // const synthesizeAudio = async () => {
-    //     // console.log('New chunks for synthesis:', newChunks);
-    //     const newChunks = ['I can dance, but she can code', 'can', 'dance', ',', 'she', 'does', 'coding']
-    //     try {
-    //         setLoading(true);
-    
-    //         // for (const sentence of newChunks) {
-    //         console.log("entry", "sentence")
-    //         const mp3 = await openai.audio.speech.create({
-    //             model: "tts-1",
-    //             voice: "nova",
-    //             input: "sentence",
-    //         });
-            
-    //         const audioBlob = new Blob([await mp3.arrayBuffer()], { type: 'audio/mpeg' });
-    //         const url = URL.createObjectURL(audioBlob);
-    //         console.log("cardi", url)
-    //         setAudd(url)
-    //         audioQueue.current.push(url);    
-             
-    //         // }
-    //            if (!isPlayingRef.current) {
-    //                 playNextAudio(); 
-    //             }
-    
-    //         setLoading(false);
-    //     } catch (error) {
-    //         console.error('Error generating audio:', error);
-    //         setLoading(false);
-    //     }
-    // };
-    
-    // const synthesizeAudio = async (newc: any) => {
-    //     try {
-    //         setLoading(true);
-    
-    //         if (newc.length > 0) {
-    //             newc.forEach((chunkUrl: any) => {
-    //                 audioQueue.current.push(chunkUrl);  
-    //             });
-    
-    //             if (!isPlayingRef.current) {
-    //                 playNextAudio(); 
-    //             }
-    //         } else {
-    //             console.error('No audio interview chunks available');
-    //         }
-    
-    //         setLoading(false);
-    //     } catch (error) {
-    //         console.error('Error processing audio:', error);
-    //         setLoading(false);
-    //     }
-    // };
-
-    
     return (
-        <>
-        <div>
-            <p>Response comes in a chunk per socket emit</p>
-
-        </div>
-        <div style={{display: 'flex', gap: '15rem', margin: '0rem 5rem 0rem 29rem'}}>
-            <div style={{ width: '600px' }}>
-                <Card title="Audio Interview" bordered={true}>                    
-                    <div 
-                        className='timer-container'
-                        style={{ 
-                        fontSize: '20px', 
-                        display: 'flex', 
-                        justifyContent:'space-between',
-                        }}>
-                        
-                        {show && (<div>
-                            <button 
-                                style={{
-                                    fontSize:'1rem',
-                                    backgroundColor: '#f34e38', 
-                                    border: 'none', 
-                                    padding:'0.7rem', 
-                                    borderRadius: '0.6rem', 
-                                    cursor: 'pointer', 
-                                    width: '8rem'}} 
-                                    // onClick={synthesizeAudio}
-                                    onClick={startInterview}
+        <>            
+            {/* {!open && ( */}
+                <Row gutter={16} style={{marginLeft: '6rem'}}>
+                    <Col span={12}>
+                        <Card title="Audio Interview" bordered={true}>
+                            <div 
+                                className='timer-container'
+                                style={{ 
+                                fontSize: '20px', 
+                                display: 'flex', 
+                                justifyContent:'space-between',
+                                }}>
+                                
+                                <Button 
+                                    type="primary"
+                                    size="large"
+                                    style={{ backgroundColor: '#f34e38', borderColor: '#f34e38' }}
+                                    onClick={startSession}
                                 >
-                                start
-                            </button>
-                        </div>)}
-                        <div className='timer'>
-                            {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-                        </div>                    
-                    </div>
-                    
-                    {(loading) && <Spin indicator={<img src={fade} alt="" className='h-10' />} />}
-                    
-                    <div className='audio-container'>    
-                        {chunk && (              
-                            <div className="chat-chunk-container">                            
-                                {audioChunk?.map((item: any, index: any) => (
-                                    <p className="chat-chunk" key={index}>
-                                        {item}
-                                    </p> 
-                                ))}
-                            </div> 
+                                    Start
+                                </Button>
+
+                                <div className='timer'>
+                                    {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+                                </div>                    
+                            </div>
+
+                            {loading && <Spin indicator={<img src={fade} alt="" className='actions-load' />} />}
+
+                            {audioHistory
+                                ?.filter((item: any) => item?.user_type === 'assistant')
+                                ?.slice(-1)
+                                ?.map((message: any, index: any) => (
+                                    <div className='audio-container' key={index}>
+                                        {message?.content?.chunk_response !== "" && (
+                                            <div className="chat-chunk-container">
+                                                {message?.content?.time_limit !== "null" && (
+                                                    <div>
+                                                        time limit: {message?.content?.time_limit}
+                                                    </div>
+                                                )}
+                                                {message?.content?.chunk_response?.map((msg: any, idx: any) => (
+                                                    <p className="chat-chunk" key={idx}>
+                                                        {msg}
+                                                    </p>
+                                                ))}
+                                          
+                                            </div>
+                                    )}                          
+                                </div>
+                            ))}
+
+                            <div className='audio-container'>
+                                {/* {isOn && ( */}
+                                {loading && <LoadingSpinner style={{ marginLeft: '5px' }} />}
+
+                                    <div 
+                                        id="waveform" 
+                                        style={{ 
+                                            width: '50%', 
+                                            height: '20px', 
+                                            marginTop: '0px', 
+                                            marginBottom: '10px' 
+                                        }} 
+                                        className='waveform'
+                                        onClick={handleWaveformClick}
+                                    >                        
+                                    </div>   
+                                {/* )}  */}
+                            </div>
                             
-                        )}
+                            <div>
+                                <Assembly 
+                                    sendDataToParent={handleDataFromAudio} 
+                                /> 
+                            </div>
+                        </Card>
+                    </Col>
 
-                        {done && (
-                        <AudioPlayer
-                         audiointerview={audiointerview}/>)}
-                    </div>    
+                    {audioHistory?.length !== 0 && (
+                        <Col span={10}>
+                            <Card title="Real-Time Feedback" bordered={true}>
+                                <Collapse accordion>
+                                    {audioHistory
+                                        ?.filter((item: any) => item?.user_type === 'assistant') 
+                                        ?.filter((item: any) => item?.content?.realtime_evaluation && item?.content?.realtime_evaluation !== 'null') 
+                                        ?.map((item: any, index: any) => (
+                                            <Panel 
+                                                header={
+                                                    <strong>Interview Evaluation {index + 1}</strong>
+                                                } 
+                                                key={index}
+                                            >
+                                                {item?.content?.realtime_evaluation && (
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <div>
+                                                            <p><strong>Overall Feedback:</strong> {item?.content?.realtime_evaluation?.overall?.feedback}</p>
+                                                            {item?.content?.realtime_evaluation?.answer_relevancy?.length > 0 && (
+                                                            <>
+                                                                <p><strong>Answer Relevance:</strong> {item?.content?.realtime_evaluation?.answer_relevancy?.[0]?.level}%</p>                                                
+                                                            </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </Panel>
+                                    ))}
+                                </Collapse>                      
+                            </Card>
 
-                    <div>
-                        <Assembly
-                            sendDataToParent={handleDataFromAudio} 
-                        /> 
-                    </div>
-                </Card>
-            </div>
-        </div>            
+                            {sessions !== undefined && (
+                                <div>
+                                    {sessions?.attributes?.i_persona_observer?.data !== null && (
+                                        <span>
+                                            {(() => {
+                                                const item = sessions.attributes.i_persona_observer.data;
+                                                return (
+                                                    <AudioOverallFeedbackModal
+                                                        metricsData={item?.attributes?.attributes?.interview_evaluation_metrics}
+                                                        evaluationData={item?.attributes?.attributes?.interview_evaluation} 
+                                                    />
+                                                );
+                                            })()}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </Col>
+                    )}
+                </Row>
+            {/* )} */}
         </>
+
     );
 };
 

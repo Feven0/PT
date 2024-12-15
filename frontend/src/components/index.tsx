@@ -21,14 +21,11 @@ export {default as Metrics} from './Metrics'
 export {default as LoadingSpinner} from './LoadingSpinner'
 export {default as LoadingIndicator} from './LoadingIndicator'
 export {default as UserOverallProgress} from './UserOverallProgress'
-export {default as AudioSentence} from './AudioSentence'
-export {default as Audio2Chunk} from './Audio2Chunk'
 export {default as AdminDashboard} from './AdminDashboard'
 export {default as StatusDashboard} from './StatusDashboardAdmin'
 export {default as DashboardLayout} from './DashboardLayout'
 export {default as UserOverall} from './UserOverall'
 export {default as AllDataFilterAdmin} from './AllDataFilterAdmin'
-
 export {default as Messages} from './Messages'
 
 

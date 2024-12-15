@@ -91,7 +91,6 @@ cat <<EOF > .env
 NODE_ENV=${NODE_ENV}
 VITE_REACT_APP_BACKEND_URL=https://dev-frog-ipersona.10academy.org
 VITE_REACT_APP_SOCKET_URL=https://dev-frog-ipersona.10academy.org:6789
-VITE_REACT_APP_OPENAI_KEY = 'sk-proj-s_602qldi_p2UpWgJ3ghdzDiEvlhm0zOJOjjhMRLZNAnVw8FHrhm6xH_bk0fiEFdeuOJud3qcDT3BlbkFJ4876PZ8qD49zCEL6aUmFlMvrMSb_GU_3U9ttoCIwZRRI_xvpFFhEbSLkpZGGs6LZyZfxPNKMA'
 EOF
 
 #=========================================

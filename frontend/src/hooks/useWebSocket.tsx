@@ -21,6 +21,8 @@ const useWebSocket = (url: string) => {
       console.log('Connected to WebSocket server');
     });
 
+        // ================================= text To text Sockets =============================//
+
     newSocket.on('interview chat', (message) => {
       setChatInterview((prevMessages) => {
         if (!Array.isArray(prevMessages)) {
@@ -115,11 +117,17 @@ const useWebSocket = (url: string) => {
       console.log("interview done", message)
     });
 
+    // ================================= ================= =============================//
+
+
+
+    
+    // ================================= Audio To Audio Sockets =============================//
     newSocket.on('audio transcribe', (message) => {
       console.log('audio transcribe', message);
         setAssemblyTTS((prevMessages) => [...prevMessages, message]);
     });
-
+      
     newSocket.on('audio chat sentence', (message) => {
       setAudioHistory((prevMessages) => {
         if (!Array.isArray(prevMessages)) {
@@ -204,6 +212,11 @@ const useWebSocket = (url: string) => {
 
     });
 
+    newSocket.on('last_audio_realtime_evaluation', (message) => {
+      setAudioHistory((prevMessages) => [...prevMessages, ...message]);      
+    });
+
+
     newSocket.on('audio-one-chunk', (message) => {
       setAudioInterviewChunk((prevMessages) => [...prevMessages, message]);
     });
@@ -214,12 +227,8 @@ const useWebSocket = (url: string) => {
 
     
     newSocket.on('audio-single-chunk', (message) => {
-      // setAudioInterviewChunk((prevMessages) => [...prevMessages, message]);
-      // setAudioInterview((prevMessages) => [...prevMessages, message]);
       const blob = new Blob([message], { type: "audio/mpeg" });
       const audioUrl = URL.createObjectURL(blob);
-
-      // Add the audio URL to the state (for playback)
       setAudioInterview((prevMessages) => [...prevMessages, audioUrl]);
     });
 
@@ -231,18 +240,8 @@ const useWebSocket = (url: string) => {
       setChunkDone(true);
     })
 
-    newSocket.on('audio-ten-chunks', (message) => {
-      setAudioInterview((prevMessages) => [...prevMessages, message]);
-    });
+        // ================================= ================= =============================//
 
-
-    newSocket.on('audio-double-single-chunk', (message) => {
-      setAudioInterviewChunk((prevMessages) => [...prevMessages, message]);
-    });
-
-    newSocket.on('audio-double-ten-chunks', (message) => {
-      setAudioInterview((prevMessages) => [...prevMessages, message]);
-    });
 
     newSocket.on('disconnect', () => {
       console.log('Disconnected from WebSocket server');
