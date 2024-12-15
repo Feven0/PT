@@ -201,7 +201,7 @@ const Audio = () => {
         // check the storage session match with the new session id
         console.log("session", latest)
         setSession(response?.data)
-        // setStartFetch(false);
+        setStartFetch(true);
     }
 
     useEffect(() => {
