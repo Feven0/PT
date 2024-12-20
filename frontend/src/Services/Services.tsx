@@ -11,7 +11,11 @@ const Api = {
   OverallSesssionMetrics: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/calculate_session_overall_progress`, data),
   AnalyticsOverview: () => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/admin_overview_status`),
   ApplicationManager: () => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/admin_user_data`),
-  UserStatus: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/engagement_jobs_status`, data)
+  UserStatus: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/engagement_jobs_status`, data),
+  AdminOverview: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/admin_overview_status`, data),
+  AdminUsers: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/admin_allusers_data`, data),
+  AdminJobs: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/admin_alljobs_data`, data),
+  AdminUserMetrics: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/admin_allusers_performance_data`, data)
 };
 
 

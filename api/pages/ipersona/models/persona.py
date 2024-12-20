@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
+default_days_since = 0
+
 class UserRequestRecieved(BaseModel):
     userId: str
     
@@ -36,6 +38,10 @@ class ClarificationRequestRecieved(BaseModel):
 class audioRequestRecieved(BaseModel):
     text: str
    
+class AdminDataFiltering(BaseModel):
+    limit: Optional[int] = default_days_since
+    since: Optional[int] = default_days_since
+
     
 
 

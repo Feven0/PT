@@ -1120,7 +1120,7 @@ def summarize_interviews(user_profile_id):
             )
             
             if total_score > 0:
-                average_score = round(total_score / complete_sessions_count, 2)
+                average_score = round(total_score / complete_sessions_count, 2) if complete_sessions_count > 0 else "N/A"
             else:
                 average_score = 'Not Available'
             
@@ -1166,33 +1166,105 @@ def summarize_interviews(user_profile_id):
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
-
 def extracted_needed_metrics(data):
     try:
-        extracted_observers = []
+        extracted_observers = []  
         
         for session in data:
+            extracted_session = {}              
+            # Extract session id
+            extracted_session['session_id'] = session['id']
+            
+            # Get observer data
             observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
-            # Extract necessary data if observer data exists
-            if observer_data:
-                observer_attributes = observer_data.get('attributes', {}).get('attributes', {}).get('interview_evaluation_metrics', {})
-                session['overall_performance_score'] = observer_attributes.get('overall_performance_score', None)
-            else:
-                # Handle case where observer data does not exist
-                session['not_found'] = True
-                session['overall_performance_score'] = None
+     
+            # Determine if the session is complete
+            complete_status = observer_data is not None
+            extracted_session['complete_status'] = complete_status  
 
-            # Always assign job_profile_id and createdAt, even if observer data is missing
-            session['createdAt'] = session['attributes'].get('createdAt')
-            session['job_profile_id'] = session['attributes']['tinder_job_profile']['data']['id']
-            session['userprofileId'] = session['attributes']['tinder_user_profile']['data']['id']
-            extracted_observers.append(session)
+            if observer_data:
+                # Extract observer attributes
+                observer_attributes = observer_data.get('attributes', {}).get('attributes', {}).get('interview_evaluation_metrics', {})
+                
+                # Overall performance score
+                extracted_session['overall_performance_score'] = observer_attributes.get('overall_performance_score', None)
+                
+                # Extract performance levels (confidence)
+                performance = observer_attributes.get('performance', [])
+                for item in performance:
+                    if isinstance(item, dict):  
+                        extracted_session['confidence'] = item.get('level', None)
+                        
+                # Extract communication skills (clarity and engagement)
+                communication_skills = observer_attributes.get('communication_skills', [])
+                for skill_data in communication_skills:
+                    if isinstance(skill_data, dict):
+                        if skill_data.get('skill') == 'clarity':
+                            extracted_session['clarity'] = skill_data.get('level', None)
+                        elif skill_data.get('skill') == 'engagement':
+                            extracted_session['engagement'] = skill_data.get('level', None)        
+            else:
+                # Handle case where observer data is missing
+                extracted_session['overall_performance_score'] = None
+                extracted_session['confidence'] = None
+                extracted_session['clarity'] = None
+                extracted_session['engagement'] = None
+
+            # Extract additional session details
+            extracted_session['createdAt'] = session['attributes'].get('createdAt')
+            extracted_session['job_profile_id'] = session['attributes']['tinder_job_profile']['data']['id']
+            extracted_session['user_profile_id'] = session['attributes']['tinder_user_profile']['data']['id']
+       
+            # Append extracted session data
+            extracted_observers.append(extracted_session)
         
+        return extracted_observers  
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+# def extracted_needed_metrics(data):
+#     try:
+#         extracted_observers = []
+        
+#         for session in data:
+#             observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
+#             # Extract necessary data if observer data exists
+#             if observer_data:
+#                 observer_attributes = observer_data.get('attributes', {}).get('attributes', {}).get('interview_evaluation_metrics', {})
+#                 session['overall_performance_score'] = observer_attributes.get('overall_performance_score', None)
+#             else:
+#                 # Handle case where observer data does not exist
+#                 session['not_found'] = True
+#                 session['overall_performance_score'] = None
+
+#             # Always assign job_profile_id and createdAt, even if observer data is missing
+#             session['createdAt'] = session['attributes'].get('createdAt')
+#             session['job_profile_id'] = session['attributes']['tinder_job_profile']['data']['id']
+#             session['userprofileId'] = session['attributes']['tinder_user_profile']['data']['id']
+#             extracted_observers.append(session)
+        
+#         return extracted_observers
+#     except Exception as e:
+#         logger.error(f"Error processing files: {e}")
+#         return {'error': str(e)}
+
+def extract_observers_metrics(data):
+    try:
+        extracted_observers = []
+        for message in data:
+            if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
+                message_data = message['attributes']['i_persona_observer']['data']
+                message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
+                message_attributes['createdAt'] = message['attributes']['createdAt']
+                message_attributes['obs_id'] = message['attributes']['i_persona_observer']['data']['id']
+                extracted_observers.append(message_attributes)
+
         return extracted_observers
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
-    
+ 
 def extract_observers_metrics(data):
     try:
         extracted_observers = []
@@ -1244,55 +1316,33 @@ def calculate_session_metrics(sessions):
             job_profile_id = job_profile.get('id')
             user_profile_id = user_profile.get('id')
             
-            # Fetch job title
-            ipersona_job = IpersonaJobSchema()            
-            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, 
-                                                           nopp=True, dataframe=False)            
-            if not job_title_data:
-                logger.warn(f"Skipping session due to missing job data: {session}")
-                continue
-            
-            if job_title_data and len(job_title_data) > 0:
-                try:
-                    job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
-                except Exception as e:
-                    logger.error(f"Error processing files: {e}")
-                    job_title = 'Unknown Job Title'
-            else:
-                job_title = 'Unknown Job Title'            
-            
-            # Fetch user data
+            ipersona_job = IpersonaJobSchema()
             ipersona_user = IpersonaTraineeSchema()
-            alluserdata = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, 
-                                                          nopp=True, dataframe=False)
-            if not alluserdata:
-                logger.warn(f"Skipping session due to missing user data: {session}")
-                continue
-            try:
-                all_user_id = alluserdata["attributes"]["all_users"]["data"][0]["id"]
-            except Exception as e:
-                logger.error(f"Error processing files: {e}")
-                continue
-            
+            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
+
+            alluserdata = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, nopp=True, dataframe=False)
+
+            all_user_id = alluserdata["attributes"]["all_users"]["data"][0]["id"]
 
             ipersona_alluser = IpersonaAllUserSchema()
-            ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id = all_user_id, 
-                                                                       nopp=True, dataframe=False, 
-                                                                       return_object=True)
+            ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
+
             ipersona_profile = IpersonaProfileInformationSchema()
-            ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id = all_user_id, 
-                                                                            nopp=True, dataframe=False, 
-                                                                            return_object=True)
+            ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
             userdata = {**ipersona_alluser_data, **ipersona_profile_data}
-     
+      
             ipersona_reaction = IpersonaSessionTinderUserReactionSchema()
-            reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=user_profile_id, job_profile_id=job_profile_id, nopp=True, dataframe=False)
-            
+            reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=user_profile_id, job_profile_id=1533, nopp=True, dataframe=False)
+          
+            if job_title_data and len(job_title_data) > 0:
+                job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
+            else:
+                job_title = 'Unknown Job Title'
 
             if not job_profile_id or not user_profile_id:
                 logger.warn(f"Skipping session due to missing job/user profile: {session}")
                 continue
-
+            
             if job_profile_id not in unique_job_profiles:
                 unique_job_profiles.add(job_profile_id)
                 job_profile_count += 1
@@ -1330,15 +1380,14 @@ def calculate_session_metrics(sessions):
 
         job_profile_frequency = sorted(job_profile_frequency, key=lambda x: x['count'], reverse=True)
         user_profile_frequency = sorted(user_profile_frequency, key=lambda x: x['count'], reverse=True)
-
+        total_session = complete_sessions + complete_sessions
         result = {
-            'session_count': session_count,
+            'interviews_count': session_count,
             'job_profile_count': job_profile_count,
             'user_profile_count': user_profile_count,
             'complete_sessions': complete_sessions,
-            'incomplete_sessions': incomplete_sessions,
-            'job_profile_frequency': job_profile_frequency,
-            'user_profile_frequency': user_profile_frequency,
+            'incomplete_sessions': complete_sessions,
+            'total_interview_sessions': total_session
         }
 
         return result
@@ -1349,123 +1398,216 @@ def calculate_session_metrics(sessions):
 
 def summarize_allusers_data(data):
     try:
-        data = extracted_needed_metrics(data)
-        job_summary = defaultdict(list)
-        processed_pairs = set()
+        data = extracted_needed_metrics(data)  # Extract required metrics from the raw data
+        user_summary = defaultdict(list)  # Dictionary to group records by user_profile_id
 
         for record in data:
-            job_profile_id = record['job_profile_id']
-            userprofileId = record['userprofileId']
-            job_summary[job_profile_id].append(record)
-        
-        summary_response = []
+            user_profile_id = record['user_profile_id']
+            user_summary[user_profile_id].append(record)
 
-        for job_profile_id, records in job_summary.items():
-            # Sum only valid scores (exclude None)
-            total_score = sum(record['overall_performance_score'] for record in records if record['overall_performance_score'] is not None)
-            
-            interviews_count = len(records)
-            average_score = total_score / interviews_count if interviews_count > 0 else 0
-                       
-            ipersona_job = IpersonaJobSchema()
-            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
-            
-            if job_title_data and len(job_title_data) > 0:
-                job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
-            else:
-                job_title = 'Unknown Job Title'
-            
+        trainees_detailed_data = []
+
+        for user_profile_id, records in user_summary.items():
+            job_profile_ids = set()  
+            complete_sessions_count = 0
+            incomplete_sessions_count = 0
+            total_interview_score = 0
+            total_interviews_count = 0
+
+            # Aggregating data for each user
             for record in records:
-                userprofileId = record['userprofileId']
+                job_profile_id = record['job_profile_id']
+                job_profile_ids.add(job_profile_id)  
                 
-                ipersona_user = IpersonaTraineeSchema()
-                all_user_data = ipersona_user.get_trainee_by_id(user_profile_id=userprofileId, nopp=True, dataframe=False, return_object=True)
-                all_user_id = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
-                
-                ipersona_alluser = IpersonaAllUserSchema()
-                ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
-                ipersona_profile = IpersonaProfileInformationSchema()
-                ipersona_profile_data = ipersona_profile .filter_by_all_user_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
-                userdata = {**ipersona_alluser_data, **ipersona_profile_data}
-                
-                if (job_profile_id, userprofileId) in processed_pairs:
-                    continue  
-                
-                ipersona_user = IpersonaTraineeSchema()
-                trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=all_user_id, nopp=True, dataframe=False)
-                if not trainee_profile_data:
-                        logger.warn("No trainee user profiles found.")
-                        return []
-                tinder_user_profile_id = trainee_profile_data['id']
-                tinder_job_profile_id = job_profile_id
-
-                ipersona_match = IpersonaSessionTinderUserJobMatchSchema()
-                job_match_data = ipersona_match.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
-            
-                if job_match_data and len(job_match_data) > 0:
-                    match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
-                    job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
-                   
-                    ipersona_reaction = IpersonaSessionTinderUserReactionSchema()
-                    reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
+                if record.get('complete_status') is True:
+                    complete_sessions_count += 1
                 else:
-                    match_score = 'Unknown'
-                    job_match = 'Unknown'
+                    incomplete_sessions_count += 1
+
+                # if record.get('ovtrainees_detailed_dataerall_performance_score') is not None:
+                # total_interview_score += record['overall_performance_score']
                 
-                processed_pairs.add((job_profile_id, userprofileId))
+                total_interviews_count += 1 
                 
-                summary_response.append({
-                    "job_profile_id": job_profile_id,
-                    "userprofileId": userprofileId,
-                    "reaction_id": reaction_id,
-                    "all_user_id": all_user_id,
-                    "job_title": job_title,
-                    "job_match_score": match_score,
-                    "job_match": job_match,
-                    "interviews": interviews_count,
-                    "score": round(average_score, 2),
-                    "name": userdata['name'],
-                    "role": userdata['role'],
-                    "batch": userdata['Batch'],
-                    "gender": userdata['gender'],
-                    "nationality": userdata['nationality']
-                })
-                
-                aggregated = aggregate_user_data(summary_response)
-                result = {
-                    "summary_response": summary_response,
-                    "aggregated": aggregated
-                }
-        
+                # average_score = round(total_interview_score / complete_sessions_count, 2) if complete_sessions_count > 0 else "N/A"
+           
+            # Fetching user details from strapi tables
+            ipersona_user = IpersonaTraineeSchema()
+            all_user_data = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, nopp=True, dataframe=False, return_object=True)
+            all_user_id = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
+
+            ipersona_alluser = IpersonaAllUserSchema()
+            ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
+            ipersona_profile = IpersonaProfileInformationSchema()
+            ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
+
+            userdata = {**ipersona_alluser_data, **ipersona_profile_data}
+
+            # Appending aggregated data for each user
+            trainees_detailed_data.append({
+                "user_profile_id": user_profile_id,
+                "all_user_id": all_user_id,
+                "name": userdata.get('name', 'Unknown'),
+                "role": userdata.get('role', 'Unknown'),
+                "batch": userdata.get('Batch', 'Unknown'),
+                "gender": userdata.get('gender', 'Unknown'),
+                "nationality": userdata.get('nationality', 'Unknown'),
+                "job_count": len(job_profile_ids),
+                "total_interviews_count": total_interviews_count,
+                "complete_sessions_count": complete_sessions_count,
+                "incomplete_sessions_count": incomplete_sessions_count,
+            })
+
+        # Sorting the data by 'total_interviews_count' in descending order and taking top 10
+        top_10 = sorted(trainees_detailed_data, key=lambda x: x['total_interviews_count'], reverse=True)[:10]
+
+        result = {
+            "alldata": trainees_detailed_data,  # All processed user data
+            "top10": top_10  # Top 10 users by total interviews count
+        }
         return result
-    
+
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
 
-def aggregate_user_data(data):
+def summarize_alljobs_data(data):
     try:
-        aggregated_data = {}
+        data = extracted_needed_metrics(data)  # Extract necessary metrics from raw data
+        job_summary = defaultdict(list)  # Group records by job_profile_id
 
-        for entry in data:
-            alluser_id = entry['all_user_id']
+        for record in data:
+            job_profile_id = record['job_profile_id']
+            job_summary[job_profile_id].append(record)
 
-            if alluser_id in aggregated_data:
-                aggregated_data[alluser_id]['interviews'] += entry['interviews']
-            else:
-                aggregated_data[alluser_id] = {
-                    'name': entry['name'],
-                    'role': entry['role'],
-                    'batch': entry['batch'],
-                    'gender': entry['gender'],
-                    'nationality': entry['nationality'],
-                    'interviews': entry['interviews'],  
-                }
+        trainees_detailed_data = []
+        processed_jobs = set()  # Keep track of processed job_profile_ids to avoid duplication
 
-        result = [{'all_user_id': key, **value} for key, value in aggregated_data.items()]
+        for job_profile_id, records in job_summary.items():
+            # Skip if this job profile_id has already been processed
+            if job_profile_id in processed_jobs:
+                continue
 
+            complete_sessions_count = 0
+            incomplete_sessions_count = 0
+            total_interviews_count = len(records)  # Total number of interviews for this job
+
+            # Aggregate session counts for the job
+            for record in records:
+                if record.get('complete_status') is True:
+                    complete_sessions_count += 1
+                else:
+                    incomplete_sessions_count += 1
+
+            # Fetch job-related data (title, company, location, URL)
+            ipersona_job = IpersonaJobSchema()
+            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
+
+            # Gather job info (title, company, location, URL)
+            job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title') if job_title_data else 'Unknown Job Title'
+            company_name = job_title_data[0]['attributes']['attributes'].get('company_name', '') if job_title_data else ''
+            location = job_title_data[0]['attributes']['attributes'].get('location', '') if job_title_data else ''
+            url = job_title_data[0]['attributes']['attributes'].get('url', '') if job_title_data else ''
+
+            # Add the aggregated job data to the result (only once per job profile)
+            trainees_detailed_data.append({
+                "job_profile_id": job_profile_id,
+                "job_title": job_title,
+                "total_interviews_count": total_interviews_count,
+                "complete_sessions_count": complete_sessions_count,
+                "incomplete_sessions_count": incomplete_sessions_count,
+                "company_name": company_name,
+                "location": location,
+                "url": url
+            })
+
+            # Mark this job profile as processed
+            processed_jobs.add(job_profile_id)
+
+        # Sorting jobs by total number of interviews in descending order and selecting top 10
+        top_10_jobs = sorted(trainees_detailed_data, key=lambda x: x['total_interviews_count'], reverse=True)[:10]
+
+        result = {
+            "alldata": trainees_detailed_data,  # All processed job data
+            "top10": top_10_jobs  # Top 10 jobs by total interviews
+        }
         return result
-    
+
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+
+def summarize_allusers_performance_data(data):
+    try: 
+        data = extracted_needed_metrics(data)  # Assume this function extracts necessary metrics
+        user_summary = defaultdict(list)  # Dictionary to group records by user_profile_id
+        
+        # Step 1: Group records by user_profile_id
+        for record in data:
+            user_profile_id = record['user_profile_id']
+            user_summary[user_profile_id].append(record)
+
+        user_metrics = []
+
+        # Step 2: Iterate over each user and calculate the average of metrics
+        for user_profile_id, records in user_summary.items():
+            # Fetch user details from external data sources (Strapi)
+            ipersona_user = IpersonaTraineeSchema()
+            all_user_data = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, nopp=True, dataframe=False, return_object=True)
+            all_user_id = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
+
+            ipersona_alluser = IpersonaAllUserSchema()
+            ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
+            ipersona_profile = IpersonaProfileInformationSchema()
+            ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
+            userdata = {**ipersona_alluser_data, **ipersona_profile_data}
+
+            # Step 3: Initialize sum variables
+            total_confidence = 0
+            total_clarity = 0
+            total_engagement = 0
+            record_count = len(records)
+
+            # Step 4: Iterate over records and sum up the metrics
+            for item in records:
+                confidence = item.get('confidence', '').lower() if item.get('confidence') else ''
+                clarity = item.get('clarity', '').lower() if item.get('clarity') else ''
+                engagement = item.get('engagement', '').lower() if item.get('engagement') else ''
+                
+                confidence_level = 1 if confidence == 'poor' else 2 if confidence == 'good' else 3 if confidence == 'excellent' else 0
+                clarity_level = 1 if clarity == 'poor' else 2 if clarity == 'good' else 3 if clarity == 'excellent' else 0
+                engagement_level = 1 if engagement == 'poor' else 2 if engagement == 'good' else 3 if engagement == 'excellent' else 0
+
+                # Sum the metrics
+                total_confidence += confidence_level
+                total_clarity += clarity_level
+                total_engagement += engagement_level
+
+            # Step 5: Calculate averages and handle record_count == 0 case
+            avg_confidence = round(total_confidence / record_count, 2) if record_count else 0
+            avg_clarity = round(total_clarity / record_count, 2) if record_count else 0
+            avg_engagement = round(total_engagement / record_count, 2) if record_count else 0
+
+            # Step 6: Prepare the summarized user data
+            user_data = {
+                "user_profile_id": user_profile_id,
+                "all_user_id": all_user_id,
+                "name": userdata.get('name', 'Unknown'),
+                "role": userdata.get('role', 'Unknown'),
+                "batch": userdata.get('Batch', 'Unknown'),
+                "gender": userdata.get('gender', 'Unknown'),
+                "nationality": userdata.get('nationality', 'Unknown'),
+                'metrics': {
+                    'average_confidence_level': avg_confidence if avg_confidence != 0 else None,
+                    'average_clarity_level': avg_clarity if avg_clarity != 0 else None,
+                    'average_engagement_level': avg_engagement if avg_engagement != 0 else None,
+                }
+            }
+
+            user_metrics.append(user_data)
+
+        return user_metrics
+
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}

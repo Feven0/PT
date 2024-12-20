@@ -2,7 +2,8 @@ import React, { useState, useRef } from "react";
 import useMiddleSocket from "../hooks/useMiddleSocket";
 import { FaMicrophoneAlt } from 'react-icons/fa';
 import { FaCircleStop } from "react-icons/fa6";
-import { EditOutlined, CheckOutlined } from '@ant-design/icons';
+import { CheckOutlined } from '@ant-design/icons';
+// import { EditOutlined, CheckOutlined } from '@ant-design/icons';
 import { Input, Button } from 'antd';
 
 interface Data {
@@ -16,38 +17,10 @@ const Assembly: React.FC<Data> = ({ sendDataToParent }) => {
     const latest = JSON.parse(localStorage.getItem("userSession") || 'null');        
     const [isEditing, setIsEditing] = useState<boolean>(false); 
     const [editText, setEditText] = useState<string>(transcript.join(' ')); 
-
+    console.log(isEditing)
     function handleClick(audio: any) {
       sendDataToParent(audio);
     }
-
-    // const startRecord = async () => {
-    //   audioContextRef.current = new AudioContext({ sampleRate: 16000 });
-    //   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    //   const source = audioContextRef.current.createMediaStreamSource(stream);
-      
-    //   const processor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
-    //   processor.onaudioprocess = (event) => {
-    //     const inputBuffer = event.inputBuffer.getChannelData(0); // Mono channel
-    //     const pcmData = new Int16Array(inputBuffer.length);
-        
-    //     // Convert to 16-bit PCM
-    //     for (let i = 0; i < inputBuffer.length; i++) {
-    //       pcmData[i] = Math.max(-32768, Math.min(32767, inputBuffer[i] * 32767)); // Convert to PCM16
-    //     }
-    //     console.log("damon", pcmData.buffer)
-    //     const data = {
-    //       latest: latest,
-    //       audioblob: pcmData.buffer
-    //     }
-    //     handleAssemblyTTS(data)
-    //   };
-
-    //   source.connect(processor);
-    //   processor.connect(audioContextRef.current.destination);
-
-    //   setIsRecording(true);
-    // };
 
     const startRecording = async () => {
       setAssemblyTTS([]); 
@@ -88,10 +61,10 @@ const Assembly: React.FC<Data> = ({ sendDataToParent }) => {
     };
 
     
-    const handleEditClick = () => {
-        setIsEditing(true);
-        setEditText(transcript.join(' ')); 
-    };
+    // const handleEditClick = () => {
+    //     setIsEditing(true);
+    //     setEditText(transcript.join(' ')); 
+    // };
 
     const handleSave = () => {
         setAssemblyTTS(editText.split(' '));
@@ -120,9 +93,9 @@ const Assembly: React.FC<Data> = ({ sendDataToParent }) => {
             )}
         </div>
 
-        {transcript?.length !== 0 && (
+        {/* {transcript?.length !== 0 && ( */}
           <div className="audio-chunk-container">
-            {isEditing ? (
+            {/* {isEditing ? ( */}
               <>
                 <Input.TextArea 
                   value={editText} 
@@ -142,9 +115,9 @@ const Assembly: React.FC<Data> = ({ sendDataToParent }) => {
                   Submit Answer
                 </Button>
               </>
-            ) : (
+            {/* ) : ( */}
               <>
-                <span>
+                {/* <span>
                   {transcript.join(' ')}
                 </span>
                 <EditOutlined 
@@ -157,11 +130,11 @@ const Assembly: React.FC<Data> = ({ sendDataToParent }) => {
                   style={{ marginLeft: '10px', fontSize: '14px', height: '32px', lineHeight: '32px' }}
                 >
                   Submit Answer
-                </Button>
+                </Button> */}
               </>
-            )}
+            {/* )} */}
           </div>
-        )}
+        {/* )} */}
 
 
     </div>

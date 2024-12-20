@@ -16,7 +16,7 @@ const AllDataFilterAdmin: React.FC<Data> = ({data}) => {
     role: ''
   });
 
-  const [filteredDataCount, setFilteredDataCount] = useState<any>(data.length || 0); 
+  const [filteredDataCount, setFilteredDataCount] = useState<any>(data?.length || 0); 
   const filteredDataRef = useRef<any>(data || []); 
   const [filteredData, setFilteredData] = useState<any>(data || []);
 

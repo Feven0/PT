@@ -184,8 +184,12 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
         )
 
         if saved_session:
-            logger.info("Session saved and created successfully!")
+            logger.info("Session created successfully!")
+            saved_session = {
+                'id': saved_session['id']
+            }
             return saved_session
+    
         else:
             logger.error("Failed to save session.")
             return JSONResponse(status_code=500, content={"error": "Failed to save session"})
@@ -237,14 +241,6 @@ async def clarify_question(recieved: pemodel.ClarificationRequestRecieved) -> di
         logger.error(f"Key error during clarification: {str(e)} for question: {question}")
         return JSONResponse(status_code=500, content={"error": f"Key error: {str(e)}"})
 
-    except TypeError as e:
-        logger.error(f"Type error during clarification: {str(e)} for question: {question}")
-        return JSONResponse(status_code=500, content={"error": f"Type error: {str(e)}"})
-
-    except Exception as e:
-        logger.error(f"Unexpected error during question clarification: {str(e)} for question: {question}")
-        return JSONResponse(status_code=500, content={"error": f"An unexpected error occurred: {str(e)}"})
-
     finally:
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -294,14 +290,6 @@ async def calculate_overall_progress(received: pemodel.UserSessionRequestRecieve
 
         logger.info(f"Successfully fetched overall session data for user_profile_id: {tinder_user_profile_id}, job_profile_id: {received.job_profile_id}")
         return session_chatobserver["all_sessions"][0]
-
-    except KeyError as e:
-        logger.error(f"Key error during session progress calculation: {str(e)}")
-        return JSONResponse(status_code=500, content={"error": f"Key error: {str(e)}"})
-
-    except TypeError as e:
-        logger.error(f"Type error during session progress calculation: {str(e)}")
-        return JSONResponse(status_code=500, content={"error": f"Type error: {str(e)}"})
 
     except Exception as e:
         logger.error(f"Unexpected error during session progress calculation: {str(e)}")
@@ -367,14 +355,6 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
         logger.info(f"Progress metrics successfully calculated for user_profile_id: {tinder_user_profile_id}")
         return result
 
-    except KeyError as e:
-        logger.error(f"KeyError while processing request: {str(e)} for all_user_id: {recieved.all_user_id}")
-        return JSONResponse(status_code=500, content={"error": f"KeyError: {str(e)}"})
-
-    except TypeError as e:
-        logger.error(f"TypeError while processing request: {str(e)} for all_user_id: {recieved.all_user_id}")
-        return JSONResponse(status_code=500, content={"error": f"TypeError: {str(e)}"})
-
     except Exception as e:
         logger.error(f"Unexpected error during processing: {str(e)} for all_user_id: {recieved.all_user_id}")
         return JSONResponse(status_code=500, content={"error": f"Unexpected error occurred: {str(e)}"})
@@ -421,7 +401,7 @@ def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionRequestReci
         
         tinder_user_profile_id = trainee_profile_data['id']
         logger.info(f"Tinder user profile data extracted for user ID: {tinder_user_profile_id}")
-
+    
         # Step 2: Summarize interview engagement status
         result = util.summarize_interviews(tinder_user_profile_id)
         logger.info(f"Interview engagement summary completed for user ID: {tinder_user_profile_id}")
@@ -439,7 +419,7 @@ def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionRequestReci
         logger.info(f"Time taken for engagement jobs status processing: {elapsed_time:.2f} seconds")
 
 @routes.post("/admin_overview_status")
-async def calculate_admin_data_status():
+async def calculate_admin_data_status(recieved: pemodel.AdminDataFiltering):
     """
     Calculates admin data status by fetching session data and processing metrics.
     
@@ -460,7 +440,7 @@ async def calculate_admin_data_status():
 
         # Step 1: Fetch all session data
         ipersona_session = IpersonaSessionSchema()
-        data = ipersona_session.get_all_sessions(nopp=True, dataframe=False)
+        data = ipersona_session.get_all_sessions(since=recieved.since, limit=recieved.limit, nopp=True, dataframe=False)
 
         if not data:
             logger.warn("No session data found.")
@@ -483,9 +463,9 @@ async def calculate_admin_data_status():
         end_time = time.time()
         elapsed_time = end_time - start_time
         logger.info(f"Time taken for admin data status processing: {elapsed_time:.2f} seconds")
-
-@routes.post("/admin_user_data")
-async def calculate_admin_data_status():
+        
+@routes.post("/admin_allusers_data")
+async def calculate_admin_data_status(recieved: pemodel.AdminDataFiltering):
     """
     Calculate admin data status by processing all sessions and computing session metrics.
 
@@ -505,7 +485,7 @@ async def calculate_admin_data_status():
 
         # Step 1: Fetch all session data
         ipersona_session = IpersonaSessionSchema()
-        data = ipersona_session.get_all_sessions(nopp=True, dataframe=False)
+        data = ipersona_session.get_all_sessions(since=recieved.since, limit=recieved.limit, nopp=True, dataframe=False)
 
         if not data:
             logger.warn("No session data found.")
@@ -513,8 +493,85 @@ async def calculate_admin_data_status():
 
         logger.info("Session data retrieved successfully.")
 
-        # Step 2: Calculate session metrics
-        result = util.calculate_session_metrics(data)
+        # Step 2: Summarize_allusers_data
+        result = util.summarize_allusers_data(data)
+        logger.info("Session metrics calculated successfully.")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error processing admin data status: {str(e)}", exc_info=True)
+        return JSONResponse(status_code=500, content={"error": f"Error processing files: {str(e)}"})
+
+    finally:
+        # Step 3: Log elapsed time
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        logger.info(f"Time taken for admin data status processing: {elapsed_time:.2f} seconds")
+
+@routes.post("/admin_alljobs_data")
+async def calculate_admin_data_status(recieved: pemodel.AdminDataFiltering):
+    """
+    Calculate admin data status by processing all sessions and computing session metrics.
+
+    This asynchronous function fetches all session data, calculates session metrics, 
+    and returns the result. It logs detailed information throughout the process and handles 
+    any errors that occur during the computation.
+
+    Returns:
+    -------
+    dict
+        A dictionary containing session metrics or an error response if an exception occurs.
+    """
+    start_time = time.time()
+
+    try:
+        logger.info("Starting admin data status calculation.")
+
+        # Step 1: Fetch all session data
+        ipersona_session = IpersonaSessionSchema()
+        data = ipersona_session.get_all_sessions(since=recieved.since, limit=recieved.limit, nopp=True, dataframe=False)
+
+        if not data:
+            logger.warn("No session data found.")
+            return JSONResponse(status_code=404, content={"error": "No session data found"})
+
+        logger.info("Session data retrieved successfully.")
+
+        # Step 2: Summarize_alljobs_data
+        result = util.summarize_alljobs_data(data)
+        logger.info("Session metrics calculated successfully.")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error processing admin data status: {str(e)}", exc_info=True)
+        return JSONResponse(status_code=500, content={"error": f"Error processing files: {str(e)}"})
+
+    finally:
+        # Step 3: Log elapsed time
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        logger.info(f"Time taken for admin data status processing: {elapsed_time:.2f} seconds")
+
+@routes.post("/admin_allusers_performance_data")
+async def calculate_admin_allusers_performance_data_status(recieved: pemodel.AdminDataFiltering):
+    start_time = time.time()
+
+    try:
+        logger.info("Starting admin data status calculation.")
+
+        # Step 1: Fetch all session data
+        ipersona_session = IpersonaSessionSchema()
+        data = ipersona_session.get_all_sessions(since=recieved.since, limit=recieved.limit, nopp=True, dataframe=False)
+        if not data:
+            logger.warn("No session data found.")
+            return JSONResponse(status_code=404, content={"error": "No session data found"})
+
+        logger.info("Session data retrieved successfully.")
+
+        # Step 2: Summarize_alluser_performance_data
+        result = util.summarize_allusers_performance_data(data)
         logger.info("Session metrics calculated successfully.")
 
         return result

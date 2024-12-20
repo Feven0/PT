@@ -7,8 +7,8 @@ from concurrent.futures import ThreadPoolExecutor
 from api import config
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_strapi as strapi
-from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionMessageSchema
-
+from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionMessageSchema, IpersonaSessionSchema
+from api.pages.ipersona.routers.ipersona_routes import fetch_single_session
 
 from api.utils.logger import LLPackerLogger
 
@@ -307,7 +307,20 @@ async def audio_end_point(sid, data):
 async def interview_endpoint(sid, data):
     try:
         logger.info(f"Processing interview chat for session: {data['user_session']['id']}")
-        
+        #-----------------------------------------------------------------------------------#
+        ipersona_user = IpersonaSessionSchema()
+        session_fetched = ipersona_user.get_session_by_id(
+            sessionId=data['user_session']['id'], 
+            nopp=True, 
+            dataframe=False
+        )
+        data['user_session'] = session_fetched
+
+        if not session_fetched:
+            logger.warn(f"No session found for session ID: {data['user_session']['id']}")
+            return f"No session found for session ID: {data['user_session']['id']}"
+        #------------------------------------------------------------------------------------#
+
         start_time = time.time()
         global chat_count
         chat_count = 1  

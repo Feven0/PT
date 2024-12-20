@@ -49,7 +49,7 @@ const InterviewChat = () => {
             input, 
             user_session,
             timerValue,
-            job_profile_id: 128,
+            job_profile_id: 1686,
             all_user_id: 1959
         });
         setInput('');
