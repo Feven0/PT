@@ -120,7 +120,8 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
 
         if not trainee_profile_data:
             logger.warn(f"No trainee user profiles found for all_user_id: {recieved.all_user_id}.")
-            return JSONResponse(status_code=404, content={"error": "No trainee user profiles found"})
+            return JSONResponse(status_code=200, content={"message": "No trainee user profiles found for the given all_user_id"})
+
 
         tinder_user_profile_id = trainee_profile_data['id']
         tinder_user_profile_data = util.extract_trainee_neccessary_values(trainee_profile_data)
@@ -134,7 +135,7 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
 
         if not tinder_job_data:
             logger.warn(f"No job data found for job_profile_id: {recieved.job_profile_id}.")
-            return JSONResponse(status_code=404, content={"error": "No job data found"})
+            return JSONResponse(status_code=200, content={"message": "No job data found for the job_profile_id"})
 
         tinder_job_data = util.extract_job_neccessary_values(tinder_job_data)
         logger.info(f"Tinder job data extracted for job_profile_id: {recieved.job_profile_id}")
@@ -270,7 +271,8 @@ async def calculate_overall_progress(received: pemodel.UserSessionRequestRecieve
         trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=received.all_user_id, nopp=True, dataframe=False)
         if not trainee_profile_data:
             logger.warn(f"No trainee profiles found for user_id: {received.all_user_id}")
-            return JSONResponse(status_code=404, content={"error": "No trainee profiles found."})
+            return JSONResponse(status_code=200, content={"message": "No trainee profiles found by the given all_user_id"})
+
 
         tinder_user_profile_id = trainee_profile_data.get('id', None)
         if not tinder_user_profile_id:
@@ -286,7 +288,7 @@ async def calculate_overall_progress(received: pemodel.UserSessionRequestRecieve
 
         if "all_sessions" not in session_chatobserver or not session_chatobserver["all_sessions"]:
             logger.warn(f"No session data found for user_profile_id: {tinder_user_profile_id}, job_profile_id: {received.job_profile_id}")
-            return JSONResponse(status_code=404, content={"error": "No session overall observer data found."})
+            return JSONResponse(status_code=200, content={"message": "No session overall observer data found."})
 
         logger.info(f"Successfully fetched overall session data for user_profile_id: {tinder_user_profile_id}, job_profile_id: {received.job_profile_id}")
         return session_chatobserver["all_sessions"][0]
@@ -335,7 +337,7 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
 
         if not trainee_profile_data or not isinstance(trainee_profile_data, dict) or len(trainee_profile_data) == 0:
             logger.warn(f"No trainee user profiles found for all_user_id: {recieved.all_user_id}")
-            return JSONResponse(status_code=404, content={"error": "No trainee user profiles found."})
+            return JSONResponse(status_code=200, content={"message": "No trainee user profiles found for the give all_user_id."})
 
         tinder_user_profile_id = trainee_profile_data.get('id')
         if not tinder_user_profile_id:
@@ -345,7 +347,7 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
         session_chatobserver = ipersona_overall.filter_by_tinder_user_profile_id(user_profile_id=tinder_user_profile_id, nopp=True, dataframe=False)
         if not session_chatobserver or not isinstance(session_chatobserver, list) or len(session_chatobserver) == 0:
             logger.warn(f"No session data found for user_profile_id: {tinder_user_profile_id}")
-            return JSONResponse(status_code=404, content={"error": "No session data found."})
+            return JSONResponse(status_code=200, content={"message": "Session data empty"})
 
         result = util.all_session_jobs_average_metrics(session_chatobserver)
         if not result or not isinstance(result, dict):
@@ -397,7 +399,8 @@ def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionRequestReci
 
         if not trainee_profile_data:
             logger.warn(f"No trainee user profiles found for all_user_id: {recieved.all_user_id}")
-            return JSONResponse(status_code=404, content={"error": "No trainee user profiles found"})
+            return JSONResponse(status_code=200, content={"message": "No trainee user profiles found for the given all_user_id"})
+
         
         tinder_user_profile_id = trainee_profile_data['id']
         logger.info(f"Tinder user profile data extracted for user ID: {tinder_user_profile_id}")
@@ -444,7 +447,7 @@ async def calculate_admin_data_status(recieved: pemodel.AdminDataFiltering):
 
         if not data:
             logger.warn("No session data found.")
-            return JSONResponse(status_code=404, content={"error": "No session data found"})
+            return JSONResponse(status_code=200, content={"message": "Session data empty"})
 
         logger.info(f"Session data retrieved successfully. Processing {len(data)} sessions.")
 
@@ -489,7 +492,7 @@ async def calculate_admin_data_status(recieved: pemodel.AdminDataFiltering):
 
         if not data:
             logger.warn("No session data found.")
-            return JSONResponse(status_code=404, content={"error": "No session data found"})
+            return JSONResponse(status_code=200, content={"message": "Session data empty"})
 
         logger.info("Session data retrieved successfully.")
 
@@ -534,7 +537,7 @@ async def calculate_admin_data_status(recieved: pemodel.AdminDataFiltering):
 
         if not data:
             logger.warn("No session data found.")
-            return JSONResponse(status_code=404, content={"error": "No session data found"})
+            return JSONResponse(status_code=200, content={"message": "Session data empty"})
 
         logger.info("Session data retrieved successfully.")
 
@@ -566,7 +569,7 @@ async def calculate_admin_allusers_performance_data_status(recieved: pemodel.Adm
         data = ipersona_session.get_all_sessions(since=recieved.since, limit=recieved.limit, nopp=True, dataframe=False)
         if not data:
             logger.warn("No session data found.")
-            return JSONResponse(status_code=404, content={"error": "No session data found"})
+            return JSONResponse(status_code=200, content={"message": "Session data empty"})
 
         logger.info("Session data retrieved successfully.")
 
@@ -616,8 +619,8 @@ async def fetch_session(recieved: pemodel.UserSessionRequestRecieved):
 
         if not trainee_profile_data:
             logger.warn(f"No trainee user profiles found for user ID: {recieved.all_user_id}")
-            return JSONResponse(status_code=404, content={"error": "No trainee user profiles found"})
-        
+            return JSONResponse(status_code=200, content={"message": "No trainee user profiles found for the give all_user_id"})
+
         logger.info(f"Trainee profile data retrieved for user ID: {recieved.all_user_id}")
 
         # Step 2: Extract user profile ID
@@ -634,7 +637,7 @@ async def fetch_session(recieved: pemodel.UserSessionRequestRecieved):
 
         if not user_data:
             logger.warn(f"No session data found for user ID: {recieved.all_user_id} and job ID: {recieved.job_profile_id}")
-            return JSONResponse(status_code=404, content={"error": "No session data found"})
+            return JSONResponse(status_code=200, content={"message": "Session data empty"})
 
         logger.info(f"Session data successfully retrieved for user ID: {recieved.all_user_id} and job ID: {recieved.job_profile_id}")
         
@@ -686,7 +689,7 @@ async def fetch_chat_history(recieved: pemodel.SessionIdRequestRecieved):
 
         if not session_chathistory:
             logger.warn(f"No chat history found for session ID: {recieved.sessionId}")
-            return JSONResponse(status_code=404, content={"error": "No chat history found"})
+            return JSONResponse(status_code=200, content={"message": "No chat history found for the given sessionId"})
 
         logger.info(f"Successfully fetched chat history for session ID: {recieved.sessionId}")
         return session_chathistory
@@ -735,7 +738,8 @@ async def fetch_user_all_observer(recieved: pemodel.SessionIdRequestRecieved):
 
         if not session_chatobserver:
             logger.warn(f"No observers found for session ID: {recieved.sessionId}")
-            return JSONResponse(status_code=404, content={"error": "No observers found"})
+            return JSONResponse(status_code=200, content={"message": "No observers found for the given sessionId"})
+
 
         logger.info(f"Successfully fetched observers for session ID: {recieved.sessionId}")
         return session_chatobserver
@@ -784,7 +788,7 @@ async def fetch_single_session(recieved: pemodel.SessionIdRequestRecieved):
 
         if not session_fetched:
             logger.warn(f"No session found for session ID: {recieved.sessionId}")
-            return JSONResponse(status_code=404, content={"error": "Session not found"})
+            return JSONResponse(status_code=200, content={"message": "Session data empty"})
 
         logger.info(f"Successfully fetched session data for session ID: {recieved.sessionId}")
         return session_fetched
