@@ -121,7 +121,11 @@ async def choose_interview_question(collection: dict, data: dict):
     """
     try: 
         ipersona_message = IpersonaSessionMessageSchema()
-        session_chathistory = ipersona_message.filter_by_session_id(sessionId=data['user_session']['id'], nopp=True, dataframe=False)
+        session_chathistory = ipersona_message.filter_by_session_id(
+            sessionId=data['user_session']['id'], 
+            nopp=True, 
+            dataframe=False,
+            sort='asc')
   
         chat = session_chathistory['count']
   
@@ -414,7 +418,11 @@ def realtime_response_evaluation(data: dict) -> dict:
     """
     try:
         ipersona_message = IpersonaSessionMessageSchema()
-        session_chathistory = ipersona_message.filter_by_session_id(sessionId=data['user_session']['id'], nopp=True, dataframe=False)
+        session_chathistory = ipersona_message.filter_by_session_id(
+            sessionId=data['user_session']['id'], 
+            nopp=True, 
+            dataframe=False,
+            sort='asc')
         
         history = session_chathistory['total']
         
