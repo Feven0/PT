@@ -13,7 +13,7 @@ from api.pages.ipersona.routers.ipersona_routes import fetch_single_session
 from api.utils.logger import LLPackerLogger
 
 logger = LLPackerLogger(os.path.basename(__file__))
-aai.settings.api_key = config.assemblyai.api_key
+aai.settings.api_key = 'af1b742664d64a40a7429081cd7cdc35'
 
 
 OPENAI_API_KEY = config.openai.api_key
@@ -161,6 +161,19 @@ async def audio_endpoint(sid, data):
 @sio.on("audio chat sentence")
 async def audio_end_point(sid, data):
     logger.info("audio socket response", data["response"], data['user_session']['id'])
+     #-----------------------------------------------------------------------------------#
+    ipersona_user = IpersonaSessionSchema()
+    session_fetched = ipersona_user.get_session_by_id(
+        sessionId=data['user_session']['id'], 
+        nopp=True, 
+        dataframe=False
+    )
+    data['user_session'] = session_fetched
+
+    if not session_fetched:
+        logger.warn(f"No session found for session ID: {data['user_session']['id']}")
+        return f"No session found for session ID: {data['user_session']['id']}"
+    #------------------------------------------------------------------------------------#
     try:
         start_time = time.time()
         global chat_count
@@ -269,8 +282,7 @@ async def audio_end_point(sid, data):
                         "full_response": accumulated_message
                     }
                 }]
-                await sio.emit("audio_realtime", message, room=sid)
-                
+                await sio.emit("audio_realtime", message, room=sid)  
              
         if response.get("status") is not None:
             message = [{

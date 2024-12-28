@@ -597,7 +597,7 @@ def get_openapi_token(
       
 @dataclass
 class assemblyai:
-    api_key = "49e5f82458584a70b847f477a035ce48"  
+    api_key = "af1b742664d64a40a7429081cd7cdc35"  
     
 @dataclass
 class openai:

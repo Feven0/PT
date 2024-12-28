@@ -2,8 +2,7 @@ import React, { useState, useRef } from "react";
 import useMiddleSocket from "../hooks/useMiddleSocket";
 import { FaMicrophoneAlt } from 'react-icons/fa';
 import { FaCircleStop } from "react-icons/fa6";
-import { CheckOutlined } from '@ant-design/icons';
-// import { EditOutlined, CheckOutlined } from '@ant-design/icons';
+import { EditOutlined, CheckOutlined } from '@ant-design/icons';
 import { Input, Button } from 'antd';
 
 interface Data {
@@ -61,10 +60,10 @@ const Assembly: React.FC<Data> = ({ sendDataToParent }) => {
     };
 
     
-    // const handleEditClick = () => {
-    //     setIsEditing(true);
-    //     setEditText(transcript.join(' ')); 
-    // };
+    const handleEditClick = () => {
+        setIsEditing(true);
+        setEditText(transcript.join(' ')); 
+    };
 
     const handleSave = () => {
         setAssemblyTTS(editText.split(' '));
@@ -93,9 +92,9 @@ const Assembly: React.FC<Data> = ({ sendDataToParent }) => {
             )}
         </div>
 
-        {/* {transcript?.length !== 0 && ( */}
+        {transcript?.length !== 0 && (
           <div className="audio-chunk-container">
-            {/* {isEditing ? ( */}
+          {isEditing ? (
               <>
                 <Input.TextArea 
                   value={editText} 
@@ -115,9 +114,9 @@ const Assembly: React.FC<Data> = ({ sendDataToParent }) => {
                   Submit Answer
                 </Button>
               </>
-            {/* ) : ( */}
+            ) : ( 
               <>
-                {/* <span>
+                <span>
                   {transcript.join(' ')}
                 </span>
                 <EditOutlined 
@@ -130,11 +129,11 @@ const Assembly: React.FC<Data> = ({ sendDataToParent }) => {
                   style={{ marginLeft: '10px', fontSize: '14px', height: '32px', lineHeight: '32px' }}
                 >
                   Submit Answer
-                </Button> */}
+                </Button>
               </>
-            {/* )} */}
+            )}
           </div>
-        {/* )} */}
+        )} 
 
 
     </div>
