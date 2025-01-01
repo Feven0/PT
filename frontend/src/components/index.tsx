@@ -29,6 +29,6 @@ export {default as DashboardLayout} from './Admin/DashboardLayout'
 export {default as Dashboard} from './Admin/Dashboard'
 export {default as UserOverall} from './UserOverall'
 export {default as AllDataFilterAdmin} from './Admin/AllDataFilterAdmin'
-
+export {default as CancelModal} from './CancelModal'
 
 

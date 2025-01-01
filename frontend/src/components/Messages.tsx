@@ -65,16 +65,27 @@ const Messages: React.FC<Data> = ({interview}) => {
                 <div className='messagecandidate' style={{ backgroundColor: '#ffffff', border: '1px solid #fcf8f8' }}>
                     <Paragraph style={{ margin: 0 }}>
                         <CgProfile size={40} />
-                        <p className="message-text" style={{ fontSize: '1rem', lineHeight: '2rem'}}>    
-                            {message?.content?.response}
-                        </p>
+                        <div className="message-text" style={{ fontSize: '1rem', lineHeight: '2rem' }}>
+                            {Array.isArray(message?.content?.response) ? (
+                                <ul>
+                                    {message?.content?.response.map((item: string, index: number) => (
+                                        <li key={index} style={{ marginBottom: '8px' }}>
+                                            {item}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p>{message?.content?.response}</p>
+                            )}
+                        </div>
                     </Paragraph>
                 </div>
             )}
 
+
             {(message?.user_type == 'assistant' && (
                 <div>
-                    {(message?.content?.realtime_evaluation !== "" && message?.content?.realtime_evaluation !== "null") && (
+                    {(message?.content?.realtime_evaluation) && (
                         <RealTimeEvaluation
                             evaluation={message.content.realtime_evaluation}
                         />

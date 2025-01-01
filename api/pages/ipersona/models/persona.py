@@ -4,7 +4,10 @@ default_days_since = 0
 
 class UserRequestRecieved(BaseModel):
     userId: str
-    
+   
+class ClosedDataRequestRecieved(BaseModel):
+    data: Optional[Dict[str, Any]]
+        
 class SessionRequestRecieved(BaseModel):
     alluser: int
     job_profile_id: int

@@ -15,7 +15,9 @@ const Api = {
   AdminOverview: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/admin_overview_status`, data),
   AdminUsers: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/admin_allusers_data`, data),
   AdminJobs: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/admin_alljobs_data`, data),
-  AdminUserMetrics: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/admin_allusers_performance_data`, data)
+  AdminUserMetrics: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/admin_allusers_performance_data`, data),
+  DeleteSession: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/delete_session`, data),
+  CloseSession: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/close_session`, data),
 };
 
 

@@ -148,6 +148,25 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
             .replace("{job_description}", str(tinder_job_data)) \
             .replace("{profile}", str(tinder_user_profile_data))
 
+        # -------------------------------Generating Introduction Interview Questions------------------------- #
+        generated_intro_question_json =  {
+            "Introduction": [
+                {
+                    "question": "Tell me about yourself and your professional history?",
+                }
+            ]
+        }
+        
+        # -------------------------------Generating Closing Interview Questions------------------------- #
+        generated_last_question_json = {
+            "Closing": [
+                {
+                    "question": "Before we wrap up the interview, do you have any questions you'd like to ask?"
+                }
+            ]
+        }
+        # ---------------------------------------------------------------------------------------------- #
+
         message = util.file_reader(prompt_path('generate_question.txt'))
         context = str(message)
         msg = context \
@@ -159,6 +178,8 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
         content = generated_persona + msg
         response = gpt.openai_gpt_assistant_without_streaming(content)
         generated_question_json = util.extract_json(response, quite=False)
+        generated_question_json.update(generated_intro_question_json)
+        generated_question_json.update(generated_last_question_json)
         logger.info("Persona and questions generated successfully.")
 
         # Step 4: Add question numbers
@@ -246,6 +267,35 @@ async def clarify_question(recieved: pemodel.ClarificationRequestRecieved) -> di
         end_time = time.time()
         elapsed_time = end_time - start_time
         logger.info(f"Time taken for question clarification processing: {elapsed_time:.2f} seconds")
+
+@routes.post("/delete_session")
+async def delete_interview_session(recieved: pemodel.SessionIdRequestRecieved):
+    try:
+        ipersona_session = IpersonaSessionSchema()
+        session_data = {
+            "i_persona_session_id": recieved.sessionId, 
+            "status": "Deleted",
+        }
+        
+        updated_session = ipersona_session.update_session(params=session_data, nopp=True, dataframe=False, return_object=True)
+        if updated_session:
+            logger.info("session status updated to deleted")
+        return JSONResponse(status_code=200, content={"success": f"Session deleted!"})
+  
+    except Exception as e:
+        logger.error(f"Unexpected error during session progress calculation: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": f"Unexpected error: {str(e)}"})
+
+
+@routes.post("/close_session")
+async def close_interview_session(recieved: pemodel.ClosedDataRequestRecieved):
+    try:
+        response = await util.overall_interview_evaluations(recieved.data, status = "Closed")
+        return JSONResponse(status_code=200, content={"success": f"{response}"})
+  
+    except Exception as e:
+        logger.error(f"Unexpected error during session progress calculation: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": f"Unexpected error: {str(e)}"})
 
 
 @routes.post("/calculate_session_overall_progress")

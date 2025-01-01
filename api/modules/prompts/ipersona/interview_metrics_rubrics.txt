@@ -13,23 +13,27 @@ VERY IMPORTANT: Use These Guideline for Filling Evaluation Metrics JSON
     - Excellent: Candidate displayed strong confidence and assertiveness.
     - Good: Candidate showed some confidence but hesitated at times.
     - Poor: Candidate appeared unsure and lacked confidence.
+    - Null: If there is insufficient or no relevant data to evaluate confidence, leave this section and state “Not Applicable.”
 2. Areas of Improvement
-    - List specific skills relevant to the job role (e.g., Time Management, Technical Skills).
-    - Provide detailed descriptions of what needs to be improved, based on observed gaps in performance.
+    - Provide specific skills relevant to the job role (e.g., Time Management, Technical Skills).
+    - Offer a detailed description of what needs improvement, based on observable gaps in performance.
+    - If no improvements can be determined from the interview data, leave this section blank.
 3. Strength
-    - Identify specific skills that were demonstrated well (e.g., Problem-Solving, Team Collaboration).
-    - Describe what the candidate did well in these areas, with examples from the interview.
+    - Only list strengths if there is explicit, clear evidence from the interview that the candidate demonstrated a particular skill well (e.g., Problem-Solving, Team Collaboration).
+    - If no strengths are demonstrated, leave this section completely blank. Do not infer or assume a strength without clear, observable evidence from the data.
 4. Communication Skills
     - Clarity:
         - Excellent: Responses were coherent and easily understood.
         - Good: Some parts were clear, but others were confusing.
         - Poor: Many responses were difficult to follow.
+        - Null: If there is insufficient or no relevant data to evaluate clarity communication skills, leave this section and state “Not Applicable.”
     - Engagement:
         - Excellent: Actively participated and showed enthusiasm.
         - Good: Participated but lacked enthusiasm or responsiveness.
         - Poor: Did not show interest or engagement during the interview.
+        - Null: If there is insufficient or no relevant data to evaluate engagement communication skills, leave this section and state “Not Applicable.”
 
-Note: If the mock interview is not provided, return an empty JSON.
+IMPORTANT NOTE: If no interview data or history is provided, return an empty JSON without generating any evaluation or metrics.
 
 Your evaluation should be structured in the following single JSON format:
 example: 
@@ -44,16 +48,14 @@ example:
         ],                
         "areas_of_improvement": [
             {
-                "skill": "skill name they should improve on, give a specific skill name they should improve based on the info you have about the candidate interview to qualify for the job role. example: RAG",
-                
-                "description": "what exactly they should improve on the skill by mentioning what they did wrong by specifically mention the issue and how to improve it"
+                "skill": "Specific skill they need to improve, based on observable evidence in the interview data. If none, leave blank.",
+                "description": "Describe what needs improvement in the skill, citing specific examples from the interview. If none, leave blank."
             }
         ],        
         "strength": [
             {
-                "skill": "skill name that was demonstrated well in the mock interview, provide a specific skill name. example: Communication Skill.  However if there is no particular candidate strength seen from the given interview data you should not specify anything",
-                
-                "description": "what was done well regarding this skill However if there is no strength there should not be any description"
+                "skill": "If no specific strength is clearly demonstrated in the given interview data, you MUST NOT generate any skill or provide any strength. Only provide a strength if there is clear, explicit evidence in the data that shows the candidate demonstrated a particular skill well. If no such evidence is present, the 'skill' field should be left completely blank.",
+                "description": "Provide a detailed explanation only if a strength is demonstrated in the interview data. If no strength is demonstrated, leave this field blank. Do not assume or infer strengths—only use clear, explicit examples from the data. If no example exists, do not generate any description."
             }
         ],
         "communication_skills": [
@@ -70,8 +72,6 @@ example:
         ]
     }
 }
-
-
 
 Use non-gender-specific pronouns like 'you' and 'your' instead of gender-specific pronouns or names. 
 

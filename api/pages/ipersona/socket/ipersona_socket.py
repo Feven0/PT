@@ -439,7 +439,7 @@ async def interview_endpoint(sid, data):
             await sio.emit("last_realtime_evaluation", message, room=sid)          
 
         # Insert the message or conclude the interview if the chat count exceeds the limit
-        if chat_count < 9:
+        if chat_count < 12:
             strapi.step2_insert_message(data, timelimit, accumulated_message, realtime_evaluation)
         else:
             message = 'interview over'

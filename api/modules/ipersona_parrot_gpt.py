@@ -142,41 +142,61 @@ async def choose_interview_question(collection: dict, data: dict):
         
         section = None
         question_type = None
-        if chat_count < 3: 
-            section = collection["Background"]
-            question_type = "Background"
+        if chat_count < 2: 
+            section = collection["Introduction"]
+            question_type = "Introduction"
             count = None
-            response = await helper_func(count, question_type, section, data)
+            response = await helper_func(chat_count, count, question_type, section, data)
 
             return response
         
         elif chat_count < 5: 
-            section = collection["Technical"]
-            question_type = "Technical"
+            section = collection["Background"]
+            question_type = "Background"
             count = None
             if chat_count == 3: 
                 count = chat_count
-            response = await helper_func(count, question_type, section, data)
-            
+            response = await helper_func(chat_count, count, question_type, section, data)
+
             return response
-            
+        
         elif chat_count < 7: 
-            section = collection["Behavioral"]
-            question_type = "Behavioral"
+            section = collection["Technical"]
+            question_type = "Technical"
             count = None
             if chat_count == 5: 
                 count = chat_count
-            response = await helper_func(count, question_type, section, data)
+            response = await helper_func(chat_count, count, question_type, section, data)
             
             return response
-        
-        elif chat_count < 10: 
-            section = collection["Ability"]
-            question_type = "Ability"
+            
+        elif chat_count < 9: 
+            section = collection["Behavioral"]
+            question_type = "Behavioral"
             count = None
             if chat_count == 7: 
                 count = chat_count
-            response = await helper_func(count, question_type, section, data)
+            response = await helper_func(chat_count, count, question_type, section, data)
+            
+            return response
+        
+        elif chat_count < 11: 
+            section = collection["Ability"]
+            question_type = "Ability"
+            count = None
+            if chat_count == 9: 
+                count = chat_count
+            response = await helper_func(chat_count, count, question_type, section, data)
+            
+            return response
+        
+        elif chat_count < 13:
+            section = collection["Closing"]
+            question_type = "Closing"
+            count = None
+            if chat_count == 11: 
+                count = chat_count
+            response = await helper_func(chat_count, count, question_type, section, data)
             
             return response
 
@@ -186,7 +206,7 @@ async def choose_interview_question(collection: dict, data: dict):
 
 
 #----------------------------------------- Helper Functions for Choosing Question ---------------------------------
-async def helper_func(count: int, question_type: str, section: list, data: dict):
+async def helper_func(chat_count, count: int, question_type: str, section: list, data: dict):
     """
     Processes interview questions and evaluations based on candidate responses.
 
@@ -221,20 +241,20 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
         realtime_evaluation = None
         status = None
                 
-        if chat_count < 9:
+        if chat_count < 12:
             if data['response']:
                 if count is not None:
-                    interview_question_json = await fetch_interview_question(section, data) 
+                    interview_question_json = await fetch_interview_question(section, question_type, data) 
                 else:
                     response = await check_if_followup(data['response'])
          
                     if not response:
-                        interview_question_json = await fetch_interview_question(section, data) 
+                        interview_question_json = await fetch_interview_question(section, question_type, data) 
                     else:
                         interview_question_json = await generate_followup(data)
                        
             else:
-                interview_question_json = await fetch_interview_question(section, data) 
+                interview_question_json = await fetch_interview_question(section, question_type, data) 
    
         else:  
             realtime_evaluation_response_json = realtime_response_evaluation(data)
@@ -244,10 +264,8 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
                 status = "final"
                 strapi.step3_insert_message(data, realtime_evaluation)
 
-            await overall_interview_evaluations(data)
-            logger.info("Calculate the overall and save to database done.")
-
-            
+            await overall_interview_evaluations(data, status = "Completed")
+            logger.info("Calculate the overall and save to database done.")            
                 
         response = {
             "interview": interview_question_json,
@@ -263,7 +281,7 @@ async def helper_func(count: int, question_type: str, section: list, data: dict)
    
    
 #----------------------------------------- picking the right Question ----------------------------------------- 
-async def fetch_interview_question(section: list, data: dict):
+async def fetch_interview_question(section: list, question_type: str, data: dict):
     """
     Fetches an interview question based on the provided section and candidate response.
 
@@ -286,12 +304,16 @@ async def fetch_interview_question(section: list, data: dict):
         if an exception occurs during processing.
     """
     try:
-        message = file_reader(prompt_path('ipersona/pick_question.txt'))
+        if chat_count == 12:
+            message = file_reader(prompt_path('ipersona/closing_question.txt'))
+        else:
+            message = file_reader(prompt_path('ipersona/pick_question.txt'))
+       
         context = str(message)
         questions = []
         msg = context\
             .replace("{collection}", str(section))\
-            .replace("{questions}", str(questions))\
+            .replace("{type}", str(question_type))\
             .replace("{candidate_response}", data['response'])        
 
         content = data['user_session']['attributes']['attributes']['persona'] + msg
@@ -438,20 +460,29 @@ def realtime_response_evaluation(data: dict) -> dict:
         else:
             logger.warn("No assistant response found in the chat history.")
             
-        evaluation_prompt = file_reader(prompt_path('ipersona/realtime_evaluation.txt'))
-        evaluation_context = str(evaluation_prompt)
-        evaluation_msg = evaluation_context\
-            .replace("{question}", last_assistant_response)\
-            .replace("{candidate_response}", data['response'])
-                
-        
-        content = data['user_session']['attributes']['attributes']['persona'] + evaluation_msg
+        if chat_count == 12:
+            closing_evaluation_prompt = file_reader(prompt_path('ipersona/closing_question_realtime_evaluation.txt'))
+            closing_question = "Before we wrap up the interview, do you have any questions you'd like to ask?"
+            closing_content = closing_evaluation_prompt\
+                .replace("{closing_question}", str(closing_question))\
+                .replace("{candidate_response}" , str(data['response']))
+                        
+            realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(closing_content)
 
-        realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
-
-        realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False)
+            realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False) 
+            return realtime_evaluation_response
         
-        return realtime_evaluation_response
+        else:            
+            evaluation_prompt = file_reader(prompt_path('ipersona/realtime_evaluation.txt'))            
+            evaluation_context = str(evaluation_prompt)
+            evaluation_msg = evaluation_context\
+                .replace("{question}", last_assistant_response)\
+                .replace("{candidate_response}", data['response'])
+            
+            content = data['user_session']['attributes']['attributes']['persona'] + evaluation_msg
+            realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
+            realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False)            
+            return realtime_evaluation_response
         
     except Exception as e:
         logger.error(f"Real time evaluation process failed: ${str(e)}")
@@ -459,7 +490,7 @@ def realtime_response_evaluation(data: dict) -> dict:
     
     
 #----------------------------------------- Overall Interview Evaluation -------------------------------
-async def overall_interview_evaluations(data: dict) -> dict:
+async def overall_interview_evaluations(data: dict, status) -> dict:
     """
     Evaluates the overall performance of a candidate in an interview.
 
@@ -533,8 +564,8 @@ async def overall_interview_evaluations(data: dict) -> dict:
                     "interview_evaluation": overall_evaluation_response_json,
                     "interview_evaluation_metrics": overall_interview_metrics_json,
                 },
-                "i_persona_session": data['user_session']['id']
-            
+                "i_persona_session": data['user_session']['id'],
+                "status": status            
             }
         ipersona_observer = IpersonaSessionObserverSchema()
         save_observer = ipersona_observer.save_observer(params=overall_json, nopp=True, dataframe=False)
@@ -544,7 +575,7 @@ async def overall_interview_evaluations(data: dict) -> dict:
 
         session_data = {
             "i_persona_session_id": data['user_session']['id'], 
-            "status": "Complete",
+            "status": status,
         }
         
         updated_session = ipersona_session.update_session(params=session_data, nopp=True, dataframe=False, return_object=True)
@@ -563,8 +594,9 @@ async def overall_interview_evaluations(data: dict) -> dict:
                       
         session = ipersona_session.filter_by_with_user_job_id(user_profile_id=tinder_user_profile_id,job_profile_id=data['job_profile_id'], nopp=True, dataframe=False) 
         session_chatobserver = extract_observers_metrics(session)
-                    
-        await calculate_overall_progress(data, session_chatobserver) 
+        
+        if status == 'Completed':         
+            await calculate_overall_progress(data, session_chatobserver) 
       
         #################################################################################################
       
