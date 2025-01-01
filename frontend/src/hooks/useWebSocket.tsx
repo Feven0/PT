@@ -108,7 +108,7 @@ const useWebSocket = (url: string) => {
     });
 
     newSocket.on('last_realtime_evaluation', (message) => {
-      
+      console.log("last___________________________---realtime---___________________________evaluation")
       setChatInterview((prevMessages) => [...prevMessages, ...message]);      
     });
 

@@ -424,8 +424,14 @@ async def interview_endpoint(sid, data):
                 }]
                 await sio.emit("realtime", message, room=sid)
                 
-        if response.get("status") is not None:
-            message = [{
+        # Insert the message or conclude the interview if the chat count exceeds the limit
+        if chat_count < 12:
+            strapi.step2_insert_message(data, timelimit, accumulated_message, realtime_evaluation)
+        else:
+            message = 'interview over'
+            await sio.emit("interview done", message, room=sid)
+            if response.get("status") is not None:
+                message = [{
                     "user_type": "assistant",
                     "content_type": "question",
                     "content": {
@@ -436,15 +442,9 @@ async def interview_endpoint(sid, data):
                         "realtime_evaluation": response.get("realtime")
                     }
                 }]
+                
             await sio.emit("last_realtime_evaluation", message, room=sid)          
 
-        # Insert the message or conclude the interview if the chat count exceeds the limit
-        if chat_count < 12:
-            strapi.step2_insert_message(data, timelimit, accumulated_message, realtime_evaluation)
-        else:
-            message = 'interview over'
-            await sio.emit("interview done", message, room=sid)
-            strapi.step3_insert_message(data, realtime_evaluation)
 
     except Exception as e:
         logger.error(f"Error processing interview chat for session {data['user_session']['id']}: {str(e)}", exc_info=True)

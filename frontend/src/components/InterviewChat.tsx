@@ -210,7 +210,7 @@ const InterviewChat = () => {
             e.preventDefault(); 
         }
     };
-    console.log("fraid", questions)
+
     return (
         <>
             <div className="interview-chat-container">
