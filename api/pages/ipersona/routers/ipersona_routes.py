@@ -353,7 +353,7 @@ async def calculate_overall_progress(received: pemodel.UserSessionRequestRecieve
         logger.info(f"Time taken for analysis processing: {elapsed_time:.2f} seconds")
 
 @routes.post("/calculate_allstat_progress")
-async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestRecieved):
+async def calculate_allstat_progress(recieved: pemodel.AllUserIdRecieved):
     """
     Calculates overall users' progress metrics for all job types.
 
@@ -363,7 +363,7 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
 
     Parameters:
     ----------
-    recieved : pemodel.AllUserSessionRequestRecieved
+    recieved : pemodel.AllUserIdRecieved
         An object containing the necessary information to fetch chat history.
 
     Returns:
@@ -374,7 +374,7 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
     """
     start_time = time.time()
 
-    if not recieved or not isinstance(recieved, pemodel.AllUserSessionRequestRecieved):
+    if not recieved or not isinstance(recieved, pemodel.AllUserIdRecieved):
         logger.error("Invalid request format.")
         return JSONResponse(status_code=400, content={"error": "Invalid request format."})
 
@@ -416,6 +416,7 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserSessionRequestReci
         elapsed_time = end_time - start_time
         logger.info(f"Time taken for overall progress calculation: {elapsed_time:.2f} seconds")
 
+
 @routes.post("/engagement_jobs_status")
 def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionRequestRecieved):
     """
@@ -456,7 +457,7 @@ def calculate_engagement_jobs_status(recieved: pemodel.AllUserSessionRequestReci
         logger.info(f"Tinder user profile data extracted for user ID: {tinder_user_profile_id}")
     
         # Step 2: Summarize interview engagement status
-        result = util.summarize_interviews(tinder_user_profile_id)
+        result = util.summarize_interviews(tinder_user_profile_id, since=recieved.since, limit=recieved.limit,)
         logger.info(f"Interview engagement summary completed for user ID: {tinder_user_profile_id}")
 
         return result

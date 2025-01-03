@@ -19,9 +19,14 @@ class SessionJobRequestRecieved(BaseModel):
 class UserSessionRequestRecieved(BaseModel):
     job_profile_id: int
     all_user_id: int
-       
+
+class AllUserIdRecieved(BaseModel):
+    all_user_id: int    
+
 class AllUserSessionRequestRecieved(BaseModel):
     all_user_id: int
+    limit: Optional[int] = default_days_since
+    since: Optional[int] = default_days_since
 
 class SessionIdRequestRecieved(BaseModel):
     sessionId: int

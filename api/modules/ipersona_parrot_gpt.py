@@ -1124,11 +1124,11 @@ def calculate_average_time_management(data):
         return {'error': f"Error calculating time management averages: {str(e)}"}
 
 #-------------------------------------------- user engagment jobs --------------------------------------------
-def summarize_interviews(user_profile_id):  
+def summarize_interviews(user_profile_id, since, limit):  
     try:  
         # Fetch a particular user sessions
         ipersona_session = IpersonaSessionSchema()
-        data = ipersona_session.filter_by_tinder_user_profile_id(user_profile_id=user_profile_id, nopp=True, dataframe=False)
+        data = ipersona_session.filter_by_tinder_user_profile_id(user_profile_id=user_profile_id, since=since, limit=limit, nopp=True, dataframe=False)
         data = extracted_needed_metrics(data)
         
         if len(data) == 0:
