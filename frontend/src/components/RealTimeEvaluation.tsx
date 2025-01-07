@@ -66,15 +66,12 @@ const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
                         <Collapse defaultActiveKey={['1']} style={{ marginTop: '1rem' }}>
                             {evaluation.map((item: any, index: number) => (
                                 <Panel 
-                                    header={`Question ${index + 1}`} 
+                                    header="Feedback" 
                                     key={index + 1} 
                                     style={{ backgroundColor: '#f3f5f7', border: 'none', borderRadius: '1rem' }}
                                 >
                                     <div style={{ padding: '1rem', color: '#6b6666', lineHeight: '1.5rem' }}>
-                                        <strong>Question:</strong> {item?.question}
-                                    </div>
-                                    <div style={{ padding: '1rem', color: '#6b6666', lineHeight: '1.5rem' }}>
-                                        <strong>Evaluation:</strong> {item?.evaluation}
+                                        {item?.feedback}
                                     </div>
                                 </Panel>
                             ))}

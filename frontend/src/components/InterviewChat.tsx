@@ -203,13 +203,13 @@ const InterviewChat = () => {
         }
     };
 
-    const handleKeyPress = (e: any) => {
-        if (e.key === 'Enter' && !e.shiftKey && input.trim() !== '' && interview?.length === 21) {
-            setQuestions([...questions, input.trim()]);
-            setInput(''); 
-            e.preventDefault(); 
-        }
-    };
+    // const handleKeyPress = (e: any) => {
+    //     if (e.key === 'Enter' && !e.shiftKey && input.trim() !== '' && interview?.length === 21) {
+    //         setQuestions([...questions, input.trim()]);
+    //         setInput(''); 
+    //         e.preventDefault(); 
+    //     }
+    // };
 
     return (
         <>
@@ -353,7 +353,7 @@ const InterviewChat = () => {
                                     value={input}
                                     placeholder="Put your answer here"
                                     onChange={handleChange}
-                                    onKeyPress={handleKeyPress}
+                                    // onKeyPress={handleKeyPress}
                                     rows={2}
                                     className="input-area"
                                 />

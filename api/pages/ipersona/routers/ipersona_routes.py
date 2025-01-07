@@ -117,7 +117,7 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
         trainee_profile_data = ipersona_user.filter_by_alluser_id(
             all_user_id=recieved.all_user_id, nopp=True, dataframe=False
         )
-
+    
         if not trainee_profile_data:
             logger.warn(f"No trainee user profiles found for all_user_id: {recieved.all_user_id}.")
             return JSONResponse(status_code=200, content={"message": "No trainee user profiles found for the given all_user_id"})
@@ -149,37 +149,39 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
             .replace("{profile}", str(tinder_user_profile_data))
 
         # -------------------------------Generating Introduction Interview Questions------------------------- #
-        generated_intro_question_json =  {
-            "Introduction": [
-                {
-                    "question": "Tell me about yourself and your professional history?",
-                }
-            ]
-        }
+        # generated_intro_question_json =  {
+        #     "Introduction": [
+        #         {
+        #             "question": "Tell me about yourself and your professional history?",
+        #         }
+        #     ]
+        # }
         
         # -------------------------------Generating Closing Interview Questions------------------------- #
-        generated_last_question_json = {
-            "Closing": [
-                {
-                    "question": "Before we wrap up the interview, do you have any questions you'd like to ask?"
-                }
-            ]
-        }
+        # generated_last_question_json = {
+        #     "Closing": [
+        #         {
+        #             "question": "Before we wrap up the interview, do you have any questions you'd like to ask?"
+        #         }
+        #     ]
+        # }
         # ---------------------------------------------------------------------------------------------- #
 
         message = util.file_reader(prompt_path('generate_question.txt'))
         context = str(message)
         msg = context \
+            .replace("{introduction_count}", str(1)) \
             .replace("{background_count}", str(2)) \
             .replace("{technical_count}", str(2)) \
             .replace("{behavioral_count}", str(2)) \
-            .replace("{ability_count}", str(2))
+            .replace("{ability_count}", str(2))\
+            .replace("{closing_count}", str(1))
 
         content = generated_persona + msg
         response = gpt.openai_gpt_assistant_without_streaming(content)
         generated_question_json = util.extract_json(response, quite=False)
-        generated_question_json.update(generated_intro_question_json)
-        generated_question_json.update(generated_last_question_json)
+        # generated_question_json.update(generated_intro_question_json)
+        # generated_question_json.update(generated_last_question_json)
         logger.info("Persona and questions generated successfully.")
 
         # Step 4: Add question numbers
@@ -211,7 +213,7 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
                 'id': saved_session['id']
             }
             return saved_session
-    
+        # return generated_question_json
         else:
             logger.error("Failed to save session.")
             return JSONResponse(status_code=500, content={"error": "Failed to save session"})

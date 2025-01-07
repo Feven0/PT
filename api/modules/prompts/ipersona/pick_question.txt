@@ -6,6 +6,7 @@ You have:
     - The candidate's response is: {candidate_response}
 
 VERY IMPORTANT - DO NOT ADD THE WORD TERMINATE ON YOUR RESPONSE
+               - Add question mark, at the end of each picked question if the symbol is not provided.
 
 Important instructions:
     1. If the collection type is "Introduction":

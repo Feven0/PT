@@ -17,7 +17,7 @@ app = FastAPI()
 
 def openai_gpt_assistant_with_streaming(msg):
     model = 'gpt-4o-mini'
-    temperature=0
+    temperature = 0
     messages = [{'role': 'user', 'content': msg}]
 
     response = client.chat.completions.create(
@@ -26,10 +26,13 @@ def openai_gpt_assistant_with_streaming(msg):
         temperature=temperature,
         stream=True
     )
+
     for chunk in response:
-            chunk_message = chunk.choices[0].delta.content 
-            if chunk_message: 
-                yield chunk_message
+        chunk_message = chunk.choices[0].delta.content
+        
+        if chunk_message and "TERMINATE" not in chunk_message:
+            yield chunk_message
+
                 
 def generate_response(messages):
     response_stream = openai_gpt_assistant_with_streaming(messages)

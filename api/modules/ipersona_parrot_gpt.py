@@ -462,9 +462,8 @@ def realtime_response_evaluation(data: dict) -> dict:
             
         if chat_count == 12:
             closing_evaluation_prompt = file_reader(prompt_path('ipersona/closing_question_realtime_evaluation.txt'))
-            closing_question = "Before we wrap up the interview, do you have any questions you'd like to ask?"
             closing_content = closing_evaluation_prompt\
-                .replace("{closing_question}", str(closing_question))\
+                .replace("{closing_question}", str(last_assistant_response))\
                 .replace("{candidate_response}" , str(data['response']))
                         
             realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(closing_content)
