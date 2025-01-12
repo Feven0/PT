@@ -1,23 +1,26 @@
 import { useState } from 'react';
-import { Row, Col, Card, Table, Select, Spin, Button } from 'antd';
-import { PerformanceChart } from '../index';
+import { Row, Col, Card, Table, Select, Spin, Button,  Progress } from 'antd';
+import { PerformanceChart, LineChartAdmin } from '../index';
 import Api from '../../Services/Services';
-import { SearchOutlined } from '@ant-design/icons'; // Import Search Icon
-
+import { SearchOutlined } from '@ant-design/icons'; 
+import { DatePicker, Space } from 'antd';
+import moment from 'moment';
+import dayjs from 'dayjs';
+const defaultDate = dayjs();
 const { Option } = Select;
 
 const Dashboard = () => {
   const [overview, setOverview] = useState<any>({});
-  const [users, setUsers] = useState<any>([]);
-  const [allusers, setAllUsers] = useState<any>([]);
-  const [jobs, setJobs] = useState<any>([]);
-  const [performancedata, setPerformance] = useState<any>([]);
-  const [loading, setLoading] = useState<any>(false);
-  const [loadinguser, setLoadingUser] = useState<any>(false);
-  const [loadingjob, setLoadingJob] = useState<any>(false);
-  const [loadingper, setLoadingPer] = useState<any>(false);
-  const [limit, setLimit] = useState<any>(10);  
-  const [since, setSince] = useState<any>(4);   
+  const [users, setUsers] = useState([]);
+  const [allusers, setAllUsers] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [performancedata, setPerformance] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadinguser, setLoadingUser] = useState(false);
+  const [loadingjob, setLoadingJob] = useState(false);
+  const [loadingper, setLoadingPer] = useState(false);
+  const [limit, setLimit] = useState(10);  
+  const [since, setSince] = useState(4);   
 
   const fetchOverview = async (limit: any, since: any) => {
     setLoading(true);
@@ -63,13 +66,11 @@ const Dashboard = () => {
     setSince(value);
   };
 
-  // Search Handlers for each section
   const handleOverviewSearch = () => fetchOverview(limit, since);
   const handleUsersSearch = () => fetchUsers(limit, since);
   const handleJobsSearch = () => fetchJobs(limit, since);
   const handlePerformanceSearch = () => fetchPerformances(limit, since);
 
-  // Table columns for Users
   const userColumns = [
     { title: 'Name', dataIndex: 'name', key: 'name' },
     { title: 'Gender', dataIndex: 'gender', key: 'gender' },
@@ -77,7 +78,6 @@ const Dashboard = () => {
     { title: '#Interviews', dataIndex: 'total_interviews_count', key: 'total_interviews_count' },
   ];
 
-  // Table columns for Jobs
   const jobColumns = [
     { title: 'Job Title', dataIndex: 'job_title', key: 'job_title' },
     { title: 'Company', dataIndex: 'company_name', key: 'company_name' },
@@ -95,6 +95,30 @@ const Dashboard = () => {
     { title: 'Gender', dataIndex: 'gender', key: 'gender' },
     { title: 'Nationality', dataIndex: 'nationality', key: 'nationality' }
   ];
+
+  const [selectedDate, setSelectedDate] = useState<any>(moment()); 
+  const handleDateChange = (date: any) => {
+    setSelectedDate(date);
+  };
+
+  const selectedMonth = selectedDate ? selectedDate.format('YYYY-MM') : null;
+
+  const daysInMonth = (overview?.daily_sessions_by_month && overview.daily_sessions_by_month[selectedMonth])
+    ? Object.keys(overview.daily_sessions_by_month[selectedMonth]).map(Number)
+    : [];
+  
+  const sessionCounts = (overview?.daily_sessions_by_month && overview.daily_sessions_by_month[selectedMonth])
+    ? Object.values(overview.daily_sessions_by_month[selectedMonth])
+    : [];
+  
+  const chartData = daysInMonth.map((day, index) => ({
+    day: `Day ${day}`,  
+    sessionCount: sessionCounts[index],  
+  }));
+  
+
+  const completionPercentage = (overview?.complete_sessions / overview?.total_interview_sessions) * 100;
+
 
   return (
     <div>
@@ -134,18 +158,51 @@ const Dashboard = () => {
             <div>
                 <Row gutter={16}>
                     <Col span={8}>
-                      <Card title="Total Interviews" bordered={false}>
-                        {overview?.interviews_count}
+                      <Card title="Total Trainees" bordered={false}>
+                        <span style={{ fontWeight: 'bold', fontSize: '30px' }}>
+                          {overview?.user_profile_count}
+                        </span>
+                      </Card>
+                      <Card title="Total Jobs" bordered={false}>
+                        <span style={{ fontWeight: 'bold', fontSize: '30px' }}>
+                          {overview?.job_profile_count}
+                        </span>
                       </Card>
                     </Col>
+
                     <Col span={8}>
-                      <Card title="Job Profiles" bordered={false}>
-                        {overview?.job_profile_count}
+                      <Card title="Total Interviews" bordered={false} >
+                        <span style={{ fontWeight: 'bold', fontSize: '30px' }}>
+                          {overview?.user_profile_count}
+                        </span>
+                        <div>
+                          <LineChartAdmin chartData={chartData} />
+                          <Space direction="vertical">
+                            <DatePicker 
+                              defaultValue={defaultDate}
+                              value={selectedDate} 
+                              onChange={handleDateChange} 
+                              picker="month"  
+                              format="YYYY-MM" 
+                            />
+                          </Space>
+                        </div>
                       </Card>
                     </Col>
+
                     <Col span={8}>
-                      <Card title="User Profiles" bordered={false}>
-                        {overview?.user_profile_count}
+                      <Card title="Interview Completion" bordered={false}>
+                        <Progress 
+                          percent={completionPercentage} 
+                          status="active" 
+                          format={percent => `${percent?.toFixed(2)}%`} 
+                        />
+                        
+                        <div style={{ borderTop: '1px solid lightgrey', margin: '20px 0' }}></div>
+                        <p>Today Interviews {overview?.today_sessions}</p>
+                        <p>This Week Interviews {overview?.current_week_sessions}</p>
+                        <p>This Month Interviews {overview?.current_month_sessions}</p>
+
                       </Card>
                     </Col>
                 </Row>

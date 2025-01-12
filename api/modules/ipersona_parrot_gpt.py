@@ -2,6 +2,7 @@ from openai import OpenAI
 import json, os
 import os
 import json_repair
+from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 import api.llm.ipersona.ipersona_strapi as strapi
 from datetime import datetime
@@ -1326,12 +1327,26 @@ def calculate_session_metrics(sessions):
         job_profile_count = 0
         user_profile_count = 0
         complete_sessions = 0
-        incomplete_sessions = 0
-        job_profile_frequency = []  
-        user_profile_frequency = []  
+        incomplete_sessions = 0 
+        daily_sessions = defaultdict(int)
+        weekly_sessions = defaultdict(int)
+        monthly_sessions = defaultdict(int)
+        daily_sessions_by_month = defaultdict(lambda: defaultdict(int))
+        current_week_sessions = 0  
+        
+        # Getting the current UTC time and today's date (UTC)
+        now = datetime.now(timezone.utc)
+        today_date = now.date()
+        current_month = now.month
+        current_year = now.year
+        
+        # Getting the start of the current week (Monday)
+        start_of_week = today_date - timedelta(days=today_date.weekday()) 
 
         unique_job_profiles = set()
         unique_user_profiles = set()
+        today_sessions_count = 0  
+        current_month_sessions = 0  
 
         for session in sessions:
             session_count += 1
@@ -1354,79 +1369,73 @@ def calculate_session_metrics(sessions):
 
             job_profile_id = job_profile.get('id')
             user_profile_id = user_profile.get('id')
-            
-            ipersona_job = IpersonaJobSchema()
-            ipersona_user = IpersonaTraineeSchema()
-            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
-
-            alluserdata = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, nopp=True, dataframe=False)
-
-            all_user_id = alluserdata["attributes"]["all_users"]["data"][0]["id"]
-
-            ipersona_alluser = IpersonaAllUserSchema()
-            ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
-
-            ipersona_profile = IpersonaProfileInformationSchema()
-            ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id = all_user_id, nopp=True, dataframe=False, return_object=True)
-            userdata = {**ipersona_alluser_data, **ipersona_profile_data}
-      
-            ipersona_reaction = IpersonaSessionTinderUserReactionSchema()
-            reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=user_profile_id, job_profile_id=1533, nopp=True, dataframe=False)
-          
-            if job_title_data and len(job_title_data) > 0:
-                job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
-            else:
-                job_title = 'Unknown Job Title'
 
             if not job_profile_id or not user_profile_id:
                 logger.warn(f"Skipping session due to missing job/user profile: {session}")
                 continue
-            
+
             if job_profile_id not in unique_job_profiles:
                 unique_job_profiles.add(job_profile_id)
                 job_profile_count += 1
-                job_profile_frequency.append({
-                    'count': 1,
-                    'job_title': job_title,
-                    'job_profile_id': job_profile_id,
-                    "reaction_id": reaction_id
-                })
-            else:
-                for profile in job_profile_frequency:
-                    if profile['job_profile_id'] == job_profile_id:
-                        profile['count'] += 1
-                        break
 
             if user_profile_id not in unique_user_profiles:
                 unique_user_profiles.add(user_profile_id)
                 user_profile_count += 1
-                user_profile_frequency.append({
-                    'count': 1,
-                    'name': userdata['name'],
-                    'user_profile_id': user_profile_id
-                })
-            else:
-                for profile in user_profile_frequency:
-                    if profile['user_profile_id'] == user_profile_id:
-                        profile['count'] += 1
-                        break
 
             i_persona_observer = attributes.get('i_persona_observer', {}).get('data')
             if i_persona_observer is None:
                 incomplete_sessions += 1
             else:
                 complete_sessions += 1
+            
+            created_at_str = attributes.get('createdAt', {})
+            if created_at_str:
+                # Converting the strapi createdAt string to a datetime object (in UTC)
+                session_datetime = parse_iso_format_with_z(created_at_str)
+                
+                # Checking if the session is from today (UTC date comparison)
+                if session_datetime.date() == today_date:
+                    today_sessions_count += 1
 
-        job_profile_frequency = sorted(job_profile_frequency, key=lambda x: x['count'], reverse=True)
-        user_profile_frequency = sorted(user_profile_frequency, key=lambda x: x['count'], reverse=True)
-        total_session = complete_sessions + complete_sessions
+                # Checking if the session is from the current month
+                if session_datetime.month == current_month and session_datetime.year == current_year:
+                    current_month_sessions += 1
+
+                # Checking if the session is from the current week
+                if start_of_week <= session_datetime.date() <= today_date:
+                    current_week_sessions += 1
+
+                # Group by day
+                session_date = session_datetime.date()
+                daily_sessions[session_date] += 1
+
+                # Group by week (ISO calendar week number, which starts on Monday)
+                year, week_num, _ = session_datetime.isocalendar() 
+                weekly_sessions[f"{year}-W{week_num}"] += 1 
+
+                # Group by month (year and month)
+                year = session_datetime.year
+                month = session_datetime.month
+                monthly_sessions[f"{year}-{month}"] += 1  
+
+                # Sessions grouped by day within each month (for plotting daily changes within the month)
+                daily_sessions_by_month[f"{year}-{month:02d}"][session_date.day] += 1
+
+       
         result = {
             'interviews_count': session_count,
             'job_profile_count': job_profile_count,
             'user_profile_count': user_profile_count,
             'complete_sessions': complete_sessions,
-            'incomplete_sessions': complete_sessions,
-            'total_interview_sessions': total_session
+            'incomplete_sessions': incomplete_sessions,
+            'total_interview_sessions': complete_sessions + incomplete_sessions,
+            'day_sessions': daily_sessions,
+            'week_sessions': weekly_sessions,
+            'month_sessions': monthly_sessions,
+            'today_sessions': today_sessions_count,            # Total sessions today
+            'current_week_sessions': current_week_sessions,    # Total sessions in the current week
+            'current_month_sessions': current_month_sessions,  # Total session in the current month
+            'daily_sessions_by_month': daily_sessions_by_month  # Sessions per day within each month
         }
 
         return result
@@ -1434,6 +1443,7 @@ def calculate_session_metrics(sessions):
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
+
 
 def summarize_allusers_data(data):
     try:
@@ -1652,6 +1662,9 @@ def summarize_allusers_performance_data(data):
         return {'error': str(e)}
 
 #-------------------------------------------- FIle reader --------------------------------------------
+def parse_iso_format_with_z(iso_str):
+    return datetime.strptime(iso_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
+
 def convert_iso_to_readable_format(iso_time):
     try:
         dt = datetime.strptime(iso_time, '%Y-%m-%dT%H:%M:%S.%fZ')    
