@@ -70,7 +70,6 @@ const InterviewChat = () => {
         setChat(true); 
     };
     
-
     const handler = () => {
         ExecuteInterview();
         pause();

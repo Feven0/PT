@@ -161,19 +161,6 @@ async def audio_endpoint(sid, data):
 @sio.on("audio chat sentence")
 async def audio_end_point(sid, data):
     logger.info("audio socket response", data["response"], data['user_session']['id'])
-     #-----------------------------------------------------------------------------------#
-    ipersona_user = IpersonaSessionSchema()
-    session_fetched = ipersona_user.get_session_by_id(
-        sessionId=data['user_session']['id'], 
-        nopp=True, 
-        dataframe=False
-    )
-    data['user_session'] = session_fetched
-
-    if not session_fetched:
-        logger.warn(f"No session found for session ID: {data['user_session']['id']}")
-        return f"No session found for session ID: {data['user_session']['id']}"
-    #------------------------------------------------------------------------------------#
     try:
         start_time = time.time()
         global chat_count
@@ -181,6 +168,22 @@ async def audio_end_point(sid, data):
         sessionId = data['user_session']['id']
         realtime_evaluation = "null"
         accumulated_message = ""
+        full_accumulated_message = ""
+
+        
+        #-----------------------------------------------------------------------------------#
+        ipersona_user = IpersonaSessionSchema()
+        session_fetched = ipersona_user.get_session_by_id(
+            sessionId=data['user_session']['id'], 
+            nopp=True, 
+            dataframe=False
+        )
+        data['user_session'] = session_fetched
+
+        if not session_fetched:
+            logger.warn(f"No session found for session ID: {data['user_session']['id']}")
+            return f"No session found for session ID: {data['user_session']['id']}"
+        #------------------------------------------------------------------------------------#
 
         # Fetch session chat history
         ipersona_message = IpersonaSessionMessageSchema()
@@ -192,7 +195,7 @@ async def audio_end_point(sid, data):
 
         chat = session_chathistory['count']
         logger.info(f"Question Count Is: {chat}")
-
+ 
         if chat != 0:  
             chat_total = session_chathistory['total']
             assistant_count = sum(1 for entry in chat_total if entry["user_type"] == "assistant")
@@ -208,9 +211,8 @@ async def audio_end_point(sid, data):
         response = await util.generate_interview_question(data) 
       
         
-        if(response != 'None'):
+        if response.get("interview") is not None:
             assistant_next_question = "" if response.get("interview") is None else response["interview"]       
-            accumulated_message = ""              
             message = [
                 {
                     "user_type": "assistant",
@@ -229,7 +231,8 @@ async def audio_end_point(sid, data):
             
             tasks = []
             for chunk in assistant_next_question:
-                accumulated_message += chunk                
+                accumulated_message += chunk 
+                full_accumulated_message += chunk            
                 while True:
                     last_period = accumulated_message.rfind('.')
                     last_question = accumulated_message.rfind('?')
@@ -250,7 +253,7 @@ async def audio_end_point(sid, data):
                         accumulated_message = accumulated_message[last_end_pos + 1:].strip()                        
                     else:
                         break   
-             
+                    
             timelimit = strapi.calculate_time_limit(response)
             message = [{
                         "content": {
@@ -284,8 +287,14 @@ async def audio_end_point(sid, data):
                 }]
                 await sio.emit("audio_realtime", message, room=sid)  
              
-        if response.get("status") is not None:
-            message = [{
+       
+        # Insert the message or conclude the interview if the chat count exceeds the limit
+        if chat_count < 12:
+            strapi.step2_insert_message(data, timelimit, full_accumulated_message, realtime_evaluation)
+        else:
+            message = 'interview over'
+            if response.get("status") is not None:
+                message = [{
                     "user_type": "assistant",
                     "content_type": "question",
                     "content": {
@@ -298,11 +307,6 @@ async def audio_end_point(sid, data):
                 }]
             await sio.emit("last_audio_realtime_evaluation", message, room=sid)          
 
-        # Insert the message or conclude the interview if the chat count exceeds the limit
-        if chat_count < 9:
-            strapi.step2_insert_message(data, timelimit, accumulated_message, realtime_evaluation)
-        else:
-            message = 'interview over'
             await sio.emit("interview done", message, room=sid)
             strapi.step3_insert_message(data, realtime_evaluation)
    

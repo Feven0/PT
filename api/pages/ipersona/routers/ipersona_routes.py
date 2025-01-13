@@ -209,9 +209,7 @@ async def user_session_files(recieved: pemodel.UserSessionRequestRecieved):
 
         if saved_session:
             logger.info("Session created successfully!")
-            saved_session = {
-                'id': saved_session['id']
-            }
+            saved_session = util.remove_key(saved_session, 'generated_questions')
             return saved_session
         # return generated_question_json
         else:
@@ -844,6 +842,9 @@ async def fetch_single_session(recieved: pemodel.SessionIdRequestRecieved):
             return JSONResponse(status_code=200, content={"message": "Session data empty"})
 
         logger.info(f"Successfully fetched session data for session ID: {recieved.sessionId}")
+     
+        session_fetched = util.remove_key(session_fetched, 'generated_questions')
+ 
         return session_fetched
 
     except Exception as e:

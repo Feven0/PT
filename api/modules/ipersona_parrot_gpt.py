@@ -521,7 +521,6 @@ async def overall_interview_evaluations(data: dict, status) -> dict:
             dataframe=False,
             sort='asc')
         history = all_chat_history['total']
-        
         overall_evaluation_prompt = file_reader(prompt_path('ipersona/overall_evaluation.txt'))
         overall_metrics_prompt = file_reader(prompt_path("ipersona/interview_metrics_rubrics.txt"))
         overall_evaluation_context = str(overall_evaluation_prompt)
@@ -1685,7 +1684,17 @@ def file_reader(path: str) -> str:
     except Exception as e:
         logger.error(f"File reading process failed: ${str(e)}")
         return f'Error: {str(e)}'  
-      
+
+def remove_key(data, key_to_remove):
+    if isinstance(data, dict):
+        if key_to_remove in data and isinstance(data[key_to_remove], dict):
+            del data[key_to_remove]
+        for key, value in data.items():
+            remove_key(value, key_to_remove)
+    elif isinstance(data, list):
+        for item in data:
+            remove_key(item, key_to_remove)
+    return data   
 
 #------------------------------------- Json Extraction --------------------------------------------
 def extract_json(response, quite=False):
