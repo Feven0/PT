@@ -53,6 +53,7 @@ def step2_insert_message(data, timelimit, accumulated_message, realtime_evaluati
                         "time_taken": "null",
                         "time_limit":  timelimit.get("time_limit"),
                         "full_response": accumulated_message,
+                        "final": data['final'],
                         "realtime_evaluation": realtime_evaluation
                     }
                 }
@@ -79,6 +80,7 @@ def step3_insert_message(data, realtime_evaluation):
                         "time_taken": "",
                         "time_limit":  "",
                         "full_response": "",
+                        "final": data['final'],
                         "realtime_evaluation": realtime_evaluation
                     }
                 }
