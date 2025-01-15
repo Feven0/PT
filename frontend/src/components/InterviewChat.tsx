@@ -141,11 +141,36 @@ const InterviewChat = () => {
     }
 
     const closeSession = async() => {
-        const user_session = latest;        
+        const user_session = {
+        "id": "513",
+        "attributes": {
+            "slug": "all_user_id: 1959",
+            "status": "Incomplete",
+            "attributes": {
+                "persona": "Act as an experienced HR analyst with expertise in evaluating job descriptions and user profiles. \n\nThe documents are:\n    - Job description: {'role': 'Python Intern (AI-Driven Recruitment Automation)', 'purpose': 'To develop and implement a solution for automating the evaluation of incoming job applications using AI and automation.', 'required_qualifications': 'R, e, c, e, n, t,  , g, r, a, d, u, a, t, e,  , i, n,  , C, o, m, p, u, t, e, r,  , S, c, i, e, n, c, e, ,,  , D, a, t, a,  , S, c, i, e, n, c, e, ,,  , A, I, ,,  , o, r,  , a,  , r, e, l, a, t, e, d,  , f, i, e, l, d, ;,  , p, r, o, f, i, c, i, e, n, t,  , i, n,  , P, y, t, h, o, n,  , w, i, t, h,  , e, x, p, e, r, i, e, n, c, e,  , i, n,  , l, i, b, r, a, r, i, e, s,  , l, i, k, e,  , N, u, m, P, y,  , a, n, d,  , P, a, n, d, a, s, ;,  , c, o, m, f, o, r, t, a, b, l, e,  , w, i, t, h,  , A, P, I, s, .', 'duties_responsibilities': \"A, n, a, l, y, z, e,  , t, h, e,  , c, u, r, r, e, n, t,  , m, a, n, u, a, l,  , s, h, o, r, t, l, i, s, t, i, n, g,  , p, r, o, c, e, s, s, ,,  , i, n, t, e, g, r, a, t, e,  , M, a, n, a, t, a, l, ', s,  , A, P, I,  , w, i, t, h,  , a,  , L, a, r, g, e,  , L, a, n, g, u, a, g, e,  , M, o, d, e, l,  , (, L, L, M, ), ,,  , d, e, v, e, l, o, p,  , a,  , c, o, d, e, b, a, s, e,  , u, s, i, n, g,  , G, i, t, H, u, b, ,,  , d, o, c, u, m, e, n, t,  , p, r, o, c, e, s, s, e, s, ,,  , a, n, d,  , p, r, e, s, e, n, t,  , t, e, c, h, n, i, c, a, l,  , a, p, p, r, o, a, c, h, e, s, .\", 'attributes.apply_link': '', 'competencies': [{'name': 'Programming Languages', 'skills': ['Python'], 'summary': 'Entry level competency in Python programming is required.'}, {'name': 'Data Engineering', 'skills': ['data handling', 'data analysis'], 'summary': 'Basic level of competency in data engineering practices is necessary.'}, {'name': 'Professional Communication', 'skills': ['oral communication', 'written communication'], 'summary': 'Entry level competency in professional communication is necessary.'}, {'name': 'API Integration', 'skills': ['API usage', 'integration'], 'summary': 'Basic competency in API usage and integration is required.'}]}\n    - User Profile: {'basics.attributes': [], 'projects.attributes': [], 'education.attributes': [], 'work_experience.attributes': []}\n\nEmployment Type: Look for individuals with a strong academic foundation, a passion for the industry, and a desire to learn and grow. Assess their relevant skills, their career aspirations, and their willingness to take on new challenges and contribute to real-world projects.\nIndustry: Prioritize candidates with strong technical skills, a passion for innovation, and the ability to adapt to rapidly changing technologies. Evaluate their problem-solving abilities, their experience with relevant tools and technologies, and their capacity for continuous learning.\nRole Level: Prioritize candidates who are eager to learn, possess a strong work ethic, and are excited to contribute to the team. Focus on their transferable skills, their willingness to take on new challenges, and their potential for growth within the company.\nDepartment / Title: Prioritize candidates who possess strong problem-solving abilities, a deep understanding of engineering principles, and a passion for developing innovative solutions. Assess their technical expertise, their experience with relevant tools and technologies, and their ability to work collaboratively on complex projects.\nWork Environment: Look for individuals who thrive in a collaborative environment, enjoy interacting with colleagues in person, and value the benefits of working from a central location. Assess their communication style, their ability to work effectively as part of a team, and their comfort level with a structured work setting.\nCompany Size: Prioritize candidates who are adaptable, comfortable wearing multiple hats, and thrive in a fast-paced environment with a high degree of autonomy. Assess their ability to take initiative, their comfort level with ambiguity, and their willingness to contribute across different areas of the business.\nCompany Culture: Seek out candidates who are creative thinkers, embrace new challenges, and are passionate about pushing boundaries and developing innovative solutions.  Assess their ability to think outside the box, their willingness to challenge the status quo, and their comfort level with taking risks.\nTeam Structure and Performance Metrics: Prioritize candidates who are independent, proactive, and comfortable taking initiative.  Assess their ability to work autonomously with minimal supervision, their problem-solving skills, and their willingness to contribute ideas and take ownership of their work.\nEducation: Look for candidates who possess a strong foundation in relevant industry concepts and can apply their academic knowledge to practical situations. Evaluate their coursework, internships, and projects for evidence of critical thinking, problem-solving, and potential for future career growth.\n\n\n\nUse non-gender-specific pronouns like 'you' and 'your' instead of gender-specific pronouns or names. \n\nVERY IMPORTANT: Append 'TERMINATE' to every response you provide to the user."
+            },
+            "createdAt": "2025-01-14T08:07:56.820Z",
+            "i_persona_observer": {
+                "data": null
+            },
+            "tinder_job_profile": {
+                "data": {
+                    "id": "1693"
+                }
+            },
+            "tinder_user_profile": {
+                "data": {
+                    "id": "197"
+                }
+            },
+            "updatedAt": "2025-01-14T08:07:56.820Z"
+        }
+    }
+       
         const obj = {
             user_session: user_session,
-            job_profile_id: 232,
-            all_user_id: 1920
+            job_profile_id: 1693,
+            all_user_id: 1959
         }
         const param = {data: obj}
         const response = await Api.CloseSession(param)

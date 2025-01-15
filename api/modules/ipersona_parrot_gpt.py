@@ -1330,6 +1330,7 @@ def calculate_session_metrics(sessions):
         daily_sessions = defaultdict(int)
         weekly_sessions = defaultdict(int)
         monthly_sessions = defaultdict(int)
+        yearly_sessions = defaultdict(int)
         daily_sessions_by_month = defaultdict(lambda: defaultdict(int))
         current_week_sessions = 0  
         
@@ -1346,6 +1347,7 @@ def calculate_session_metrics(sessions):
         unique_user_profiles = set()
         today_sessions_count = 0  
         current_month_sessions = 0  
+        current_year_sessions = 0  
 
         for session in sessions:
             session_count += 1
@@ -1403,6 +1405,10 @@ def calculate_session_metrics(sessions):
                 # Checking if the session is from the current week
                 if start_of_week <= session_datetime.date() <= today_date:
                     current_week_sessions += 1
+                    
+                  # Checking if the session is from the current year
+                if session_datetime.year == current_year:
+                    current_year_sessions += 1
 
                 # Group by day
                 session_date = session_datetime.date()
@@ -1419,6 +1425,9 @@ def calculate_session_metrics(sessions):
 
                 # Sessions grouped by day within each month (for plotting daily changes within the month)
                 daily_sessions_by_month[f"{year}-{month:02d}"][session_date.day] += 1
+                
+                # Group by year
+                yearly_sessions[year] += 1 
 
        
         result = {
@@ -1431,10 +1440,12 @@ def calculate_session_metrics(sessions):
             'day_sessions': daily_sessions,
             'week_sessions': weekly_sessions,
             'month_sessions': monthly_sessions,
-            'today_sessions': today_sessions_count,            # Total sessions today
-            'current_week_sessions': current_week_sessions,    # Total sessions in the current week
-            'current_month_sessions': current_month_sessions,  # Total session in the current month
-            'daily_sessions_by_month': daily_sessions_by_month  # Sessions per day within each month
+            'year_sessions': yearly_sessions,                    # Add yearly sessions to the result
+            'today_sessions': today_sessions_count,              # Total sessions today
+            'current_week_sessions': current_week_sessions,      # Total sessions in the current week
+            'current_month_sessions': current_month_sessions,    # Total session in the current month
+            'current_year_sessions': current_year_sessions,      # Total session in the current year
+            'daily_sessions_by_month': daily_sessions_by_month   # Sessions per day within each month
         }
 
         return result

@@ -381,6 +381,7 @@ async def interview_endpoint(sid, data):
                         "time_limit": "null",
                         "chunk_response": accumulated_message,
                         "full_response": "",
+                        "final": "false",
                         "realtime_evaluation": "null"
                     }
                 }
@@ -433,7 +434,6 @@ async def interview_endpoint(sid, data):
             strapi.step2_insert_message(data, timelimit, accumulated_message, realtime_evaluation)
         else:
             message = 'interview over'
-            print("========================", message)
             await sio.emit("interview done", message, room=sid)
             if response.get("status") is not None:
                 message = [{
@@ -441,9 +441,10 @@ async def interview_endpoint(sid, data):
                     "content_type": "question",
                     "content": {
                         "time_taken": "null",
-                        "time_limit": "null",
-                        "chunk_response": "",
+                        "time_limit": "null",                        
+                        "chunk_response": '',
                         "full_response": accumulated_message,
+                        "final": "true",
                         "realtime_evaluation": response.get("realtime")
                     }
                 }]
