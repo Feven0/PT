@@ -221,6 +221,7 @@ async def audio_end_point(sid, data):
                         "time_limit":  "null",
                         "chunk_response": accumulated_message,
                         "full_response": "",
+                        "audio_data": "",
                         "realtime_evaluation": "null"
                     }
                 }
@@ -268,6 +269,13 @@ async def audio_end_point(sid, data):
                     print(f"Error: {audio_data['error']}")
                     continue
                 
+                message = [{
+                        "content": {
+                            "audio_data": audio_data,
+                        }
+                    }]                    
+                await sio.emit("audio_base64_chunks", message, room=sid) 
+                
                 await sio.emit("audio-single-chunk", audio_data, room=sid)
                 
             await sio.emit("audio-single-text-chunk-done", room=sid)
@@ -303,6 +311,7 @@ async def audio_end_point(sid, data):
                         "time_limit": "null",
                         "chunk_response": "",
                         "full_response": accumulated_message,
+                        "audio_data": "",
                         "realtime_evaluation": response.get("realtime")
                     }
                 }]

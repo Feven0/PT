@@ -31,7 +31,7 @@ const Audio = () => {
     let timerValue: any;
 
     console.log("audio-interview", audiointerview)
-    console.log("audio-history", sessions)
+    console.log("audio-history", audioHistory)
 
     const handleDataFromAudio = (audioTranscript: any) => {
         setInput(audioTranscript);

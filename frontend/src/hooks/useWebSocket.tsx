@@ -162,6 +162,39 @@ const useWebSocket = (url: string) => {
       });
     });
 
+    newSocket.on('audio_base64_chunks', (message) => {
+      setAudioHistory((prevMessages) => {
+        if (!Array.isArray(prevMessages)) {
+          return [message]; 
+        }
+
+        if (prevMessages.length > 0 && prevMessages[prevMessages.length - 1].user_type === 'assistant') {
+          const lastMessage = prevMessages[prevMessages.length - 1];
+          const currentResponse = Array.isArray(lastMessage?.content?.audio_data)
+            ? lastMessage?.content?.audio_data
+            : [];
+
+            const newResponse = Array.isArray(message?.content?.audio_data) 
+            ? [...currentResponse, ...message?.content?.audio_data] 
+            : [...currentResponse, message[0]?.content?.audio_data]; 
+    
+          return [
+            ...prevMessages.slice(0, -1), 
+            {
+              ...lastMessage,
+              content: {
+                ...lastMessage.content,
+                audio_data: newResponse 
+              }
+            }
+          ];
+        } else {
+
+          return [...prevMessages, ...message];
+        }
+      });
+    });
+
     newSocket.on('audio_time_limit', (message) => {
       setAudioHistory((prevMessages) => {
           if (!Array.isArray(prevMessages)) {

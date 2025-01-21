@@ -23,7 +23,6 @@ const useMiddleSocket = () => {
   const [startfetching, setStartFetch] = useState(true);
   const [startchat, setChat] = useState<any>(false);
   const [isStarted, setIsStarted] = useState(false);  
-  const [count, setCount] = useState();
   const { seconds, minutes, start, pause, reset } = useStopwatch({ autoStart: false});
 
 
@@ -35,6 +34,8 @@ const useMiddleSocket = () => {
       }
     }, [socket]);
   
+
+    // ------------------------------------------------------------------------------------------------
     useEffect(() => {
       if (socket) {
         socket.on('initial connect', (message: any) => {
@@ -89,6 +90,9 @@ const useMiddleSocket = () => {
       });
     };
 
+
+
+    // ------------------------------------------------------------------------------------------------
     useEffect(() => {
       if (socket) {
           socket.on('audio transcribe', (message: any) => {
@@ -105,46 +109,16 @@ const useMiddleSocket = () => {
     const handleAssemblyTTS = async (data: any) => {   
       await socket?.emit('audio transcribe', {
         user_session: data.latest,
-        audioblob: data.audioblob,
-        // question_counter: 1,
-        // response: ''      
+        audioblob: data.audioblob    
       });
     };
  
-  useEffect(() => {
-    if (socket) {
-        socket.on('audio chat', (message: any) => {
-            setAudioHistory((prevMessages: any) => {
-              if (!prevMessages.some((m: any) => m.query === message.query)) {
-                return [...prevMessages, ...message];
-              }
-              return prevMessages;
-            });
-            setLoading(false);
-            if(count === 4) {
-              pause()
-            }
-      });
-    } 
-  }, [socket]);
 
-  const handleAudioInterview = async (data: any) => {    
-    setLoading(true)
-    await socket?.emit('audio chat', { 
-      response: data.input, 
-      history: data.interview, 
-      user_session: data.user_session,
-      question_counter: data.counter,
-      time_taken: data.timerValue,
-      previous_question: data.previous_question
-    });
-    setCount(data.counter)
-  };
 
+  // ------------------------------------------------------------------------------------------------
   useEffect(() => {
     if (socket) {
         socket.on('audio chat sentence', () => {
-        //  console.log(message)
           reset();
           setLoading(false);
           setStartFetch(true);
@@ -174,44 +148,15 @@ const useMiddleSocket = () => {
     await socket?.emit('audio chat sentence', { 
       response: data.input, 
       user_session: data.user_session,
-      time_taken: data.timerValue
-    });
-    setCount(data.counter)
-  };
-
-  useEffect(() => {
-    if (socket) {
-        socket.on('audio double chunk', (message: any) => {
-            setAudioHistory((prevMessages: any) => {
-              if (!prevMessages.some((m: any) => m.query === message.query)) {
-                return [...prevMessages, ...message];
-              }
-              return prevMessages;
-            });
-            setLoading(false);
-            if(count === 4) {
-              pause()
-            }
-      });
-    } 
-  }, [socket]);
-
-  const handleAudioDouble = async (data: any) => {    
-    setLoading(true)
-    await socket?.emit('audio double chunk', { 
-      response: data.input, 
-      history: data.interview, 
-      user_session: data.user_session,
-      question_counter: data.counter,
       time_taken: data.timerValue,
-      previous_question: data.previous_question
+      job_profile_id: data.job_profile_id,
+      all_user_id: data.all_user_id
     });
-    setCount(data.counter)
   };
 
+  
 
   return {
-    handleAudioInterview,
     audiointerview,
     setAudioInterview,
     setLoading,
@@ -222,7 +167,6 @@ const useMiddleSocket = () => {
     audioChunk, 
     setAudioInterviewChunk,
     handleAudioSentence,
-    handleAudioDouble,
     setAssemblyTTS,
     done, 
     setDone,
@@ -244,7 +188,6 @@ const useMiddleSocket = () => {
     reset,
     isStarted, 
     setIsStarted,
-    setCount,
   };
 };
 
