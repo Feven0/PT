@@ -263,7 +263,8 @@ async def helper_func(chat_count, count: int, question_type: str, section: list,
             logger.info(f"Realtime evaluation is: {realtime_evaluation}")
             if realtime_evaluation != "null":
                 status = "final"
-                strapi.step3_insert_message(data, realtime_evaluation)
+                final = 'true'
+                strapi.step3_insert_message(data, realtime_evaluation, final)
 
             await overall_interview_evaluations(data, status = "Completed")
             logger.info("Calculate the overall and save to database done.")            

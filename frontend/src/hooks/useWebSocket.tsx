@@ -212,6 +212,12 @@ const useWebSocket = (url: string) => {
       });
 
     });
+    
+    newSocket.on('audio-single-chunk', (message) => {
+      const blob = new Blob([message], { type: "audio/mpeg" });
+      const audioUrl = URL.createObjectURL(blob);
+      setAudioInterview((prevMessages) => [...prevMessages, audioUrl]);
+    });
 
     newSocket.on('last_audio_realtime_evaluation', (message) => {
       setAudioHistory((prevMessages) => [...prevMessages, ...message]);      
@@ -224,13 +230,6 @@ const useWebSocket = (url: string) => {
 
     newSocket.on('audio-single-chunk-sentence', (message) => {
       setAudioInterview((prevMessages) => [...prevMessages, message]);
-    });
-
-    
-    newSocket.on('audio-single-chunk', (message) => {
-      const blob = new Blob([message], { type: "audio/mpeg" });
-      const audioUrl = URL.createObjectURL(blob);
-      setAudioInterview((prevMessages) => [...prevMessages, audioUrl]);
     });
 
     newSocket.on('audio-single-text-chunk',(message) => {

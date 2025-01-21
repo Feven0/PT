@@ -209,8 +209,7 @@ async def audio_end_point(sid, data):
 
                  
         response = await util.generate_interview_question(data) 
-      
-        
+             
         if response.get("interview") is not None:
             assistant_next_question = "" if response.get("interview") is None else response["interview"]       
             message = [
@@ -290,9 +289,11 @@ async def audio_end_point(sid, data):
        
         # Insert the message or conclude the interview if the chat count exceeds the limit
         if chat_count < 12:
-            strapi.step2_insert_message(data, timelimit, full_accumulated_message, realtime_evaluation)
+            final = 'false'
+            strapi.step2_insert_message(data, timelimit, full_accumulated_message, realtime_evaluation, final)
         else:
             message = 'interview over'
+            final = 'true'
             if response.get("status") is not None:
                 message = [{
                     "user_type": "assistant",
@@ -308,7 +309,7 @@ async def audio_end_point(sid, data):
             await sio.emit("last_audio_realtime_evaluation", message, room=sid)          
 
             await sio.emit("interview done", message, room=sid)
-            strapi.step3_insert_message(data, realtime_evaluation)
+            # strapi.step3_insert_message(data, realtime_evaluation, final)
    
     except Exception as e:
         logger.error(f'Error: {str(e)}')  
@@ -431,10 +432,13 @@ async def interview_endpoint(sid, data):
                 
         # Insert the message or conclude the interview if the chat count exceeds the limit
         if chat_count < 12:
-            strapi.step2_insert_message(data, timelimit, accumulated_message, realtime_evaluation)
+            final= 'false'
+            strapi.step2_insert_message(data, timelimit, accumulated_message, realtime_evaluation, final)
         else:
             message = 'interview over'
             await sio.emit("interview done", message, room=sid)
+            final= 'true'
+
             if response.get("status") is not None:
                 message = [{
                     "user_type": "assistant",
@@ -450,6 +454,7 @@ async def interview_endpoint(sid, data):
                 }]
                 
             await sio.emit("last_realtime_evaluation", message, room=sid)        
+            # strapi.step3_insert_message(data, realtime_evaluation, final)
 
     except Exception as e:
         logger.error(f"Error processing interview chat for session {data['user_session']['id']}: {str(e)}", exc_info=True)

@@ -106,8 +106,8 @@ const useMiddleSocket = () => {
       await socket?.emit('audio transcribe', {
         user_session: data.latest,
         audioblob: data.audioblob,
-        question_counter: 1,
-        response: ''      
+        // question_counter: 1,
+        // response: ''      
       });
     };
  
