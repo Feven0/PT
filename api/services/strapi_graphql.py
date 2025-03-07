@@ -21,9 +21,13 @@ class StrapiGraphql():
             
         self.run_stage = run_stage
         
+
         # define url
         root, ssmkey = config.get_strapi_params(run_stage)            
-        self.apiroot = f"https://{root}.10academy.org/graphql" 
+        if run_stage.lower().startswith('tenacious'):
+            self.apiroot = f"https://cms.gettenacious.com/graphql" 
+        else:
+            self.apiroot = f"https://{root}.10academy.org/graphql"
         self.ssmkey = ssmkey
         
         # define token

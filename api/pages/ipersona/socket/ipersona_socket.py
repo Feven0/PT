@@ -104,58 +104,6 @@ async def synthesize_text(text):
     except Exception as e:
         return {"error": str(e)}
 
-# distribute streaming text to form sentences and compute tts in async
-@sio.on("audio chat")
-async def audio_endpoint(sid, data):
-    try:
-        start_time = time.time()        
-        response = await util.generate_interview_question(data)
-        assistant_next_question = response.get("interview", "")
-
-        #tasks = [synthesize_text(chunk) for chunk in assistant_next_question]
-        accumulated_message = ""             
-
-        tasks = []
-        for chunk in assistant_next_question:
-            accumulated_message += chunk
-            
-            while True:
-                last_period = accumulated_message.rfind('.')
-                last_question = accumulated_message.rfind('?')
-
-                last_end_pos = max(last_period, last_question)
-                
-                if last_end_pos != -1:
-                    complete_sentence = accumulated_message[:last_end_pos + 1]
-                    await sio.emit("audio-single-text-chunk", complete_sentence, room=sid)
-                    tasks.append(synthesize_text(complete_sentence))
-                    
-                    accumulated_message = accumulated_message[last_end_pos + 1:].strip()                        
-                else:
-                    break   
-        
-        
-        await sio.emit("audio-single-text-chunk-done", room=sid)
-
-        audio_chunks = await asyncio.gather(*tasks)
-
-        for audio_data in audio_chunks:
-            if isinstance(audio_data, dict) and 'error' in audio_data:
-                print(f"Error: {audio_data['error']}")
-                continue
-
-            await sio.emit("audio-single-chunk", audio_data, room=sid)
-       
-    except Exception as e:
-        print(f"Error processing audio: {e}")
-
-    finally:
-        message = 'over'
-        await sio.emit("interview done", message, room=sid)
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        print(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
-
 # method to save audio chat to database
 # TODO: integrate with audio chat function
 @sio.on("audio chat sentence")
@@ -222,6 +170,7 @@ async def audio_end_point(sid, data):
                         "chunk_response": accumulated_message,
                         "full_response": "",
                         "audio_data": "",
+                        "final": "false",
                         "realtime_evaluation": "null"
                     }
                 }
@@ -312,6 +261,7 @@ async def audio_end_point(sid, data):
                         "chunk_response": "",
                         "full_response": accumulated_message,
                         "audio_data": "",
+                        "final": "true",
                         "realtime_evaluation": response.get("realtime")
                     }
                 }]

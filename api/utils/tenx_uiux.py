@@ -47,7 +47,7 @@ class BaseTable():
             "source": "alias to another column name if view data is different from search data"				                   
         }        
         '''      
-        if dtype.lower() not in ['string', 'date', 'datetime', 'tag', 
+        if dtype.lower() not in ['string', 'number', 'date', 'datetime', 'tag', 
                                  'link', 'tag_list', 'html', 'api', 
                                  'expand']:
             logger.warn(f"Invalid column type: {dtype.lower()}")
@@ -84,6 +84,7 @@ class BaseTable():
         if itype not in ['with_text', 'icon_only']:
             logger.warn("Invalid icon type: using itype='icon_only'")
             itype='icon_only'
+            
         return {
             "type": itype,
             "source": source,
@@ -112,6 +113,7 @@ class BaseTable():
                    ctype='string', cformat="", csource="",
                    inmobile=False, intablet=False, indesktop=False, 
                    options=[], **kwargs):
+      
         has_filter = len(options) > 0
         has_icon = True if icon else False
         if not label:
@@ -160,8 +162,18 @@ class BaseTable():
         
     def add_rows(self, dataIn, **kwargs):
         data = copy.deepcopy(dataIn)
+        
+        # Check if data is a dictionary
         if isinstance(data, dict):
-            data = [data]
+            # Add the entire dictionary (including nested lists) directly to the table's data
+            self.table["data"].append(data)
+            return self.table["data"]
+
+        # If data is already a list, process each item
+        if not isinstance(data, list):
+            logger.warn("Data passed is not a list or dict")
+            return self.table["data"]
+        
         if not len(data) > 0:
             logger.warn("Empty data passed")
             return self.table["data"]
@@ -174,24 +186,26 @@ class BaseTable():
             logger.warn("No columns defined for the table")
             return self.table["data"]
         
+        # If it's a list of dictionaries, handle it as usual
         rows = self.table["data"]
+        
         for item in data:
             row = {}
-            # add expandable content if it exists
+            # Add expandable content if it exists
             for x in ["expandableContent", "subdata"]:
                 if x in item.keys():
                     row["expandableContent"] = item[x]
                     self.make_expandable(True)
                     break
-                
+            
             for col in self.table["columns"]:
                 name = col["name"]
                 row[name] = item.get(name, "")
-             
-            self.table["data"].append(row)
             
-        return self.table["data"]
+            self.table["data"].append(row)
         
+        return self.table["data"]
+
     def init_structure(self, **kwargs):
         table = {
             "view_type": "table",

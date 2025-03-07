@@ -9,7 +9,8 @@ from datetime import datetime
 from api.utils.logger import LLPackerLogger
 import api.llm.ipersona.ipersona_gpt as gpt
 from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionTinderUserJobMatchSchema, IpersonaSessionTinderUserReactionSchema, IpersonaSessionSchema, IpersonaTraineeSchema, IpersonaJobSchema, IpersonaSessionOverallObserverSchema, IpersonaSessionMessageSchema, IpersonaSessionObserverSchema, IpersonaAllUserSchema, IpersonaProfileInformationSchema
-  
+from api.utils.request_manager import JobReactionManager
+
 logger = LLPackerLogger(os.path.basename(__file__))
 
 from api.services.secret import get_auth
@@ -567,8 +568,10 @@ async def overall_interview_evaluations(data: dict, status) -> dict:
                 "i_persona_session": data['user_session']['id'],
                 "status": status            
             }
+
         ipersona_observer = IpersonaSessionObserverSchema()
         save_observer = ipersona_observer.save_observer(params=overall_json, nopp=True, dataframe=False)
+ 
         ipersona_session = IpersonaSessionSchema()
         if save_observer:
             logger.info("session observer to database")
@@ -577,22 +580,31 @@ async def overall_interview_evaluations(data: dict, status) -> dict:
             "i_persona_session_id": data['user_session']['id'], 
             "status": status,
         }
-        
         updated_session = ipersona_session.update_session(params=session_data, nopp=True, dataframe=False, return_object=True)
+     
         if updated_session:
-            logger.info("session status updated to completed")
+            logger.info("session status updated to closed")
             
             #------------------------------------------------------------------------------------#
     
         ipersona_user = IpersonaTraineeSchema()
 
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=data['all_user_id'], nopp=True, dataframe=False)
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(
+            all_user_id=data['all_user_id'], 
+            nopp=True, 
+            dataframe=False
+            )
         if not trainee_profile_data:
                 logger.warn("No trainee user profiles found.")
                 return []
         tinder_user_profile_id = trainee_profile_data['id'] 
                       
-        session = ipersona_session.filter_by_with_user_job_id(user_profile_id=tinder_user_profile_id,job_profile_id=data['job_profile_id'], nopp=True, dataframe=False) 
+        session = ipersona_session.filter_by_with_user_job_id(
+            user_profile_id=tinder_user_profile_id,
+            job_profile_id=data['job_profile_id'], 
+            nopp=True, 
+            dataframe=False
+            ) 
         session_chatobserver = extract_observers_metrics(session)
         
         if status == 'Completed':         
@@ -1124,88 +1136,142 @@ def calculate_average_time_management(data):
         return {'error': f"Error calculating time management averages: {str(e)}"}
 
 #-------------------------------------------- user engagment jobs --------------------------------------------
-def summarize_interviews(user_profile_id, since, limit):  
+def add_columns(params, kind, **kwargs):
+    try:
+        output = []
+        if kwargs.get('information_level','minimal')=='minimal':
+            try:
+                job_reaction_manager = JobReactionManager()
+                output = job_reaction_manager.prepare_table(params, kind=kind)
+            except Exception as e:
+                logger.error(f'Error preparing leap table: {e}')
+                output = []
+                
+            if isinstance(output, dict):
+                output = [output]
+            elif not isinstance(output, list):
+                output = [output]            
+        else:
+            output = params
+            
+        return output
+    except Exception as e:
+        logger.error(f'Error adding columns to leap table: {e}')
+        output = [] 
+
+
+def summarize_interviews(
+    user_profile_id, 
+    filter,
+    cursor,
+    since, 
+    limit,
+    information_level,
+    return_skip):  
     try:  
         # Fetch a particular user sessions
         ipersona_session = IpersonaSessionSchema()
-        data = ipersona_session.filter_by_tinder_user_profile_id(user_profile_id=user_profile_id, since=since, limit=limit, nopp=True, dataframe=False)
-        data = extracted_needed_metrics(data)
+    
+        query_filter = filter
+        kwargs = {}
+        if query_filter:
+            kwargs.update(query_filter)
+            
+        data, cursors = ipersona_session.filter_by_tinder_user_profile_id(
+            user_profile_id=user_profile_id, 
+            cursor=cursor, 
+            since=since, 
+            limit=limit, 
+            nopp=True, 
+            dataframe=False,
+            **kwargs)
+            
+        if len(data) != 0:
+            data = extracted_needed_metrics(data)
+
+            if len(data) == 0:
+                logger.info("The given trainee has no observer data")
+                return []
+
+            job_summary = defaultdict(list)
+
+            for record in data:
+                job_profile_id = record['job_profile_id']
+                job_summary[job_profile_id].append(record)
+
+                summary_response = []
+                complete_sessions_count = 0
+                incomplete_sessions_count = 0
         
-        if len(data) == 0:
-            logger.info("The given trainee has no observer data")
-            return []
-
-        job_summary = defaultdict(list)
-
-        for record in data:
-            job_profile_id = record['job_profile_id']
-            job_summary[job_profile_id].append(record)
-
-            summary_response = []
-            complete_sessions_count = 0
-            incomplete_sessions_count = 0
+            # return job_summary
+            for job_profile_id, records in job_summary.items():
             
-        for job_profile_id, records in job_summary.items():
-           
-            for session in records:
-                attributes = session.get('attributes', {})
-                i_persona_observer = attributes.get('i_persona_observer', {}).get('data')
-                if i_persona_observer is None:
-                    incomplete_sessions_count += 1
+                for session in records:
+                    complete_status = session.get('complete_status', {})
+                
+                    if complete_status:
+                        complete_sessions_count += 1
+                    else:
+                        incomplete_sessions_count += 1
+                                
+                total_score = sum(
+                    record.get('overall_performance_score', 0) for record in records if record.get('overall_performance_score') is not None
+                )
+                
+                if total_score >= 0:
+                    average_score = round(total_score / complete_sessions_count, 2) if complete_sessions_count > 0 else "N/A"
                 else:
-                    complete_sessions_count += 1
-                               
-            total_score = sum(
-                record.get('overall_performance_score', 0) for record in records if record.get('overall_performance_score') is not None
-            )
-            
-            if total_score > 0:
-                average_score = round(total_score / complete_sessions_count, 2) if complete_sessions_count > 0 else "N/A"
-            else:
-                average_score = 'Not Available'
-            
-            ipersona_job = IpersonaJobSchema()
-            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
-            
-            if job_title_data and len(job_title_data) > 0:
-                job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
-            else:
-                job_title = 'Unknown Job Title'
+                    average_score = 'Not Available'
+                
+                ipersona_job = IpersonaJobSchema()
+                job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
+                
+                if job_title_data and len(job_title_data) > 0:
+                    job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
+                else:
+                    job_title = 'Unknown Job Title'
 
-            tinder_user_profile_id = user_profile_id
-            tinder_job_profile_id = job_profile_id
+                tinder_user_profile_id = user_profile_id
+                tinder_job_profile_id = job_profile_id
 
-            ipersona_match = IpersonaSessionTinderUserJobMatchSchema()
-            job_match_data = ipersona_match.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
-            
-            ipersona_reaction = IpersonaSessionTinderUserReactionSchema()
-            reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
+                ipersona_match = IpersonaSessionTinderUserJobMatchSchema()
+                job_match_data = ipersona_match.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
+                
+                ipersona_reaction = IpersonaSessionTinderUserReactionSchema()
+                reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
 
-            if job_match_data and len(job_match_data) > 0:
-                match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
-                job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
-            else:
-                match_score = 'Unknown'
-                job_match = 'Unknown'
-                        
-            total_session_count = complete_sessions_count + incomplete_sessions_count
+                if job_match_data and len(job_match_data) > 0:
+                    match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
+                    job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
+                else:
+                    match_score = 'Unknown'
+                    job_match = 'Unknown'
+                            
+                total_session_count = complete_sessions_count + incomplete_sessions_count
 
-            summary_response.append({
-                "job_profile_id": job_profile_id,
-                "reaction_id": reaction_id,
-                "job_title": job_title,
-                "job_match_score": match_score,
-                "job_match": job_match,
-                'complete_interviews_count': complete_sessions_count,
-                'incomplete_interviews_count': incomplete_sessions_count,
-                'total_interviews_count': total_session_count,
-                "score": average_score
-            })
-
-        return summary_response
+                summary_response.append({
+                    "job_profile_id": job_profile_id,
+                    "reaction_id": reaction_id,
+                    "job_title": job_title,
+                    "job_match_score": match_score,
+                    "job_match": job_match,
+                    'complete_interviews_count': complete_sessions_count,
+                    'incomplete_interviews_count': incomplete_sessions_count,
+                    'total_interviews_count': total_session_count,
+                    "score": average_score
+                })
+                
+            output = add_columns(summary_response, kind='jobs', **kwargs)    
+        
+            return output, cursors
+        else:
+            return data, cursors
+        
     except Exception as e:
         logger.error(f"Error processing files: {e}")
-        return {'error': str(e)}
+        error_msg = str(e)
+        return error_msg, error_msg
+    
 def extracted_needed_metrics(data):
     try:
         extracted_observers = []  

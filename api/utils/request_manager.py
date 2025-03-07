@@ -1,0 +1,378 @@
+import copy
+
+from api import config
+from api.services import redis_client as rc
+import api.utils.aws_utils as awsut
+from api.utils import tenx_uiux as uiux
+from api.utils.logger import LLPackerLogger
+
+logger = LLPackerLogger(__file__)
+
+
+class JobManagerBase:
+    def __init__(self, run_stage='', **kwargs):
+        log_level = kwargs.get('log_level', None)
+
+        # Setting the logging level
+        if log_level and isinstance(log_level, int):
+            logger._logger.setLevel(log_level)
+
+        # Setting the run stage
+        if not run_stage:
+            self.run_stage = config.strapi_stage
+        else:
+            self.run_stage = run_stage
+
+        # Token and user role
+        self.token = kwargs.get('strapi_token', kwargs.get('token', kwargs.get('user_token', '')))
+        self.user_role = kwargs.get('user_role', '')
+
+        # Kwargs to be used across the instance
+        lskw = dict(run_stage=run_stage, strapi_token=self.token, user_role=self.user_role, log_level=log_level)
+        self.lskw = lskw
+
+        # Storing additional options from kwargs
+        opts = dict(limit=0, dataframe=False, since=0, raw=True, verbose=-1)
+        opts.update(kwargs)
+        self.kwargs = opts
+
+        # Initialize Redis client
+        self.rclient = rc.RedisClient(run_stage=run_stage)
+
+
+class JobReactionManager(JobManagerBase):
+    def __init__(self, run_stage='', table_title="", **kwargs) -> None:
+        super().__init__(run_stage=run_stage, **kwargs)
+
+        # Defining the UI/UX table
+        self.keep_columns = []
+        self.alias_columns = {}
+        self.uiuxbt = uiux.BaseTable(title=table_title)
+
+        # Table column views for different devices
+        desktop_view = ['job_title', 'job_match_score', 'job_match', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        tablet_view = ['job_title', 'job_match_score', 'job_match', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        mobile_view = ['job_title', 'job_match_score', 'job_match', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        sorting = ['job_title', 'job_match_score', 'job_match', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count']
+        link_icon = []
+        # download_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+
+        # Columns configuration for the session jobs
+        self.jobs_columns = {
+            'job_profile_id': {'label': 'Job Profile ID', 'ctype': 'string', 'options': []},
+            'reaction_id': {'label': 'Reaction ID', 'ctype': 'string', 'options': []},
+            'job_title': {'label': 'Job Title', 'ctype': 'string', 'options': []},
+            'job_match_score': {'label': 'Job Match Score', 'ctype': 'string', 'options': []},
+            'job_match': {'label': 'Job Match', 'ctype': 'string', 'options': []},
+            'complete_interviews_count': {'label': 'Complete Interview Count', 'ctype': 'number', 'options': []},
+            'incomplete_interviews_count': {'label': 'Incomplete Interview Count', 'ctype': 'number', 'options': []},
+            'total_interviews_count': {'label': 'Total Interview Coun    t', 'ctype': 'number', 'options': []},
+            'score': {'label': 'Score', 'ctype': 'string', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]}
+        }
+        
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.jobs_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.jobs_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.jobs_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.jobs_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.jobs_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.jobs_columns[x]['icon'] = self.uiuxbt.create_expand_icon("job_profile_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+        # Only assign icons if the list is not empty
+        # if link_icon:
+        #     for x in link_icon:
+        #         self.jobs_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        # else:
+        #     for x in self.jobs_columns.keys():
+        #         self.jobs_columns[x]['icon'] = None  # Or False if preferred
+
+        # if download_icon:
+        #     for x in download_icon:
+        #         self.jobs_columns[x]['icon'] = self.uiuxbt.create_download_icon()
+        # else:
+        #     for x in self.jobs_columns.keys():
+        #         self.jobs_columns[x]['icon'] = None  # Or False if preferred
+
+        
+        # Colums configuration for the admin overview
+        desktop_view = ['interviews_count', 'job_profile_count', 'user_profile_count', 'complete_sessions', 'incomplete_sessions', 'total_interview_sessions', 'day_sessions', 'week_sessions', 'month_sessions', 'year_sessions', 'today_sessions', 'current_week_sessions', 'current_month_sessions', 'current_year_sessions', 'daily_sessions_by_month']
+        tablet_view = ['interviews_count', 'job_profile_count', 'user_profile_count', 'complete_sessions', 'incomplete_sessions', 'total_interview_sessions', 'day_sessions', 'week_sessions', 'month_sessions', 'year_sessions', 'today_sessions', 'current_week_sessions', 'current_month_sessions', 'current_year_sessions', 'daily_sessions_by_month']
+        mobile_view = ['interviews_count', 'job_profile_count', 'user_profile_count', 'complete_sessions', 'incomplete_sessions', 'total_interview_sessions', 'day_sessions', 'week_sessions', 'month_sessions', 'year_sessions', 'today_sessions', 'current_week_sessions', 'current_month_sessions', 'current_year_sessions', 'daily_sessions_by_month']
+        sorting = ['interviews_count', 'job_profile_count', 'user_profile_count', 'complete_sessions', 'incomplete_sessions', 'total_interview_sessions', 'day_sessions', 'week_sessions', 'month_sessions', 'year_sessions', 'today_sessions', 'current_week_sessions', 'current_month_sessions', 'current_year_sessions', 'daily_sessions_by_month']
+        link_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+
+        self.admin_overview_columns = {
+            'interviews_count': {'label': 'Interviews Count', 'ctype': 'number', 'options': []},
+            'job_profile_count': {'label': 'Job Profile Count', 'ctype': 'number', 'options': []},
+            'user_profile_count': {'label': 'User Profile Count', 'ctype': 'number', 'options': []},
+            'complete_sessions': {'label': 'Complete Sessions', 'ctype': 'number', 'options': []},
+            'incomplete_sessions': {'label': 'Incomplete Sessions', 'ctype': 'number', 'options': []},
+            'total_interview_sessions': {'label': 'Total Interviews', 'ctype': 'number', 'options': []},
+            'day_sessions': {'label': 'Day Sessions', 'ctype': 'number', 'options': []},
+            'week_sessions': {'label': 'Weak Sessions', 'ctype': 'number', 'options': []},
+            'month_sessions': {'label': 'Month Sessions', 'ctype': 'number', 'options': []},
+            'year_sessions': {'label': 'Year Sessions', 'ctype': 'number', 'options': []},
+            'today_sessions': {'label': 'Today Sessions', 'ctype': 'number', 'options': []},
+            'current_week_sessions': {'label': 'Current Week Sessions', 'ctype': 'number', 'options': []},
+            'current_month_sessions': {'label': 'Current Month Sessions', 'ctype': 'number', 'options': []},
+            'current_year_sessions': {'label': 'Current Year Sessions', 'ctype': 'number', 'options': []},
+            'daily_sessions_by_month': {'label': 'Daily Sessions By Month', 'ctype': 'number', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]}
+
+        }
+
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.admin_overview_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.admin_overview_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.admin_overview_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.admin_overview_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.admin_overview_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.admin_overview_columns[x]['icon'] = self.uiuxbt.create_expand_icon("user_profile_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+        # Only assign icons if the list is not empty
+        # if link_icon:
+        #     for x in link_icon:
+        #         self.admin_overview_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        # else:
+        #     for x in self.admin_overview_columns.keys():
+        #         self.admin_overview_columns[x]['icon'] = None  # Or False if preferred
+
+        # if download_icon:
+        #     for x in download_icon:
+        #         self.admin_overview_columns[x]['icon'] = self.uiuxbt.create_download_icon()
+        # else:
+        #     for x in self.admin_overview_columns.keys():
+        #         self.admin_overview_columns[x]['icon'] = None  # Or False if preferred
+
+        # Colums configuration for the admin alluser info
+        desktop_view = ['user_profile_id', 'all_user_id', 'name', 'role', 'batch', 'gender', 'nationality', 'job_count', 'total_interviews_count', 'complete_sessions_count', 'incomplete_sessions_count']
+        tablet_view = ['user_profile_id', 'all_user_id', 'name', 'role', 'batch', 'gender', 'nationality', 'job_count', 'total_interviews_count', 'complete_sessions_count', 'incomplete_sessions_count']
+        mobile_view = ['user_profile_id', 'all_user_id', 'name', 'role', 'batch', 'gender', 'nationality', 'job_count', 'total_interviews_count', 'complete_sessions_count', 'incomplete_sessions_count']
+        sorting = ['all_user_id', 'user_profile_id', 'name', 'role', 'batch', 'gender', 'nationality', 'job_count', 'total_interviews_count', 'complete_sessions_count', 'incomplete_sessions_count']
+        link_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+
+        self.admin_alluser_columns = {
+            'user_profile_id': {'label': 'User Profile ID', 'ctype': 'string', 'options': []},
+            'all_user_id': {'label': 'All User ID', 'ctype': 'string', 'options': []},
+            'name': {'label': 'Name', 'ctype': 'string', 'options': []},
+            'role': {'label': 'Role', 'ctype': 'string', 'options': []},
+            'batch': {'label': 'Batch', 'ctype': 'string', 'options': []},
+            'gender': {'label': 'Gender', 'ctype': 'string', 'options': []},
+            'nationality': {'label': 'Nationality', 'ctype': 'string', 'options': []},
+            'job_count': {'label': 'Job Count', 'ctype': 'number', 'options': []},
+            'total_interviews_count': {'label': 'Total Interviews Count', 'ctype': 'number', 'options': []},
+            'complete_sessions_count': {'label': 'Complete Sessions Count', 'ctype': 'number', 'options': []},
+            'incomplete_sessions_count': {'label': 'Incomplete Sessions Count', 'ctype': 'number', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]}
+        }
+
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.admin_alluser_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.admin_alluser_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.admin_alluser_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.admin_alluser_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.admin_alluser_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.admin_alluser_columns[x]['icon'] = self.uiuxbt.create_expand_icon("user_profile_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+        # Only assign icons if the list is not empty
+        # if link_icon:
+        #     for x in link_icon:
+        #         self.admin_alluser_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        # else:
+        #     for x in self.admin_alluser_columns.keys():
+        #         self.admin_alluser_columns[x]['icon'] = None  # Or False if preferred
+
+        # if download_icon:
+        #     for x in download_icon:
+        #         self.admin_alluser_columns[x]['icon'] = self.uiuxbt.create_download_icon()
+        # else:
+        #     for x in self.admin_alluser_columns.keys():
+        #         self.admin_alluser_columns[x]['icon'] = None  # Or False if preferred
+
+        
+        # Colums configuration for the admin jobs info
+        desktop_view = ['job_profile_id', 'job_title', 'total_interviews_count', 'complete_sessions_count', 'incomplete_sessions_count', 'company_name', 'location', 'url']
+        tablet_view = ['job_profile_id', 'job_title', 'total_interviews_count', 'complete_sessions_count', 'incomplete_sessions_count', 'company_name', 'location', 'url']
+        mobile_view = ['job_profile_id', 'job_title', 'total_interviews_count', 'complete_sessions_count', 'incomplete_sessions_count', 'company_name', 'location', 'url']
+        sorting = ['job_profile_id', 'job_title', 'total_interviews_count', 'complete_sessions_count', 'incomplete_sessions_count', 'company_name', 'location', 'url']
+        link_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+
+        self.admin_jobs_columns = {
+            'job_profile_id': {'label': 'Job Profile ID', 'ctype': 'string', 'options': []},
+            'job_title': {'label': 'Job Title', 'ctype': 'string', 'options': []},
+            'total_interviews_count': {'label': 'Total Interviews Count', 'ctype': 'number', 'options': []},
+            'complete_sessions_count': {'label': 'Complete Sessions Count', 'ctype': 'number', 'options': []},
+            'incomplete_sessions_count': {'label': 'Incomplete Sessions Count', 'ctype': 'number', 'options': []},
+            'company_name': {'label': 'Company Name', 'ctype': 'string', 'options': []},
+            'location': {'label': 'Location','ctype': 'string', 'options': []},
+            'url': {'label': 'URL', 'ctype': 'string', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]}
+
+        }
+
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.admin_jobs_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.admin_jobs_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.admin_jobs_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.admin_jobs_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.admin_jobs_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.admin_jobs_columns[x]['icon'] = self.uiuxbt.create_expand_icon("job_profile_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+        # Only assign icons if the list is not empty
+        # if link_icon:
+        #     for x in link_icon:
+        #         self.admin_jobs_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        # else:
+        #     for x in self.admin_jobs_columns.keys():
+        #         self.admin_jobs_columns[x]['icon'] = None  # Or False if preferred
+
+        # if download_icon:
+        #     for x in download_icon:
+        #         self.admin_jobs_columns[x]['icon'] = self.uiuxbt.create_download_icon()
+        # else:
+        #     for x in self.admin_jobs_columns.keys():
+        #         self.admin_jobs_columns[x]['icon'] = None  # Or False if preferred
+
+        # Colums configuration for the admin alluser performance info
+        desktop_view = ['user_profile_id', 'all_user_id', 'name', 'role', 'batch', 'nationality', 'metrics']
+        tablet_view = ['user_profile_id', 'all_user_id', 'name', 'role', 'batch', 'nationality', 'metrics']
+        mobile_view = ['user_profile_id', 'all_user_id', 'name', 'role', 'batch', 'nationality', 'metrics']
+        sorting = ['user_profile_id', 'all_user_id', 'name', 'role', 'batch', 'nationality', 'metrics']
+        link_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+
+        self.admin_allusers_performance_columns = {
+            'user_profile_id': {'label': 'User Profile ID', 'ctype': 'string', 'options': []},
+            'all_user_id': {'label': 'All User ID', 'ctype': 'string', 'options': []},
+            'name': {'label': 'Name', 'ctype': 'string', 'options': []},
+            'role': {'label': 'Role', 'ctype': 'string', 'options': []},
+            'batch': {'label': 'Batch', 'ctype': 'string', 'options': []},
+            'gender': {'label': 'Gender', 'ctype': 'string', 'options': []},
+            'nationality': {'label': 'Nationality', 'ctype': 'string', 'options': []},            
+            'metrics': {'label': 'Metrics', 'ctype': 'string', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]}
+        }
+
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.admin_allusers_performance_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.admin_allusers_performance_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.admin_allusers_performance_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.admin_allusers_performance_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.admin_allusers_performance_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.admin_allusers_performance_columns[x]['icon'] = self.uiuxbt.create_expand_icon("user_profile_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+        # Only assign icons if the list is not empty
+        # if link_icon:
+        #     for x in link_icon:
+        #         self.admin_allusers_performance_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        # else:
+        #     for x in self.admin_allusers_performance_columns.keys():
+        #         self.admin_allusers_performance_columns[x]['icon'] = None  # Or False if preferred
+
+        # if download_icon:
+        #     for x in download_icon:
+        #         self.admin_allusers_performance_columns[x]['icon'] = self.uiuxbt.create_download_icon()
+        # else:
+        #     for x in self.admin_allusers_performance_columns.keys():
+        #         self.admin_allusers_performance_columns[x]['icon'] = None  # Or False if preferred
+
+
+        # Initialize the table
+        self.table = self.uiuxbt.table
+
+    def _remove_empty_columns(self, rows, colmap):
+        """Remove empty columns from the table based on row data."""
+        rm_columns = []
+        for c, cval in colmap.items():
+            col_vals = [r.get(c, '') for r in rows if r.get(c, '')]
+            if len(col_vals) == 0 and c not in self.keep_columns:
+                rm_columns.append(c)
+
+        # Remove columns from the table configuration
+        for crow in self.uiuxbt.table['columns']:
+            if crow['name'] in rm_columns:
+                self.uiuxbt.table['columns'].remove(crow)
+
+        # Remove columns from the rows
+        for r in rows:
+            for c in rm_columns:
+                _ = r.pop(c, "")
+
+        logger.good(f'Removed the following empty columns from reaction table: {rm_columns}')
+        return rows
+
+    def prepare_table(self, params, kind, **kwargs):
+        """Prepare a table for displaying reaction data."""
+        rows = []
+        pkey = None
+        if kind == 'jobs':
+            pkey = 'attributes'
+            colmap = self.jobs_columns
+        elif kind == 'admin_overview':
+            colmap = self.admin_overview_columns
+        elif kind == 'admin_alluser':
+            colmap = self.admin_alluser_columns
+        elif kind == 'admin_jobs':
+            colmap = self.admin_jobs_columns
+        elif kind == 'admin_allusers_performance':
+            colmap = self.admin_allusers_performance_columns
+
+        for c, cval in colmap.items():
+            cval['name'] = c
+            _ = self.uiuxbt.add_column(**cval)
+
+        strifnone = lambda x: x if x else ''
+
+        # Remove empty columns and add rows to the table
+        if rows:
+            rows = self._remove_empty_columns(params, colmap)
+            _ = self.uiuxbt.add_rows(rows)
+        else:
+            _ = self.uiuxbt.add_rows(params)
+
+        return self.uiuxbt.table
