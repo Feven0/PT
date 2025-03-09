@@ -31,9 +31,10 @@ class IpersonaSessionSchema(LeapBaseClass):
         attributes: Json	
         status: Text
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -333,9 +334,10 @@ class IpersonaTraineeSchema(LeapBaseClass):
         all_users: Relation with AllUsers
         attributes: Json	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -576,9 +578,10 @@ class IpersonaJobSchema(LeapBaseClass):
         id: ID,
         attributes: Json	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -747,9 +750,9 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
         tinder_job_profile: Relation with TInderJobProfile
         attributes: Json	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -1025,9 +1028,9 @@ class IpersonaSessionTinderUserJobMatchSchema(LeapBaseClass):
         match_score: Int
         match_level: String
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -1132,9 +1135,9 @@ class IpersonaSessionTinderUserReactionSchema(LeapBaseClass):
         tinder_job_profile: ID,
         tinder_user_profile: ID
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -1245,9 +1248,10 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
         i_persona_session: Relation with IPersonaMessages
         attributes: Json	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -1440,9 +1444,10 @@ class IpersonaSessionObserverSchema(LeapBaseClass):
         i_persona_session: Relation with IPersonaObservers
         attributes: Json	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -1605,9 +1610,9 @@ class IpersonaAllUserSchema(LeapBaseClass):
         role: text
         Batch: text	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -1707,9 +1712,9 @@ class IpersonaProfileInformationSchema(LeapBaseClass):
         gender: text
         nationality: text
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")

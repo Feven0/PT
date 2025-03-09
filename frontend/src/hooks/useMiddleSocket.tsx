@@ -26,14 +26,14 @@ const useMiddleSocket = () => {
   const { seconds, minutes, start, pause, reset } = useStopwatch({ autoStart: false});
 
 
+    // In your React component
     useEffect(() => {
       if (socket) {
         socket.on('initial connect', (message: any) => {
-          console.log("sessionInit", message)        
+          console.log("sessionInit", message);
         });
       }
     }, [socket]);
-  
 
     // ------------------------------------------------------------------------------------------------
     useEffect(() => {

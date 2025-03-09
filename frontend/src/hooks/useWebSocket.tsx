@@ -14,11 +14,20 @@ const useWebSocket = (url: string) => {
 
 
   useEffect(() => {
-    const newSocket = io(url);
+    // const newSocket = io(url);
+    const newSocket = io(url, {
+      query: {
+        run_stage: 'dev'
+      }
+    });
     setSocket(newSocket);
 
     newSocket.on('initial connect', () => {
       console.log('Connected to WebSocket server');
+    });
+
+    newSocket.emit('initial connect', { 
+      run_stage: 'prod'  // Pass your run_stage value here
     });
 
         // ================================= text To text Sockets =============================//

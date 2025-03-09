@@ -21,9 +21,9 @@ class StrapiGraphql():
             
         self.run_stage = run_stage
         
-
+       
         # define url
-        root, ssmkey = config.get_strapi_params(run_stage)            
+        root, ssmkey = config.get_strapi_params(run_stage) 
         if run_stage.lower().startswith('tenacious'):
             self.apiroot = f"https://cms.gettenacious.com/graphql" 
         else:

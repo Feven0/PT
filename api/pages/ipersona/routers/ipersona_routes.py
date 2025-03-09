@@ -117,7 +117,7 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
         )
     
 @routes.post("/create_user_session")
-async def user_session_files(received: pemodel.UserSessionRequestRecieved):
+async def user_session_files(request: pemodel.UserSessionRequestRecieved):
     """
     Process user session data and generate interview questions.
     
@@ -126,7 +126,7 @@ async def user_session_files(received: pemodel.UserSessionRequestRecieved):
     
     Parameters
     ----------
-    received : pemodel.UserSessionRequestRecieved
+    request : pemodel.UserSessionRequestRecieved
         Object containing:
         - all_user_id: User identifier
         - job_profile_id: Job profile identifier
@@ -141,7 +141,9 @@ async def user_session_files(received: pemodel.UserSessionRequestRecieved):
     Exception
         If any error occurs during processing
     """
-    if not received or not received.all_user_id or not received.job_profile_id:
+    run_stage = request.run_stage
+
+    if not request or not request.all_user_id or not request.job_profile_id:
         logger.error("Invalid request: Missing required parameters")
         return JSONResponse(
             status_code=400,
@@ -149,16 +151,16 @@ async def user_session_files(received: pemodel.UserSessionRequestRecieved):
         )
         
     try:
-        logger.info(f"Starting user session creation for user ID: {received.all_user_id}, job ID: {received.job_profile_id}")
+        logger.info(f"Starting user session creation for user ID: {request.all_user_id}, job ID: {request.job_profile_id}")
 
         # Step 1: Fetch trainee profile data
-        ipersona_user = IpersonaTraineeSchema()
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
         trainee_profile_data = ipersona_user.filter_by_alluser_id(
-            all_user_id=received.all_user_id, nopp=True, dataframe=False
+            all_user_id=request.all_user_id, nopp=True, dataframe=False
         )
     
         if not trainee_profile_data:
-            logger.warn(f"No trainee user profiles found for all_user_id: {received.all_user_id}")
+            logger.warn(f"No trainee user profiles found for all_user_id: {request.all_user_id}")
             return JSONResponse(
                 status_code=404,
                 content={"error": "No trainee user profiles found for the given all_user_id"}
@@ -175,20 +177,20 @@ async def user_session_files(received: pemodel.UserSessionRequestRecieved):
         logger.info(f"User profile data extracted for user ID: {tinder_user_profile_id}")
 
         # Step 2: Fetch job profile data
-        ipersona_job = IpersonaJobSchema()
+        ipersona_job = IpersonaJobSchema(run_stage=run_stage)
         tinder_job_data = ipersona_job.filter_by_job_id(
-            job_profile_id=received.job_profile_id, nopp=True, dataframe=False
+            job_profile_id=request.job_profile_id, nopp=True, dataframe=False
         )
 
         if not tinder_job_data:
-            logger.warn(f"No job data found for job_profile_id: {received.job_profile_id}")
+            logger.warn(f"No job data found for job_profile_id: {request.job_profile_id}")
             return JSONResponse(
                 status_code=404,
                 content={"error": "No job data found for the job_profile_id"}
             )
 
         tinder_job_data = util.extract_job_neccessary_values(tinder_job_data)
-        logger.info(f"Job data extracted for job_profile_id: {received.job_profile_id}")
+        logger.info(f"Job data extracted for job_profile_id: {request.job_profile_id}")
 
         # Step 3: Create persona and generate questions
         created_persona = util.create_persona(str(tinder_job_data))
@@ -232,17 +234,17 @@ async def user_session_files(received: pemodel.UserSessionRequestRecieved):
 
         # Step 5: Save session data
         session_data = {
-            "slug": str(f"all_user_id: {received.all_user_id}"),
+            "slug": str(f"all_user_id: {request.all_user_id}"),
             "status": "Incomplete",
             "attributes": {
                 "persona": generated_persona,
                 "generated_questions": generated_question_json
             },
             "user_profile_id": tinder_user_profile_id,
-            "job_profile_id": received.job_profile_id
+            "job_profile_id": request.job_profile_id
         }
         
-        ipersona_session = IpersonaSessionSchema()
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         saved_session = ipersona_session.save_session(
             params=session_data, return_object=True, nopp=True, dataframe=False
         )
@@ -266,10 +268,9 @@ async def user_session_files(received: pemodel.UserSessionRequestRecieved):
             status_code=500,
             content={"error": f"Error processing user session: {str(e)}"}
         )
-
         
 @routes.post("/clarify")
-async def clarify_question(recieved: pemodel.ClarificationRequestRecieved) -> dict:
+async def clarify_question(request: pemodel.ClarificationRequestRecieved) -> dict:
     """
     Clarifies a given question using a clarification utility.
 
@@ -279,7 +280,7 @@ async def clarify_question(recieved: pemodel.ClarificationRequestRecieved) -> di
 
     Parameters:
     ----------
-    recieved : pemodel.ClarificationRequestRecieved
+    request : pemodel.ClarificationRequestRecieved
         An object containing the question that needs clarification.
 
     Returns:
@@ -289,7 +290,7 @@ async def clarify_question(recieved: pemodel.ClarificationRequestRecieved) -> di
         if an exception occurs during processing.
     """
 
-    question = recieved.question
+    question = request.question
     start_time = time.time()
 
     if not question or not isinstance(question, str):
@@ -316,7 +317,7 @@ async def clarify_question(recieved: pemodel.ClarificationRequestRecieved) -> di
         logger.info(f"Time taken for question clarification processing: {elapsed_time:.2f} seconds")
 
 @routes.post("/delete_session")
-async def delete_interview_session(received: pemodel.SessionIdRequestRecieved):
+async def delete_interview_session(request: pemodel.SessionIdRequestRecieved):
     """
     Mark an interview session as deleted.
     
@@ -325,7 +326,7 @@ async def delete_interview_session(received: pemodel.SessionIdRequestRecieved):
     
     Parameters
     ----------
-    received : pemodel.SessionIdRequestRecieved
+    request : pemodel.SessionIdRequestRecieved
         Object containing the session ID to be marked as deleted
         
     Returns
@@ -338,7 +339,9 @@ async def delete_interview_session(received: pemodel.SessionIdRequestRecieved):
     Exception
         If any error occurs during the update process
     """
-    if not received or not received.sessionId:
+    run_stage = request.run_stage
+
+    if not request or not request.sessionId:
         logger.error("Missing session ID in request")
         return JSONResponse(
             status_code=400,
@@ -346,11 +349,11 @@ async def delete_interview_session(received: pemodel.SessionIdRequestRecieved):
         )
         
     try:
-        logger.info(f"Marking session as deleted, session ID: {received.sessionId}")
+        logger.info(f"Marking session as deleted, session ID: {request.sessionId}")
         
-        ipersona_session = IpersonaSessionSchema()
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         session_data = {
-            "i_persona_session_id": received.sessionId, 
+            "i_persona_session_id": request.sessionId, 
             "status": "Deleted",
         }
         
@@ -362,28 +365,27 @@ async def delete_interview_session(received: pemodel.SessionIdRequestRecieved):
         )
         
         if not updated_session:
-            logger.warn(f"Session not found or could not be updated: {received.sessionId}")
+            logger.warn(f"Session not found or could not be updated: {request.sessionId}")
             return JSONResponse(
                 status_code=404, 
                 content={"error": "Session not found or could not be updated"}
             )
             
-        logger.info(f"Session status updated to 'Deleted' for session ID: {received.sessionId}")
+        logger.info(f"Session status updated to 'Deleted' for session ID: {request.sessionId}")
         return JSONResponse(
             status_code=200, 
             content={"success": "Session deleted successfully"}
         )
   
     except Exception as e:
-        logger.error(f"Error deleting session {received.sessionId}: {str(e)}", exc_info=True)
+        logger.error(f"Error deleting session {request.sessionId}: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=500, 
             content={"error": f"Error deleting session: {str(e)}"}
         )
 
-
 @routes.post("/close_session")
-async def close_interview_session(received: pemodel.ClosedDataRequestRecieved):
+async def close_interview_session(request: pemodel.ClosedDataRequestRecieved):
     """
     Close an interview session and perform final evaluations.
     
@@ -391,7 +393,7 @@ async def close_interview_session(received: pemodel.ClosedDataRequestRecieved):
     
     Parameters
     ----------
-    received : pemodel.ClosedDataRequestRecieved
+    request : pemodel.ClosedDataRequestRecieved
         Object containing the session data needed for evaluation
         
     Returns
@@ -404,7 +406,9 @@ async def close_interview_session(received: pemodel.ClosedDataRequestRecieved):
     Exception
         If any error occurs during the evaluation process
     """
-    if not received or not received.data:
+    run_stage = request.run_stage
+
+    if not request or not request.data:
         logger.error("Missing session data in request")
         return JSONResponse(
             status_code=400, 
@@ -414,7 +418,7 @@ async def close_interview_session(received: pemodel.ClosedDataRequestRecieved):
     try:
         logger.info("Processing session closure and final evaluation")
         
-        response = await util.overall_interview_evaluations(received.data, status="Closed")
+        response = await util.overall_interview_evaluations(run_stage, request.data, status="Closed")
         
         if not response:
             logger.warn("Session evaluation returned empty response")
@@ -437,13 +441,13 @@ async def close_interview_session(received: pemodel.ClosedDataRequestRecieved):
         )
 
 @routes.post("/calculate_session_overall_progress")
-async def calculate_overall_progress(received: pemodel.UserSessionRequestRecieved):
+async def calculate_overall_progress(request: pemodel.UserSessionRequestRecieved):
     """
     Fetch overall progress metrics for a job.
 
     Parameters:
     ----------
-    received : pemodel.UserSessionRequestRecieved
+    request : pemodel.UserSessionRequestRecieved
         The request object containing user and job profile data.
 
     Returns:
@@ -451,33 +455,35 @@ async def calculate_overall_progress(received: pemodel.UserSessionRequestRecieve
     JSONResponse or dict
         A dictionary containing the overall progress metrics, or an error message if an exception occurs.
     """
-    try:
-        ipersona_overall = IpersonaSessionOverallObserverSchema()
-        ipersona_user = IpersonaTraineeSchema()
+    run_stage = request.run_stage
 
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=received.all_user_id, nopp=True, dataframe=False)
+    try:
+        ipersona_overall = IpersonaSessionOverallObserverSchema(run_stage=run_stage)
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=request.all_user_id, nopp=True, dataframe=False)
         if not trainee_profile_data:
-            logger.warn(f"No trainee profiles found for user_id: {received.all_user_id}")
+            logger.warn(f"No trainee profiles found for user_id: {request.all_user_id}")
             return JSONResponse(status_code=200, content={"message": "No trainee profiles found by the given all_user_id"})
 
 
         tinder_user_profile_id = trainee_profile_data.get('id', None)
         if not tinder_user_profile_id:
-            logger.error(f"Trainee profile missing 'id' for user_id: {received.all_user_id}")
+            logger.error(f"Trainee profile missing 'id' for user_id: {request.all_user_id}")
             return JSONResponse(status_code=500, content={"error": "Trainee profile is invalid."})
 
         session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(
             user_profile_id=tinder_user_profile_id,
-            job_profile_id=received.job_profile_id,
+            job_profile_id=request.job_profile_id,
             nopp=True,
             dataframe=False
         )
 
         if "all_sessions" not in session_chatobserver or not session_chatobserver["all_sessions"]:
-            logger.warn(f"No session data found for user_profile_id: {tinder_user_profile_id}, job_profile_id: {received.job_profile_id}")
+            logger.warn(f"No session data found for user_profile_id: {tinder_user_profile_id}, job_profile_id: {request.job_profile_id}")
             return JSONResponse(status_code=200, content={"message": "No session overall observer data found."})
 
-        logger.info(f"Successfully fetched overall session data for user_profile_id: {tinder_user_profile_id}, job_profile_id: {received.job_profile_id}")
+        logger.info(f"Successfully fetched overall session data for user_profile_id: {tinder_user_profile_id}, job_profile_id: {request.job_profile_id}")
         return session_chatobserver["all_sessions"][0]
 
     except Exception as e:
@@ -486,7 +492,7 @@ async def calculate_overall_progress(received: pemodel.UserSessionRequestRecieve
 
 
 @routes.post("/calculate_allstat_progress")
-async def calculate_allstat_progress(recieved: pemodel.AllUserIdRecieved):
+async def calculate_allstat_progress(request: pemodel.AllUserIdRecieved):
     """
     Calculates overall users' progress metrics for all job types.
 
@@ -496,7 +502,7 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserIdRecieved):
 
     Parameters:
     ----------
-    recieved : pemodel.AllUserIdRecieved
+    request : pemodel.AllUserIdRecieved
         An object containing the necessary information to fetch chat history.
 
     Returns:
@@ -505,19 +511,21 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserIdRecieved):
         A dictionary containing the calculated overall progress metrics or an 
         error message if an exception occurs during processing.
     """
-    if not recieved or not isinstance(recieved, pemodel.AllUserIdRecieved):
+    run_stage = request.run_stage
+
+    if not request or not isinstance(request, pemodel.AllUserIdRecieved):
         logger.error("Invalid request format.")
         return JSONResponse(status_code=400, content={"error": "Invalid request format."})
 
     try:
-        ipersona_overall = IpersonaSessionOverallObserverSchema()
-        ipersona_user = IpersonaTraineeSchema()
+        ipersona_overall = IpersonaSessionOverallObserverSchema(run_stage=run_stage)
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
 
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=recieved.all_user_id, 
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=request.all_user_id, 
                                                                   nopp=True, dataframe=False)
 
         if not trainee_profile_data or not isinstance(trainee_profile_data, dict) or len(trainee_profile_data) == 0:
-            logger.warn(f"No trainee user profiles found for all_user_id: {recieved.all_user_id}")
+            logger.warn(f"No trainee user profiles found for all_user_id: {request.all_user_id}")
             return JSONResponse(status_code=200, content={"message": "No trainee user profiles found for the give all_user_id."})
 
         tinder_user_profile_id = trainee_profile_data.get('id')
@@ -544,11 +552,11 @@ async def calculate_allstat_progress(recieved: pemodel.AllUserIdRecieved):
         return result
 
     except Exception as e:
-        logger.error(f"Unexpected error during processing: {str(e)} for all_user_id: {recieved.all_user_id}")
+        logger.error(f"Unexpected error during processing: {str(e)} for all_user_id: {request.all_user_id}")
         return JSONResponse(status_code=500, content={"error": f"Unexpected error occurred: {str(e)}"})
 
 @routes.post("/engagement_jobs_status")
-def calculate_engagement_jobs_status(received: pemodel.AllUserSessionRequestRecieved) -> Dict[str, Any]:
+def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved) -> Dict[str, Any]:
     """
     Calculate interview engagement status for a user across all job types.
     
@@ -557,7 +565,7 @@ def calculate_engagement_jobs_status(received: pemodel.AllUserSessionRequestReci
     
     Parameters
     ----------
-    received : pemodel.AllUserSessionRequestRecieved
+    request : pemodel.AllUserSessionRequestRecieved
         Object containing:
         - all_user_id: User identifier
         - filter: Optional query filters
@@ -572,7 +580,9 @@ def calculate_engagement_jobs_status(received: pemodel.AllUserSessionRequestReci
     Dict[str, Any]
         Engagement summary data or error response
     """
-    if not received or not received.all_user_id:
+    run_stage = request.run_stage
+
+    if not request or not request.all_user_id:
         logger.error("Invalid request: Missing user ID")
         return {
             "all_user_id": [],
@@ -583,20 +593,21 @@ def calculate_engagement_jobs_status(received: pemodel.AllUserSessionRequestReci
         }
         
     try:
-        logger.info(f"Calculating engagement status for user ID: {received.all_user_id}")
+        logger.info(f"Calculating engagement status for user ID: {request.all_user_id}")
         
         # Step 1: Fetch trainee profile data
-        ipersona_user = IpersonaTraineeSchema()
+        
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
         trainee_profile_data = ipersona_user.filter_by_alluser_id(
-            all_user_id=received.all_user_id, 
+            all_user_id=request.all_user_id, 
             nopp=True, 
             dataframe=False
         )
-
+    
         if not trainee_profile_data:
-            logger.warn(f"No trainee profiles found for user ID: {received.all_user_id}")
+            logger.warn(f"No trainee profiles found for user ID: {request.all_user_id}")
             return {
-                "all_user_id": received.all_user_id,
+                "all_user_id": request.all_user_id,
                 "jobs": [],
                 "cursor": [],
                 "status": 404,
@@ -605,9 +616,9 @@ def calculate_engagement_jobs_status(received: pemodel.AllUserSessionRequestReci
         
         tinder_user_profile_id = trainee_profile_data.get('id')
         if not tinder_user_profile_id:
-            logger.error(f"Invalid trainee profile for user ID: {received.all_user_id}")
+            logger.error(f"Invalid trainee profile for user ID: {request.all_user_id}")
             return {
-                "all_user_id": received.all_user_id,
+                "all_user_id": request.all_user_id,
                 "jobs": [],
                 "cursor": [],
                 "status": 500,
@@ -615,30 +626,31 @@ def calculate_engagement_jobs_status(received: pemodel.AllUserSessionRequestReci
             }
             
         # Step 2: Process request parameters with defaults
-        query_filter = received.filter or {}
-        return_skip = received.return_skip
-        information_level = received.information_level
-        since = max(received.since, 1)  # Ensure minimum value of 1
-        limit = max(received.limit, 1)  # Ensure minimum value of 1
-        cursor = received.cursor
+        query_filter = request.filter or {}
+        return_skip = request.return_skip
+        information_level = request.information_level
+        since = max(request.since, 1)  # Ensure minimum value of 1
+        limit = max(request.limit, 1)  # Ensure minimum value of 1
+        cursor = request.cursor
         
         # Step 3: Fetch and summarize interview data
         data, cursor = util.summarize_interviews(
+            run_stage,                                                 
             tinder_user_profile_id, 
             filter=query_filter,
             cursor=cursor, 
             since=since, 
             limit=limit,
             information_level=information_level,
-            return_skip=return_skip
+            return_skip=return_skip            
         )
 
-        logger.info(f"Interview engagement summary completed for user ID: {received.all_user_id}")
+        logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
         
         # Step 4: Prepare response
         if data:
             return {
-                "all_user_id": received.all_user_id,
+                "all_user_id": request.all_user_id,
                 "jobs": data, 
                 "cursor": cursor,                  
                 "status": 200, 
@@ -646,7 +658,7 @@ def calculate_engagement_jobs_status(received: pemodel.AllUserSessionRequestReci
             }
         else: 
             return {
-                "all_user_id": received.all_user_id, 
+                "all_user_id": request.all_user_id, 
                 "jobs": [],  
                 "cursor": [],
                 "status": 404, 
@@ -656,7 +668,7 @@ def calculate_engagement_jobs_status(received: pemodel.AllUserSessionRequestReci
     except Exception as e:
         logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
         return {
-            "all_user_id": received.all_user_id if hasattr(received, 'all_user_id') else [], 
+            "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
             "jobs": [],  
             "cursor": [],
             "status": 500, 
@@ -664,7 +676,7 @@ def calculate_engagement_jobs_status(received: pemodel.AllUserSessionRequestReci
         }
         
 @routes.post("/admin_overview_status")
-async def calculate_admin_overview_status(received: pemodel.AdminDataFiltering) -> Dict[str, Any]:
+async def calculate_admin_overview_status(request: pemodel.AdminDataFiltering) -> Dict[str, Any]:
     """
     Calculate an overview of all interview sessions for administrative purposes.
     
@@ -673,7 +685,7 @@ async def calculate_admin_overview_status(received: pemodel.AdminDataFiltering) 
     
     Parameters
     ----------
-    received : pemodel.AdminDataFiltering
+    request : pemodel.AdminDataFiltering
         Object containing:
         - filter: Optional query filters
         - return_skip: Flag to include skipped items
@@ -694,31 +706,33 @@ async def calculate_admin_overview_status(received: pemodel.AdminDataFiltering) 
         }
     """
     try:
+        run_stage = request.run_stage
+
         logger.info("Calculating admin overview status")
         
         # Process request parameters
-        # query_filter = received.filter or {}
-        # since = max(received.since or 1, 1)  # Ensure minimum value of 1
-        # limit = max(received.limit or 1, 1)  # Ensure minimum value of 1
-        # cursor = received.cursor
+        # query_filter = request.filter or {}
+        # since = max(request.since or 1, 1)  # Ensure minimum value of 1
+        # limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
+        # cursor = request.cursor
         
         # # Prepare query parameters
         # kwargs = query_filter.copy() if query_filter else {}
         
         # Fetch session data with pagination
-        ipersona_session = IpersonaSessionSchema()
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         # data, cursor = ipersona_session.get_all_sessions(
         #     cursor=cursor, 
-        #     since=received.since, 
-        #     limit=received.limit, 
+        #     since=request.since, 
+        #     limit=request.limit, 
         #     nopp=True, 
         #     dataframe=False,
         #     # **kwargs
         # )
         data = ipersona_session.get_alladmin_sessions(
             # cursor=cursor, 
-            since=received.since, 
-            limit=received.limit, 
+            since=request.since, 
+            limit=request.limit, 
             nopp=True, 
             dataframe=False,
             # **kwargs
@@ -757,7 +771,7 @@ async def calculate_admin_overview_status(received: pemodel.AdminDataFiltering) 
         }
 
 @routes.post("/admin_allusers_data")
-async def calculate_admin_allusers_data(received: pemodel.AdminDataFiltering) -> Dict[str, Any]:
+async def calculate_admin_allusers_data(request: pemodel.AdminDataFiltering) -> Dict[str, Any]:
     """
     Calculate administrative data for all users by processing session data.
 
@@ -766,7 +780,7 @@ async def calculate_admin_allusers_data(received: pemodel.AdminDataFiltering) ->
 
     Parameters
     ----------
-    received : pemodel.AdminDataFiltering
+    request : pemodel.AdminDataFiltering
         Object containing:
         - filter: Optional query filters
         - return_skip: Flag to include skipped items
@@ -786,32 +800,34 @@ async def calculate_admin_allusers_data(received: pemodel.AdminDataFiltering) ->
             "message": str
         }
     """
+    run_stage = request.run_stage
+
     try:
         logger.info("Starting admin all users data calculation")
         
         # Process request parameters
-        # query_filter = received.filter or {}
-        # since = max(received.since or 1, 1)  # Ensure minimum value of 1
-        # limit = max(received.limit or 1, 1)  # Ensure minimum value of 1
-        # cursor = received.cursor
+        # query_filter = request.filter or {}
+        # since = max(request.since or 1, 1)  # Ensure minimum value of 1
+        # limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
+        # cursor = request.cursor
         
         # # Prepare query parameters
         # kwargs = query_filter.copy() if query_filter else {}
         
         # Step 1: Fetch all session data
-        ipersona_session = IpersonaSessionSchema()
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         # data, cursor = ipersona_session.get_all_sessions(
         #     cursor=cursor, 
-        #     since=received.since, 
-        #     limit=received.limit, 
+        #     since=request.since, 
+        #     limit=request.limit, 
         #     nopp=True, 
         #     dataframe=False,
         #     # **kwargs
         # )
         data = ipersona_session.get_alladmin_sessions(
             # cursor=cursor, 
-            since=received.since, 
-            limit=received.limit, 
+            since=request.since, 
+            limit=request.limit, 
             nopp=True, 
             dataframe=False,
             # **kwargs
@@ -829,7 +845,7 @@ async def calculate_admin_allusers_data(received: pemodel.AdminDataFiltering) ->
         logger.info(f"Processing all users metrics for {len(data)} sessions")
         
         # Step 2: Summarize all users data
-        result = util.summarize_allusers_data(data)
+        result = util.summarize_allusers_data(run_stage, data)
         # result = util.add_columns(result, kind='admin_alluser', **kwargs)
         
         logger.info("Admin all users data calculated successfully")
@@ -849,9 +865,8 @@ async def calculate_admin_allusers_data(received: pemodel.AdminDataFiltering) ->
             "message": f"Error processing data: {str(e)}"
         }
 
-
 @routes.post("/admin_alljobs_data")
-async def calculate_admin_alljobs_data(received: pemodel.AdminDataFiltering) -> Dict[str, Any]:
+async def calculate_admin_alljobs_data(request: pemodel.AdminDataFiltering) -> Dict[str, Any]:
     """
     Calculate administrative data for all jobs by processing session data.
 
@@ -860,7 +875,7 @@ async def calculate_admin_alljobs_data(received: pemodel.AdminDataFiltering) -> 
 
     Parameters
     ----------
-    received : pemodel.AdminDataFiltering
+    request : pemodel.AdminDataFiltering
         Object containing:
         - filter: Optional query filters
         - return_skip: Flag to include skipped items
@@ -880,32 +895,34 @@ async def calculate_admin_alljobs_data(received: pemodel.AdminDataFiltering) -> 
             "message": str
         }
     """
+    run_stage = request.run_stage
+
     try:
         logger.info("Starting admin all jobs data calculation")
         
         # Process request parameters
-        # query_filter = received.filter or {}
-        # since = max(received.since or 1, 1)  # Ensure minimum value of 1
-        # limit = max(received.limit or 1, 1)  # Ensure minimum value of 1
-        # cursor = received.cursor
+        # query_filter = request.filter or {}
+        # since = max(request.since or 1, 1)  # Ensure minimum value of 1
+        # limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
+        # cursor = request.cursor
         
         # # Prepare query parameters
         # kwargs = query_filter.copy() if query_filter else {}
         
         # Step 1: Fetch all session data
-        ipersona_session = IpersonaSessionSchema()
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         # data, cursor = ipersona_session.get_all_sessions(
         #     cursor=cursor, 
-        #     since=received.since, 
-        #     limit=received.limit, 
+        #     since=request.since, 
+        #     limit=request.limit, 
         #     nopp=True, 
         #     dataframe=False,
         #     **kwargs
         # )
         data = ipersona_session.get_alladmin_sessions(
             # cursor=cursor, 
-            since=received.since, 
-            limit=received.limit, 
+            since=request.since, 
+            limit=request.limit, 
             nopp=True, 
             dataframe=False,
             # **kwargs
@@ -923,7 +940,7 @@ async def calculate_admin_alljobs_data(received: pemodel.AdminDataFiltering) -> 
         logger.info(f"Processing all jobs metrics for {len(data)} sessions")
         
         # Step 2: Summarize all jobs data
-        result = util.summarize_alljobs_data(data)
+        result = util.summarize_alljobs_data(run_stage, data)
         # result = util.add_columns(result, kind='admin_jobs', **kwargs)
         
         logger.info("Admin all jobs data calculated successfully")
@@ -943,9 +960,8 @@ async def calculate_admin_alljobs_data(received: pemodel.AdminDataFiltering) -> 
             "message": f"Error processing data: {str(e)}"
         }
 
-
 @routes.post("/admin_allusers_performance_data")
-async def calculate_admin_allusers_performance_data(received: pemodel.AdminDataFiltering) -> Dict[str, Any]:
+async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFiltering) -> Dict[str, Any]:
     """
     Calculate performance metrics for all users by processing session data.
 
@@ -954,7 +970,7 @@ async def calculate_admin_allusers_performance_data(received: pemodel.AdminDataF
 
     Parameters
     ----------
-    received : pemodel.AdminDataFiltering
+    request : pemodel.AdminDataFiltering
         Object containing:
         - filter: Optional query filters
         - return_skip: Flag to include skipped items
@@ -974,32 +990,34 @@ async def calculate_admin_allusers_performance_data(received: pemodel.AdminDataF
             "message": str
         }
     """
+    run_stage = request.run_stage
+
     try:
         logger.info("Starting admin all users performance data calculation")
         
         # Process request parameters
-        # query_filter = received.filter or {}
-        # since = max(received.since or 1, 1)  # Ensure minimum value of 1
-        # limit = max(received.limit or 1, 1)  # Ensure minimum value of 1
-        # cursor = received.cursor
+        # query_filter = request.filter or {}
+        # since = max(request.since or 1, 1)  # Ensure minimum value of 1
+        # limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
+        # cursor = request.cursor
         
         # # Prepare query parameters
         # kwargs = query_filter.copy() if query_filter else {}
         
         # Step 1: Fetch all session data
-        ipersona_session = IpersonaSessionSchema()
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         # data, cursor = ipersona_session.get_all_sessions(
         #     cursor=cursor, 
-        #     since=received.since, 
-        #     limit=received.limit, 
+        #     since=request.since, 
+        #     limit=request.limit, 
         #     nopp=True, 
         #     dataframe=False,
         #     **kwargs
         # )
         data = ipersona_session.get_alladmin_sessions(
             # cursor=cursor, 
-            since=received.since, 
-            limit=received.limit, 
+            since=request.since, 
+            limit=request.limit, 
             nopp=True, 
             dataframe=False,
             # **kwargs
@@ -1017,7 +1035,7 @@ async def calculate_admin_allusers_performance_data(received: pemodel.AdminDataF
         logger.info(f"Processing performance metrics for {len(data)} sessions")
         
         # Step 2: Summarize all users performance data
-        result = util.summarize_allusers_performance_data(data)
+        result = util.summarize_allusers_performance_data(run_stage, data)
         # result = util.add_columns(result, kind='admin_allusers_performance', **kwargs)
         
         logger.info("Admin all users performance data calculated successfully")
@@ -1037,9 +1055,8 @@ async def calculate_admin_allusers_performance_data(received: pemodel.AdminDataF
             "message": f"Error processing data: {str(e)}"
         }
 
-
 @routes.post("/fetch_user_session")
-async def fetch_user_session(received: pemodel.UserSessionRequestRecieved) -> Union[List, Dict]:
+async def fetch_user_session(request: pemodel.UserSessionRequestRecieved) -> Union[List, Dict]:
     """
     Fetch session data for a specific user and job.
 
@@ -1048,7 +1065,7 @@ async def fetch_user_session(received: pemodel.UserSessionRequestRecieved) -> Un
 
     Parameters
     ----------
-    received : pemodel.UserSessionRequestRecieved
+    request : pemodel.UserSessionRequestRecieved
         Object containing:
         - all_user_id: User ID to fetch session data for
         - job_profile_id: Job ID to filter sessions
@@ -1057,58 +1074,60 @@ async def fetch_user_session(received: pemodel.UserSessionRequestRecieved) -> Un
     -------
     Union[Dict[str, Any], JSONResponse]
         Session data for the user and job, or an error response
-    """   
+    """  
+    run_stage = request.run_stage
+ 
     try:
-        logger.info(f"Fetching session data for user ID: {received.all_user_id} and job ID: {received.job_profile_id}")
+        logger.info(f"Fetching session data for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
 
         # Step 1: Retrieve trainee profile data
-        ipersona_user = IpersonaTraineeSchema()
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
         trainee_profile_data = ipersona_user.filter_by_alluser_id(
-            all_user_id=received.all_user_id, 
+            all_user_id=request.all_user_id, 
             nopp=True, 
             dataframe=False
         )
 
         if not trainee_profile_data:
-            logger.warn(f"No trainee user profiles found for user ID: {received.all_user_id}")
+            logger.warn(f"No trainee user profiles found for user ID: {request.all_user_id}")
             return JSONResponse(
                 status_code=404, 
-                content={"message": f"No trainee user profiles found for user ID: {received.all_user_id}"}
+                content={"message": f"No trainee user profiles found for user ID: {request.all_user_id}"}
             )
 
-        logger.info(f"Trainee profile data retrieved for user ID: {received.all_user_id}")
+        logger.info(f"Trainee profile data retrieved for user ID: {request.all_user_id}")
 
         # Step 2: Extract user profile ID
         tinder_user_profile_id = trainee_profile_data['id']
          
         # Step 3: Fetch session data by user and job ID
-        ipersona_session = IpersonaSessionSchema()
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         user_data = ipersona_session.filter_by_with_user_job_id(
             user_profile_id=tinder_user_profile_id,
-            job_profile_id=received.job_profile_id,
+            job_profile_id=request.job_profile_id,
             nopp=True, 
             dataframe=False
         )
 
         if not user_data:
-            logger.warn(f"No session data found for user ID: {received.all_user_id} and job ID: {received.job_profile_id}")
+            logger.warn(f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
             return JSONResponse(
                 status_code=404, 
-                content={"message": f"No session data found for user ID: {received.all_user_id} and job ID: {received.job_profile_id}"}
+                content={"message": f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}"}
             )
 
-        logger.info(f"Session data successfully retrieved for user ID: {received.all_user_id} and job ID: {received.job_profile_id}")
+        logger.info(f"Session data successfully retrieved for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
         return user_data
 
     except Exception as e:
-        logger.error(f"Error processing session data for user ID: {received.all_user_id} - {str(e)}", exc_info=True)
+        logger.error(f"Error processing session data for user ID: {request.all_user_id} - {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=500, 
             content={"error": f"Error fetching user session: {str(e)}"}
         )
    
 @routes.post("/fetch_chat_history")
-async def fetch_chat_history(received: pemodel.SessionIdRequestRecieved)-> Union[List, Dict]:
+async def fetch_chat_history(request: pemodel.SessionIdRequestRecieved)-> Union[List, Dict]:
     """
     Fetch chat message history for a specific session.
 
@@ -1117,7 +1136,7 @@ async def fetch_chat_history(received: pemodel.SessionIdRequestRecieved)-> Union
 
     Parameters
     ----------
-    received : pemodel.SessionIdRequestRecieved
+    request : pemodel.SessionIdRequestRecieved
         Object containing:
         - sessionId: ID of the session to fetch chat history for
 
@@ -1126,38 +1145,39 @@ async def fetch_chat_history(received: pemodel.SessionIdRequestRecieved)-> Union
     Union[List[Dict[str, Any]], JSONResponse]
         List of chat messages or an error response
     """
+    run_stage = request.run_stage
+
     try:
-        logger.info(f"Fetching chat history for session ID: {received.sessionId}")
+        logger.info(f"Fetching chat history for session ID: {request.sessionId}")
 
         # Step 1: Fetch chat history from the database
-        ipersona_message = IpersonaSessionMessageSchema()
+        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
-            sessionId=received.sessionId, 
+            sessionId=request.sessionId, 
             nopp=True, 
             dataframe=False, 
             sort='asc'
         )
 
         if not session_chathistory:
-            logger.warn(f"No chat history found for session ID: {received.sessionId}")
+            logger.warn(f"No chat history found for session ID: {request.sessionId}")
             return JSONResponse(
                 status_code=404, 
-                content={"message": f"No chat history found for session ID: {received.sessionId}"}
+                content={"message": f"No chat history found for session ID: {request.sessionId}"}
             )
 
-        logger.info(f"Successfully fetched chat history for session ID: {received.sessionId}")
+        logger.info(f"Successfully fetched chat history for session ID: {request.sessionId}")
         return session_chathistory
 
     except Exception as e:
-        logger.error(f"Error fetching chat history for session ID {received.sessionId}: {str(e)}", exc_info=True)
+        logger.error(f"Error fetching chat history for session ID {request.sessionId}: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=500, 
             content={"error": f"Error fetching chat history: {str(e)}"}
         )
 
-
 @routes.post("/fetch_user_all_observer")
-async def fetch_user_all_observer(received: pemodel.SessionIdRequestRecieved)-> Union[List, Dict]:
+async def fetch_user_all_observer(request: pemodel.SessionIdRequestRecieved)-> Union[List, Dict]:
     """
     Fetch all observers for a specific session.
 
@@ -1165,7 +1185,7 @@ async def fetch_user_all_observer(received: pemodel.SessionIdRequestRecieved)-> 
 
     Parameters
     ----------
-    received : pemodel.SessionIdRequestRecieved
+    request : pemodel.SessionIdRequestRecieved
         Object containing:
         - sessionId: ID of the session to fetch observers for
 
@@ -1174,38 +1194,38 @@ async def fetch_user_all_observer(received: pemodel.SessionIdRequestRecieved)-> 
     Union[List[Dict[str, Any]], JSONResponse]
         List of observers or an error response
     """
+    run_stage = request.run_stage
 
     try:
-        logger.info(f"Fetching observers for session ID: {received.sessionId}")
+        logger.info(f"Fetching observers for session ID: {request.sessionId}")
 
         # Step 1: Fetch session observers from the database
-        ipersona_observer = IpersonaSessionObserverSchema()
+        ipersona_observer = IpersonaSessionObserverSchema(run_stage=run_stage)
         session_chatobserver = ipersona_observer.filter_by_observer_session_id(
-            sessionId=received.sessionId, 
+            sessionId=request.sessionId, 
             nopp=True, 
             dataframe=False
         )
 
         if not session_chatobserver:
-            logger.warn(f"No observers found for session ID: {received.sessionId}")
+            logger.warn(f"No observers found for session ID: {request.sessionId}")
             return JSONResponse(
                 status_code=404, 
-                content={"message": f"No observers found for session ID: {received.sessionId}"}
+                content={"message": f"No observers found for session ID: {request.sessionId}"}
             )
 
-        logger.info(f"Successfully fetched {len(session_chatobserver)} observers for session ID: {received.sessionId}")
+        logger.info(f"Successfully fetched {len(session_chatobserver)} observers for session ID: {request.sessionId}")
         return session_chatobserver
 
     except Exception as e:
-        logger.error(f"Error fetching observers for session ID {received.sessionId}: {str(e)}", exc_info=True)
+        logger.error(f"Error fetching observers for session ID {request.sessionId}: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=500, 
             content={"error": f"Error fetching observers: {str(e)}"}
         )
 
-
 @routes.post("/fetch_single_session")
-async def fetch_single_session(received: pemodel.SessionIdRequestRecieved) -> Union[List, Dict]:
+async def fetch_single_session(request: pemodel.SessionIdRequestRecieved) -> Union[List, Dict]:
     """
     Fetch data for a single session by its ID.
 
@@ -1214,7 +1234,7 @@ async def fetch_single_session(received: pemodel.SessionIdRequestRecieved) -> Un
 
     Parameters
     ----------
-    received : pemodel.SessionIdRequestRecieved
+    request : pemodel.SessionIdRequestRecieved
         Object containing:
         - sessionId: ID of the session to fetch
 
@@ -1223,26 +1243,27 @@ async def fetch_single_session(received: pemodel.SessionIdRequestRecieved) -> Un
     Union[Dict[str, Any], JSONResponse]
         Session data or an error response
     """
+    run_stage = request.run_stage
 
     try:
-        logger.info(f"Fetching session data for session ID: {received.sessionId}")
+        logger.info(f"Fetching session data for session ID: {request.sessionId}")
 
         # Step 1: Fetch session data by session ID from the database
-        ipersona_session = IpersonaSessionSchema()
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         session_fetched = ipersona_session.get_session_by_id(
-            sessionId=received.sessionId, 
+            sessionId=request.sessionId, 
             nopp=True, 
             dataframe=False
         )
 
         if not session_fetched:
-            logger.warn(f"No session found for session ID: {received.sessionId}")
+            logger.warn(f"No session found for session ID: {request.sessionId}")
             return JSONResponse(
                 status_code=404, 
-                content={"message": f"No session found for session ID: {received.sessionId}"}
+                content={"message": f"No session found for session ID: {request.sessionId}"}
             )
 
-        logger.info(f"Successfully fetched session data for session ID: {received.sessionId}")
+        logger.info(f"Successfully fetched session data for session ID: {request.sessionId}")
         
         # Remove generated_questions field from response
         session_fetched = util.remove_key(session_fetched, 'generated_questions')
@@ -1250,7 +1271,7 @@ async def fetch_single_session(received: pemodel.SessionIdRequestRecieved) -> Un
         return session_fetched
 
     except Exception as e:
-        logger.error(f"Error fetching session data for session ID {received.sessionId}: {str(e)}", exc_info=True)
+        logger.error(f"Error fetching session data for session ID {request.sessionId}: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=500, 
             content={"error": f"Error fetching session: {str(e)}"}

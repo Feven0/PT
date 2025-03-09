@@ -536,8 +536,10 @@ class fastapi:
         "http://localhost",
         "http://localhost:5500",
         "http://localhost:5000",
+        "https://leap.gettenacious.com"
     ]
-    root_origins = ['10academy.org', 
+    root_origins = ['10academy.org',
+                    'gettenacious.com',
                     'localhost',
                     '127.0.0.1']
     user_info = {}    
@@ -639,6 +641,9 @@ def get_strapi_params(stage):
     elif stage.lower().startswith('prod'):
         root='cms'
         ssmkey="TENX_PROD_STRAPI_TOKEN" 
+    elif stage.lower().startswith('tenacious'):
+        root='tenaciouscms'
+        ssmkey="TENACIOUS_PROD_STRAPI_TOKEN"
     else:  #stage.lower().startswith('dev')
         root='dev-cms'
         ssmkey="TENX_DEV_STRAPI_TOKEN"  

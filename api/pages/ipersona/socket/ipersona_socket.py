@@ -3,13 +3,11 @@ import socketio, time
 from openai import OpenAI
 import assemblyai as aai
 
-from concurrent.futures import ThreadPoolExecutor
 from api import config
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_strapi as strapi
 from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionMessageSchema, IpersonaSessionSchema
-from api.pages.ipersona.routers.ipersona_routes import fetch_single_session
-
+import urllib.parse  
 from api.utils.logger import LLPackerLogger
 
 logger = LLPackerLogger(os.path.basename(__file__))
@@ -24,16 +22,29 @@ transcriber = None
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
 socket_app = socketio.ASGIApp(sio)
 
-
-
-@sio.on("initial connect")
-async def connect(sid):
-    print("####### Socket Connected #######")
-    await sio.emit(
-        "initial connect",
-        {"message": "socket connection started"}, 
-        room=sid)
-
+@sio.event
+async def connect(sid, environ):
+    print(f"####### Socket Connected with SID: {sid} #######")
+    
+    query_string = environ.get('QUERY_STRING', '')
+    print(f"Query string: {query_string}")
+    
+    asgi_scope = environ.get('asgi.scope', {})
+    scope_query = asgi_scope.get('query_string', b'').decode('utf-8')
+    print(f"ASGI scope query string: {scope_query}")
+    
+    parsed_query = urllib.parse.parse_qs(query_string)
+    run_stage = parsed_query.get('run_stage', [''])[0]
+    print(f"Parsed run_stage: {run_stage}")
+        
+    # Also try the session method
+    try:
+        await sio.save_session(sid, {'run_stage': run_stage})
+        session = await sio.get_session(sid)
+        print(f"Session after save: {session}")
+    except Exception as e:
+        print(f"Session error: {e}")
+    
 @sio.on("disconnect")
 async def disconnect(sid):
     print(f"Transcribe Client Disconnected: {sid}")
@@ -108,9 +119,17 @@ async def synthesize_text(text):
 # TODO: integrate with audio chat function
 @sio.on("audio chat sentence")
 async def audio_end_point(sid, data):
+    session = await sio.get_session(sid)        
+        
+    run_stage = session.get('run_stage', None)  
+
+    if run_stage is None:
+        print(f"Run stage not found in session for sid: {sid}")
+    else:
+        print(f"Run stage retrieved: {run_stage}")
+        
     logger.info("audio socket response", data["response"], data['user_session']['id'])
     try:
-        start_time = time.time()
         global chat_count
         chat_count = 1  
         sessionId = data['user_session']['id']
@@ -120,7 +139,7 @@ async def audio_end_point(sid, data):
 
         
         #-----------------------------------------------------------------------------------#
-        ipersona_user = IpersonaSessionSchema()
+        ipersona_user = IpersonaSessionSchema(run_stage=run_stage)
         session_fetched = ipersona_user.get_session_by_id(
             sessionId=data['user_session']['id'], 
             nopp=True, 
@@ -134,7 +153,7 @@ async def audio_end_point(sid, data):
         #------------------------------------------------------------------------------------#
 
         # Fetch session chat history
-        ipersona_message = IpersonaSessionMessageSchema()
+        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
             sessionId=sessionId, 
             nopp=True, 
@@ -153,10 +172,10 @@ async def audio_end_point(sid, data):
 
         # Insert the user's response if provided
         if data['response']:
-            strapi.step1_insert_message(data)
+            strapi.step1_insert_message(run_stage, data)
 
                  
-        response = await util.generate_interview_question(data) 
+        response = await util.generate_interview_question(run_stage, data) 
              
         if response.get("interview") is not None:
             assistant_next_question = "" if response.get("interview") is None else response["interview"]       
@@ -231,7 +250,7 @@ async def audio_end_point(sid, data):
 
             # Perform real-time response evaluation if applicable
             if data['response'] is not [None, ""]:
-                realtime_evaluation_response_json = util.realtime_response_evaluation(data)
+                realtime_evaluation_response_json = util.realtime_response_evaluation(run_stage, data)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
                 logger.success(f"Realtime evaluation is: {realtime_evaluation}")
             
@@ -247,7 +266,7 @@ async def audio_end_point(sid, data):
         # Insert the message or conclude the interview if the chat count exceeds the limit
         if chat_count < 12:
             final = 'false'
-            strapi.step2_insert_message(data, timelimit, full_accumulated_message, realtime_evaluation, final)
+            strapi.step2_insert_message(run_stage, data, timelimit, full_accumulated_message, realtime_evaluation, final)
         else:
             message = 'interview over'
             final = 'true'
@@ -273,18 +292,24 @@ async def audio_end_point(sid, data):
     except Exception as e:
         logger.error(f'Error: {str(e)}')  
         
-    finally:
-        end_time = time.time() 
-        elapsed_time = end_time - start_time  
-        logger.info(f"Time taken for audio interview processing: {elapsed_time:.2f} seconds")
-    
+
 # handle for text to text chat
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
     try:
+        session = await sio.get_session(sid)        
+        
+        run_stage = session.get('run_stage', None)  
+
+        if run_stage is None:
+            print(f"Run stage not found in session for sid: {sid}")
+        else:
+            print(f"Run stage retrieved: {run_stage}")
+        
         logger.info(f"Processing interview chat for session: {data['user_session']['id']}")
         #-----------------------------------------------------------------------------------#
-        ipersona_user = IpersonaSessionSchema()
+        # run_stage = data['run_stage']
+        ipersona_user = IpersonaSessionSchema(run_stage=run_stage)
         session_fetched = ipersona_user.get_session_by_id(
             sessionId=data['user_session']['id'], 
             nopp=True, 
@@ -305,7 +330,7 @@ async def interview_endpoint(sid, data):
         accumulated_message = ""
 
         # Fetch session chat history
-        ipersona_message = IpersonaSessionMessageSchema()
+        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
             sessionId=sessionId, 
             nopp=True, 
@@ -323,10 +348,10 @@ async def interview_endpoint(sid, data):
 
         # Insert the user's response if provided
         if data['response']:
-            strapi.step1_insert_message(data)
+            strapi.step1_insert_message(run_stage, data)
 
         # Generate the next interview question   ["interview"] is not None
-        response = await util.generate_interview_question(data)
+        response = await util.generate_interview_question(run_stage, data)
 
         if response.get("interview") is not None:
             assistant_next_question = response.get("interview", "")
@@ -374,7 +399,7 @@ async def interview_endpoint(sid, data):
             # Perform real-time response evaluation if applicable
             if data['response'] is not [None, ""]:
                 start_time02 = time.time()
-                realtime_evaluation_response_json = util.realtime_response_evaluation(data)
+                realtime_evaluation_response_json = util.realtime_response_evaluation(run_stage, data)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
                 # logger.info(f"Realtime evaluation is: {realtime_evaluation}")
                 end_time02 = time.time()
@@ -392,7 +417,7 @@ async def interview_endpoint(sid, data):
         # Insert the message or conclude the interview if the chat count exceeds the limit
         if chat_count < 12:
             final= 'false'
-            strapi.step2_insert_message(data, timelimit, accumulated_message, realtime_evaluation, final)
+            strapi.step2_insert_message(run_stage, data, timelimit, accumulated_message, realtime_evaluation, final)
         else:
             message = 'interview over'
             await sio.emit("interview done", message, room=sid)
@@ -418,12 +443,6 @@ async def interview_endpoint(sid, data):
     except Exception as e:
         logger.error(f"Error processing interview chat for session {data['user_session']['id']}: {str(e)}", exc_info=True)
         await sio.emit("error", {"error": f"Error: {str(e)}"}, room=sid)
-
-    finally:
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        logger.info(f"Time taken for interview processing: {elapsed_time:.2f} seconds")
-
 
 def get_socketio_app(fast_app):
     app = socketio.ASGIApp(

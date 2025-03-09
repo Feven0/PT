@@ -17,7 +17,7 @@ def calculate_time_limit(response):
         return {'error': str(e)}  
  
 
-def step1_insert_message(data):
+def step1_insert_message(run_stage, data):
     try:
         sessionId =  data['user_session']['id']      
         
@@ -36,14 +36,14 @@ def step1_insert_message(data):
             "i_persona_session": sessionId 
         }
 
-        ipersona_message = IpersonaSessionMessageSchema()
+        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         ipersona_message.save_message(params=message_data, nopp=True, dataframe=False)
         
     except Exception as e:
         logger.error(f"Saving to db failed: ${str(e)}")
         return {'error': str(e)}
     
-def step2_insert_message(data, timelimit, accumulated_message, realtime_evaluation, final):
+def step2_insert_message(run_stage, data, timelimit, accumulated_message, realtime_evaluation, final):
     try:
         sessionId =  data['user_session']['id'] 
         message = {
@@ -63,14 +63,14 @@ def step2_insert_message(data, timelimit, accumulated_message, realtime_evaluati
             },
             "i_persona_session": sessionId
         }
-        ipersona_message = IpersonaSessionMessageSchema()
+        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         ipersona_message.save_message(params=message_data, nopp=True, dataframe=False)
         
     except Exception as e:
         logger.error(f"Saving to db failed: ${str(e)}")
         return {'error': str(e)}
 
-def step3_insert_message(data, realtime_evaluation, final):
+def step3_insert_message(run_stage, data, realtime_evaluation, final):
     try:
         sessionId =  data['user_session']['id'] 
         message = {
@@ -91,7 +91,7 @@ def step3_insert_message(data, realtime_evaluation, final):
             "i_persona_session": sessionId
         }
 
-        ipersona_message = IpersonaSessionMessageSchema()
+        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         ipersona_message.save_message(params=message_data, nopp=True, dataframe=False)
         
     except Exception as e:

@@ -26,23 +26,30 @@ capitalize = lambda x: x[0].upper() + x[1:]
 
     
 class LeapBaseClass:
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         log_level = kwargs.get('log_level', None)
         
         #          
         if log_level and isinstance(log_level, int):
             logger._logger.setLevel(log_level) 
                     
-        if config.strapi.stage=='dev':
-            self.run_stage =  kwargs.get('run_stage',config.strapi.stage)
+        # if config.strapi.stage=='dev':
+        #     self.run_stage =  kwargs.get('run_stage',config.strapi.stage)
+        # else:
+        #     self.run_stage = config.strapi.stage
+        
+        if not run_stage:
+            self.run_stage = config.strapi_stage
         else:
-            self.run_stage = config.strapi.stage
+            self.run_stage = run_stage
+            print(self.run_stage)
+            
         self.user_token = kwargs.get('strapi_token', kwargs.get('user_token', ""))
         self.strapi_token = self.user_token
         self.user_role = kwargs.get('user_role', "")
                                 
         self.kwargs = kwargs
-        self.sg = StrapiGraphql(**kwargs)
+        self.sg = StrapiGraphql(run_stage=self.run_stage, **kwargs)
         self.verbose = kwargs.get('verbose', 0)
         self.data = kwargs.get('data', "")
         self.table = kwargs.get('table', "")
