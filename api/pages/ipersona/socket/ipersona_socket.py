@@ -13,7 +13,9 @@ from api.pages.ipersona.routers.ipersona_routes import fetch_single_session
 from api.utils.logger import LLPackerLogger
 
 logger = LLPackerLogger(os.path.basename(__file__))
-aai.settings.api_key = 'af1b742664d64a40a7429081cd7cdc35'
+
+
+aai.settings.api_key = config.assemblyai.api_key
 
 
 OPENAI_API_KEY = config.openai.api_key
@@ -21,22 +23,25 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 transcriber = None
 
-sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
+sio = socketio.AsyncServer(cors_allowed_origins="*", 
+                           async_mode="asgi",
+                           logger=False,
+                           engineio_logger=False)
 socket_app = socketio.ASGIApp(sio)
 
 
 
 @sio.on("initial connect")
 async def connect(sid):
-    print("####### Socket Connected #######")
+    logger.info(f"New client connected with SID: {sid}")
     await sio.emit(
         "initial connect",
-        {"message": "socket connection started"}, 
+        {"message": "socket connection started", "sid": sid}, 
         room=sid)
 
 @sio.on("disconnect")
 async def disconnect(sid):
-    print(f"Transcribe Client Disconnected: {sid}")
+    logger.info(f"Client disconnected with SID: {sid}")
    
 # assembly streaming
 @sio.on("audio transcribe")
@@ -474,6 +479,10 @@ async def interview_endpoint(sid, data):
         elapsed_time = end_time - start_time
         logger.info(f"Time taken for interview processing: {elapsed_time:.2f} seconds")
 
+@sio.on('health_check')
+async def health_check(sid):
+    logger.info(f"Health check from client {sid}")
+    await sio.emit('health_check_response', {'status': 'healthy'}, room=sid)
 
 def get_socketio_app(fast_app):
     app = socketio.ASGIApp(

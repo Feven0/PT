@@ -93,7 +93,8 @@ def start_application():
     fast_app = FastAPI(title=settings.PROJECT_NAME,
                   description=settings.PROJECT_DESCRIPTION,
                   version=settings.PROJECT_VERSION,
-                  debug=False)    
+                  debug=False,
+                  lifespan=lifespan)    
          
     print('add cors middleware..')
     fast_app = configure_cors(fast_app, origins=origins)
