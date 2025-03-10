@@ -195,9 +195,13 @@ async def check_authentication(request: Request, call_next):
     else:
         permission = check_permission(request.method, request.url.path, token)
         prefix += f', permission={permission}'
-    
+
+    # set strapi stage to tenacious if request url or origin contains gettenacious
+    if 'gettenacious' in fbase(request.url.path) or 'gettenacious' in fbase(origin):
+        config.strapi_stage = 'tenacious'
+
     # Simulate token validation logic (replace with actual validation)
-    if permission:  # You need to implement is_token_valid
+    if permission:  # You need to implement is_token_valid        
         logger.good(f'{prefix} presented valid token or comes from trusted origin!')
     else:
         logger.warn(f'{prefix} does NOT provide valid token!')  
