@@ -1,0 +1,341 @@
+{
+  "all_user_id": "1959",
+  "leaps": [
+      {
+          "view_type": "table",
+          "order": 1,
+          "title": "",
+          "data": [
+              {
+                  "asset_generation_id": "343",
+                  "user_reaction_id": "1534",
+                  "company_name": "Joinrs US",
+                  "job_title": "Junior Data Scientist & AI",
+                  "job_location": "United States",
+                  "applyLink": "https://www.linkedin.com/jobs/view/full-remote-junior-data-scientist-ai-at-joinrs-us-4138970416?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+                  "asset_status": "completed",
+                  "cvstatus": "https://drive.google.com/file/d/1rFrmZMoBk8-s36IDebtT0PWfsbQIjyyk/view?usp=drivesdk",
+                  "clstatus": "https://drive.google.com/file/d/1K7l2a8rFF5uL2Jcqh92zVhJDBq99IPad/view?usp=drivesdk",
+                  "folderLink": "https://drive.google.com/drive/folders/1yJvLzxg2l1cGOhQHXImj6EZ_k_t4iYkZ",
+                  "updated_at": "2025-02-28T13:43:11.257Z",
+                  "user_reaction_created_at": "2025-02-28T13:42:05.643Z",
+                  "job_profile_id": "1766",
+                  "user_profile_id": "197",
+                  "expand_reaction": ""
+              }
+          ],
+          "columns": [
+              {
+                  "name": "asset_generation_id",
+                  "label": "Leap ID",
+                  "type": {
+                      "dtype": "string",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": false,
+                      "tablet": false,
+                      "desktop": false
+                  },
+                  "sorting": false,
+                  "has_icon": false,
+                  "icon": {},
+                  "has_filter": false
+              },
+              {
+                  "name": "user_reaction_id",
+                  "label": "Reaction ID",
+                  "type": {
+                      "dtype": "string",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": false,
+                      "tablet": false,
+                      "desktop": false
+                  },
+                  "sorting": false,
+                  "has_icon": false,
+                  "icon": {},
+                  "has_filter": false
+              },
+              {
+                  "name": "company_name",
+                  "label": "Company Name",
+                  "type": {
+                      "dtype": "string",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": true,
+                      "tablet": true,
+                      "desktop": true
+                  },
+                  "sorting": true,
+                  "has_icon": false,
+                  "icon": {},
+                  "has_filter": false
+              },
+              {
+                  "name": "job_title",
+                  "label": "Job Title",
+                  "type": {
+                      "dtype": "string",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": false,
+                      "tablet": true,
+                      "desktop": true
+                  },
+                  "sorting": true,
+                  "has_icon": false,
+                  "icon": {},
+                  "has_filter": false
+              },
+              {
+                  "name": "job_location",
+                  "label": "Location",
+                  "type": {
+                      "dtype": "string",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": false,
+                      "tablet": false,
+                      "desktop": true
+                  },
+                  "sorting": true,
+                  "has_icon": false,
+                  "icon": {},
+                  "has_filter": false
+              },
+              {
+                  "name": "applyLink",
+                  "label": "Apply Link",
+                  "type": {
+                      "dtype": "link",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": true,
+                      "tablet": true,
+                      "desktop": true
+                  },
+                  "sorting": false,
+                  "has_icon": true,
+                  "icon": {
+                      "type": "icon_only",
+                      "source": "",
+                      "icon": "link"
+                  },
+                  "has_filter": false
+              },
+              {
+                  "name": "asset_status",
+                  "label": "Generation Status",
+                  "type": {
+                      "dtype": "string",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": true,
+                      "tablet": true,
+                      "desktop": true
+                  },
+                  "sorting": true,
+                  "has_icon": false,
+                  "icon": {},
+                  "has_filter": false
+              },
+              {
+                  "name": "cvstatus",
+                  "label": "CV",
+                  "type": {
+                      "dtype": "link",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": false,
+                      "tablet": false,
+                      "desktop": false
+                  },
+                  "sorting": false,
+                  "has_icon": true,
+                  "icon": {
+                      "type": "icon_only",
+                      "source": "",
+                      "icon": "download"
+                  },
+                  "has_filter": false
+              },
+              {
+                  "name": "clstatus",
+                  "label": "CL",
+                  "type": {
+                      "dtype": "link",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": false,
+                      "tablet": false,
+                      "desktop": false
+                  },
+                  "sorting": false,
+                  "has_icon": true,
+                  "icon": {
+                      "type": "icon_only",
+                      "source": "",
+                      "icon": "download"
+                  },
+                  "has_filter": false
+              },
+              {
+                  "name": "folderLink",
+                  "label": "Folder",
+                  "type": {
+                      "dtype": "link",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": true,
+                      "tablet": true,
+                      "desktop": true
+                  },
+                  "sorting": false,
+                  "has_icon": true,
+                  "icon": {
+                      "type": "icon_only",
+                      "source": "",
+                      "icon": "download"
+                  },
+                  "has_filter": false
+              },
+              {
+                  "name": "updated_at",
+                  "label": "Leaped Timestamp",
+                  "type": {
+                      "dtype": "datetime",
+                      "format": "YYYY-MM-DD",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": false,
+                      "tablet": false,
+                      "desktop": false
+                  },
+                  "sorting": false,
+                  "has_icon": false,
+                  "icon": {},
+                  "has_filter": false
+              },
+              {
+                  "name": "user_reaction_created_at",
+                  "label": "Reaction Timestamp",
+                  "type": {
+                      "dtype": "datetime",
+                      "format": "YYYY-MM-DD",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": false,
+                      "tablet": false,
+                      "desktop": false
+                  },
+                  "sorting": false,
+                  "has_icon": false,
+                  "icon": {},
+                  "has_filter": false
+              },
+              {
+                  "name": "job_profile_id",
+                  "label": "Job Profile ID",
+                  "type": {
+                      "dtype": "string",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": false,
+                      "tablet": false,
+                      "desktop": false
+                  },
+                  "sorting": false,
+                  "has_icon": false,
+                  "icon": {},
+                  "has_filter": false
+              },
+              {
+                  "name": "user_profile_id",
+                  "label": "User Profile ID",
+                  "type": {
+                      "dtype": "string",
+                      "format": "",
+                      "source": ""
+                  },
+                  "show": {
+                      "mobile": false,
+                      "tablet": false,
+                      "desktop": false
+                  },
+                  "sorting": false,
+                  "has_icon": false,
+                  "icon": {},
+                  "has_filter": false
+              },
+              {
+                  "name": "expand_reaction",
+                  "label": "Expand Reaction",
+                  "type": {
+                      "dtype": "expand",
+                      "format": "page",
+                      "source": "reaction_details"
+                  },
+                  "show": {
+                      "mobile": true,
+                      "tablet": true,
+                      "desktop": true
+                  },
+                  "sorting": false,
+                  "has_icon": true,
+                  "icon": {
+                      "type": "icon_only",
+                      "source": "asset_generation_id",
+                      "icon": "expand"
+                  },
+                  "has_filter": false
+              }
+          ],
+          "expandable": false,
+          "allowEditColumn": true,
+          "counterName": "record(s)",
+          "allowRowSelection": true,
+          "downloadPermission": true,
+          "searchPermission": true,
+          "pagination": 25,
+          "size": "middle",
+          "email": false
+      }
+  ],
+  "cursor": {
+      "page": 1,
+      "pageSize": 10,
+      "page_size": 10,
+      "page_count": 1,
+      "total": 1,
+      "filter": "",
+      "query": ""
+  },
+  "status": 200,
+  "message": ""
+}

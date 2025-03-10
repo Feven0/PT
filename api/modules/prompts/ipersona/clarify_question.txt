@@ -5,6 +5,7 @@ Question: {question}
 
 Instructions:
     - Focus on simplifying and restructuring the question for better clarity. Avoid providing examples or answers. Your goal is to make the question easier to understand without adding unnecessary detail.
+    - If the given question is not a question, response by saying 'This is not a question'.
 
 
 YOU MUST RESPOND IN ONLY ONE JSON FORMAT:

@@ -19,7 +19,7 @@ const Audio = () => {
         seconds, 
         minutes, 
         setLoading, 
-        setAudioInterview,} = useMiddleSocket();
+        setAudioInterview} = useMiddleSocket();
     const latest = JSON.parse(localStorage.getItem("userSession") || 'null');        
     const [input, setInput] = useState<any>("");
     const wavesurferRef = useRef<any>(null);
@@ -175,7 +175,9 @@ const Audio = () => {
     };
 
     const processNewChunks = async () => {
+        console.log("let me see", audiointerview)
         const newChunks = audiointerview.slice(previousLengthRef.current);  
+        console.log("break it off with  her", newChunks)
         if (newChunks.length > 0) {
             await synthesizeAudio(newChunks);
             previousLengthRef.current = audiointerview.length;  

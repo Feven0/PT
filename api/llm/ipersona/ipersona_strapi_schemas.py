@@ -31,9 +31,10 @@ class IpersonaSessionSchema(LeapBaseClass):
         attributes: Json	
         status: Text
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -127,32 +128,30 @@ class IpersonaSessionSchema(LeapBaseClass):
             logger.error(f"Error fetching data for Observer ID {vid}: {str(e)}")
             return {'error': f"Error fetching data for Observer ID {vid}: {str(e)}"}
 
-    def filter_by_tinder_user_profile_id(self, user_profile_id, **kwargs):
+    def filter_by_tinder_user_profile_id(self, user_profile_id, cursor={}, since=0, limit=0, **kwargs):
         try:
             if not user_profile_id:
                 logger.error("User Profile ID is missing!")
                 return None
             
-            session_filter = f"""
-                filters: {{
-                    tinder_user_profile : {{ id: {{ eq: {user_profile_id} }} }}
-                }}
-            """
-
-            data_json = self.get_all_objects(filter=session_filter, **kwargs)
-
-            data = self.get_sessions_data(data_json)
-
-            if data is None:
-                logger.warn(f"No session data found for Tinder User Profile ID {user_profile_id}.")
-                return None
-            
-            return data
-
+            # Step 1: Get the initial filtered data by 'since' and 'limit'
+            filtered_data, cursors = self.get_all_sessions(cursor=cursor, since=since, limit=limit, nopp=True, dataframe=False)
+        
+            if not filtered_data:
+                logger.error("No data returned after filtering by 'since' and 'limit'")
+                data = []
+            else:
+                # Step 2: Apply additional filtering by 'user_profile_id'
+                data = [session for session in filtered_data if session.get('attributes').get('tinder_user_profile').get('data').get('id') == user_profile_id]
+                if not data:
+                    logger.info(f"No sessions found for user_profile_id: {user_profile_id}")
+                    return None
+          
+            return data, cursors
+        
         except Exception as e:
-            logger.error(f"Error fetching session data for User Profile ID {user_profile_id}: {str(e)}")
-            return {'error': f"Error fetching session data for User Profile ID {user_profile_id}: {str(e)}"}
-
+            logger.error(f"Error filtering by tinder_user_profile_id: {e}")
+            return None
     
     def filter_by_with_user_job_id(self, user_profile_id, job_profile_id, **kwargs):
         try:
@@ -181,12 +180,31 @@ class IpersonaSessionSchema(LeapBaseClass):
             logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}")
             return {'error': f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}"}
 
-
-    def get_all_sessions(self, **kwargs):
+    
+    def get_all_sessions(self, cursor={}, **kwargs):
         try:
-            session_json = self.get_all_objects(**kwargs)
+            if not cursor:
+                cursor = True
+                
+            data, cursor = self.get_all_objects(cursor=cursor, **kwargs)
+ 
+            session = self.get_sessions_data(data)
 
-            session = self.get_sessions_data(session_json)
+            if session is None:
+                logger.warn("No session data found.")
+                return None
+            
+            return session, cursor
+
+        except Exception as e:
+            logger.error(f"Error fetching all sessions: {str(e)}")
+            return {'error': f"Error fetching all sessions: {str(e)}"}
+    
+    def get_alladmin_sessions(self, **kwargs):
+        try:
+            data = self.get_all_objects(**kwargs)
+ 
+            session = self.get_sessions_data(data)
 
             if session is None:
                 logger.warn("No session data found.")
@@ -197,7 +215,6 @@ class IpersonaSessionSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error fetching all sessions: {str(e)}")
             return {'error': f"Error fetching all sessions: {str(e)}"}
-    
         
     def save_session(self, params, **kwargs):
         try:
@@ -317,9 +334,10 @@ class IpersonaTraineeSchema(LeapBaseClass):
         all_users: Relation with AllUsers
         attributes: Json	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -560,9 +578,10 @@ class IpersonaJobSchema(LeapBaseClass):
         id: ID,
         attributes: Json	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -731,9 +750,9 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
         tinder_job_profile: Relation with TInderJobProfile
         attributes: Json	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -782,7 +801,7 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
         self.data = self.data%""
         _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)
     
-    def filter_by_tinder_user_profile_id(self, user_profile_id, **kwargs):
+    def filter_by_tinder_user_profile_id(self, user_profile_id, since=0, limit=0, **kwargs):
         try:
             session_overall_observer_filter = f"""
                 filters: {{
@@ -817,7 +836,7 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
                 }}
             """
             data_json = self.get_all_objects(filter=session_overall_observer_filter, **kwargs)
-
+            
             if not data_json:
                 logger.warn(f"No data returned for user profile ID: {user_profile_id} and job profile ID: {job_profile_id}")
                 return None
@@ -1009,9 +1028,9 @@ class IpersonaSessionTinderUserJobMatchSchema(LeapBaseClass):
         match_score: Int
         match_level: String
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -1116,9 +1135,9 @@ class IpersonaSessionTinderUserReactionSchema(LeapBaseClass):
         tinder_job_profile: ID,
         tinder_user_profile: ID
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -1229,9 +1248,10 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
         i_persona_session: Relation with IPersonaMessages
         attributes: Json	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -1424,9 +1444,10 @@ class IpersonaSessionObserverSchema(LeapBaseClass):
         i_persona_session: Relation with IPersonaObservers
         attributes: Json	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -1589,9 +1610,9 @@ class IpersonaAllUserSchema(LeapBaseClass):
         role: text
         Batch: text	
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
@@ -1691,9 +1712,9 @@ class IpersonaProfileInformationSchema(LeapBaseClass):
         gender: text
         nationality: text
     '''
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
-        super().__init__(**kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
         
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
