@@ -47,7 +47,14 @@ class JobReactionManager(JobManagerBase):
         # Defining the UI/UX table
         self.keep_columns = []
         self.alias_columns = {}
-        self.uiuxbt = uiux.BaseTable(title=table_title)
+        self.cursor = {}
+        self.job_profile_id = {}, 
+        self.job_title = {},
+        self.company_name = {},
+        self.location = {},
+        self.url = {},
+        # self.uiuxbt = uiux.BaseTable(title=table_title, )
+        self.uiuxbt = uiux.BaseTable(title=table_title, cursor=self.cursor)
 
         # Table column views for different devices
         desktop_view = ['job_title', 'job_match_score', 'job_match', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
@@ -321,6 +328,42 @@ class JobReactionManager(JobManagerBase):
         #     for x in self.admin_allusers_performance_columns.keys():
         #         self.admin_allusers_performance_columns[x]['icon'] = None  # Or False if preferred
 
+        # Colums configuration for the admin each job info
+        desktop_view = ['user_profile_id', 'trainee_name', 'total_interview_count', 'complete_sessions_count', 'incomplete_sessions_count', 'average_score', 'expand']
+        tablet_view = ['user_profile_id', 'trainee_name', 'total_interview_count', 'complete_sessions_count', 'incomplete_sessions_count', 'average_score', 'expand']
+        mobile_view = ['user_profile_id', 'trainee_name', 'total_interview_count', 'complete_sessions_count', 'incomplete_sessions_count', 'average_score', 'expand']
+        sorting = ['user_profile_id', 'trainee_name', 'total_interview_count', 'complete_sessions_count', 'incomplete_sessions_count', 'average_score', 'expand']
+        link_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+        
+        self.admin_each_job_columns = {
+            "trainee_name": {'label': 'Trainee Name', 'ctype': 'string', 'options': []},
+            'total_interview_count': {'label': 'Total Interview Count', 'ctype': 'number', 'options': []},
+            'complete_sessions_count': {'label': 'Complete Sessions Count', 'ctype': 'number', 'options': []},
+            'incomplete_sessions_count': {'label': 'Incomplete Sessions Count', 'ctype': 'number', 'options': []},
+            # "individual_scores": {'label': 'Individual Scores', 'ctype': 'list', 'options': []},
+            "average_score": {'label': 'Average Score', 'ctype': 'string', 'options': []},
+            "user_profile_id": {'label': 'User Profile ID', 'ctype': 'string', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]},
+
+        }
+        
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.admin_each_job_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.admin_each_job_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.admin_each_job_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.admin_each_job_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.admin_each_job_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.admin_each_job_columns[x]['icon'] = self.uiuxbt.create_expand_icon("user_profile_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
 
         # Initialize the table
         self.table = self.uiuxbt.table
@@ -346,10 +389,20 @@ class JobReactionManager(JobManagerBase):
         logger.good(f'Removed the following empty columns from reaction table: {rm_columns}')
         return rows
 
-    def prepare_table(self, params, kind, **kwargs):
+    def prepare_table(self, 
+                    params, 
+                    cursor, 
+                    job_profile_id, 
+                    job_title,
+                    company_name,
+                    location,
+                    url,
+                    kind, 
+                    **kwargs):
         """Prepare a table for displaying reaction data."""
         rows = []
         pkey = None
+        self.cursor = cursor
         if kind == 'jobs':
             pkey = 'attributes'
             colmap = self.jobs_columns
@@ -361,6 +414,8 @@ class JobReactionManager(JobManagerBase):
             colmap = self.admin_jobs_columns
         elif kind == 'admin_allusers_performance':
             colmap = self.admin_allusers_performance_columns
+        elif kind == 'admin_each_job':
+            colmap = self.admin_each_job_columns 
 
         for c, cval in colmap.items():
             cval['name'] = c
@@ -373,6 +428,52 @@ class JobReactionManager(JobManagerBase):
             rows = self._remove_empty_columns(params, colmap)
             _ = self.uiuxbt.add_rows(rows)
         else:
-            _ = self.uiuxbt.add_rows(params)
+            _ = self.uiuxbt.add_rows(
+                params, 
+                cursor,
+                job_profile_id, 
+                job_title,
+                company_name,
+                location,
+                url)
 
         return self.uiuxbt.table
+
+
+    def prepare_engagement_table(self, 
+                        params, 
+                        cursor, 
+                        kind, 
+                        **kwargs):
+            """Prepare a table for displaying reaction data."""
+            rows = []
+            pkey = None
+            self.cursor = cursor
+            if kind == 'jobs':
+                pkey = 'attributes'
+                colmap = self.jobs_columns
+            elif kind == 'admin_overview':
+                colmap = self.admin_overview_columns
+            elif kind == 'admin_alluser':
+                colmap = self.admin_alluser_columns
+            elif kind == 'admin_jobs':
+                colmap = self.admin_jobs_columns
+            elif kind == 'admin_allusers_performance':
+                colmap = self.admin_allusers_performance_columns
+            elif kind == 'admin_each_job':
+                colmap = self.admin_each_job_columns 
+
+            for c, cval in colmap.items():
+                cval['name'] = c
+                _ = self.uiuxbt.add_column(**cval)
+
+            strifnone = lambda x: x if x else ''
+
+            # Remove empty columns and add rows to the table
+            if rows:
+                rows = self._remove_empty_columns(params, colmap)
+                _ = self.uiuxbt.add_rows_for_engagment(rows)
+            else:
+                _ = self.uiuxbt.add_rows_for_engagment(params, cursor)
+
+            return self.uiuxbt.table

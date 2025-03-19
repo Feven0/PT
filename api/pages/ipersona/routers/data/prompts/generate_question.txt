@@ -52,31 +52,36 @@ YOU MUST RESPOND IN ONLY ONE JSON FORMAT:
 {
     "Introduction": [
         {
-            "question": "Tell me more about yourself and your professional journey so far?"
+            "question": "Tell me more about yourself and your professional journey so far?",
+            "ideal_answer": "Here you put an ideal great answer for the question"
         }
         // add more questions based on the provided count for background interview questions
     ],
     "Background": [
         {
-            "question": "here you need to put the interview question"
+            "question": "here you need to put the interview question",
+            "ideal_answer": "Here you put an ideal great answer for the question"
         },
         // add more questions based on the provided count for background interview questions
     ],
     "Technical": [
         {
-            "question": "here you need to put the interview question"
+            "question": "here you need to put the interview question",
+            "ideal_answer": "Here you put an ideal great answer for the question"
         },
         // add more questions based on the provided count for technical interview questions
     ],
     "Behavioral": [
         {
-            "question": "here you need to put the interview question"
+            "question": "here you need to put the interview question",
+            "ideal_answer": "Here you put an ideal great answer for the question"
         },
         // add more questions based on the provided count for behavioral interview questions
     ],
     "Ability": [
         {
-            "question": "here you need to put the interview question"
+            "question": "here you need to put the interview question",
+            "ideal_answer": "Here you put an ideal great answer for the question"
         },
         // add more questions based on the provided count for ability interview questions
     ],

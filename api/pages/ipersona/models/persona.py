@@ -2,7 +2,8 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 from api.pages.ipersona.models.model_parrot_basic import MyBaseModel
 
-default_days_since = 1
+default_days_since = 7
+default_limit = 10
 
 class UserRequestRecieved(MyBaseModel):
     userId: str
@@ -21,6 +22,7 @@ class SessionJobRequestRecieved(MyBaseModel):
 class UserSessionRequestRecieved(MyBaseModel):
     job_profile_id: int
     all_user_id: int
+    template: bool
 
 class AllUserIdRecieved(MyBaseModel):
     all_user_id: int
@@ -53,13 +55,39 @@ class audioRequestRecieved(MyBaseModel):
     text: str
    
 class AdminDataFiltering(MyBaseModel):
-    # cursor: Optional[Dict] = {}
-    # filter: Optional[Dict] = {}
-    limit: Optional[int] = default_days_since
+    cursor: Optional[Dict] = {}
+    filter: Optional[Dict] = {}
+    limit: Optional[int] = default_limit
     since: Optional[int] = default_days_since
-    # information_level: Optional[str] = "minimal"
-    # return_skip: Optional[bool] = False
+    information_level: Optional[str] = "minimal"
+    return_skip: Optional[bool] = False
+    job_profile_id: int
 
     
+class AdminDataTempFiltering(MyBaseModel):
+    cursor: Optional[Dict] = {}
+    filter: Optional[Dict] = {}
+    limit: Optional[int] = default_limit
+    since: Optional[int] = default_days_since
+    job_profile_id: int
+    # information_level: Optional[str] = "minimal"
+    # return_skip: Optional[bool] = False
+    
+class TinderTemplateRequestRecieved(MyBaseModel):
+    name: str
+    type: str
+    template_questions: Optional[Dict] = {}
+    job_profile_ids: Optional[list] = []
 
+class UpdateTinderTemplateRequestRecieved(MyBaseModel):
+    template_id: int
+    name: str
+    type: str
+    template_questions: Optional[Dict] = {}
+    job_profile_ids: Optional[list] = []
 
+class TinderTemplateIdRequestRecieved(MyBaseModel):
+    template_id: int
+    
+class TinderTemplateJobIdRequestRecieved(MyBaseModel):
+    job_profile_id: int

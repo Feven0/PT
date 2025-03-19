@@ -17,9 +17,9 @@ def calculate_time_limit(response):
         return {'error': str(e)}  
  
 
-def step1_insert_message(run_stage, data):
+def step1_insert_message(run_stage, data, sessionId):
     try:
-        sessionId =  data['user_session']['id']      
+        # sessionId =  data['user_session']['id']      
         
         message_data = {
             "attributes": {
@@ -43,12 +43,18 @@ def step1_insert_message(run_stage, data):
         logger.error(f"Saving to db failed: ${str(e)}")
         return {'error': str(e)}
     
-def step2_insert_message(run_stage, data, timelimit, accumulated_message, realtime_evaluation, final):
+def step2_insert_message(run_stage, data, template_id, timelimit, accumulated_message, realtime_evaluation, final, sessionId):
     try:
-        sessionId =  data['user_session']['id'] 
+        # sessionId =  data['user_session']['id'] 
+             
+        if template_id:
+            temp_id = template_id
+        else:
+            temp_id = 'null'
         message = {
                     "user_type": "assistant",
                     "content_type": "question",
+                    "template_id": temp_id,
                     "content": {
                         "time_taken": "null",
                         "time_limit":  timelimit.get("time_limit"),
@@ -70,12 +76,17 @@ def step2_insert_message(run_stage, data, timelimit, accumulated_message, realti
         logger.error(f"Saving to db failed: ${str(e)}")
         return {'error': str(e)}
 
-def step3_insert_message(run_stage, data, realtime_evaluation, final):
+def step3_insert_message(run_stage, realtime_evaluation, final, sessionId, template_id):
     try:
-        sessionId =  data['user_session']['id'] 
+        # sessionId =  data['user_session']['id'] 
+        if template_id:
+            temp_id = template_id
+        else:
+            temp_id = 'null'
         message = {
                     "user_type": "assistant",
                     "content_type": "question",
+                    "template_id": temp_id,
                     "content": {
                         "time_taken": "",
                         "time_limit":  "",

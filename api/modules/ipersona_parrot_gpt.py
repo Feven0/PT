@@ -64,7 +64,7 @@ def create_persona(job_desc):
 
 
 #--------------------------------------------  Generate Interview Questions --------------------------------
-async def generate_interview_question(run_stage, data: dict):
+async def generate_interview_question(run_stage, data: dict, template_id, sessionId):
     """
     Generates interview questions based on user session data.
 
@@ -84,20 +84,27 @@ async def generate_interview_question(run_stage, data: dict):
         if an exception occurs during processing.
     """
     try:
+        # Retrieve either generated_questions or template_questions
+        user_attributes = data['user_session']['attributes']['attributes']
+
+        # Choose between generated_questions and template_questions
+        collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions')
+        if not collection:
+            raise ValueError("No questions available in generated_questions or template_questions.")
         
-        # hr_agent.assistant.update_system_message(data['user_session']['persona'])  
-        collection = data['user_session']['attributes']['attributes']['generated_questions'] 
-        response = await choose_interview_question(run_stage, collection, data)
+        # Call the async function to choose an interview question
+        response = await choose_interview_question(run_stage, collection, data, template_id, sessionId)
         
         return response
     
     except Exception as e:
-        logger.error(f"Persona Creation Error: ${str(e)}")
+        logger.error(f"Persona Creation Error: {str(e)}")
         return {'error': str(e)}
+
     
     
 #-------------------------------------------- Choose Question from Generated ----------------------------------
-async def choose_interview_question(run_stage, collection: dict, data: dict):
+async def choose_interview_question(run_stage, collection: dict, data: dict, template_id, sessionId):
     """
     Selects an interview question based on the current question counter.
 
@@ -125,7 +132,7 @@ async def choose_interview_question(run_stage, collection: dict, data: dict):
     try: 
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
-            sessionId=data['user_session']['id'], 
+            sessionId=sessionId, 
             nopp=True, 
             dataframe=False,
             sort='asc')
@@ -149,7 +156,14 @@ async def choose_interview_question(run_stage, collection: dict, data: dict):
             section = collection["Introduction"]
             question_type = "Introduction"
             count = None
-            response = await helper_func(run_stage, chat_count, count, question_type, section, data)
+            response = await helper_func(
+                run_stage, 
+                chat_count, 
+                count, 
+                question_type, 
+                section, data, 
+                sessionId,
+                template_id)
 
             return response
         
@@ -159,7 +173,15 @@ async def choose_interview_question(run_stage, collection: dict, data: dict):
             count = None
             if chat_count == 3: 
                 count = chat_count
-            response = await helper_func(run_stage, chat_count, count, question_type, section, data)
+            response = await helper_func(
+                run_stage, 
+                chat_count, 
+                count, 
+                question_type, 
+                section, 
+                data, 
+                sessionId,
+                template_id)
 
             return response
         
@@ -169,7 +191,15 @@ async def choose_interview_question(run_stage, collection: dict, data: dict):
             count = None
             if chat_count == 5: 
                 count = chat_count
-            response = await helper_func(run_stage, chat_count, count, question_type, section, data)
+            response = await helper_func(
+                run_stage, 
+                chat_count, 
+                count, 
+                question_type, 
+                section, 
+                data, 
+                sessionId,
+                template_id)
             
             return response
             
@@ -179,7 +209,15 @@ async def choose_interview_question(run_stage, collection: dict, data: dict):
             count = None
             if chat_count == 7: 
                 count = chat_count
-            response = await helper_func(run_stage, chat_count, count, question_type, section, data)
+            response = await helper_func(
+                run_stage, 
+                chat_count, 
+                count, 
+                question_type, 
+                section, 
+                data, 
+                sessionId,
+                template_id)
             
             return response
         
@@ -189,7 +227,15 @@ async def choose_interview_question(run_stage, collection: dict, data: dict):
             count = None
             if chat_count == 9: 
                 count = chat_count
-            response = await helper_func(run_stage, chat_count, count, question_type, section, data)
+            response = await helper_func(
+                run_stage, 
+                chat_count, 
+                count,
+                question_type, 
+                section, 
+                data, 
+                sessionId,
+                template_id)
             
             return response
         
@@ -199,7 +245,15 @@ async def choose_interview_question(run_stage, collection: dict, data: dict):
             count = None
             if chat_count == 11: 
                 count = chat_count
-            response = await helper_func(run_stage, chat_count, count, question_type, section, data)
+            response = await helper_func(
+                run_stage, 
+                chat_count, 
+                count, 
+                question_type, 
+                section, 
+                data, 
+                sessionId,
+                template_id)
             
             return response
 
@@ -209,7 +263,15 @@ async def choose_interview_question(run_stage, collection: dict, data: dict):
 
 
 #----------------------------------------- Helper Functions for Choosing Question ---------------------------------
-async def helper_func(run_stage, chat_count, count: int, question_type: str, section: list, data: dict):
+async def helper_func(
+    run_stage, 
+    chat_count, 
+    count: int, 
+    question_type: str, 
+    section: list, 
+    data: dict, 
+    sessionId,
+    template_id):
     """
     Processes interview questions and evaluations based on candidate responses.
 
@@ -260,15 +322,16 @@ async def helper_func(run_stage, chat_count, count: int, question_type: str, sec
                 interview_question_json = await fetch_interview_question(section, question_type, data) 
    
         else:  
-            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data)
+            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
             logger.info(f"Realtime evaluation is: {realtime_evaluation}")
             if realtime_evaluation != "null":
                 status = "final"
                 final = 'true'
-                strapi.step3_insert_message(run_stage, data, realtime_evaluation, final)
+                strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId, template_id)
             rstage=''
-            await overall_interview_evaluations(rstage, data, status = "Completed")
+            status = "Completed"
+            await overall_interview_evaluations(rstage, data, status, sessionId)
             logger.info("Calculate the overall and save to database done.")            
                 
         response = {
@@ -320,7 +383,9 @@ async def fetch_interview_question(section: list, question_type: str, data: dict
             .replace("{type}", str(question_type))\
             .replace("{candidate_response}", data['response'])        
 
-        content = data['user_session']['attributes']['attributes']['persona'] + msg
+        # content = data['user_session']['attributes']['attributes']['persona'] + msg
+        persona = data['user_session']['attributes']['attributes'].get('persona', '')
+        content = persona + msg
         response = gpt.openai_gpt_assistant_with_streaming(content)
         
         return response
@@ -409,7 +474,9 @@ async def generate_followup(data) -> dict:
         msg = context.replace("{candidate_response}", data['response'])
         # response = await hr_agent.generate_question(msg)
         
-        content = data['user_session']['attributes']['attributes']['persona'] + msg
+        # content = data['user_session']['attributes']['attributes']['persona'] + msg
+        persona = data['user_session']['attributes']['attributes'].get('persona', '')
+        content = persona + msg
         response = gpt.openai_gpt_assistant_with_streaming(content)
         
         # response_json = extract_json(response, quite=False)
@@ -423,7 +490,7 @@ async def generate_followup(data) -> dict:
 
 
 #---------------------------------------- Realtime Chat Evaluation Function -------------------------------
-def realtime_response_evaluation(run_stage, data: dict) -> dict:
+def realtime_response_evaluation(run_stage, data: dict, sessionId) -> dict:
     """
     Evaluates the candidate's response in real-time based on the previous question.
 
@@ -445,7 +512,7 @@ def realtime_response_evaluation(run_stage, data: dict) -> dict:
     try:
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
-            sessionId=data['user_session']['id'], 
+            sessionId=sessionId, 
             nopp=True, 
             dataframe=False,
             sort='asc')
@@ -482,7 +549,9 @@ def realtime_response_evaluation(run_stage, data: dict) -> dict:
                 .replace("{question}", last_assistant_response)\
                 .replace("{candidate_response}", data['response'])
             
-            content = data['user_session']['attributes']['attributes']['persona'] + evaluation_msg
+            # content = data['user_session']['attributes']['attributes']['persona'] + evaluation_msg
+            persona = data['user_session']['attributes']['attributes'].get('persona', '')
+            content = persona + evaluation_msg
             realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
             realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False)            
             return realtime_evaluation_response
@@ -493,7 +562,7 @@ def realtime_response_evaluation(run_stage, data: dict) -> dict:
     
     
 #----------------------------------------- Overall Interview Evaluation -------------------------------
-async def overall_interview_evaluations(run_stage, data: dict, status) -> dict:
+async def overall_interview_evaluations(run_stage, data: dict, status, sessionId) -> dict:
     """
     Evaluates the overall performance of a candidate in an interview.
 
@@ -520,7 +589,7 @@ async def overall_interview_evaluations(run_stage, data: dict, status) -> dict:
         print("ammended lawsuitiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         all_chat_history = ipersona_message.filter_by_session_id(
-            sessionId=data['user_session']['id'], 
+            sessionId=sessionId, 
             nopp=True, 
             dataframe=False,
             sort='asc')
@@ -538,14 +607,20 @@ async def overall_interview_evaluations(run_stage, data: dict, status) -> dict:
             .replace("{history}", history_str)  
                 
      
-        content = data['user_session']['attributes']['attributes']['persona'] + overall_evaluation_msg
+        # content = data['user_session']['attributes']['attributes']['persona'] + overall_evaluation_msg
+        persona = data['user_session']['attributes']['attributes'].get('persona', '')
+        content = persona + overall_evaluation_msg
+        
         overall_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
         print("***********************************************************")
         print(overall_evaluation_response)
         print("***********************************************************")        
         overall_evaluation_response_json = extract_json(overall_evaluation_response, quite=False)
    
-        content = data['user_session']['attributes']['attributes']['persona'] + overall_metrics_msg
+        # content = data['user_session']['attributes']['attributes']['persona'] + overall_metrics_msg
+        persona = data['user_session']['attributes']['attributes'].get('persona', '')
+        content = persona + overall_metrics_msg
+
         overall_interview_metrics_response = gpt.openai_gpt_assistant_without_streaming(content)
         overall_interview_metrics_json = extract_json(overall_interview_metrics_response, quite=False)
            
@@ -569,7 +644,7 @@ async def overall_interview_evaluations(run_stage, data: dict, status) -> dict:
                     "interview_evaluation": overall_evaluation_response_json,
                     "interview_evaluation_metrics": overall_interview_metrics_json,
                 },
-                "i_persona_session": data['user_session']['id'],
+                "i_persona_session": sessionId,
                 "status": status            
             }
 
@@ -581,7 +656,7 @@ async def overall_interview_evaluations(run_stage, data: dict, status) -> dict:
             logger.info("session observer to database")
 
         session_data = {
-            "i_persona_session_id": data['user_session']['id'], 
+            "i_persona_session_id": sessionId, 
             "status": status,
         }
         updated_session = ipersona_session.update_session(params=session_data, nopp=True, dataframe=False, return_object=True)
@@ -1142,13 +1217,30 @@ def calculate_average_time_management(data):
         return {'error': f"Error calculating time management averages: {str(e)}"}
 
 #-------------------------------------------- user engagment jobs --------------------------------------------
-def add_columns(params, kind, **kwargs):
+def add_columns(
+    params, 
+    cursor, 
+    job_profile_id, 
+    job_title,
+    company_name,
+    location,
+    url,
+    kind, 
+    **kwargs):
     try:
         output = []
         if kwargs.get('information_level','minimal')=='minimal':
             try:
                 job_reaction_manager = JobReactionManager()
-                output = job_reaction_manager.prepare_table(params, kind=kind)
+                output = job_reaction_manager.prepare_table(
+                    params, 
+                    cursor, 
+                    job_profile_id, 
+                    job_title,
+                    company_name,
+                    location,
+                    url,
+                    kind=kind)
             except Exception as e:
                 logger.error(f'Error preparing leap table: {e}')
                 output = []
@@ -1165,6 +1257,35 @@ def add_columns(params, kind, **kwargs):
         logger.error(f'Error adding columns to leap table: {e}')
         output = [] 
 
+def add_engagement_columns(
+    params, 
+    cursor, 
+    kind, 
+    **kwargs):
+    try:
+        output = []
+        if kwargs.get('information_level','minimal')=='minimal':
+            try:
+                job_reaction_manager = JobReactionManager()
+                output = job_reaction_manager.prepare_engagement_table(
+                    params, 
+                    cursor, 
+                    kind=kind)
+            except Exception as e:
+                logger.error(f'Error preparing leap table: {e}')
+                output = []
+                
+            if isinstance(output, dict):
+                output = [output]
+            elif not isinstance(output, list):
+                output = [output]            
+        else:
+            output = params
+            
+        return output
+    except Exception as e:
+        logger.error(f'Error adding columns to leap table: {e}')
+        output = [] 
 
 def summarize_interviews(
     run_stage,
@@ -1268,7 +1389,7 @@ def summarize_interviews(
                     "score": average_score
                 })
                 
-            output = add_columns(summary_response, kind='jobs', **kwargs)    
+            output = add_engagement_columns(summary_response, cursor, kind='jobs', **kwargs)    
         
             return output, cursors
         else:
@@ -1290,7 +1411,8 @@ def extracted_needed_metrics(data):
             
             # Get observer data
             observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
-     
+            # slug = session['attributes'].get('slug', None)
+      
             # Determine if the session is complete
             complete_status = observer_data is not None
             extracted_session['complete_status'] = complete_status  
@@ -1327,7 +1449,7 @@ def extracted_needed_metrics(data):
             extracted_session['createdAt'] = session['attributes'].get('createdAt')
             extracted_session['job_profile_id'] = session['attributes']['tinder_job_profile']['data']['id']
             extracted_session['user_profile_id'] = session['attributes']['tinder_user_profile']['data']['id']
-       
+            # extracted_session['slug'] = slug
             # Append extracted session data
             extracted_observers.append(extracted_session)
         
@@ -1336,6 +1458,7 @@ def extracted_needed_metrics(data):
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
+    
 # def extracted_needed_metrics(data):
 #     try:
 #         extracted_observers = []
@@ -1531,17 +1654,21 @@ def calculate_session_metrics(sessions):
 
 def summarize_allusers_data(run_stage, data):
     try:
-        data = extracted_needed_metrics(data)  # Extract required metrics from the raw data
+        # Extract required metrics from the raw data
+        data = extracted_needed_metrics(data)  
         user_summary = defaultdict(list)  # Dictionary to group records by user_profile_id
 
+        # Group records by user_profile_id
         for record in data:
-            user_profile_id = record['user_profile_id']
-            user_summary[user_profile_id].append(record)
+            user_profile_id = record.get('user_profile_id')
+            if user_profile_id is not None:
+                user_summary[user_profile_id].append(record)
 
         trainees_detailed_data = []
 
+        # Process each user_profile_id group
         for user_profile_id, records in user_summary.items():
-            job_profile_ids = set()  
+            job_profile_ids = set()
             complete_sessions_count = 0
             incomplete_sessions_count = 0
             total_interview_score = 0
@@ -1549,34 +1676,37 @@ def summarize_allusers_data(run_stage, data):
 
             # Aggregating data for each user
             for record in records:
-                job_profile_id = record['job_profile_id']
-                job_profile_ids.add(job_profile_id)  
-                
+                job_profile_id = record.get('job_profile_id')
+                if job_profile_id:
+                    job_profile_ids.add(job_profile_id)
+
                 if record.get('complete_status') is True:
                     complete_sessions_count += 1
                 else:
                     incomplete_sessions_count += 1
 
-                # if record.get('ovtrainees_detailed_dataerall_performance_score') is not None:
-                # total_interview_score += record['overall_performance_score']
-                
-                total_interviews_count += 1 
-                
-                # average_score = round(total_interview_score / complete_sessions_count, 2) if complete_sessions_count > 0 else "N/A"
-           
-            # Fetching user details from strapi tables
+                # Uncomment this line if 'overall_performance_score' exists and is used
+                # if record.get('overall_performance_score') is not None:
+                #     total_interview_score += record['overall_performance_score']
+
+                total_interviews_count += 1
+
+            # Fetch user details from other services
             ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
             all_user_data = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, nopp=True, dataframe=False, return_object=True)
             all_user_id = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
 
+            # Fetching data from other services using all_user_id
             ipersona_alluser = IpersonaAllUserSchema(run_stage=run_stage)
             ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
-            ipersona_profile = IpersonaProfileInformationSchema(run_stage=run_stage)
+
+            ipersona_profile = IpersonaProfileInformationSchema()
             ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
 
-            userdata = {**ipersona_alluser_data, **ipersona_profile_data}
+            # Merge all user data if available
+            userdata = {**(ipersona_alluser_data or {}), **(ipersona_profile_data or {})}
 
-            # Appending aggregated data for each user
+            # Prepare the result for this user
             trainees_detailed_data.append({
                 "user_profile_id": user_profile_id,
                 "all_user_id": all_user_id,
@@ -1591,7 +1721,7 @@ def summarize_allusers_data(run_stage, data):
                 "incomplete_sessions_count": incomplete_sessions_count,
             })
 
-        # Sorting the data by 'total_interviews_count' in descending order and taking top 10
+        # Sort the data by 'total_interviews_count' and return top 10
         top_10 = sorted(trainees_detailed_data, key=lambda x: x['total_interviews_count'], reverse=True)[:10]
 
         result = {
@@ -1603,6 +1733,7 @@ def summarize_allusers_data(run_stage, data):
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
+
 
 def summarize_alljobs_data(run_stage, data):
     try:
@@ -1670,79 +1801,490 @@ def summarize_alljobs_data(run_stage, data):
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
 
+def summarize_eacholdjob_data(run_stage, data):
+    try:
+        data = extracted_needed_metrics(data)  
+        job_summary = defaultdict(list)
+
+        for record in data:
+            job_profile_id = record['job_profile_id']
+            job_summary[job_profile_id].append(record)
+        
+        trainees_detailed_data = []
+        processed_users = {}  # Dictionary to store user_profile_id and trainee_name mapping
+
+        for job_profile_id, records in job_summary.items():
+            complete_sessions_count = 0
+            incomplete_sessions_count = 0
+            total_interviews_count = len(records)
+            trainee_name = ''
+            user_profile_id = records[0].get('user_profile_id')
+
+            # Fetch trainee info if not already processed
+            if user_profile_id not in processed_users:
+                ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+                all_user_data = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, nopp=True, dataframe=False, return_object=True)
+                all_user_id = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
+
+                # Fetch additional data about the trainee
+                ipersona_alluser = IpersonaAllUserSchema(run_stage=run_stage)
+                ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
+                trainee_name = ipersona_alluser_data.get('name', 'Unknown')
+
+                # Store trainee_name to avoid fetching again for the same user
+                processed_users[user_profile_id] = trainee_name
+            else:
+                trainee_name = processed_users[user_profile_id]
+
+            # Aggregate session counts for the job
+            for record in records:
+                if record.get('complete_status') is True:
+                    complete_sessions_count += 1
+                else:
+                    incomplete_sessions_count += 1
+
+            # Fetch job-related data (title, company, location, URL)
+            ipersona_job = IpersonaJobSchema(run_stage=run_stage)
+            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
+
+            # Gather job info (title, company, location, URL)
+            job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title') if job_title_data else 'Unknown Job Title'
+            company_name = job_title_data[0]['attributes']['attributes'].get('company_name', '') if job_title_data else ''
+            location = job_title_data[0]['attributes']['attributes'].get('location', '') if job_title_data else ''
+            url = job_title_data[0]['attributes']['attributes'].get('url', '') if job_title_data else ''
+            
+            # Append the summarized data
+            trainees_detailed_data.append({
+                'trainee_name': trainee_name,
+                'total_interview_count': total_interviews_count,
+                'complete_sessions_count': complete_sessions_count,
+                'incomplete_sessions_count': incomplete_sessions_count,
+                'job_title': job_title,
+                'company_name': company_name,
+                'location': location,
+                'url': url,
+                'user_profile_id': user_profile_id,
+                'job_profile_id': job_profile_id
+            })
+        
+        return trainees_detailed_data
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+
+from collections import defaultdict
+
+# def summarize_eachjob_data(run_stage, data):
+#     try:
+#         data = extracted_needed_metrics(data)  
+#         job_summary = defaultdict(list)
+
+#         # Group records by job_profile_id
+#         for record in data:
+#             job_profile_id = record['job_profile_id']
+#             job_summary[job_profile_id].append(record)
+        
+#         jobs_detailed_data = {}
+#         processed_users = {}  
+
+#         for job_profile_id, records in job_summary.items():
+#             job_trainees = []  
+#             seen_trainees = set() 
+#             for record in records:
+#                 user_profile_id = record.get('user_profile_id')
+
+#                 # Only process if the trainee hasn't already been added for this job
+#                 if user_profile_id not in seen_trainees:
+#                     complete_sessions_count = 0
+#                     incomplete_sessions_count = 0
+#                     total_interviews_count = 0
+#                     total_score = 0
+#                     score_count = 0
+#                     trainee_name = ''
+
+#                     # Fetch trainee info if not already processed globally
+#                     if user_profile_id not in processed_users:
+#                         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+#                         all_user_data = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, nopp=True, dataframe=False, return_object=True)
+#                         all_user_id = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
+
+#                         # Fetch additional data about the trainee
+#                         ipersona_alluser = IpersonaAllUserSchema(run_stage=run_stage)
+#                         ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
+#                         trainee_name = ipersona_alluser_data.get('name', 'Unknown')
+
+#                         # Store trainee_name to avoid fetching again for the same user
+#                         processed_users[user_profile_id] = trainee_name
+#                     else:
+#                         trainee_name = processed_users[user_profile_id]
+
+#                     # Calculate session counts and score for the current job and user
+#                     for session in records:
+#                         if session.get('user_profile_id') == user_profile_id:
+#                             total_interviews_count += 1
+#                             if session.get('complete_status') is True:
+#                                 complete_sessions_count += 1
+#                             else:
+#                                 incomplete_sessions_count += 1
+#                             # Accumulate performance score if available
+#                             score = session.get('overall_performance_score')
+                            
+#                             if score is not None:
+#                                 total_score += score
+#                                 score_count += 1
+
+#                     # Calculate average score for the trainee
+#                     if score_count > 0:
+#                         average_score = round(total_score / score_count, 2)
+#                     else:
+#                         average_score = "N/A"
+
+#                     # Add the trainee details to the list for this job
+#                     job_trainees.append({
+#                         'trainee_name': trainee_name,
+#                         'total_interview_count': total_interviews_count,
+#                         'complete_sessions_count': complete_sessions_count,
+#                         'incomplete_sessions_count': incomplete_sessions_count,
+#                         'average_score': average_score,  # Include average score
+#                         'user_profile_id': user_profile_id
+#                     })
+
+#                     # Mark this user_profile_id as processed for this job
+#                     seen_trainees.add(user_profile_id)
+
+#             # Fetch job-related data (title, company, location, URL)
+#             ipersona_job = IpersonaJobSchema(run_stage=run_stage)
+#             job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
+
+#             # Gather job info (title, company, location, URL)
+#             job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title') if job_title_data else 'Unknown Job Title'
+#             company_name = job_title_data[0]['attributes']['attributes'].get('company_name', '') if job_title_data else ''
+#             location = job_title_data[0]['attributes']['attributes'].get('location', '') if job_title_data else ''
+#             url = job_title_data[0]['attributes']['attributes'].get('url', '') if job_title_data else ''
+
+#             # Store the job data with unique trainees
+#             jobs_detailed_data[job_profile_id] = {
+#                 'job_title': job_title,
+#                 'company_name': company_name,
+#                 'location': location,
+#                 'url': url,
+#                 'trainees': job_trainees  # Attach list of unique trainees under the job
+#             }
+        
+#         return jobs_detailed_data
+    
+#     except Exception as e:
+#         logger.error(f"Error processing files: {e}")
+#         return {'error': str(e)}
+
+from collections import defaultdict
+
+def summarize_eachjob_data(run_stage, data):
+    try:
+        data = extracted_needed_metrics(data) 
+        job_summary = defaultdict(list)
+
+        # Group records by job_profile_id
+        for record in data:
+            job_profile_id = record['job_profile_id']
+            job_summary[job_profile_id].append(record)
+        
+        jobs_detailed_data = {}
+        processed_users = {}  # Dictionary to store user_profile_id and trainee_name mapping
+
+        for job_profile_id, records in job_summary.items():
+            job_trainees = []  # List to hold unique trainee details for the current job
+            seen_trainees = set()  # Keep track of user_profile_id's already processed for this job
+
+            for record in records:
+                user_profile_id = record.get('user_profile_id')
+
+                # Only process if the trainee hasn't already been added for this job
+                if user_profile_id not in seen_trainees:
+                    complete_sessions_count = 0
+                    incomplete_sessions_count = 0
+                    total_interviews_count = 0
+                    total_score = 0
+                    score_count = 0
+                    trainee_name = ''
+                    individual_scores = []  # List to store all individual scores
+
+                    # Fetch trainee info if not already processed globally
+                    if user_profile_id not in processed_users:
+                        
+                        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+                        all_user_data = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, nopp=True, dataframe=False, return_object=True)
+                        all_user_id = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
+                        
+                        # Fetch additional data about the trainee
+                        ipersona_alluser = IpersonaAllUserSchema(run_stage=run_stage)
+                        ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
+                        trainee_name = ipersona_alluser_data.get('name', 'Unknown')
+
+                        # Store trainee_name to avoid fetching again for the same user
+                        processed_users[user_profile_id] = trainee_name
+                    else:
+                        trainee_name = processed_users[user_profile_id]
+
+                    # Calculate session counts, score, and gather individual scores for the current job and user
+                    for session in records:
+                        if session.get('user_profile_id') == user_profile_id:
+                            total_interviews_count += 1
+                            if session.get('complete_status') is True:
+                                complete_sessions_count += 1
+                            else:
+                                incomplete_sessions_count += 1
+                            
+                            # Accumulate performance score if available and store individual score
+                            score = session.get('overall_performance_score')
+                            if score is not None:
+                                total_score += score
+                                score_count += 1
+                                individual_scores.append(score)  # Add the score to the list
+
+                    # Calculate average score for the trainee
+                    if score_count > 0:
+                        average_score = round(total_score / score_count, 2)
+                    else:
+                        average_score = "N/A"
+
+                    # Add the trainee details to the list for this job
+                    job_trainees.append({
+                        'trainee_name': trainee_name,
+                        'total_interview_count': total_interviews_count,
+                        'complete_sessions_count': complete_sessions_count,
+                        'incomplete_sessions_count': incomplete_sessions_count,
+                        'individual_scores': individual_scores,  # Include list of individual scores
+                        'average_score': average_score,  # Include average score
+                        'user_profile_id': user_profile_id
+                    })
+
+                    # Mark this user_profile_id as processed for this job
+                    seen_trainees.add(user_profile_id)
+
+            # Fetch job-related data (title, company, location, URL)
+            ipersona_job = IpersonaJobSchema(run_stage=run_stage)
+            job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
+
+            # Gather job info (title, company, location, URL)
+            job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title') if job_title_data else 'Unknown Job Title'
+            company_name = job_title_data[0]['attributes']['attributes'].get('company_name', '') if job_title_data else ''
+            location = job_title_data[0]['attributes']['attributes'].get('location', '') if job_title_data else ''
+            url = job_title_data[0]['attributes']['attributes'].get('url', '') if job_title_data else ''
+
+            # Store the job data with unique trainees
+            jobs_detailed_data = {
+                'job_profile_id':  job_profile_id,
+                'job_title': job_title,
+                'company_name': company_name,
+                'location': location,
+                'url': url,
+                'trainees': job_trainees  # Attach list of unique trainees under the job
+            }
+        total = len(job_trainees)
+        return jobs_detailed_data, total
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+
 def summarize_allusers_performance_data(run_stage, data):
-    try: 
-        data = extracted_needed_metrics(data)  # Assume this function extracts necessary metrics
+    """
+    Summarize performance data for all users with comprehensive error handling.
+    
+    Args:
+        run_stage (str): Environment stage ('dev', 'prod', etc.)
+        data (list): List of performance data records
+        
+    Returns:
+        list: Summarized metrics for each user or error dictionary
+    """
+    try:
+        if not isinstance(data, list):
+            logger.error("Input data is not a list")
+            return {'error': "Invalid data format: expected a list"}
+            
+        if not data:
+            logger.warn("Empty data list provided")
+            return []
+        
+        try:
+            data = extracted_needed_metrics(data)  # Extract necessary metrics
+        except Exception as extract_error:
+            logger.error(f"Error extracting metrics: {extract_error}")
+            return {'error': f"Failed to extract metrics: {str(extract_error)}"}
+        
         user_summary = defaultdict(list)  # Dictionary to group records by user_profile_id
+        user_metrics = []
         
         # Step 1: Group records by user_profile_id
         for record in data:
-            user_profile_id = record['user_profile_id']
+            if not isinstance(record, dict):
+                logger.warn(f"Skipping non-dictionary record: {record}")
+                continue
+                
+            user_profile_id = record.get('user_profile_id')
+            if not user_profile_id:
+                logger.warn(f"Skipping record with missing user_profile_id: {record}")
+                continue
+                
             user_summary[user_profile_id].append(record)
-
-        user_metrics = []
 
         # Step 2: Iterate over each user and calculate the average of metrics
         for user_profile_id, records in user_summary.items():
-            # Fetch user details from external data sources (Strapi)
-            ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-            all_user_data = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, nopp=True, dataframe=False, return_object=True)
-            all_user_id = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
-
-            ipersona_alluser = IpersonaAllUserSchema(run_stage=run_stage)
-            ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
-            ipersona_profile = IpersonaProfileInformationSchema(run_stage=run_stage)
-            ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
-            userdata = {**ipersona_alluser_data, **ipersona_profile_data}
-
-            # Step 3: Initialize sum variables
-            total_confidence = 0
-            total_clarity = 0
-            total_engagement = 0
-            record_count = len(records)
-
-            # Step 4: Iterate over records and sum up the metrics
-            for item in records:
-                confidence = item.get('confidence', '').lower() if item.get('confidence') else ''
-                clarity = item.get('clarity', '').lower() if item.get('clarity') else ''
-                engagement = item.get('engagement', '').lower() if item.get('engagement') else ''
+            try:
+                # Fetch user details from external data sources (Strapi)
+                try:
+                    ipersona_user = IpersonaTraineeSchema()
+                    all_user_data = ipersona_user.get_trainee_by_id(
+                        user_profile_id=user_profile_id, 
+                        nopp=True, 
+                        dataframe=False, 
+                        return_object=True
+                    )
+                    
+                    if not all_user_data:
+                        logger.warn(f"No trainee data found for user_profile_id: {user_profile_id}")
+                        all_user_data = {}
+                        
+                    all_users_data = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])
+                    if not all_users_data:
+                        logger.warn(f"No all_users data found for user_profile_id: {user_profile_id}")
+                        continue
+                        
+                    all_user_id = all_users_data[0].get('id')
+                    if not all_user_id:
+                        logger.warn(f"Missing all_user_id for user_profile_id: {user_profile_id}")
+                        continue
+                        
+                except Exception as trainee_error:
+                    logger.error(f"Error fetching trainee data for user {user_profile_id}: {trainee_error}")
+                    continue
                 
-                confidence_level = 1 if confidence == 'poor' else 2 if confidence == 'good' else 3 if confidence == 'excellent' else 0
-                clarity_level = 1 if clarity == 'poor' else 2 if clarity == 'good' else 3 if clarity == 'excellent' else 0
-                engagement_level = 1 if engagement == 'poor' else 2 if engagement == 'good' else 3 if engagement == 'excellent' else 0
+                # Get all user data
+                try:
+                    ipersona_alluser = IpersonaAllUserSchema(run_stage=run_stage)
+                    ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(
+                        all_user_id=all_user_id, 
+                        nopp=True, 
+                        dataframe=False, 
+                        return_object=True
+                    )
+                    
+                    if not ipersona_alluser_data:
+                        logger.warn(f"No all user data found for all_user_id: {all_user_id}")
+                        ipersona_alluser_data = {}
+                        
+                except Exception as alluser_error:
+                    logger.error(f"Error fetching all user data for all_user_id {all_user_id}: {alluser_error}")
+                    ipersona_alluser_data = {}
+                
+                # Get profile information
+                try:
+                    ipersona_profile = IpersonaProfileInformationSchema(run_stage=run_stage)
+                    ipersona_profile_data = ipersona_profile.filter_by_all_user_id(
+                        all_user_id=all_user_id, 
+                        nopp=True, 
+                        dataframe=False, 
+                        return_object=True
+                    )
+                    
+                    if not ipersona_profile_data:
+                        logger.warn(f"No profile data found for all_user_id: {all_user_id}")
+                        ipersona_profile_data = {}
+                        
+                except Exception as profile_error:
+                    logger.error(f"Error fetching profile data for all_user_id {all_user_id}: {profile_error}")
+                    ipersona_profile_data = {}
+                
+                # Merge user data
+                userdata = {**ipersona_alluser_data, **ipersona_profile_data}
 
-                # Sum the metrics
-                total_confidence += confidence_level
-                total_clarity += clarity_level
-                total_engagement += engagement_level
+                # Step 3: Calculate metrics with error handling
+                try:
+                    # Initialize sum variables
+                    total_confidence = 0
+                    total_clarity = 0
+                    total_engagement = 0
+                    valid_records = 0
 
-            # Step 5: Calculate averages and handle record_count == 0 case
-            avg_confidence = round(total_confidence / record_count, 2) if record_count else 0
-            avg_clarity = round(total_clarity / record_count, 2) if record_count else 0
-            avg_engagement = round(total_engagement / record_count, 2) if record_count else 0
+                    # Step 4: Iterate over records and sum up the metrics
+                    for item in records:
+                        try:
+                            confidence = item.get('confidence', '').lower() if item.get('confidence') else ''
+                            clarity = item.get('clarity', '').lower() if item.get('clarity') else ''
+                            engagement = item.get('engagement', '').lower() if item.get('engagement') else ''
+                            
+                            # Map string values to numeric levels
+                            confidence_mapping = {'poor': 1, 'good': 2, 'excellent': 3}
+                            clarity_mapping = {'poor': 1, 'good': 2, 'excellent': 3}
+                            engagement_mapping = {'poor': 1, 'good': 2, 'excellent': 3}
+                            
+                            confidence_level = confidence_mapping.get(confidence, 0)
+                            clarity_level = clarity_mapping.get(clarity, 0)
+                            engagement_level = engagement_mapping.get(engagement, 0)
 
-            # Step 6: Prepare the summarized user data
-            user_data = {
-                "user_profile_id": user_profile_id,
-                "all_user_id": all_user_id,
-                "name": userdata.get('name', 'Unknown'),
-                "role": userdata.get('role', 'Unknown'),
-                "batch": userdata.get('Batch', 'Unknown'),
-                "gender": userdata.get('gender', 'Unknown'),
-                "nationality": userdata.get('nationality', 'Unknown'),
-                'metrics': {
-                    'average_confidence_level': avg_confidence if avg_confidence != 0 else None,
-                    'average_clarity_level': avg_clarity if avg_clarity != 0 else None,
-                    'average_engagement_level': avg_engagement if avg_engagement != 0 else None,
+                            # Only count this record if at least one metric is valid
+                            if any([confidence_level, clarity_level, engagement_level]):
+                                valid_records += 1
+                            
+                            # Sum the metrics
+                            total_confidence += confidence_level
+                            total_clarity += clarity_level
+                            total_engagement += engagement_level
+                            
+                        except Exception as metric_error:
+                            logger.warn(f"Error processing metrics for record: {item}, error: {metric_error}")
+                            continue
+
+                    # Step 5: Calculate averages and handle record_count == 0 case
+                    avg_confidence = round(total_confidence / valid_records, 2) if valid_records else 0
+                    avg_clarity = round(total_clarity / valid_records, 2) if valid_records else 0
+                    avg_engagement = round(total_engagement / valid_records, 2) if valid_records else 0
+                    
+                except Exception as calculation_error:
+                    logger.error(f"Error calculating metrics for user {user_profile_id}: {calculation_error}")
+                    avg_confidence = avg_clarity = avg_engagement = 0
+
+                # Step 6: Prepare the summarized user data
+                user_data = {
+                    "user_profile_id": user_profile_id,
+                    "all_user_id": all_user_id,
+                    "name": userdata.get('name', 'Unknown'),
+                    "role": userdata.get('role', 'Unknown'),
+                    "batch": userdata.get('Batch', 'Unknown'),
+                    "gender": userdata.get('gender', 'Unknown'),
+                    "nationality": userdata.get('nationality', 'Unknown'),
+                    'metrics': {
+                        'average_confidence_level': avg_confidence if avg_confidence != 0 else None,
+                        'average_clarity_level': avg_clarity if avg_clarity != 0 else None,
+                        'average_engagement_level': avg_engagement if avg_engagement != 0 else None,
+                    }
                 }
-            }
 
-            user_metrics.append(user_data)
+                user_metrics.append(user_data)
+                
+            except Exception as user_error:
+                logger.error(f"Error processing user {user_profile_id}: {user_error}")
+                # Add partial user data with error information
+                user_metrics.append({
+                    "user_profile_id": user_profile_id,
+                    "error": str(user_error),
+                    "metrics": {
+                        'average_confidence_level': None,
+                        'average_clarity_level': None,
+                        'average_engagement_level': None,
+                    }
+                })
 
+        if not user_metrics:
+            logger.warn("No valid user metrics were generated")
+            
         return user_metrics
 
     except Exception as e:
-        logger.error(f"Error processing files: {e}")
+        logger.error(f"Critical error in summarize_allusers_performance_data: {e}")
         return {'error': str(e)}
 
 #-------------------------------------------- FIle reader --------------------------------------------

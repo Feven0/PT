@@ -6,7 +6,7 @@ import assemblyai as aai
 from api import config
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_strapi as strapi
-from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionMessageSchema, IpersonaSessionSchema
+from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionMessageSchema, IpersonaSessionSchema, IpersonaTinderTemplateSchema
 import urllib.parse  
 from api.utils.logger import LLPackerLogger
 
@@ -92,7 +92,6 @@ async def audio_endpoint(sid, data):
         transcriber.stream(audioblob)
     except Exception as e:
         print(f"Error in audio streaming: {str(e)}")
-
 
 # executor = ThreadPoolExecutor(max_workers=105)  
 
@@ -296,153 +295,377 @@ async def audio_end_point(sid, data):
 # handle for text to text chat
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
+    """
+    Handle interview socket.io endpoint with comprehensive error handling.
+    
+    Args:
+        sid (str): Socket.io session ID
+        data (dict): Interview data containing user session and response
+        
+    Returns:
+        None: Responses are sent via socket.io events
+    """
     try:
-        session = await sio.get_session(sid)        
+        print('---------===========================-----------------------==========================---------')
+        logger.info(f"Received interview request with template_id: {data.get('template_id')}")
         
-        run_stage = session.get('run_stage', None)  
-
-        if run_stage is None:
-            print(f"Run stage not found in session for sid: {sid}")
-        else:
-            print(f"Run stage retrieved: {run_stage}")
+        # Validate input data
+        if not isinstance(data, dict):
+            error_msg = "Invalid data format: expected a dictionary"
+            logger.error(error_msg)
+            await sio.emit("error", {"error": error_msg}, room=sid)
+            return
+            
+        if 'user_session' not in data:
+            error_msg = "Missing required field: user_session"
+            logger.error(error_msg)
+            await sio.emit("error", {"error": error_msg}, room=sid)
+            return
         
-        logger.info(f"Processing interview chat for session: {data['user_session']['id']}")
+        # Initialize variables
+        try:
+            session = await sio.get_session(sid)
+        except Exception as session_error:
+            logger.error(f"Failed to get socket session: {str(session_error)}")
+            await sio.emit("error", {"error": "Session retrieval failed"}, room=sid)
+            return
+        
+        global chat_count
+        chat_count = 1  
+        sessionId = None
+        realtime_evaluation = "null"
+        accumulated_message = ""     
+        template_id = ""
+        timelimit = {"time_limit": "null"}
+        
+        # Get run stage from session
+        try:
+            run_stage = session.get('run_stage', None)  
+            if run_stage is None:
+                logger.warn(f"Run stage not found in session for sid: {sid}, using default")
+                run_stage = 'prod'  # Default to production if not specified
+            else:
+                logger.info(f"Run stage retrieved: {run_stage}")
+        except Exception as stage_error:
+            logger.error(f"Error retrieving run stage: {str(stage_error)}")
+            run_stage = 'prod'  # Default to production if error occurs
+        
+        # Get session ID with error handling
+        try:
+            if isinstance(data.get('user_session'), dict) and 'id' in data['user_session']:
+                sessionId = data['user_session']['id']
+                logger.info(f"Processing interview chat for session ID: {sessionId}")
+            else:
+                error_msg = "Invalid user_session format: missing ID"
+                logger.error(error_msg)
+                await sio.emit("error", {"error": error_msg}, room=sid)
+                return
+        except Exception as session_id_error:
+            logger.error(f"Error extracting session ID: {str(session_id_error)}")
+            await sio.emit("error", {"error": "Failed to identify session"}, room=sid)
+            return
+        
         #-----------------------------------------------------------------------------------#
-        # run_stage = data['run_stage']
-        ipersona_user = IpersonaSessionSchema(run_stage=run_stage)
-        session_fetched = ipersona_user.get_session_by_id(
-            sessionId=data['user_session']['id'], 
-            nopp=True, 
-            dataframe=False
-        )
-        data['user_session'] = session_fetched
-
-        if not session_fetched:
-            logger.warn(f"No session found for session ID: {data['user_session']['id']}")
-            return f"No session found for session ID: {data['user_session']['id']}"
+        # Handle template-based or session-based interviews
+        try:
+            if data.get('template'):
+                try:
+                    template_id = data.get('template_id')
+                    if not template_id:
+                        logger.warn("Template flag set but no template_id provided")
+                        await sio.emit("error", {"error": "Template ID is required"}, room=sid)
+                        return
+                        
+                    ipersona_template = IpersonaTinderTemplateSchema()
+                    saved_template = ipersona_template.get_tinder_template_id(
+                        templateId=template_id, 
+                        return_object=True, 
+                        nopp=True, 
+                        dataframe=False
+                    )
+                    
+                    if not saved_template:
+                        logger.warn(f"No template found for template ID: {template_id}")
+                        await sio.emit("error", {"error": f"Template not found: {template_id}"}, room=sid)
+                        return
+                        
+                    data['user_session'] = saved_template
+                except Exception as template_error:
+                    logger.error(f"Error retrieving template: {str(template_error)}")
+                    await sio.emit("error", {"error": f"Template retrieval failed: {str(template_error)}"}, room=sid)
+                    return
+            else:    
+                try:
+                    # Fetch session by ID if user_session is already a dict
+                    ipersona_user = IpersonaSessionSchema(run_stage=run_stage)
+                    session_fetched = ipersona_user.get_session_by_id(
+                        sessionId=sessionId, 
+                        nopp=True, 
+                        dataframe=False
+                    )
+                    
+                    if not session_fetched:
+                        logger.warn(f"No session found for session ID: {sessionId}")
+                        await sio.emit("error", {"error": f"Session not found: {sessionId}"}, room=sid)
+                        return
+                        
+                    data['user_session'] = session_fetched
+                except Exception as session_fetch_error:
+                    logger.error(f"Error fetching session: {str(session_fetch_error)}")
+                    await sio.emit("error", {"error": f"Session retrieval failed: {str(session_fetch_error)}"}, room=sid)
+                    return
+        except Exception as data_prep_error:
+            logger.error(f"Error in data preparation: {str(data_prep_error)}")
+            await sio.emit("error", {"error": f"Data preparation failed: {str(data_prep_error)}"}, room=sid)
+            return
         #------------------------------------------------------------------------------------#
 
         start_time = time.time()
-        global chat_count
-        chat_count = 1  
-        sessionId = data['user_session']['id']
-        realtime_evaluation = "null"
-        accumulated_message = ""
-
+       
         # Fetch session chat history
-        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
-        session_chathistory = ipersona_message.filter_by_session_id(
-            sessionId=sessionId, 
-            nopp=True, 
-            dataframe=False
-        )
+        try:
+            ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
+            session_chathistory = ipersona_message.filter_by_session_id(
+                sessionId=sessionId, 
+                nopp=True, 
+                dataframe=False
+            )
 
-        chat = session_chathistory['count']
+            if not session_chathistory:
+                logger.warn(f"Failed to retrieve chat history for session {sessionId}")
+                chat = 0
+            else:
+                chat = session_chathistory.get('count', 0)
 
-        if chat != 0:  
-            chat_total = session_chathistory['total']
-            assistant_count = sum(1 for entry in chat_total if entry["user_type"] == "assistant")
-            chat_count += assistant_count
-        else:
-            logger.info(f"No chat history found for session ID: {sessionId}")
+            if chat != 0:  
+                try:
+                    chat_total = session_chathistory.get('total', [])
+                    assistant_count = sum(1 for entry in chat_total if entry.get("user_type") == "assistant")
+                    chat_count += assistant_count
+                except Exception as count_error:
+                    logger.error(f"Error counting assistant messages: {str(count_error)}")
+                    # Continue with default chat_count if count fails
+            else:
+                logger.info(f"No chat history found for session ID: {sessionId}")
+        except Exception as history_error:
+            logger.error(f"Error retrieving chat history: {str(history_error)}")
+            # Continue without chat history
 
         # Insert the user's response if provided
-        if data['response']:
-            strapi.step1_insert_message(run_stage, data)
-
-        # Generate the next interview question   ["interview"] is not None
-        response = await util.generate_interview_question(run_stage, data)
-
-        if response.get("interview") is not None:
-            assistant_next_question = response.get("interview", "")
+        try:
+            if data.get('response'):
+                try:
+                    strapi.step1_insert_message(
+                        run_stage, 
+                        data, 
+                        sessionId)
+                except Exception as insert_error:
+                    logger.error(f"Failed to insert user message: {str(insert_error)}")
+                    # Continue despite insertion failure
+            else:
+                logger.info("No user response to insert")
+        except Exception as response_error:
+            logger.error(f"Error processing user response: {str(response_error)}")
+            # Continue despite error
             
-            # Emit the assistant's next question
-            message = [
-                {
-                    "user_type": "assistant",
-                    "content_type": "question",
-                    "content": {
-                        "time_taken": "null",
-                        "time_limit": "null",
-                        "chunk_response": accumulated_message,
-                        "full_response": "",
-                        "final": "false",
-                        "realtime_evaluation": "null"
-                    }
-                }
-            ]
-            await sio.emit("interview chat", message, room=sid)
-
-            # Calculate and emit the time limit for the next question
-            timelimit = strapi.calculate_time_limit(response)
-            message = [{
-                        "content": {
-                            "time_limit": timelimit.get("time_limit", "null"),
+        # Generate the next interview question
+        try:
+            response = await util.generate_interview_question(run_stage, data, template_id, sessionId)
+            if not response:
+                logger.error("Failed to generate interview question: empty response")
+                await sio.emit("error", {"error": "Failed to generate next question"}, room=sid)
+                return
+        except Exception as generate_error:
+            logger.error(f"Error generating interview question: {str(generate_error)}")
+            await sio.emit("error", {"error": f"Question generation failed: {str(generate_error)}"}, room=sid)
+            return
+       
+        # Process and emit the assistant's response
+        try:
+            if response.get("interview") is not None:
+                assistant_next_question = response.get("interview", "")
+                temp_id = data.get('template_id') if data.get('template_id') is not None else "null"
+                
+                # Prepare initial message
+                try:
+                    message = [
+                        {
+                            "user_type": "assistant",
+                            "content_type": "question",
+                            "template_id": temp_id, 
+                            "content": {
+                                "time_taken": "null",  
+                                "time_limit": "null",
+                                "chunk_response": accumulated_message,
+                                "full_response": "",
+                                "final": "false",
+                                "realtime_evaluation": "null"
+                            }
                         }
-                    }]
-            await sio.emit("time_limit", message, room=sid)
+                    ]
+                    await sio.emit("interview chat", message, room=sid)
+                except Exception as initial_emit_error:
+                    logger.error(f"Failed to emit initial message: {str(initial_emit_error)}")
+                    # Continue despite emission failure
 
-            # Process and emit the assistant's next question in chunks
-            for chunk in assistant_next_question:
-                accumulated_message += chunk
-                message = [{
-                    "content": {
-                        "chunk_response": chunk
-                    }
-                }]
-                end_time = time.time()
-                elapsed_time = end_time - start_time
-                logger.info(f"Chunk emitted, time taken: {elapsed_time:.2f} seconds")
+                # Calculate and emit time limit
+                try:
+                    timelimit = strapi.calculate_time_limit(response)
+                    message = [{
+                                "content": {
+                                    "time_limit": timelimit.get("time_limit", "null"),
+                                }
+                            }]
+                    await sio.emit("time_limit", message, room=sid)
 
-                await sio.emit("interview chat", message, room=sid)
+                except Exception as timelimit_error:
+                    logger.error(f"Failed to calculate or emit time limit: {str(timelimit_error)}")
+                    timelimit = {"time_limit": "null"}
+                    # Continue despite time limit failure
 
-            # Perform real-time response evaluation if applicable
-            if data['response'] is not [None, ""]:
-                start_time02 = time.time()
-                realtime_evaluation_response_json = util.realtime_response_evaluation(run_stage, data)
-                realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
-                # logger.info(f"Realtime evaluation is: {realtime_evaluation}")
-                end_time02 = time.time()
-                elapsed_time02 = end_time02 - start_time02
-                logger.info(f"Realtime evaluation processed, time taken: {elapsed_time02:.2f} seconds")
+                # Process and emit the assistant's message in chunks
+                print('-------------------------------------------------------------------------------------------------------------000')
+                print(assistant_next_question)
+                is_generator = hasattr(assistant_next_question, '__iter__') and hasattr(assistant_next_question, '__next__')
+                print("-----------------------")
+                print(is_generator)
+                try:
+                    if not is_generator:
+                        logger.warn("Expected list for assistant_next_question, converting to list")
+                        if isinstance(assistant_next_question, str):
+                            assistant_next_question = [assistant_next_question]
+                        else:
+                            assistant_next_question = [str(assistant_next_question)]
+                            
+                    for chunk in assistant_next_question:
+                        print("cominnnnnnn")
+                        try:
+                            accumulated_message += chunk
+                            message = [{
+                                "content": {
+                                    "chunk_response": chunk
+                                }
+                            }]
+                            await sio.emit("interview chat", message, room=sid)
+                            
+                            end_time = time.time()
+                            elapsed_time = end_time - start_time
+                            logger.info(f"Chunk emitted, time taken: {elapsed_time:.2f} seconds")
+                        except Exception as chunk_error:
+                            logger.error(f"Error processing chunk: {str(chunk_error)}")
+                            # Continue with next chunk despite error
+                except Exception as chunks_error:
+                    logger.error(f"Error processing message chunks: {str(chunks_error)}")
+                    # Continue despite chunks processing failure
+
+                # Perform real-time response evaluation if applicable
+                try:
+                    if data.get('response') not in [None, "", []]:
+                        start_time02 = time.time()
+                        try:
+                            realtime_evaluation_response_json = util.realtime_response_evaluation(run_stage, data, sessionId)
+                            realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
+                        except Exception as eval_compute_error:
+                            logger.error(f"Failed to compute realtime evaluation: {str(eval_compute_error)}")
+                            realtime_evaluation = "null"
+                            
+                        end_time02 = time.time()
+                        elapsed_time02 = end_time02 - start_time02
+                        logger.info(f"Realtime evaluation processed, time taken: {elapsed_time02:.2f} seconds")
+                        
+                        try:
+                            message = [{
+                                "content": {
+                                    "realtime_evaluation": realtime_evaluation,
+                                    "full_response": accumulated_message
+                                }
+                            }]
+                            await sio.emit("realtime", message, room=sid)
+                        except Exception as eval_emit_error:
+                            logger.error(f"Failed to emit realtime evaluation: {str(eval_emit_error)}")
+                            # Continue despite emission failure
+                except Exception as realtime_error:
+                    logger.error(f"Error in realtime evaluation: {str(realtime_error)}")
+                    # Continue despite realtime evaluation failure
+            else:
+                logger.warn("No interview question generated in the response")
+        except Exception as response_process_error:
+            logger.error(f"Error processing response: {str(response_process_error)}")
+            await sio.emit("error", {"error": f"Error processing response: {str(response_process_error)}"}, room=sid)
+            return
                 
-                message = [{
-                    "content": {
-                        "realtime_evaluation": realtime_evaluation,
-                        "full_response": accumulated_message
-                    }
-                }]
-                await sio.emit("realtime", message, room=sid)
-                
-        # Insert the message or conclude the interview if the chat count exceeds the limit
-        if chat_count < 12:
-            final= 'false'
-            strapi.step2_insert_message(run_stage, data, timelimit, accumulated_message, realtime_evaluation, final)
-        else:
-            message = 'interview over'
-            await sio.emit("interview done", message, room=sid)
-            final= 'true'
+        # Insert the message or conclude the interview
+        try:
+            if chat_count < 12:
+                final = 'false'
+                temp_id = data.get('template_id') if data.get('template_id') is not None else "null"
+                try:
+                    strapi.step2_insert_message(
+                        run_stage, 
+                        data, 
+                        temp_id, 
+                        timelimit, 
+                        accumulated_message, 
+                        realtime_evaluation, 
+                        final,
+                        sessionId)
+                except Exception as insert_message_error:
+                    logger.error(f"Failed to insert assistant message: {str(insert_message_error)}")
+                    # Continue despite insertion failure
+            else:
+                # Handle interview conclusion
+                try:
+                    message = 'interview over'
+                    await sio.emit("interview done", message, room=sid)
+                    final = 'true'
 
-            if response.get("status") is not None:
-                message = [{
-                    "user_type": "assistant",
-                    "content_type": "question",
-                    "content": {
-                        "time_taken": "null",
-                        "time_limit": "null",                        
-                        "chunk_response": '',
-                        "full_response": accumulated_message,
-                        "final": "true",
-                        "realtime_evaluation": response.get("realtime")
-                    }
-                }]
-                
-            await sio.emit("last_realtime_evaluation", message, room=sid)        
-            # strapi.step3_insert_message(data, realtime_evaluation, final)
+                    if response.get("status") is not None:
+                        try:
+                            message = [{
+                                "user_type": "assistant",
+                                "content_type": "question",
+                                "template_id": template_id, 
+                                "content": {
+                                    "time_taken": "null",
+                                    "time_limit": "null",                        
+                                    "chunk_response": '',
+                                    "full_response": accumulated_message,
+                                    "final": "true",
+                                    "realtime_evaluation": response.get("realtime", "null")
+                                }
+                            }]
+                            await sio.emit("last_realtime_evaluation", message, room=sid)
+                        except Exception as final_emit_error:
+                            logger.error(f"Failed to emit final evaluation: {str(final_emit_error)}")
+                            # Continue despite emission failure
+                except Exception as conclusion_error:
+                    logger.error(f"Error concluding interview: {str(conclusion_error)}")
+                    # Ensure client knows interview is done even if details fail
+                    await sio.emit("interview done", "interview over", room=sid)
+        except Exception as final_step_error:
+            logger.error(f"Error in final processing step: {str(final_step_error)}")
+            # Ensure client gets some response
+            await sio.emit("error", {"error": "Error in final processing step"}, room=sid)
 
     except Exception as e:
-        logger.error(f"Error processing interview chat for session {data['user_session']['id']}: {str(e)}", exc_info=True)
-        await sio.emit("error", {"error": f"Error: {str(e)}"}, room=sid)
+        error_message = f"Error processing interview chat: {str(e)}"
+        logger.error(error_message, exc_info=True)
+        try:
+            session_info = data.get('user_session', {})
+            if isinstance(session_info, dict):
+                session_id = session_info.get('id', 'unknown')
+            else:
+                session_id = 'unknown format'
+            error_context = f"Session ID: {session_id}"
+            logger.error(f"Context: {error_context}")
+        except Exception:
+            pass  # If we can't log context, just continue
+            
+        try:
+            await sio.emit("error", {"error": error_message}, room=sid)
+        except Exception as emit_error:
+            logger.critical(f"Failed to emit error message: {str(emit_error)}")
+
 
 def get_socketio_app(fast_app):
     app = socketio.ASGIApp(

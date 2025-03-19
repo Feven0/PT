@@ -27,6 +27,7 @@ capitalize = lambda x: x[0].upper() + x[1:]
     
 class LeapBaseClass:
     def __init__(self, run_stage='', **kwargs) -> None:
+        self.run_stage = run_stage
         log_level = kwargs.get('log_level', None)
         
         #          
@@ -37,12 +38,13 @@ class LeapBaseClass:
         #     self.run_stage =  kwargs.get('run_stage',config.strapi.stage)
         # else:
         #     self.run_stage = config.strapi.stage
-        
+       
         if not run_stage:
             self.run_stage = config.strapi_stage
+            
         else:
             self.run_stage = run_stage
-            print(self.run_stage)
+            config.strapi.stage = self.run_stage
             
         self.user_token = kwargs.get('strapi_token', kwargs.get('user_token', ""))
         self.strapi_token = self.user_token
@@ -888,15 +890,15 @@ class LeapBaseClass:
                   
     @measure_execution_time                      
     def get_all_objects(self, data="", table='', 
-                        limit=0, cursor={}, raw=False, ddcol="",
+                        limit=0, cursor={}, raw=False, ddcol="", 
                         dataframe=True, **kwargs):
-        
+         
         query_filter = ""
         for k in ['query_filter', 'filter', 'filters']:
             if k in kwargs.keys():
                 query_filter = kwargs.pop(k)
                 break
-
+        
         kwargs.update({'dataframe':dataframe, 'raw':raw})
         
         #caller_filename = kwargs.get('caller', "")
@@ -938,7 +940,6 @@ class LeapBaseClass:
             
         
         query_filter = cursor.get('filter', query_filter)
-        
         query = cursor.get('query', "")         
         page = cursor.get('page', 1)         
         if return_cursor:   
@@ -987,9 +988,12 @@ class LeapBaseClass:
             #$page: Int!            
             #$pageSize: Int!
             #{ page: $page, pageSize: $pageSize }
+            
+            sort_order = kwargs.get('sort', 'desc')  
+
             query = '''
             query get%s( $offsetStart: Int!, $pageSize: Int!) {
-                %s( pagination: { start: $offsetStart, limit: $pageSize }, sort: "createdAt:desc"  %s ) {     
+                %s( pagination: { start: $offsetStart, limit: $pageSize }, sort: "createdAt:%s"  %s ) {     
                     meta {
                         pagination {
                             page
@@ -1001,8 +1005,10 @@ class LeapBaseClass:
                     %s
                 }
             }
-            '''%(capitalize(table), table, query_filter, data)
-                
+            ''' % (capitalize(table), table, sort_order, query_filter, data)
+
+        
+         
                  
         logger.info(f"Getting objects from Tenx `table={table}`... ")
             
@@ -1066,7 +1072,7 @@ class LeapBaseClass:
                 sss = f"n={ntotal}, navailable={navailable}"
                 sss2 = f"page_count={page_count}, page={page}, page_size={page_size}"
                 logger.info(f'Got the following so far ==> {sss}, {sss2}')                  
-                         
+                                    
                 cursor['query'] = query
                 cursor['filter'] = query_filter                     
                 cursor['page'] = page
@@ -1113,7 +1119,8 @@ class LeapBaseClass:
                 tenxdf = tenxdf.drop_duplicates(subset=[ddcol],
                                                 ignore_index=True, 
                                                 keep='last')  
-       
+                                             
+        
         if return_cursor:
             return tenxdf, cursor
         else:

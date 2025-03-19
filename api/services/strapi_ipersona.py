@@ -1,10 +1,12 @@
 
-import copy, os
+import json, os
 from api.services.strapi_graphql import StrapiGraphql
 from api.modules.leap_base import LeapBaseClass
 from api.utils.logger import LLPackerLogger
 logger = LLPackerLogger(os.path.basename(__file__))
 from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionSchema
+from datetime import datetime, timedelta
+
 schema = IpersonaSessionSchema()
 
 capitalize = lambda x: x[0].upper() + x[1:]
@@ -704,38 +706,63 @@ class IpersonaManager(LeapBaseClass):
                         
         return all_sessions
     
-    def get_trainee_job_profile(self):
-        page_size = 10
+    def get_trainee_job_profile(self, since=10, limit=None):
+        page_size = 14
         page = 1  
         all_sessions = []  
         
+        # Calculate the timestamp for filtering based on 'since' days (if provided)
+        since_date = None
+        if since:
+            since_date = (datetime.utcnow() - timedelta(days=since)).isoformat()
+
+        # Build the filter string for logging purposes
+        filter_str = f'filters: {{createdAt: {{gt: "{since_date}"}} }}' if since else ""
+
+        # Fetch all the tinderJobProfiles pages
         while True:
-            sessions_query = """
-            query GetTinderJobProfiles($job_profile_id: ID!, $page: Int, $pageSize: Int) {
+            sessions_query = f"""
+            query GetTinderJobProfiles($job_profile_id: ID!, $page: Int, $pageSize: Int) {{
                     tinderJobProfiles(
-                        filters: {
-                            id: { 
+                        filters: {{
+                            id: {{ 
                                 eq: $job_profile_id
-                            } 
-                        },
-                        pagination: { page: $page, pageSize: $pageSize }
-                    ) {
-                        data {
+                            }} 
+                        }},
+                        pagination: {{ page: $page, pageSize: $pageSize }}
+                    ) {{
+                        data {{
                             id
-                            attributes {
-                                attributes                                
-                            }
-                        }
-                        meta {
-                            pagination {
+                            attributes {{
+                                i_persona_sessions {{
+                                    data {{
+                                        id
+                                        attributes {{
+                                            status
+                                            createdAt
+                                            i_persona_observer {{
+                                                data {{
+                                                    id
+                                                    attributes {{
+                                                        metadata
+                                                    }}
+                                                }}        	
+                                            }}
+                                        }}
+                                    }}
+                                }}                             
+                            }}
+                        }}
+                        meta {{
+                            pagination {{
                                 total
                                 page
                                 pageSize
                                 pageCount
-                            }
-                        }
-                    }
-                }
+                            }}
+                        }}
+                    }}
+                }}
             """
             
             res_json = self.sg.Select_from_table(
@@ -744,10 +771,26 @@ class IpersonaManager(LeapBaseClass):
             )
             
             if 'data' in res_json and 'tinderJobProfiles' in res_json['data']:
-                messages = res_json['data']['tinderJobProfiles']['data']
-                if messages:
-                    all_sessions.extend(messages)  
-                
+                profiles = res_json['data']['tinderJobProfiles']['data']
+                if profiles:
+                    for profile in profiles:
+                        # Collect all i_persona_sessions for each tinderJobProfile
+                        persona_sessions = profile['attributes']['i_persona_sessions']['data']
+                        for session in persona_sessions:
+                            created_at = session['attributes']['createdAt']
+                            
+                            # Filter based on 'since' days (if provided)
+                            if since_date and created_at < since_date:
+                                continue  # Skip sessions older than the 'since' date
+                            
+                            all_sessions.append(session)
+                            # Stop if the limit is reached
+                            if limit and len(all_sessions) >= limit:
+                                break
+                    # Stop if the limit is reached
+                    if limit and len(all_sessions) >= limit:
+                        break
+                    
                 pagination = res_json['data']['tinderJobProfiles']['meta']['pagination']
                 
                 if pagination['page'] >= pagination['pageCount']:
@@ -757,9 +800,48 @@ class IpersonaManager(LeapBaseClass):
             else:
                 print("No data received or error in response.")
                 break
-                        
-        return all_sessions
-    
+                            
+        return self.paginate_sessions(all_sessions, page=1, page_size=14, since_date=since_date, filter_str=filter_str)
+
+    def paginate_sessions(self, all_sessions, page=1, page_size=14, since_date=None, filter_str=None):
+        """ Paginate through i_persona_sessions manually """
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_sessions = all_sessions[start:end]
+        
+        # Add filter and query information
+        cursor_info = {
+            "filter": filter_str,
+            "page": page,
+            "pageSize": page_size,
+            "page_count": (len(all_sessions) + page_size - 1) // page_size  ,
+            "query": f"""query getIPersonaSessions($offsetStart: Int!, $pageSize: Int!) {{
+                iPersonaSessions( pagination: {{ start: {start}, limit: {page_size} }}, sort: "createdAt:desc" {filter_str} ) {{
+                    meta {{
+                        pagination {{
+                            page
+                            pageSize
+                            total
+                            pageCount
+                        }}
+                    }}
+                    data {{
+                        id
+                        attributes {{                         
+                            createdAt                            
+                        }}
+                    }}
+                }}
+            }}""",
+            "total": len(all_sessions)
+        }
+        
+        return {
+            "data": paginated_sessions,
+            "cursor": cursor_info
+        }
+
+
     def get_match(self, tinder_user_profile_id, tinder_job_profile_id):
         page_size = 10
         page = 1  
@@ -1295,3 +1377,157 @@ class IpersonaManager(LeapBaseClass):
 
         updatedSession = self.sg.Select_from_table(query=uquery, variables={"sessionId": str(self.sessionId), "status": 'Complete'})
         return updatedSession
+
+
+    def create_template(self, name, type, template_questions, job_profile_ids):
+        mutation_query = """
+            mutation CreateTinderTemplate($name: String!, $type: String!, $attributes: JSON!, $jobProfileIds: [ID!]) {
+                createTinderTemplate(data: {
+                    name: $name
+                    type: $type
+                    attributes: $attributes
+                    tinder_job_profiles: $jobProfileIds 
+                }) {
+                    data {
+                    id
+                    attributes {
+                        name
+                        type
+                        createdAt
+                        tinder_job_profiles {
+                            data {
+                                id
+                            }
+                        }
+                    }
+                    }
+                }
+            }
+        """
+
+        variables = {
+            "name": name,
+            "type": type,
+            "attributes": {
+                "template_questions": template_questions
+            },
+            "jobProfileIds": job_profile_ids  
+        }
+        
+        # Execute the GraphQL mutation
+        res_json = self.sg.insert_table(query=mutation_query, variables=variables)
+
+        # Parse the response
+        try:
+            response = json.loads(res_json)
+            template_data = response.get("data", {}).get("createTinderTemplate", {}).get("data", {})
+            
+            if template_data:
+                # Extract details
+                template_id = template_data.get("id", "N/A")
+                attributes = template_data.get("attributes", {})
+                name = attributes.get("name", "N/A")
+                template_type = attributes.get("type", "N/A")
+                created_at = attributes.get("createdAt", "N/A")
+                job_profile_ids = [job_profile.get("id") for job_profile in attributes.get("tinder_job_profiles", {}).get("data", [])]
+                
+                return {
+                    "status": "success",
+                    "message": "Template created successfully.",
+                    "data": {
+                        "id": template_id,
+                        "name": name,
+                        "type": template_type,
+                        "createdAt": created_at,
+                        "jobProfileIds": job_profile_ids
+                    }
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": "Failed to create template. No data returned."
+                }
+        
+        except json.JSONDecodeError:
+            return {
+                "status": "error",
+                "message": "Invalid JSON response from the server."
+            }
+
+
+
+    def update_template(self, template_id, name, type, template_questions, job_profile_ids):
+        mutation_query = """
+            mutation UpdateTinderTemplate($id: ID!, $name: String!, $type: String!, $attributes: JSON!, $jobProfileIds: [ID!]) {
+                updateTinderTemplate(id: $id, data: {
+                    name: $name
+                    type: $type
+                    attributes: $attributes
+                    tinder_job_profiles: $jobProfileIds 
+                }) {
+                    data {
+                        id
+                        attributes {
+                            name
+                            type
+                            updatedAt
+                            tinder_job_profiles {
+                                data {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """
+
+        variables = {
+            "id": template_id,
+            "name": name,
+            "type": type,
+            "attributes": {
+                "template_questions": template_questions
+            },
+            "jobProfileIds": job_profile_ids
+        }
+        
+        # Execute the GraphQL mutation
+        res_json = self.sg.insert_table(query=mutation_query, variables=variables)
+
+        # Parse the response
+        try:
+            response = json.loads(res_json)
+            template_data = response.get("data", {}).get("updateTinderTemplate", {}).get("data", {})
+            
+            if template_data:
+                # Extract details
+                template_id = template_data.get("id", "N/A")
+                attributes = template_data.get("attributes", {})
+                name = attributes.get("name", "N/A")
+                template_type = attributes.get("type", "N/A")
+                updated_at = attributes.get("updatedAt", "N/A")
+                job_profile_ids = [job_profile.get("id") for job_profile in attributes.get("tinder_job_profiles", {}).get("data", [])]
+                
+                return {
+                    "status": "success",
+                    "message": "Template updated successfully.",
+                    "data": {
+                        "id": template_id,
+                        "name": name,
+                        "type": template_type,
+                        "updatedAt": updated_at,
+                        "jobProfileIds": job_profile_ids
+                    }
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": "Failed to update template. No data returned."
+                }
+
+        except json.JSONDecodeError:
+            return {
+                "status": "error",
+                "message": "Invalid JSON response from the server."
+            }

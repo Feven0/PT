@@ -135,7 +135,12 @@ class IpersonaSessionSchema(LeapBaseClass):
                 return None
             
             # Step 1: Get the initial filtered data by 'since' and 'limit'
-            filtered_data, cursors = self.get_all_sessions(cursor=cursor, since=since, limit=limit, nopp=True, dataframe=False)
+            filtered_data, cursors = self.get_all_sessions(
+                cursor=cursor, 
+                since=since, 
+                limit=limit, 
+                nopp=True, 
+                dataframe=False)
         
             if not filtered_data:
                 logger.error("No data returned after filtering by 'since' and 'limit'")
@@ -600,6 +605,25 @@ class IpersonaJobSchema(LeapBaseClass):
                     id
                     attributes {
                         attributes  
+                        i_persona_sessions {
+                            data {
+                                id
+                                attributes {
+                                    status
+                                    attributes
+                                    createdAt  
+                                    i_persona_observer {
+                                        data {
+                                            id
+                                            attributes {
+                                                attributes
+                                                metadata
+                                            }
+                                        }        	
+                                    }
+                                }
+                            }
+                        } 
                       %s                                                   
                     }
                 }
@@ -663,7 +687,6 @@ class IpersonaJobSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error filtering jobs by job_profile_id {job_profile_id}: {e}")
             return None
-
 
     def get_all_jobs_info(self, **kwargs):
         """
@@ -741,6 +764,190 @@ class IpersonaJobSchema(LeapBaseClass):
             logger.error(f"Error extracting data: {e}")
             return None
       
+        # Initialize logging
+    
+
+    def get_trainee_job_profile(self, limit, since, cursor, filter_data, job_profile_id):
+        # Default page size and pagination
+        page_size = cursor.get('pageSize', 400)
+        page = cursor.get('page', 1)
+        
+        all_sessions = []
+        
+        # Calculate the timestamp for filtering based on 'since' days (if provided)
+        since_date = None
+        if since:
+            dt = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=0) - timedelta(days=since)
+            since_date = dt.isoformat() + 'Z'
+
+        # Build the filter string for logging purposes
+        filter_str = f'filters: {{createdAt: {{gt: "{since_date}"}} }}' if since_date else ""
+
+        # Fetch all the tinderJobProfiles pages
+        try:
+    # Step 1: Query TinderJobProfiles with pagination at the top level
+            while True:
+                profiles_query = f"""
+                query GetTinderJobProfiles($job_profile_id: ID!, $page: Int, $pageSize: Int, $sessionLimit: Int, $sessionStart: Int) {{
+                    tinderJobProfiles(
+                        filters: {{
+                            id: {{ eq: $job_profile_id }}
+                        }},
+                        pagination: {{ page: $page, pageSize: $pageSize }}
+                    ) {{
+                        data {{
+                            id
+                            attributes {{
+                                i_persona_sessions {{
+                                    data {{
+                                        id
+                                        attributes {{
+                                            createdAt
+                                            i_persona_observer {{
+                                                data {{
+                                                    id
+                                                    attributes {{
+                                                        createdAt
+                                                    }}
+                                                }}
+                                            }}
+                                            tinder_job_profile {{
+                                                data {{
+                                                    id
+                                                }}
+                                            }}
+                                            tinder_user_profile {{
+                                                data {{
+                                                    id
+                                                }}
+                                            }}
+                                        }}
+                                    }}
+                                    meta {{
+                                        pagination {{
+                                            total
+                                            page
+                                            pageSize
+                                            pageCount
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }}
+                        meta {{
+                            pagination {{
+                                total
+                                page
+                                pageSize
+                                pageCount
+                            }}
+                        }}
+                    }}
+                }}
+                """
+
+                # Execute the query for TinderJobProfiles
+                res_json = self.sg.Select_from_table(
+                    query=profiles_query,
+                    variables={
+                        "job_profile_id": str(job_profile_id),
+                        "page": page,
+                        "pageSize": page_size,
+                        "sessionLimit": 10,
+                        "sessionStart": 10
+                    }
+                )
+
+                # Check if response is as expected
+                if 'data' in res_json and 'tinderJobProfiles' in res_json['data']:
+                    profiles = res_json['data']['tinderJobProfiles']['data']
+
+                    if profiles:
+                        for profile in profiles:
+                            persona_sessions = profile['attributes']['i_persona_sessions']['data']
+
+                            for session in persona_sessions:
+                                created_at = session['attributes']['CreatedAt']
+
+                                # Filter based on 'since' days (if provided)
+                                if since_date and created_at < since_date:
+                                    continue  # Skip sessions older than the 'since' date
+
+                                all_sessions.append(session)
+
+                                # Stop if the limit is reached
+                                if limit and len(all_sessions) >= limit:
+                                    break
+
+                        # Break if the limit is reached
+                        if limit and len(all_sessions) >= limit:
+                            break
+
+                    pagination = res_json['data']['tinderJobProfiles']['meta']['pagination']
+
+                    # Break if the last page has been reached
+                    if pagination['page'] >= pagination['pageCount']:
+                        break
+                    else:
+                        page += 1  # Move to the next page
+
+                else:
+                    logger.error("No data received or unexpected structure in response.")
+                    break
+
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+
+        # Return paginated results
+        try:
+            return self.paginate_sessions(all_sessions, page=1, page_size=page_size, since_date=since_date, filter_str=filter_str)
+        except Exception as e:
+            logger.error(f"Error during pagination: {e}")
+            return {"error": "Pagination failed. Please check logs for more details."}
+
+    def paginate_sessions(self, all_sessions, page=1, page_size=14, since_date=None, filter_str=None):
+        """ Paginate through i_persona_sessions manually """
+        try:
+            start = (page - 1) * page_size
+            end = start + page_size
+            paginated_sessions = all_sessions[start:end]
+
+            # Add filter and query information
+            cursor_info = {
+                "filter": filter_str,
+                "page": page,
+                "pageSize": page_size,
+                "page_count": (len(all_sessions) + page_size - 1) // page_size,
+                "query": f"""query getIPersonaSessions($offsetStart: Int!, $pageSize: Int!) {{
+                    iPersonaSessions( pagination: {{ start: {start}, limit: {page_size} }} , sort: "createdAt:desc" {filter_str} ) {{
+                        meta {{
+                            pagination {{
+                                page
+                                pageSize
+                                total
+                                pageCount
+                            }}
+                        }}
+                        data {{
+                            id
+                            attributes {{                         
+                                createdAt                            
+                            }}
+                        }}
+                    }}
+                }}""",
+                "total": len(all_sessions)
+            }
+            return paginated_sessions, cursor_info
+            return {
+                "data": paginated_sessions,
+                "cursor": cursor_info
+            }
+
+        except Exception as e:
+            logger.error(f"Error during pagination: {e}")
+            return {"error": "Pagination failed. Please check logs for more details."}
+
 class IpersonaSessionOverallObserverSchema(LeapBaseClass):
     '''
     Schema Name:
@@ -1420,6 +1627,7 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
                         extracted_messages.append({
                             "content": message_data.get('content', ""),
                             "user_type": message_data.get('user_type', ""),
+                            "template_id": message_data.get('template_id', ""),
                             "content_type": message_data.get('content_type', "")
                         })
 
@@ -1758,7 +1966,7 @@ class IpersonaProfileInformationSchema(LeapBaseClass):
             if not all_user_id:
                 logger.error("All User ID is missing for fetching user profile data!")
                 return None
-            
+           
             session_filter = f"""
                 filters: {{
                     all_user : {{ id: {{ eq: {all_user_id} }} }}
@@ -1766,7 +1974,6 @@ class IpersonaProfileInformationSchema(LeapBaseClass):
             """
             
             data_json = self.get_all_objects(filter=session_filter, **kwargs)
-
             data = self.get_extracted_data(data_json)
 
             if data is None:
@@ -1810,3 +2017,207 @@ class IpersonaProfileInformationSchema(LeapBaseClass):
             logger.error(f"Error extracting profile data: {str(e)}")
             return {'error': f"Error extracting profile data: {str(e)}"}
     
+    
+class IpersonaTinderTemplateSchema(LeapBaseClass):
+    '''
+    Schema Name:
+        TinderTemplate
+    Attributes:
+        name: Relation with name
+        type: Relation with type
+        metadata: Json   
+        attributes: Json
+        config: Json		
+        tinder_job_profile: Relation with TInderJobProfile
+    '''
+    def __init__(self, run_stage='', **kwargs) -> None:
+        self.kwargs = copy.deepcopy(kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
+        
+        self.table_single = kwargs.get('table_single', "")
+        self.table = kwargs.get('table', "")
+        self.data = kwargs.get('data', "")
+        
+        if not self.table_single:
+            self.table_single = "tinderTemplate"
+            
+        if not self.table:
+            self.table = "tinderTemplates"
+            
+        if not self.data:
+            logger.info(f"Using default data schema for {self.table_single} ...")
+            self.data = '''
+                data {
+                    id
+                    attributes {
+                        name
+                        type
+                        attributes
+                        metadata
+                        config
+                        createdAt  
+                        tinder_job_profiles {
+                            data {
+                                id
+                            }
+                        } 
+                        %s
+                    }
+                }
+            '''
+        else:
+            logger.info(f"Using passed data schema for {self.table_single} ...")
+     
+            
+        self.type_map = {   
+            "name": "String",
+            "type": "String",
+            "attributes": "JSON",
+            "metadata": "JSON",
+            "config": "JSON",
+            "tinder_job_profiles": "[ID!]"
+        }
+
+        self.id_names_map = {  }
+         
+        self.data_template = copy.deepcopy(self.data)
+        self.data = self.data%""
+        _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)
+    
+    def save_session(self, params, **kwargs):
+        try:
+            session_json = self.save_or_update_object(params, **kwargs)
+            # return session_json
+            session = self.get_extracted_data(session_json)
+
+            if session is None:
+                logger.warn("Failed to save session, no data extracted.")
+                return None
+            
+            return session
+
+        except Exception as e:
+            logger.error(f"Error saving session: {str(e)}")
+            return {'error': f"Error saving session: {str(e)}"}
+
+    def get_tinder_template_id(self, templateId, **kwargs):
+        data_json = self.exists(scol='id', sval=templateId, op='eq', stype="ID", **kwargs)  
+        data = self.get_session_data(data_json)   
+        return data
+    
+    def filter_by_with_job_id(self, job_profile_id, **kwargs):
+        try:
+            if not job_profile_id:
+                logger.error("User Profile ID or Job Profile ID is missing!")
+                return None
+            
+            session_filter = f"""
+                filters: {{
+                    tinder_job_profiles : {{ id: {{ eq: {job_profile_id} }} }}
+                }}
+            """
+
+            data_json = self.get_all_objects(filter=session_filter, **kwargs)
+
+            data = self.get_sessions_data(data_json)
+
+            if data is None:
+                logger.warn(f"No session data found for Job Profile ID {job_profile_id}.")
+                return None
+            
+            return data
+
+        except Exception as e:
+            logger.error(f"Error fetching session data for Job Profile ID {job_profile_id}: {str(e)}")
+            return {'error': f"Error fetching session data for Job Profile ID {job_profile_id}: {str(e)}"}
+    
+    def get_all_sessions(self, cursor={}, **kwargs):
+        try:
+            if not cursor:
+                cursor = True
+                
+            data, cursor = self.get_all_objects(cursor=cursor, **kwargs)
+ 
+            session = self.get_sessions_data(data)
+
+            if session is None:
+                logger.warn("No session data found.")
+                return None
+            
+            return session, cursor
+
+        except Exception as e:
+            logger.error(f"Error fetching all sessions: {str(e)}")
+            return {'error': f"Error fetching all sessions: {str(e)}"}
+        
+    def save_if_new_user(self, scol, params, **kwargs):
+        return self.save_if_new(scol, params, **kwargs)
+    
+    def update_session(self, params, **kwargs):
+        try:
+            if self.id_name() not in params:
+                logger.error("Id is missing for update!")
+                return []
+            
+            return self.save_or_update_object(params, **kwargs)
+
+        except Exception as e:
+            logger.error(f"Error updating session: {str(e)}")
+            return {'error': f"Error updating session: {str(e)}"}
+
+    def delete_session(self, ids, **kwargs):
+        try:
+            if not ids:
+                logger.error("No IDs provided for deletion!")
+                return {'error': "No IDs provided for deletion!"}
+            
+            return self.delete_objects_by_id(ids, **kwargs)
+
+        except Exception as e:
+            logger.error(f"Error deleting session(s) with IDs {ids}: {str(e)}")
+            return {'error': f"Error deleting session(s) with IDs {ids}: {str(e)}"}
+
+    def get_extracted_data(self, session_json):
+        try:
+            if isinstance(session_json, list) and len(session_json) > 0:
+                for entry in session_json:
+                    if 'data' in entry:
+                        session = entry.get('data')
+                        return session
+                        
+            logger.warn("No valid data found in the session JSON.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting data from session JSON: {str(e)}")
+            return {'error': f"Error extracting data from session JSON: {str(e)}"}  
+  
+    def get_sessions_data(self, session_json):
+        try:
+            all_sessions = []
+            if isinstance(session_json, list) and len( session_json) > 0:
+                for entry in session_json:
+                    if 'data' in entry:
+                        trainee = entry.get('data')                            
+                        return trainee
+            logger.warn("No sessions data found in the session JSON.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting session data from session JSON: {str(e)}")
+            return {'error': f"Error extracting session data from session JSON: {str(e)}"}
+    
+    def get_session_data(self, session_json):
+        try:
+            all_sessions = []
+            if isinstance(session_json, dict) and len(session_json) > 0:
+                if 'data' in session_json:
+                    return session_json['data']
+                        
+                logger.warn("No session data found in the session JSON.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting session data from session JSON: {str(e)}")
+            return {'error': f"Error extracting session data from session JSON: {str(e)}"}

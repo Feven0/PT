@@ -31,5 +31,7 @@ export {default as UserOverall} from './UserOverall'
 export {default as AllDataFilterAdmin} from './Admin/AllDataFilterAdmin'
 export {default as CancelModal} from './CancelModal'
 export {default as LineChartAdmin} from './Charts/LineChartAdmin'
+export {default as TemplateForm} from './TemplateForm'
+export {default as UpdateTemplate} from './UpdateTemplate'
 
 

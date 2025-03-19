@@ -14,13 +14,16 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
     IpersonaJobSchema, 
     IpersonaSessionOverallObserverSchema, 
     IpersonaSessionMessageSchema, 
-    IpersonaSessionObserverSchema
+    IpersonaSessionObserverSchema,
+    IpersonaProfileInformationSchema,
+    IpersonaTinderTemplateSchema
 )
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_gpt as gpt
 import api.pages.ipersona.models.persona as pemodel
 from api.utils.logger import LLPackerLogger
 from api.utils.request_manager import JobReactionManager
+from api.services.strapi_ipersona import IpersonaManager
 logger = LLPackerLogger(os.path.basename(__file__))
 module_dir= os.path.dirname(__file__)
 data_path = lambda x: os.path.join(module_dir, "folders", x)
@@ -31,6 +34,96 @@ transcriber = aai.Transcriber()
 
 routes = FastAPI(root_path="/api")
 
+@routes.post("/fetch_profile")
+def fetch_profile(request: pemodel.AdminDataFiltering):
+    # all_user_id = 7
+    # ipersona_profile = IpersonaProfileInformationSchema(run_stage=request.run_stage)
+    # ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
+    # return ipersona_profile_data
+    
+    ipersona_job = IpersonaJobSchema()
+    # data = ipersona_job.filter_by_job_id(job_profile_id=request.job_profile_id, since=100, limit=60, nopp=True, dataframe=False)
+    data = ipersona_job.get_all_jobs_info(nopp=True, dataframe=False)
+    return data
+    # job_data = [
+    #     session.get('attributes', {}).get('i_persona_sessions', {}).get('data', {})
+    #     for session in data
+    #     if session.get('attributes', {}).get('i_persona_sessions', {}).get('data', {})
+    # ]     
+    # job_data = util.extracted_needed_metrics(job_data) 
+    
+    limit = request.limit
+    since = request.since
+    cursor = request.cursor
+    filter_data = request.filter
+    job_profile_id = request.job_profile_id
+    job_data, cursor = ipersona_job.get_trainee_job_profile(limit, since, cursor, filter_data, job_profile_id)
+    job_data = util.extracted_needed_metrics(job_data) 
+    return job_data
+ 
+@routes.post("/get_tinder_template")
+def get_tinder_template(request: pemodel.TinderTemplateIdRequestRecieved):
+    try:
+        template_id = request.template_id
+        ipersona_template = IpersonaTinderTemplateSchema()
+        saved_template = ipersona_template.get_tinder_template_id(
+            templateId=template_id, return_object=True, nopp=True, dataframe=False
+        )
+        return saved_template
+        # fetch_templates = ipersona_template.filter_by_with_job_id(
+        #     job_profile_id=46, return_object=True, nopp=True, dataframe=False
+        # )
+        # return fetch_templates
+        
+    except Exception as e:
+        logger.error(f"Error creating job question template: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error processing job question template: {str(e)}"}
+        )
+        
+@routes.post("/tinder_template")
+def tinder_template(request: pemodel.TinderTemplateRequestRecieved):
+    try:
+        name = request.name
+        type = request.type
+        template_questions = request.template_questions
+        job_profile_ids = request.job_profile_ids
+
+        template_data = {
+            "name": request.name,
+            "type": request.type,
+            "attributes": {
+                "template_questions": request.template_questions,
+            },
+            "tinder_job_profiles": ["1617", "1651"]  
+        }
+        
+        # ipersona_template = IpersonaTinderTemplateSchema()
+        # saved_template = ipersona_template.save_session(
+        #     params=template_data, return_object=True, nopp=True, dataframe=False
+        # )
+
+        # if not saved_template:
+        #     logger.error("Failed to save template")
+        #     return JSONResponse(
+        #         status_code=500,
+        #         content={"error": "Failed to save template data"}
+        #     )            
+        # return saved_template
+        ipersona_test = IpersonaManager()
+        # data = ipersona_test.create_template(name, type, template_questions, job_profile_ids)
+        template_id = 13
+        data = ipersona_test.update_template(template_id, name, type, template_questions, job_profile_ids)
+        return data
+     
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error processing job question template: {str(e)}"}
+        )
+        
+    
 @routes.post("/audio_upload")
 async def speech_to_text(file: UploadFile = File(...)) -> dict:
     """
@@ -142,6 +235,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         If any error occurs during processing
     """
     run_stage = request.run_stage
+    template = request.template
 
     if not request or not request.all_user_id or not request.job_profile_id:
         logger.error("Invalid request: Missing required parameters")
@@ -191,76 +285,105 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
 
         tinder_job_data = util.extract_job_neccessary_values(tinder_job_data)
         logger.info(f"Job data extracted for job_profile_id: {request.job_profile_id}")
-
-        # Step 3: Create persona and generate questions
-        created_persona = util.create_persona(str(tinder_job_data))
-        
-        # Load and format prompt templates
-        prompt_text = util.file_reader(prompt_path('persona.txt'))
-        generated_persona = prompt_text \
-            .replace("{hr_persona}", created_persona) \
-            .replace("{job_description}", str(tinder_job_data)) \
-            .replace("{profile}", str(tinder_user_profile_data))
-
-        question_template = util.file_reader(prompt_path('generate_question.txt'))
-        msg = question_template \
-            .replace("{introduction_count}", str(1)) \
-            .replace("{background_count}", str(2)) \
-            .replace("{technical_count}", str(2)) \
-            .replace("{behavioral_count}", str(2)) \
-            .replace("{ability_count}", str(2))\
-            .replace("{closing_count}", str(1))
-
-        # Generate interview questions
-        content = generated_persona + msg
-        response = gpt.openai_gpt_assistant_without_streaming(content)
-        
-        if not response:
-            logger.error("Failed to generate questions: Empty AI response")
-            return JSONResponse(
-                status_code=500,
-                content={"error": "Failed to generate interview questions"}
-            )
+        if template:
+            # Step 5: Save session data
+            session_data = {
+                "slug": str(f"all_user_id: {request.all_user_id}"),
+                "status": "Incomplete",
+                "attributes": {},
+                "user_profile_id": tinder_user_profile_id,
+                "job_profile_id": request.job_profile_id
+            }
             
-        generated_question_json = util.extract_json(response, quite=False)
-        logger.info("Persona and questions generated successfully")
-
-        # Step 4: Add question numbers
-        question_number = 1
-        for category, questions in generated_question_json.items():
-            for question in questions:
-                question["question_number"] = str(question_number)
-                question_number += 1
-
-        # Step 5: Save session data
-        session_data = {
-            "slug": str(f"all_user_id: {request.all_user_id}"),
-            "status": "Incomplete",
-            "attributes": {
-                "persona": generated_persona,
-                "generated_questions": generated_question_json
-            },
-            "user_profile_id": tinder_user_profile_id,
-            "job_profile_id": request.job_profile_id
-        }
-        
-        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-        saved_session = ipersona_session.save_session(
-            params=session_data, return_object=True, nopp=True, dataframe=False
-        )
-
-        if not saved_session:
-            logger.error("Failed to save session")
-            return JSONResponse(
-                status_code=500,
-                content={"error": "Failed to save session data"}
+            ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+            saved_session = ipersona_session.save_session(
+                params=session_data, return_object=True, nopp=True, dataframe=False
             )
+
+            if not saved_session:
+                logger.error("Failed to save session")
+                return JSONResponse(
+                    status_code=500,
+                    content={"error": "Failed to save session data"}
+                )
+                
+            logger.info(f"Session created successfully with ID: {saved_session.get('id', 'unknown')}")
             
-        logger.info(f"Session created successfully with ID: {saved_session.get('id', 'unknown')}")
-        
-        # Remove large questions data before returning
-        saved_session = util.remove_key(saved_session, 'generated_questions')
-        return saved_session
+            # Remove large questions data before returning
+            return saved_session
+
+        else:
+            # Step 3: Create persona and generate questions
+            created_persona = util.create_persona(str(tinder_job_data))
+            
+            # Load and format prompt templates
+            prompt_text = util.file_reader(prompt_path('persona.txt'))
+            generated_persona = prompt_text \
+                .replace("{hr_persona}", created_persona) \
+                .replace("{job_description}", str(tinder_job_data)) \
+                .replace("{profile}", str(tinder_user_profile_data))
+
+            question_template = util.file_reader(prompt_path('generate_question.txt'))
+            msg = question_template \
+                .replace("{introduction_count}", str(1)) \
+                .replace("{background_count}", str(2)) \
+                .replace("{technical_count}", str(2)) \
+                .replace("{behavioral_count}", str(2)) \
+                .replace("{ability_count}", str(2))\
+                .replace("{closing_count}", str(1))
+
+            # Generate interview questions
+            content = generated_persona + msg
+            response = gpt.openai_gpt_assistant_without_streaming(content)
+            
+            if not response:
+                logger.error("Failed to generate questions: Empty AI response")
+                return JSONResponse(
+                    status_code=500,
+                    content={"error": "Failed to generate interview questions"}
+                )
+                
+            generated_question_json = util.extract_json(response, quite=False)
+            logger.info("Persona and questions generated successfully")
+            
+
+            # Step 4: Add question numbers
+            question_number = 1
+            for category, questions in generated_question_json.items():
+                for question in questions:
+                    question["question_number"] = str(question_number)
+                    question_number += 1
+
+            
+            # Step 5: Save session data
+            session_data = {
+                "slug": str(f"all_user_id: {request.all_user_id}"),
+                "status": "Incomplete",
+                "attributes": {
+                    "persona": generated_persona,
+                    "generated_questions": generated_question_json
+                },
+                "user_profile_id": tinder_user_profile_id,
+                "job_profile_id": request.job_profile_id
+            }
+            
+            ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+            saved_session = ipersona_session.save_session(
+                params=session_data, return_object=True, nopp=True, dataframe=False
+            )
+
+            if not saved_session:
+                logger.error("Failed to save session")
+                return JSONResponse(
+                    status_code=500,
+                    content={"error": "Failed to save session data"}
+                )
+                
+            logger.info(f"Session created successfully with ID: {saved_session.get('id', 'unknown')}")
+            
+            # Remove large questions data before returning
+            saved_session = util.remove_key(saved_session, 'generated_questions')
+            return saved_session
 
     except Exception as e:
         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
@@ -489,7 +612,6 @@ async def calculate_overall_progress(request: pemodel.UserSessionRequestRecieved
     except Exception as e:
         logger.error(f"Unexpected error during session progress calculation: {str(e)}")
         return JSONResponse(status_code=500, content={"error": f"Unexpected error: {str(e)}"})
-
 
 @routes.post("/calculate_allstat_progress")
 async def calculate_allstat_progress(request: pemodel.AllUserIdRecieved):
@@ -960,8 +1082,145 @@ async def calculate_admin_alljobs_data(request: pemodel.AdminDataFiltering) -> D
             "message": f"Error processing data: {str(e)}"
         }
 
+@routes.post("/admin_each_job_overview_data") #-> Dict[str, Any]
+async def calculate_admin_eachjob_data(request: pemodel.AdminDataTempFiltering) :
+    """
+    Calculate administrative data for all jobs by processing session data.
+
+    Fetches all session data based on provided filters, calculates metrics,
+    and returns summarized results for all jobs.
+
+    Parameters
+    ----------
+    request : pemodel.AdminDataFiltering
+        Object containing:
+        - filter: Optional query filters
+        - return_skip: Flag to include skipped items
+        - information_level: Detail level for results
+        - since: Starting point for pagination
+        - limit: Maximum number of items to return
+        - cursor: Pagination cursor
+
+    Returns
+    -------
+    Dict[str, Any]
+        Jobs data summary or error response with the format:
+        {
+            "data": list,
+            "cursor": list,
+            "status": int,
+            "message": str
+        }
+    """
+    run_stage = request.run_stage
+
+    try:
+        logger.info("Starting admin all jobs data calculation")
+        
+        # Process request parameters
+        job_profile_id = request.job_profile_id
+        query_filter = request.filter or {}
+        since = max(request.since or 1, 1)  # Ensure minimum value of 1
+        limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
+        cursor = request.cursor
+        
+        # Prepare query parameters
+        kwargs = query_filter.copy() if query_filter else {}
+        
+        # -------------- fetch the data with the leap_base.py -------------- #
+
+        # Step 1: Fetch all session data
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        data, cursor = ipersona_session.get_all_sessions(
+            cursor=cursor, 
+            since=since, 
+            limit=limit, 
+            nopp=True, 
+            dataframe=False,
+            **kwargs
+        )        
+        
+        # Step 2: Apply additional filtering by 'job_profile_id'
+        data = [
+            session for session in data
+            if session.get('attributes', {}).get('tinder_job_profile', {}).get('data', {}).get('id') == str(job_profile_id)
+        ]        
+
+        if not data:
+            logger.error(f"No sessions found for job_profile_id: {job_profile_id}")
+            return None
+               
+        # data = ipersona_session.get_alladmin_sessions(
+        #     # cursor=cursor, 
+        #     since=request.since, 
+        #     limit=request.limit, 
+        #     nopp=True, 
+        #     dataframe=False,
+        #     # **kwargs
+        # )
+        # -------------- fetch the data with the leap_base.py -------------- #
+
+        
+        # -------------- fetch the data with the query -------------- #
+        # ipersona_job = IpersonaJobSchema()
+        # data, cursor = ipersona_job.get_trainee_job_profile(limit, since, cursor, query_filter, job_profile_id)
+        # return data
+        # -------------- fetch the data with the query -------------- #
+
+        if not data:
+            logger.warn("No session data found for admin all jobs view")
+            return {
+                "data": [],  
+                "cursor": [],
+                "status": 404, 
+                "message": "No data found with the given parameters"
+            }
+
+        logger.info(f"Processing all jobs metrics for {len(data)} sessions")
+        
+        # Step 2: Summarize all jobs data
+        result, total = util.summarize_eachjob_data(run_stage, data)
+        cursor['total'] = total
+
+        if result:
+            data = result['trainees']
+            job_title = result['job_title']
+            company_name = result['company_name']
+            location = result['location']
+            url = result['url']
+            
+            result = util.add_columns(
+                        data, 
+                        cursor, 
+                        job_profile_id, 
+                        job_title,
+                        company_name,
+                        location,
+                        url,
+                        kind='admin_each_job', 
+                        **kwargs
+                    )
+            
+            return result
+            logger.info("Admin all jobs data calculated successfully")
+            return {
+                "data": result, 
+                "cursor": cursor,                  
+                "status": 200, 
+                "message": ""
+            }
+
+    except Exception as e:
+        logger.error(f"Error processing admin all jobs data: {str(e)}", exc_info=True)
+        return {
+            "data": [],  
+            "cursor": [],
+            "status": 500, 
+            "message": f"Error processing data: {str(e)}"
+        }
+        
 @routes.post("/admin_allusers_performance_data")
-async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFiltering) -> Dict[str, Any]:
+async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFiltering) :
     """
     Calculate performance metrics for all users by processing session data.
 
@@ -1003,7 +1262,6 @@ async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFi
         
         # # Prepare query parameters
         # kwargs = query_filter.copy() if query_filter else {}
-        
         # Step 1: Fetch all session data
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         # data, cursor = ipersona_session.get_all_sessions(
@@ -1022,7 +1280,7 @@ async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFi
             dataframe=False,
             # **kwargs
         )
-        
+               
         if not data:
             logger.warn("No session data found for admin all users performance view")
             return {
@@ -1275,4 +1533,64 @@ async def fetch_single_session(request: pemodel.SessionIdRequestRecieved) -> Uni
         return JSONResponse(
             status_code=500, 
             content={"error": f"Error fetching session: {str(e)}"}
+        )
+
+
+
+
+@routes.post("/save_tinder_template")
+def tinder_template(request: pemodel.TinderTemplateRequestRecieved):
+    try:
+        name = request.name
+        type = request.type
+        template_questions = request.template_questions
+        job_profile_ids = request.job_profile_ids
+
+        ipersona_test = IpersonaManager()
+        data = ipersona_test.create_template(name, type, template_questions, job_profile_ids)
+        return data
+     
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error processing job question template: {str(e)}"}
+        )
+     
+@routes.post("/get_tinder_templates")
+def get_tinder_template(request: pemodel.TinderTemplateJobIdRequestRecieved):
+    try:
+        job_profile_id = request.job_profile_id
+        ipersona_template = IpersonaTinderTemplateSchema()
+        fetch_templates = ipersona_template.filter_by_with_job_id(
+            job_profile_id=job_profile_id, 
+            return_object=True, 
+            nopp=True, 
+            dataframe=False
+        )
+        return fetch_templates
+        
+    except Exception as e:
+        logger.error(f"Error creating job question template: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error processing job question template: {str(e)}"}
+        )
+
+@routes.post("/update_tinder_template")
+def update_tinder_template(request: pemodel.UpdateTinderTemplateRequestRecieved):
+    try:
+        template_id = request.template_id
+        name = request.name
+        type = request.type
+        template_questions = request.template_questions
+        job_profile_ids = request.job_profile_ids
+
+        ipersona_test = IpersonaManager()
+        data = ipersona_test.update_template(template_id, name, type, template_questions, job_profile_ids)
+        return data
+     
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error processing job question template: {str(e)}"}
         )

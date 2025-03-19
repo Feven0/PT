@@ -3,7 +3,9 @@ import {
     InterviewChat, 
     Audio, 
     UserOverallProgress,
-    DashboardLayout } from '../components/index'
+    DashboardLayout,
+    TemplateForm,
+    UpdateTemplate } from '../components/index'
 import { useState} from 'react';
 import { Layout, Row, Col, Tabs } from 'antd';
 import { useEffect } from 'react';
@@ -29,6 +31,10 @@ const JobDetail = () => {
         return <Audio/>;
         case 'admin-dashboard':
         return <DashboardLayout/>;
+        case 'template-form':
+        return <TemplateForm/>
+        case 'update-template':
+        return <UpdateTemplate/>
         default:
         return null; 
     }
@@ -57,6 +63,8 @@ const JobDetail = () => {
                         <TabPane tab="Chat Interview" key="interview" />
                         <TabPane tab="Audio" key="audio" />
                         <TabPane tab="Admin Dashboard" key="admin-dashboard" />
+                        <TabPane tab="Template" key="template-form" />
+                        <TabPane tab="Update Template" key="update-template"/>
                         </Tabs>
                         {renderContent()} 
                     </Col>

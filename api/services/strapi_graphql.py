@@ -18,7 +18,7 @@ class StrapiGraphql():
             run_stage =  kwargs.get('run_stage',config.strapi.stage)
         else:
             run_stage = config.strapi.stage
-            
+
         self.run_stage = run_stage
         
        

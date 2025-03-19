@@ -84,9 +84,41 @@ const useMiddleSocket = () => {
       await socket?.emit('interview chat', { 
         response: data.input, 
         user_session: data.user_session,
+        template_id: null,
         time_taken: data.timerValue,
         job_profile_id: data.job_profile_id,
-        all_user_id: data.all_user_id
+        all_user_id: data.all_user_id,
+        template: false
+      });
+    };
+
+    const handleTemplateInterview = async (data: any) => {
+      const chat = [{
+        user_type: "candidate",
+        content_type: "answer",
+        content: {
+          response: data.input,
+          time_taken: data.timerValue,
+          realtime_evaluation: "null"
+        }
+      }];
+  
+      setChatInterview((prevMessages: any) => {
+        if (!Array.isArray(prevMessages)) {
+          return [...chat];
+        }
+        return [...prevMessages, ...chat];
+      });
+  
+      setLoading(true);
+      await socket?.emit('interview chat', { 
+        response: data.input, 
+        user_session: data.user_session,
+        template_id: data.template_id,
+        time_taken: data.timerValue,
+        job_profile_id: data.job_profile_id,
+        all_user_id: data.all_user_id,
+        template: true
       });
     };
 
@@ -178,6 +210,7 @@ const useMiddleSocket = () => {
     setChat,
     
     handleInterview,
+    handleTemplateInterview, 
     interview,
     setChatInterview,
     loading,
