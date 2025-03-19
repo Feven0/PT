@@ -11,7 +11,9 @@ import urllib.parse
 from api.utils.logger import LLPackerLogger
 
 logger = LLPackerLogger(os.path.basename(__file__))
-aai.settings.api_key = 'af1b742664d64a40a7429081cd7cdc35'
+
+
+aai.settings.api_key = config.assemblyai.api_key
 
 
 OPENAI_API_KEY = config.openai.api_key
@@ -19,7 +21,10 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 transcriber = None
 
-sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")
+sio = socketio.AsyncServer(cors_allowed_origins="*", 
+                           async_mode="asgi",
+                           logger=False,
+                           engineio_logger=False)
 socket_app = socketio.ASGIApp(sio)
 
 @sio.event
@@ -47,7 +52,7 @@ async def connect(sid, environ):
     
 @sio.on("disconnect")
 async def disconnect(sid):
-    print(f"Transcribe Client Disconnected: {sid}")
+    logger.info(f"Client disconnected with SID: {sid}")
    
 # assembly streaming
 @sio.on("audio transcribe")

@@ -97,8 +97,8 @@ if [[ $branch_name == "prod" ]] || [[ $branch_name == "worker" ]]; then
     name="${branch_name}ipersona"
     port=4500
     tport=4500
-    #make_general_dockerfile $port $pyreq
-    make_gunicorn_dockerfile $port $pyreq
+    make_general_dockerfile $port $pyreq
+    #make_gunicorn_dockerfile $port $pyreq
 elif [[ $branch_name == "dev" ]]; then
     pyreq="./api"
     echo "DEV: Using Gunicorn multi workers... "
@@ -113,8 +113,8 @@ else
     port=4500
     tport=4500
     pyreq="./api"
-    #make_general_dockerfile $port $pyreq
-    make_gunicorn_dockerfile $port $pyreq
+    make_general_dockerfile $port $pyreq
+    #make_gunicorn_dockerfile $port $pyreq
 fi
 echo "name=$name"
 echo "port=$port"
