@@ -43,6 +43,7 @@ def step1_insert_message(run_stage, data, sessionId):
         logger.error(f"Saving to db failed: ${str(e)}")
         return {'error': str(e)}
     
+
 def step2_insert_message(run_stage, data, template_id, timelimit, accumulated_message, realtime_evaluation, final, sessionId):
     try:
         # sessionId =  data['user_session']['id'] 
@@ -107,4 +108,67 @@ def step3_insert_message(run_stage, realtime_evaluation, final, sessionId, templ
         
     except Exception as e:
         logger.error(f"Saving to db failed: ${str(e)}")
+        return {'error': str(e)}
+
+
+def insert_message(message, sessionId):
+    try: 
+        print('Saving message to DB...')
+
+        message_data = {
+            "attributes": {
+                "message": message,
+            },
+            "i_persona_session": sessionId,
+            "metadata": {
+                "template": False,
+                "generate": False,
+                "external": True
+            }
+        }
+        ipersona_message = IpersonaSessionMessageSchema()
+        chat_saved = ipersona_message.save_message(params=message_data, nopp=True, dataframe=False)
+     
+        return True 
+
+    except Exception as e:
+        logger.error(f"Saving to DB failed: {str(e)}")
+        return False  # Ensure a False value is returned in case of failure
+
+
+def save_messages_to_db(data, sessionId):
+    try:
+        saved = []
+        errors = []
+
+        if isinstance(data, dict):
+            for key, value in data.items():
+                message = f"{key}: {value}"
+                if insert_message(message, sessionId):
+                    print('one')
+                    saved.append(message)
+                else:
+                    print('two')
+                    errors.append(message)
+        elif isinstance(data, list):
+            for item in data:
+                if insert_message(item, sessionId):
+                    print('three')
+                    saved.append(item)
+                else:
+                    print('four')
+                    errors.append(item)
+        else:
+            logger.error("Invalid data format. Must be a dictionary or list.")
+            return {'error': 'Invalid data format'}
+
+        # Check if all messages were saved successfully
+        if not errors:
+            return saved
+        
+        # Partial success or complete failure
+        return saved
+
+    except Exception as e:
+        logger.error(f"Error in saving messages to DB: {str(e)}")
         return {'error': str(e)}

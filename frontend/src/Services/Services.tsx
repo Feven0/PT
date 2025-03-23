@@ -1,9 +1,10 @@
 import axios from 'axios' 
-import { UpdateTemplate } from '../components';
 
 const Api = {
   audioUpload: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/audio_upload`,data),
+  externalAudioUpload: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/audio_upload_external`,data),
   sessionCreate: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/create_user_session`, data),
+  sessionExternalCreate: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/external_data_saving`, data),
   fetchSession: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/fetch_user_session`, data),
   fetchChatHistory: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/fetch_chat_history`, data),
   fetchSingleSession: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/fetch_single_session`, data),
@@ -21,7 +22,10 @@ const Api = {
   CloseSession: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/close_session`, data),
   GetTemplates: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/get_tinder_templates`, data),
   SaveTemplate: (data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/save_tinder_template`, data),
-  UpdateTemplate:(data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/update_tinder_template`, data)
+  UpdateTemplate:(data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/update_tinder_template`, data),
+  GetChallenges:() => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/get_all_challenges`),
+  GetChallenge:(data: any) => axios.post(`${import.meta.env.VITE_REACT_APP_BACKEND_URL}/api/get_a_challenge`, data)
+
 };
 
 

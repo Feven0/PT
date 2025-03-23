@@ -5,7 +5,8 @@ import {
     UserOverallProgress,
     DashboardLayout,
     TemplateForm,
-    UpdateTemplate } from '../components/index'
+    UpdateTemplate,
+    AudioUpload } from '../components/index'
 import { useState} from 'react';
 import { Layout, Row, Col, Tabs } from 'antd';
 import { useEffect } from 'react';
@@ -35,6 +36,8 @@ const JobDetail = () => {
         return <TemplateForm/>
         case 'update-template':
         return <UpdateTemplate/>
+        case 'audio-upload':
+        return <AudioUpload/>
         default:
         return null; 
     }
@@ -65,6 +68,7 @@ const JobDetail = () => {
                         <TabPane tab="Admin Dashboard" key="admin-dashboard" />
                         <TabPane tab="Template" key="template-form" />
                         <TabPane tab="Update Template" key="update-template"/>
+                        <TabPane tab="Audio Upload" key="audio-upload"/>
                         </Tabs>
                         {renderContent()} 
                     </Col>

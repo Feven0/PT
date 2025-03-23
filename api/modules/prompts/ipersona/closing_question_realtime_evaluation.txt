@@ -23,11 +23,12 @@ VERY IMPORTANT:  Provide direct feedback to the candidate in a conversational ma
 YOU MUST RESPOND IN ONLY ONE JSON FORMAT:
 
 {
-  "realtime_evaluation": [
-    {
-      "feedback": "Provide the evaluation of the question here"
-    }
-  ]
+  "realtime_evaluation": {
+      "overall": {
+            "relevance": "{put answer relevance to the question with one-word descriptor (valid or invalid)}",  
+            "feedback": "Provide the evaluation of the question here"
+      }
+  }
 }
 
 If the candidate gives no question, return `null`.

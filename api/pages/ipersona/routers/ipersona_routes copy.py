@@ -16,17 +16,14 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
     IpersonaSessionMessageSchema, 
     IpersonaSessionObserverSchema,
     IpersonaProfileInformationSchema,
-    IpersonaTinderTemplateSchema,
-    IpersonaJobSessionSchema,
-    IpersonaChallengeDocumentSchema
+    IpersonaTinderTemplateSchema
 )
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_gpt as gpt
 import api.pages.ipersona.models.persona as pemodel
 from api.utils.logger import LLPackerLogger
+from api.utils.request_manager import JobReactionManager
 from api.services.strapi_ipersona import IpersonaManager
-import api.llm.ipersona.ipersona_strapi as strapi
-
 logger = LLPackerLogger(os.path.basename(__file__))
 module_dir= os.path.dirname(__file__)
 data_path = lambda x: os.path.join(module_dir, "folders", x)
@@ -37,48 +34,35 @@ transcriber = aai.Transcriber()
 
 routes = FastAPI(root_path="/api")
 
-# @routes.post("/fetch_profile")
-# def fetch_profile(request: pemodel.AdminDataFiltering):
-#     # all_user_id = 7
-#     # ipersona_profile = IpersonaProfileInformationSchema(run_stage=request.run_stage)
-#     # ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
-#     # return ipersona_profile_data
+@routes.post("/fetch_profile")
+def fetch_profile(request: pemodel.AdminDataFiltering):
+    pass
+    # all_user_id = 7
+    # ipersona_profile = IpersonaProfileInformationSchema(run_stage=request.run_stage)
+    # ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
+    # return ipersona_profile_data
     
-#     # ipersona_job = IpersonaJobSchema()
-#     # # data = ipersona_job.filter_by_job_id(job_profile_id=request.job_profile_id, since=100, limit=60, nopp=True, dataframe=False)
-#     # data = ipersona_job.get_all_jobs_info(nopp=True, dataframe=False)
-#     # return data
-#     # job_data = [
-#     #     session.get('attributes', {}).get('i_persona_sessions', {}).get('data', {})
-#     #     for session in data
-#     #     if session.get('attributes', {}).get('i_persona_sessions', {}).get('data', {})
-#     # ]     
-#     # job_data = util.extracted_needed_metrics(job_data) 
+    # ipersona_job = IpersonaJobSchema()
+    # # data = ipersona_job.filter_by_job_id(job_profile_id=request.job_profile_id, since=100, limit=60, nopp=True, dataframe=False)
+    # data = ipersona_job.get_all_jobs_info(nopp=True, dataframe=False)
+    # return data
+    # job_data = [
+    #     session.get('attributes', {}).get('i_persona_sessions', {}).get('data', {})
+    #     for session in data
+    #     if session.get('attributes', {}).get('i_persona_sessions', {}).get('data', {})
+    # ]     
+    # job_data = util.extracted_needed_metrics(job_data) 
     
-#     # limit = request.limit
-#     # since = request.since
-#     # cursor = request.cursor
-#     # filter_data = request.filter
-#     # job_profile_id = request.job_profile_id
-#     # job_data, cursor = ipersona_job.get_trainee_job_profile(limit, since, cursor, filter_data, job_profile_id)
-#     # job_data = util.extracted_needed_metrics(job_data) 
-#     # return job_data
-#     try:
-#         ipersona_challenge = IpersonaChallengeDocumentSchema()
-#         challengeId=84
-#         challenge = ipersona_challenge.get_challenge_by_id(challengeId, nopp=True, dataframe=False)
-#         # challenge = ipersona_challenge.get_all_challenges(nopp=True, dataframe=False)
-#         print('=======================00======================')
-#         print(challenge)
-#         return challenge
-#     except Exception as e:
-#         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
-#         return JSONResponse(
-#             status_code=500,
-#             content={"error": f"Error processing user session: {str(e)}"}
-#         )
- 
+    # limit = request.limit
+    # since = request.since
+    # cursor = request.cursor
+    # filter_data = request.filter
+    # job_profile_id = request.job_profile_id
+    # job_data, cursor = ipersona_job.get_trainee_job_profile(limit, since, cursor, filter_data, job_profile_id)
+    # job_data = util.extracted_needed_metrics(job_data) 
+    # return job_data
 
+ 
 @routes.post("/audio_upload")
 async def speech_to_text(file: UploadFile = File(...)) -> dict:
     """
@@ -191,12 +175,6 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
     """
     run_stage = request.run_stage
     template = request.template
-    external = request.external
-    challenge = request.challenge
-    job_profile_id = request.job_profile_id
-    all_user_id = request.all_user_id
-    template_id = request.template_id
-    challenge_id = request.challenge_id
 
     if not request or not request.all_user_id or not request.job_profile_id:
         logger.error("Invalid request: Missing required parameters")
@@ -206,16 +184,16 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         )
         
     try:
-        logger.info(f"Starting user session creation for user ID: {all_user_id}, job ID: {job_profile_id}")
+        logger.info(f"Starting user session creation for user ID: {request.all_user_id}, job ID: {request.job_profile_id}")
 
         # Step 1: Fetch trainee profile data
         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
         trainee_profile_data = ipersona_user.filter_by_alluser_id(
-            all_user_id=all_user_id, nopp=True, dataframe=False
+            all_user_id=request.all_user_id, nopp=True, dataframe=False
         )
     
         if not trainee_profile_data:
-            logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
+            logger.warn(f"No trainee user profiles found for all_user_id: {request.all_user_id}")
             return JSONResponse(
                 status_code=404,
                 content={"error": "No trainee user profiles found for the given all_user_id"}
@@ -252,7 +230,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         # Step 2: Fetch job profile data
         ipersona_job = IpersonaJobSchema(run_stage=run_stage)
         tinder_job_data = ipersona_job.filter_by_job_id(
-            job_profile_id=job_profile_id, nopp=True, dataframe=False
+            job_profile_id=request.job_profile_id, nopp=True, dataframe=False
         )
 
         if not tinder_job_data:
@@ -264,39 +242,37 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
 
         tinder_job_data = util.extract_job_neccessary_values(tinder_job_data)
         logger.info(f"Job data extracted for job_profile_id: {request.job_profile_id}")
-        
         if template:
-            message=''
-            saved_session =  util.create_session(
-                run_stage, 
-                request, 
-                all_user_id, 
-                tinder_user_profile_id, 
-                job_profile_id,
-                template_id, 
-                challenge_id,
-                message)
+            # Step 5: Save session data
+            session_data = {
+                "slug": str(f"all_user_id: {request.all_user_id}"),
+                "status": "Incomplete",
+                "attributes": {},
+                "user_profile_id": tinder_user_profile_id,
+                "job_profile_id": request.job_profile_id
+            }
+            
+            ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+            saved_session = ipersona_session.save_session(
+                params=session_data, return_object=True, nopp=True, dataframe=False
+            )
+
+            if not saved_session:
+                logger.error("Failed to save session")
+                return JSONResponse(
+                    status_code=500,
+                    content={"error": "Failed to save session data"}
+                )
+                
+            logger.info(f"Session created successfully with ID: {saved_session.get('id', 'unknown')}")
+            
+            # Remove large questions data before returning
             return saved_session
-        
-        elif challenge:
-            prompt_text = util.file_reader(prompt_path('generate_challenge_question.txt'))
-            content = await util.analysis_challenge()
-            challenge_prompt = prompt_text \
-                .replace("{challenge_document}", str(content)) \
-                .replace("{count}", str(11)) 
-            saved_session =  util.create_session(
-                run_stage, 
-                request, 
-                all_user_id, 
-                tinder_user_profile_id, 
-                job_profile_id,
-                template_id, 
-                challenge_id,
-                challenge_prompt)
-            return saved_session
+
         else:
             # Step 3: Create persona and generate questions
             created_persona = util.create_persona(str(tinder_job_data))
+            
             # Load and format prompt templates
             prompt_text = util.file_reader(prompt_path('persona.txt'))
             generated_persona = prompt_text \
@@ -344,12 +320,6 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
                     "persona": generated_persona,
                     "generated_questions": generated_question_json
                 },
-                "metadata": {
-                    "template": False,
-                    "generate": True,
-                    "external": False,
-                    "challenge": False
-                },
                 "user_profile_id": tinder_user_profile_id,
                 "job_profile_id": request.job_profile_id
             }
@@ -369,12 +339,8 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             logger.info(f"Session created successfully with ID: {saved_session.get('id', 'unknown')}")
             
             # Remove large questions data before returning
-            saved_session = {
-                'id': saved_session.get('id')
-            }
+            saved_session = util.remove_key(saved_session, 'generated_questions')
             return saved_session
-            # saved_session = util.remove_key(saved_session, 'generated_questions')
-            # return saved_session
 
     except Exception as e:
         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
@@ -555,7 +521,7 @@ async def close_interview_session(request: pemodel.ClosedDataRequestRecieved):
         )
 
 @routes.post("/calculate_session_overall_progress")
-async def calculate_overall_progress(request: pemodel.OverallRequestRecieved):
+async def calculate_overall_progress(request: pemodel.UserSessionRequestRecieved):
     """
     Fetch overall progress metrics for a job.
 
@@ -1075,7 +1041,7 @@ async def calculate_admin_alljobs_data(request: pemodel.AdminDataFiltering) -> D
         }
 
 @routes.post("/admin_each_job_overview_data") #-> Dict[str, Any]
-async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFiltering) :
+async def calculate_admin_eachjob_data(request: pemodel.AdminDataTempFiltering) :
     """
     Calculate administrative data for all jobs by processing session data.
 
@@ -1122,25 +1088,25 @@ async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFilterin
         # -------------- fetch the data with the leap_base.py -------------- #
 
         # Step 1: Fetch all session data
-        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-        data, cursor = ipersona_session.get_all_sessions(
-            cursor=cursor, 
-            since=since, 
-            limit=limit, 
-            nopp=True, 
-            dataframe=False,
-            **kwargs
-        )        
+        # ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        # data, cursor = ipersona_session.get_all_sessions(
+        #     cursor=cursor, 
+        #     since=since, 
+        #     limit=limit, 
+        #     nopp=True, 
+        #     dataframe=False,
+        #     **kwargs
+        # )        
         
-        # Step 2: Apply additional filtering by 'job_profile_id'
-        data = [
-            session for session in data
-            if session.get('attributes', {}).get('tinder_job_profile', {}).get('data', {}).get('id') == str(job_profile_id)
-        ]        
+        # # Step 2: Apply additional filtering by 'job_profile_id'
+        # data = [
+        #     session for session in data
+        #     if session.get('attributes', {}).get('tinder_job_profile', {}).get('data', {}).get('id') == str(job_profile_id)
+        # ]        
 
-        if not data:
-            logger.error(f"No sessions found for job_profile_id: {job_profile_id}")
-            return None
+        # if not data:
+        #     logger.error(f"No sessions found for job_profile_id: {job_profile_id}")
+        #     return None
                
         # data = ipersona_session.get_alladmin_sessions(
         #     # cursor=cursor, 
@@ -1154,9 +1120,18 @@ async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFilterin
 
         
         # -------------- fetch the data with the query -------------- #
-        # ipersona_job = IpersonaJobSchema()
-        # data, cursor = ipersona_job.get_trainee_job_profile(limit, since, cursor, query_filter, job_profile_id)
-        # return data
+        ipersona_job = IpersonaJobSchema()
+        # data, cursor = ipersona_job.get_trainee_job_profiless(limit, since, cursor, query_filter, job_profile_id)
+        data = ipersona_job.filter_by_job_id(job_profile_id, nopp=True, dataframe=False)
+        job_data = [
+                session_data
+                for session in data
+                for session_data in session.get('attributes', {}).get('i_persona_sessions', {}).get('data', [])
+            ]
+
+        job_data = util.extracted_needed_metrics(job_data) 
+        
+        return job_data
         # -------------- fetch the data with the query -------------- #
 
         if not data:
@@ -1210,124 +1185,6 @@ async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFilterin
             "status": 500, 
             "message": f"Error processing data: {str(e)}"
         }
-    
-# @routes.post("/admin_each_job_overview_") #-> Dict[str, Any]
-# async def calculate_admin_eachjob_(request: pemodel.AdminDataEachJobFiltering) :
-#     """
-#     Calculate administrative data for all jobs by processing session data.
-
-#     Fetches all session data based on provided filters, calculates metrics,
-#     and returns summarized results for all jobs.
-
-#     Parameters
-#     ----------
-#     request : pemodel.AdminDataFiltering
-#         Object containing:
-#         - filter: Optional query filters
-#         - return_skip: Flag to include skipped items
-#         - information_level: Detail level for results
-#         - since: Starting point for pagination
-#         - limit: Maximum number of items to return
-#         - cursor: Pagination cursor
-
-#     Returns
-#     -------
-#     Dict[str, Any]
-#         Jobs data summary or error response with the format:
-#         {
-#             "data": list,
-#             "cursor": list,
-#             "status": int,
-#             "message": str
-#         }
-#     """
-#     run_stage = request.run_stage
-
-#     try:
-#         logger.info("Starting admin all jobs data calculation")
-        
-#         # Process request parameters
-#         job_profile_id = request.job_profile_id
-#         query_filter = request.filter or {}
-#         since = max(request.since or 1, 1)  
-#         limit = max(request.limit or 1, 1)  
-#         # cursor = request.cursor
-        
-#         # Prepare query parameters
-#         kwargs = query_filter.copy() if query_filter else {}
-                
-#         # -------------- fetch the data with the query -------------- #
-#         ipersona_job = IpersonaJobSessionSchema(run_stage=run_stage, limit=limit, since=since)
-#         data = ipersona_job.filter_by_job_id(
-#             job_profile_id,
-#             start=since,  
-#             limit=limit,  
-#             nopp=True, 
-#             dataframe=False,
-#             **kwargs  # Additional kwargs if needed
-#         )
-
-#         data = [
-#                 session_data
-#                 for session in data
-#                 for session_data in session.get('attributes', {}).get('i_persona_sessions', {}).get('data', [])
-#             ]
-        
-#         # data = util.extracted_needed_metrics(data) 
-#         return len(data)
-#         # -------------- fetch the data with the query -------------- #
-
-#         if not data:
-#             logger.warn("No session data found for admin all jobs view")
-#             return {
-#                 "data": [],  
-#                 "cursor": [],
-#                 "status": 404, 
-#                 "message": "No data found with the given parameters"
-#             }
-
-#         logger.info(f"Processing all jobs metrics for {len(data)} sessions")
-        
-#         # Step 2: Summarize all jobs data
-#         result, total = util.summarize_eachjob_data(run_stage, data)
-#         cursor['total'] = total
-
-#         if result:
-#             data = result['trainees']
-#             job_title = result['job_title']
-#             company_name = result['company_name']
-#             location = result['location']
-#             url = result['url']
-            
-#             result = util.add_columns(
-#                         data, 
-#                         cursor, 
-#                         job_profile_id, 
-#                         job_title,
-#                         company_name,
-#                         location,
-#                         url,
-#                         kind='admin_each_job', 
-#                         **kwargs
-#                     )
-            
-#             return result
-#             logger.info("Admin all jobs data calculated successfully")
-#             return {
-#                 "data": result, 
-#                 "cursor": cursor,                  
-#                 "status": 200, 
-#                 "message": ""
-#             }
-
-#     except Exception as e:
-#         logger.error(f"Error processing admin each jobs data: {str(e)}", exc_info=True)
-#         return {
-#             "data": [],  
-#             "cursor": [],
-#             "status": 500, 
-#             "message": f"Error processing data: {str(e)}"
-#         }
         
 @routes.post("/admin_allusers_performance_data")
 async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFiltering) :
@@ -1424,7 +1281,7 @@ async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFi
         }
 
 @routes.post("/fetch_user_session")
-async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> Union[List, Dict]:
+async def fetch_user_session(request: pemodel.UserSessionRequestRecieved) -> Union[List, Dict]:
     """
     Fetch session data for a specific user and job.
 
@@ -1647,7 +1504,7 @@ async def fetch_single_session(request: pemodel.SessionIdRequestRecieved) -> Uni
 
 
 
-#----------------------------------- Question Template Processing APIS -----------------------------------#
+
 @routes.post("/save_tinder_template")
 def tinder_template(request: pemodel.TinderTemplateRequestRecieved):
     try:
@@ -1704,192 +1561,3 @@ def update_tinder_template(request: pemodel.UpdateTinderTemplateRequestRecieved)
             status_code=500,
             content={"error": f"Error processing job question template: {str(e)}"}
         )
-    
-
-#----------------------------------- External Audio Upload Processing APIS -----------------------------------#
-@routes.post("/audio_upload_external")
-async def speech_to_text(file: UploadFile = File(...)):
-    if not file or not file.filename:
-        logger.error("Invalid file: No file or filename provided")
-        return JSONResponse(
-            status_code=400,
-            content={
-                "transcription": "Failed",
-                "status": 400,
-                "message": "No file provided or invalid file"
-            }
-        )
-        
-    try:
-        logger.info(f"Starting audio processing for file: {file.filename}")
-        
-        # Create directory if it doesn't exist
-        audio_dir = data_path('audio')
-        os.makedirs(audio_dir, exist_ok=True)
-        
-        audio_path = os.path.join(audio_dir, file.filename)
-        logger.debug(f"Saving audio file to: {audio_path}")
-        
-        # Save the uploaded file
-        contents = await file.read()
-        with open(audio_path, "wb") as f:
-            f.write(contents)
-        logger.info("Audio file saved successfully")
-        
-        # Initialize transcriber and process file
-        transcriber = aai.Transcriber()
-        transcript = transcriber.transcribe(audio_path)
-
-        if transcript.status == aai.TranscriptStatus.error:
-            error_msg = getattr(transcript, 'error', 'Unknown transcription error')
-            logger.error(f"Transcription error: {error_msg}")
-            return {
-                "transcription": "Failed",
-                "status": 400, 
-                "message": error_msg
-            }
-            
-        logger.info("Transcription completed successfully")
-        logger.debug(f"Transcription text: {transcript.text}")
- 
-        external_audio_prompt = util.file_reader(prompt_path('external_audio_analysis.txt'))
-        realtime_prompt = util.file_reader(prompt_path('realtime_evaluation.txt'))
-
-        # realtime_prompt = realtime_prompt \
-        #         .replace("{question}", str(transcript.text)) \
-        #         .replace("{candidate_response}", str(realtime_prompt)) 
-      
-        external_aud_prompt = external_audio_prompt \
-                .replace("{transcription}", str(transcript.text)) \
-                .replace("{realtime}", str(realtime_prompt)) 
-    
-        data = gpt.openai_gpt_assistant_without_streaming(external_aud_prompt)
-        response = util.extract_json(data, quite=False)
-     
-        return {
-            "chat": response,
-            "status": 200,
-            "message": "Audio Successfully Transcribed"
-        }
-    
-    except Exception as e:
-        logger.error(f"Error during transcription: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={
-                "transcription": "Failed",
-                "status": 500,
-                "message": f"System error: {str(e)}"
-            }
-        )
-    
-@routes.post("/external_data_saving")
-async def external_data_saving(request: pemodel.ExternalRequestRecieved):
-    try:
-        run_stage = request.run_stage
-        transcribe_chat = request.transcribe_chat
-        all_user_id = request.all_user_id
-        job_profile_id = request.job_profile_id
-
-        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(
-            all_user_id=all_user_id, nopp=True, dataframe=False
-        )
-    
-        if not trainee_profile_data:
-            logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
-            return JSONResponse(
-                status_code=404,
-                content={"error": "No trainee user profiles found for the given all_user_id"}
-            )
-
-        tinder_user_profile_id = trainee_profile_data.get('id')
-        if not tinder_user_profile_id:
-            return JSONResponse(
-                status_code=500,
-                content={"error": "Invalid trainee profile: missing ID"}
-            )
-        template_id = 0
-        challenge_id = 0
-        message = ''
-
-        saved_session =  util.create_session(
-            run_stage, 
-            request, 
-            all_user_id, 
-            tinder_user_profile_id, 
-            job_profile_id,
-            template_id, 
-            challenge_id,
-            message)
-        # saved_session = True
-        if saved_session:
-            sessionId = saved_session['id']
-      
-            saved = strapi.save_messages_to_db(transcribe_chat , sessionId)
-            status = 'External'
-            overall = await util.overall_interview_evaluations_external(run_stage, transcribe_chat, status, sessionId, all_user_id, tinder_user_profile_id, job_profile_id)
-            return {
-                "chat": saved,
-                "overall": overall,
-                "status": 200,
-                "message": "Chat Saved Successfully"
-            }
-        else:
-            return {
-                "chat": [],
-                "status": 400,
-                "message": "Chat Not Saved"
-            }
-
-    except Exception as e:
-        logger.error(f"Error creating user session: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Error processing user session: {str(e)}"}
-        )
-
-
-#----------------------------------- Challenge Document Processing APIS -----------------------------------#
-@routes.post("/get_all_challenges")
-def fetch_all_challenges():
-    try:
-        ipersona_challenge = IpersonaChallengeDocumentSchema()
-        challenges = ipersona_challenge.get_all_challenges(nopp=True, dataframe=False)
-
-        return {
-            "challenge": challenges,
-            "success": 200,
-            "message": 'Challenges are Fetched Successfully.'
-        }
-    
-    except Exception as e:
-        logger.error(f"Error creating user session: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Error processing user session: {str(e)}"}
-        )
- 
-@routes.post("/get_a_challenge")
-def fetch_a_challenge(request: pemodel.ChallengeRequestFiltering):
-    try:
-        ipersona_challenge = IpersonaChallengeDocumentSchema()
-        challengeId=request.challenge_id
-        challenge = ipersona_challenge.get_challenge_by_id(challengeId, nopp=True, dataframe=False)
-   
-        return {
-            "challenge": challenge,
-            "success": 200,
-            "message": 'Challenge Fetched Successfully.'
-        }
-    
-    except Exception as e:
-        logger.error(f"Error creating user session: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Error processing user session: {str(e)}"}
-        )
- 
-
-
-

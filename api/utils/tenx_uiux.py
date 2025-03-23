@@ -273,26 +273,40 @@ class BaseTable():
     
     def init_structure(self, **kwargs):
         cursor = kwargs.get('cursor', {})
-        job_profile_id = kwargs.get('job_profile_id', {})
-        job_title = kwargs.get('job_title', {})
-        company_name = kwargs.get('company_name', {})
-        location = kwargs.get('location', {})
-        url = kwargs.get('url', {})
-        
+        job_profile_id = kwargs.get('job_profile_id', None)
+        job_title = kwargs.get('job_title', None)
+        company_name = kwargs.get('company_name', None)
+        location = kwargs.get('location', None)
+        url = kwargs.get('url', None)
+
+        # Create a dictionary to hold the non-empty values
+        additional_fields = {}
+
+        if job_profile_id:
+            additional_fields["job_profile_id"] = job_profile_id
+
+        if job_title:
+            additional_fields["job_title"] = job_title
+
+        if company_name:
+            additional_fields["company_name"] = company_name
+
+        if location:
+            additional_fields["location"] = location
+
+        if url:
+            additional_fields["url"] = url
+
+        # Construct the table with mandatory fields
         table = {
             "view_type": "table",
-            "order": kwargs.get('order',1),
-            "title": kwargs.get('title',""),
-            "job_profile_id": job_profile_id, 
-            "job_title":  job_title,
-            "company_name": company_name,
-            "location": location,
-            "url": url,
-            "data": kwargs.get('data',[]),
-            "columns": kwargs.get('columns',[]),
-            "expandable": kwargs.get('expandable',False),
-            "allowEditColumn": kwargs.get('allowEditColumn',True),
-            "counterName": kwargs.get("counterName","record(s)"),
+            "order": kwargs.get('order', 1),
+            "title": kwargs.get('title', ""),
+            "data": kwargs.get('data', []),
+            "columns": kwargs.get('columns', []),
+            "expandable": kwargs.get('expandable', False),
+            "allowEditColumn": kwargs.get('allowEditColumn', True),
+            "counterName": kwargs.get("counterName", "record(s)"),
             "allowRowSelection": kwargs.get('expandable', True),
             "downloadPermission": kwargs.get('downloadPermission', True),
             "searchPermission": kwargs.get('searchPermission', True),
@@ -301,9 +315,11 @@ class BaseTable():
             "email": kwargs.get('email', False),
             "cursor": cursor
         }
-        
+
+        table.update(additional_fields)
+
         return table
-   
+
    
    
 # {'job_competency_name': 'Data Management',

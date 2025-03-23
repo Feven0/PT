@@ -1,0 +1,40 @@
+
+You are provided with the transcription of an audio. The audio contains an actual interview between an HR person and a candidate. The transcription data is not organized in conversation format. Your job is to create the organized structure of the conversation based on the provided example JSON format.
+
+The audio interview transcription data is: {transcription}
+
+IMPORTANT INSTRUCTIONS:
+
+   - user_type: assistant: Represents the HR person section.
+
+   - user_type: candidate: Represents the interviewee section.
+
+   - For all user_type: candidate responses, follow the evaluation guidelines in {realtime} to fill in the realtime_evaluation for each candidate response:
+
+
+    - If the assistant (HR person) does not specify a time_limit, then it should not be included in the JSON. Otherwise, the time_limit should be specified, and if the time_limit is missing, it should default to "null".
+
+    - The structure of your response must strictly follow this one JSON format:
+
+YOUR RESPONSE SHOULD ONLY BE IN ONE JSON FORMAT:
+[
+    {
+        "content": {
+            "time_limit": "",
+            "time_taken": "null",
+            "full_response": "Tell me about yourself and your professional history?",
+            "realtime_evaluation": null
+        },
+        "user_type": "assistant",
+        "content_type": "question"
+    },
+    {
+        "content": {
+            "response": "",
+            "time_taken": "",
+            "realtime_evaluation": "null"
+        },
+        "user_type": "candidate",
+        "content_type": "answer"
+    }
+]

@@ -10,6 +10,8 @@ from api.utils.logger import LLPackerLogger
 import api.llm.ipersona.ipersona_gpt as gpt
 from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionTinderUserJobMatchSchema, IpersonaSessionTinderUserReactionSchema, IpersonaSessionSchema, IpersonaTraineeSchema, IpersonaJobSchema, IpersonaSessionOverallObserverSchema, IpersonaSessionMessageSchema, IpersonaSessionObserverSchema, IpersonaAllUserSchema, IpersonaProfileInformationSchema
 from api.utils.request_manager import JobReactionManager
+from api.services.async_task_analyzer import AsyncTaskAnalyzer
+
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
@@ -88,7 +90,16 @@ async def generate_interview_question(run_stage, data: dict, template_id, sessio
         user_attributes = data['user_session']['attributes']['attributes']
 
         # Choose between generated_questions and template_questions
-        collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions')
+        collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions') or user_attributes.get('challenge_questions')
+        print("-----------------------ttttttttttfffffff")
+        print(user_attributes.get('challenge_id'))
+        print(user_attributes.get('challenge_id') == 0)
+
+        # if(user_attributes.get('challenge_id') != 0):
+        #     print("-----------------------ttttttttttfffffff")
+        #     response = choose_interview_question_challenge(run_stage, collection, data, sessionId)
+        #     return response
+        # else:
         if not collection:
             raise ValueError("No questions available in generated_questions or template_questions.")
         
@@ -152,6 +163,7 @@ async def choose_interview_question(run_stage, collection: dict, data: dict, tem
         
         section = None
         question_type = None
+        question_count =12
         if chat_count < 2: 
             section = collection["Introduction"]
             question_type = "Introduction"
@@ -163,7 +175,8 @@ async def choose_interview_question(run_stage, collection: dict, data: dict, tem
                 question_type, 
                 section, data, 
                 sessionId,
-                template_id)
+                template_id,
+                question_count)
 
             return response
         
@@ -181,7 +194,8 @@ async def choose_interview_question(run_stage, collection: dict, data: dict, tem
                 section, 
                 data, 
                 sessionId,
-                template_id)
+                template_id,
+                question_count)
 
             return response
         
@@ -199,7 +213,8 @@ async def choose_interview_question(run_stage, collection: dict, data: dict, tem
                 section, 
                 data, 
                 sessionId,
-                template_id)
+                template_id,
+                question_count)
             
             return response
             
@@ -217,7 +232,8 @@ async def choose_interview_question(run_stage, collection: dict, data: dict, tem
                 section, 
                 data, 
                 sessionId,
-                template_id)
+                template_id,
+                question_count)
             
             return response
         
@@ -235,7 +251,8 @@ async def choose_interview_question(run_stage, collection: dict, data: dict, tem
                 section, 
                 data, 
                 sessionId,
-                template_id)
+                template_id,
+                question_count)
             
             return response
         
@@ -253,7 +270,8 @@ async def choose_interview_question(run_stage, collection: dict, data: dict, tem
                 section, 
                 data, 
                 sessionId,
-                template_id)
+                template_id,
+                question_count)
             
             return response
 
@@ -261,6 +279,28 @@ async def choose_interview_question(run_stage, collection: dict, data: dict, tem
         logger.error(f"Choosing question process failed: ${str(e)}")
         return {'error': str(e)}
 
+# async def choose_interview_question_challenge(run_stage, collection: dict, data: dict, sessionId):
+#     try:  
+#         section = collection["Technical"]
+#         question_type = "Technical"
+#         question_count = 12
+#         chat_count = ''
+#         count = ''
+#         template_id = None
+#         response = await helper_func(
+#             run_stage, 
+#             chat_count,
+#             count, 
+#             question_type, 
+#             section, 
+#             data, 
+#             sessionId,
+#             template_id,
+#             question_count)
+#         return response
+#     except Exception as e:
+#         logger.error(f"Choosing question process failed: ${str(e)}")
+#         return {'error': str(e)}
 
 #----------------------------------------- Helper Functions for Choosing Question ---------------------------------
 async def helper_func(
@@ -271,7 +311,8 @@ async def helper_func(
     section: list, 
     data: dict, 
     sessionId,
-    template_id):
+    template_id,
+    question_count):
     """
     Processes interview questions and evaluations based on candidate responses.
 
@@ -306,7 +347,7 @@ async def helper_func(
         realtime_evaluation = None
         status = None
                 
-        if chat_count < 12:
+        if chat_count < question_count:
             if data['response']:
                 if count is not None:
                     interview_question_json = await fetch_interview_question(section, question_type, data) 
@@ -328,7 +369,7 @@ async def helper_func(
             if realtime_evaluation != "null":
                 status = "final"
                 final = 'true'
-                strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId, template_id)
+                strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId, template_id,)
             rstage=''
             status = "Completed"
             await overall_interview_evaluations(rstage, data, status, sessionId)
@@ -346,7 +387,59 @@ async def helper_func(
         logger.error(f"Choosing question helper process failed: ${str(e)}")
         return {'error': str(e)}
    
+async def helper_func_challenge(
+    run_stage, 
+    chat_count, 
+    count: int, 
+    question_type: str, 
+    section: list, 
+    data: dict, 
+    sessionId,
+    template_id):
+    try:
+        interview_question_json = None
+        realtime_evaluation = None
+        status = None
+                
+        if chat_count < count:
+            if data['response']:
+                if count is not None:
+                    interview_question_json = await fetch_interview_question(section, question_type, data) 
+                else:
+                    response = await check_if_followup(data['response'])
+         
+                    if not response:
+                        interview_question_json = await fetch_interview_question(section, question_type, data) 
+                    else:
+                        interview_question_json = await generate_followup(data)
+                       
+            else:
+                interview_question_json = await fetch_interview_question(section, question_type, data) 
    
+        else:  
+            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId)
+            realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
+            logger.info(f"Realtime evaluation is: {realtime_evaluation}")
+            if realtime_evaluation != "null":
+                status = "final"
+                final = 'true'
+                strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId, template_id,)
+            rstage=''
+            status = "Completed"
+            await overall_interview_evaluations(rstage, data, status, sessionId)
+            logger.info("Calculate the overall and save to database done.")            
+                
+        response = {
+            "interview": interview_question_json,
+            "status": status,
+            "realtime": realtime_evaluation
+        }
+        
+        return response
+    
+    except Exception as e:
+        logger.error(f"Choosing question helper process failed: ${str(e)}")
+        return {'error': str(e)}
 #----------------------------------------- picking the right Question ----------------------------------------- 
 async def fetch_interview_question(section: list, question_type: str, data: dict):
     """
@@ -705,6 +798,128 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         return {'error': str(e)}    
                   
 
+async def overall_interview_evaluations_external(run_stage, data: dict, status, sessionId, all_user_id,  tinder_user_profile_id, job_profile_id) -> dict:
+    """
+    Evaluates the overall performance of a candidate in an interview.
+
+    This asynchronous function assesses the candidate's overall performance 
+    using their interview history and real-time evaluation results. It generates 
+    overall evaluation metrics and saves the final chat history to the database.
+
+    Parameters:
+    ----------
+    data : dict
+        A dictionary containing session information, including the candidate's 
+        responses and interview history.
+
+    realtime_evaluation_response_json : dict
+        A JSON object containing the results of the real-time evaluation.
+
+    Returns:
+    -------
+    dict
+        A JSON object containing the overall interview metrics and evaluation response, 
+        or an error message if an exception occurs during processing.
+    """
+    try:
+       
+        overall_evaluation_prompt = file_reader(prompt_path('ipersona/overall_evaluation.txt'))
+        overall_metrics_prompt = file_reader(prompt_path("ipersona/interview_metrics_rubrics.txt"))
+        overall_evaluation_context = str(overall_evaluation_prompt)
+        overall_metrics_context = str(overall_metrics_prompt)
+        history_str = '\n'.join(str(item) for item in data)
+
+        overall_evaluation_msg = overall_evaluation_context\
+            .replace("{history}", history_str)  
+                
+        overall_metrics_msg = overall_metrics_context\
+            .replace("{history}", history_str)  
+                
+     
+        # content = data['user_session']['attributes']['attributes']['persona'] + overall_evaluation_msg
+        persona = ''
+        content = persona + overall_evaluation_msg
+        
+        overall_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
+
+        overall_evaluation_response_json = extract_json(overall_evaluation_response, quite=False)
+        
+        # content = data['user_session']['attributes']['attributes']['persona'] + overall_metrics_msg
+        persona = ''
+        content = persona + overall_metrics_msg
+
+        overall_interview_metrics_response = gpt.openai_gpt_assistant_without_streaming(content)
+        overall_interview_metrics_json = extract_json(overall_interview_metrics_response, quite=False)
+        time_array = calculate_time(data)
+        relevancy = filter_the_relevancies_external(data)
+        percent_term = percentage_term(relevancy["average"])
+        
+        overall_evaluation_response_json["overall_evaluation"]["message"] = percent_term["term"]
+        overall_interview_metrics_json["evaluation_metrics"]["message"] = percent_term["term"]
+        overall_interview_metrics_json["evaluation_metrics"]["time_management"] = time_array
+        overall_interview_metrics_json["evaluation_metrics"]["relevancy"] = relevancy["relevancy"]
+        overall_interview_metrics_json["evaluation_metrics"]["overall_performance_score"] = relevancy["average"]
+        overall_interview_metrics_json["evaluation_metrics"]["rating"] = percent_term["rating"]
+        overall_interview_metrics_json["evaluation_metrics"]["competency"] = overall_evaluation_response_json["overall_evaluation"]["competency"]
+        
+        ############################## Save final chat history to strapi #########################################        
+        overall_interview_metrics_json = overall_interview_metrics_json["evaluation_metrics"]
+        
+        overall_evaluation_response_json = overall_evaluation_response_json["overall_evaluation"]
+        overall_json = {
+                "attributes": {
+                    "interview_evaluation": overall_evaluation_response_json,
+                    "interview_evaluation_metrics": overall_interview_metrics_json,
+                },
+                "i_persona_session": sessionId,
+                "status": status            
+            }
+
+        ipersona_observer = IpersonaSessionObserverSchema(run_stage=run_stage)
+        save_observer = ipersona_observer.save_observer(params=overall_json, nopp=True, dataframe=False)
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        if save_observer:
+            logger.info("session observer to database")
+
+        session_data = {
+            "i_persona_session_id": sessionId, 
+            "status": status,
+        }
+        updated_session = ipersona_session.update_session(params=session_data, nopp=True, dataframe=False, return_object=True)
+     
+        if updated_session:
+            logger.info("session status updated to closed")
+
+          #------------------------------------------------------------------------------------#
+                      
+        session = ipersona_session.filter_by_with_user_job_id(
+            user_profile_id=tinder_user_profile_id,
+            job_profile_id=job_profile_id, 
+            nopp=True, 
+            dataframe=False
+            ) 
+        # return session
+        session_chatobserver = extract_observers_metrics(session)
+
+        if status == 'External':  
+            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")       
+            await calculate_overall_progress_external(run_stage, all_user_id,  tinder_user_profile_id, job_profile_id, session_chatobserver) 
+      
+        #################################################################################################
+      
+        response = {
+            "overall_interview_metrics": overall_interview_metrics_json,
+            "overall_evaluation_response": overall_evaluation_response_json
+        }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Overall evaluation process failed: ${str(e)}")
+
+        return {'error': str(e)}    
+                  
+
 #---------------------------------------- Interview Question Clarification ---------------------------------
 async def clarify_question(question: str) -> dict:
     """
@@ -934,6 +1149,59 @@ def filter_the_relevancies(data: list) -> dict:
         print(f"Filtering overall relevance process failed: {str(e)}")
         return {'error': str(e)}
 
+def filter_the_relevancies_external(data: list) -> dict:
+    """
+    Extracts relevancy data from real-time evaluations and calculates overall performance.
+
+    This function filters and extracts relevancy levels and reasons from the assistant's 
+    real-time evaluations of the interview data. It then computes the average relevancy 
+    score to assess overall performance.
+
+    Parameters:
+    ----------
+    data : list
+        A list of dictionaries representing the interview history, where each 
+        dictionary includes evaluations from the assistant.
+
+    Returns:
+    -------
+    dict
+        A JSON object containing a list of relevancy assessments with their 
+        corresponding levels, as well as the average relevancy score, 
+        or an error message if an exception occurs during processing.
+    """
+    try:
+        relevancy = []
+        index_counter = 1
+        
+        for entry in data:
+            if entry['user_type'] == 'candidate' and entry['content'].get('realtime_evaluation'):
+                evaluation = entry['content']['realtime_evaluation']
+                if 'answer_relevancy' in evaluation:
+                    for relevance in evaluation['answer_relevancy']:
+                        relevance_with_index = {
+                            "question_no": index_counter,  
+                            "level": relevance['level'],
+                            "reason": relevance['reason']
+                        }
+                        relevancy.append(relevance_with_index)
+                        index_counter += 1 
+                        
+        levels = [int(item["level"]) for item in relevancy]
+        average_relevancy = sum(levels) / len(levels) if levels else 0
+        
+        average_relevancy = round(average_relevancy, 2)
+        
+        data = {
+            "relevancy": relevancy,
+            "average": average_relevancy
+        }
+        return data
+    
+    except Exception as e:
+        print(f"Filtering overall relevance process failed: {str(e)}")
+        return {'error': str(e)}
+
 #----------------------------------------- Assigning Rating Metrics Value Range -----------------------------------------   
 def percentage_term(percent: float) -> dict:
     """
@@ -1121,6 +1389,146 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 "sessionIds": session_ids,
                 "tinder_user_profile": tinder_user_profile_id,
                 "tinder_job_profile": userdata['job_profile_id']
+            }
+            
+            response = ipersona_overall.save_Session_Overall_Observer(params=message_data, nopp=True, dataframe=False)
+            logger.success(f"new entry make on session overall observer")
+            return response
+    
+    except Exception as e:
+        logger.error(f"Process failed: ${str(e)}")
+        return f'Error: {str(e)}'  
+    
+
+async def calculate_overall_progress_external(run_stage, all_user_id,  tinder_user_profile_id, job_profile_id, data: list):
+    try:
+        logger.info(f"calculating overall progress for a job overtime")
+        confidence_overtime = []  
+        clarity_overtime = []     
+        engagement_overtime = [] 
+        overall_time_managements = []
+        overall_competencies = []
+        overall_performance_scores = []
+        session_ids = []         
+
+        for entry in data:
+            if isinstance(entry, dict):  
+                iso_time = entry.get("createdAt", "")
+                created_time = convert_iso_to_readable_format(iso_time)
+                performance = entry.get("performance", [])
+                realtime = entry.get('communication_skills', []) 
+                time = entry.get('time_management', {})
+                competency = entry.get('competency', [])
+                overall_performance_score = entry.get("overall_performance_score", "")
+                obs_id = entry.get("obs_id")  
+                
+                if obs_id:
+                    session_ids.append(int(obs_id))  
+                
+                obj_time = {
+                    "time": created_time,
+                    "time_management": time
+                }
+                overall_time_managements.append(obj_time)
+                
+                obj_competency = {
+                    "time": created_time,
+                    "competency": competency
+                }
+                overall_competencies.append(obj_competency)   
+                
+                obj_score = {
+                    "time": created_time,
+                    "score": overall_performance_score
+                }
+                overall_performance_scores.append(obj_score)   
+                 
+                if isinstance(performance, list):
+                    for item in performance:
+                        confidence_level = item.get('level', '').lower()
+                        if confidence_level == 'poor':
+                            value = 1
+                        elif confidence_level == 'good':
+                            value = 2
+                        elif confidence_level == 'excellent':
+                            value = 3
+                        confidence = {"time": created_time, "level": confidence_level, "value": value}
+                        confidence_overtime.append(confidence)                        
+               
+                if isinstance(realtime, list):
+                    for communication in realtime:  
+                        if communication.get('skill') == "clarity":  
+                            clarity_level = communication['level'].lower() 
+                            value = 1 if clarity_level == 'poor' else 2 if clarity_level == 'good' else 3
+                            clarity = {"time": created_time, "level": clarity_level, "value": value}
+                            clarity_overtime.append(clarity)
+
+                        if communication.get('skill') == "engagement":  
+                            engagement_level = communication['level'].lower()  
+                            value = 1 if engagement_level == 'poor' else 2 if engagement_level == 'good' else 3
+                            engagement = {"time": created_time, "level": engagement_level, "value": value}
+                            engagement_overtime.append(engagement)
+                            
+        ipersona_overall = IpersonaSessionOverallObserverSchema(run_stage=run_stage)
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=all_user_id, nopp=True, dataframe=False)
+        if not trainee_profile_data:
+                logger.warn("No trainee user profiles found.")
+                return []
+        tinder_user_profile_id = trainee_profile_data['id']    
+            
+        session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=job_profile_id, nopp=True, dataframe=False)
+       
+        
+        if not session_chatobserver.get("error"): 
+            logger.info(f"Session job overall observer data exists, so updating the data")          
+      
+            session_chatobserver_sessions = session_chatobserver['all_sessions']
+            
+            logger.info(f"Value of session_overall_observer_by_user_and_job: {len(session_chatobserver_sessions)}")
+                
+            if len(session_chatobserver_sessions) > 0:
+                logger.info(f"Updating session job overall observer data")
+                attributes = {
+                    "overall_confidence": confidence_overtime,
+                    "overall_clarity":  clarity_overtime,
+                    "overall_engagement": engagement_overtime,
+                    "overall_time_management": overall_time_managements,
+                    "overall_competency": overall_competencies,
+                    "overall_performance": overall_performance_scores
+                }
+                            
+                overall_data = {
+                    "i_persona_session_overall_observer_id": session_chatobserver['id'], 
+                    "attributes": attributes,
+                }
+                response = ipersona_overall.update_session(params=overall_data, nopp=True, dataframe=False, return_object=True)
+                if response:
+                    logger.success(f"session overall observer data update with new insert anlaysis")   
+        else:  
+            logger.info(f"Creating a new session job overall observer data")          
+                    
+            ipersona_overall = IpersonaSessionOverallObserverSchema(run_stage=run_stage)
+            ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+
+            trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=all_user_id, nopp=True, dataframe=False)
+            if not trainee_profile_data:
+                    logger.warn("No trainee user profiles found.")
+                    return []
+            tinder_user_profile_id = trainee_profile_data['id']    
+            message_data = {
+                "attributes": {
+                    "overall_confidence": confidence_overtime,
+                    "overall_clarity": clarity_overtime,
+                    "overall_engagement": engagement_overtime,
+                    "overall_time_management": overall_time_managements,
+                    "overall_competency": overall_competencies,
+                    "overall_performance": overall_performance_scores
+                },
+                "sessionIds": session_ids,
+                "tinder_user_profile": tinder_user_profile_id,
+                "tinder_job_profile": job_profile_id
             }
             
             response = ipersona_overall.save_Session_Overall_Observer(params=message_data, nopp=True, dataframe=False)
@@ -1978,7 +2386,6 @@ from collections import defaultdict
 #         logger.error(f"Error processing files: {e}")
 #         return {'error': str(e)}
 
-from collections import defaultdict
 
 def summarize_eachjob_data(run_stage, data):
     try:
@@ -2378,6 +2785,126 @@ def extract_json(response, quite=False):
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
     
+#------------------------------------------- Create Session -------------------------------------------------
+def create_session(
+        run_stage, 
+        type, 
+        all_user_id, 
+        user_profile_id, 
+        job_profile_id, 
+        template_id, 
+        challenge_id,
+        message):
+    try:
+        if type.template:
+            metadata =  {
+                "template": True,
+                "generate": False,
+                "external": False,
+                "challenge": False
+            }
+            status = "Incomplete"
+        elif type.external:
+            metadata =  {
+                "template": False,
+                "generate": False,
+                "external": True,
+                "challenge": False
+            }
+            status = "External"
+        elif type.challenge:
+            metadata =  {
+                "template": False,
+                "generate": False,
+                "external": False,
+                "challenge": True
+            }
+            status = "Incomplete"
+            
+            response = gpt.openai_gpt_assistant_without_streaming(message)
+            
+            if not response:
+                logger.error("Failed to generate questions: Empty AI response")
+                return {
+                    "status_code": 500,
+                    "error": "Failed to generate interview questions"
+                }
+                
+            challenge_generated_questions = extract_json(response, quite=False)
+            logger.info("Persona and questions generated successfully")
+            
+
+            # Step 4: Add question numbers
+            question_number = 1
+            for category, questions in challenge_generated_questions.items():
+                for question in questions:
+                    question["question_number"] = str(question_number)
+                    question_number += 1
+
+        if type.challenge: 
+            # Step 5: Save session data
+            session_data = {
+                "slug": str(f"all_user_id: {all_user_id}"),
+                "status": "Incomplete",
+                "attributes": {
+                    "challenge_questions": challenge_generated_questions,
+                    "challenge_id": challenge_id
+                },
+                "metadata": {
+                    "template": False,
+                    "generate": False,
+                    "external": False,
+                    "challenge": True
+
+                },
+                "user_profile_id": user_profile_id,
+                "job_profile_id": job_profile_id
+            }
+        else:
+            session_data = {
+                    "slug": str(f"all_user_id: {all_user_id}"),
+                    "status": status,
+                    "attributes": {
+                        "template_id": template_id
+                    },
+                    "metadata": metadata,
+                    "user_profile_id": user_profile_id,
+                    "job_profile_id": job_profile_id
+                }
+                
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        saved_session = ipersona_session.save_session(
+            params=session_data, return_object=True, nopp=True, dataframe=False
+        )
+
+        if not saved_session:
+            logger.error("Failed to save session")
+            return {
+                "status_code": 500,
+                "content": {"error": "Failed to save session data"}
+            }
+            
+        logger.info(f"Session created successfully with ID: {saved_session.get('id', 'unknown')}")
+        
+        # Remove large questions data before returning
+        return saved_session
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}  
+
+async def analysis_challenge():
+    try:
+        challenge_id =84
+        ipersona_challenge = AsyncTaskAnalyzer()
+        content = ipersona_challenge.get_task_document(challenge_id)
+        content = ipersona_challenge.clean_content(content)
+        result = await ipersona_challenge.analyze_sections(content)
+        return result
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}  
 #------------------------------------------- Extraction Function --------------------------------------------
 def extract_trainee_neccessary_values(data):
     try:

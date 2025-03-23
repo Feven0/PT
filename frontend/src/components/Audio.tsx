@@ -46,7 +46,13 @@ const Audio = () => {
         setLoading(true)
         const data = {
             job_profile_id: 232,
-            all_user_id: 1920
+            all_user_id: 1920,
+            template: false,
+            generate: true,
+            external: false,
+            challenge: false,
+            template_id: 0, 
+            challenge_id: 0
         };
         const response = await Api.sessionCreate(data);
         localStorage.setItem("userSession", JSON.stringify(response?.data))

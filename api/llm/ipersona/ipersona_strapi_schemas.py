@@ -75,6 +75,7 @@ class IpersonaSessionSchema(LeapBaseClass):
                                 id
                             }
                         } 
+                        metadata
                         %s
                     }
                 }
@@ -89,8 +90,8 @@ class IpersonaSessionSchema(LeapBaseClass):
             "attributes": "JSON",
             "i_persona_observer": "ID",
             "tinder_job_profile": "ID",
-            "tinder_user_profile": "ID"
-
+            "tinder_user_profile": "ID",
+            "metadata": "JSON"
         }
 
         self.id_names_map = {  }
@@ -184,7 +185,6 @@ class IpersonaSessionSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}")
             return {'error': f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}"}
-
     
     def get_all_sessions(self, cursor={}, **kwargs):
         try:
@@ -236,7 +236,6 @@ class IpersonaSessionSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error saving session: {str(e)}")
             return {'error': f"Error saving session: {str(e)}"}
-
         
     def save_if_new_user(self, scol, params, **kwargs):
         return self.save_if_new(scol, params, **kwargs)
@@ -286,7 +285,6 @@ class IpersonaSessionSchema(LeapBaseClass):
             logger.error(f"Error extracting data from session JSON: {str(e)}")
             return {'error': f"Error extracting data from session JSON: {str(e)}"}
   
-  
     def get_sessions_data(self, session_json):
         try:
             all_sessions = []
@@ -308,7 +306,6 @@ class IpersonaSessionSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error extracting session data from session JSON: {str(e)}")
             return {'error': f"Error extracting session data from session JSON: {str(e)}"}
-
     
     def get_session_data(self, session_json):
         try:
@@ -948,6 +945,194 @@ class IpersonaJobSchema(LeapBaseClass):
             logger.error(f"Error during pagination: {e}")
             return {"error": "Pagination failed. Please check logs for more details."}
 
+class IpersonaJobSessionSchema(LeapBaseClass):
+    '''
+    Schema Name:
+        TinderJobProfiles
+    Attributes:
+        id: ID,
+        attributes: Json
+    '''
+    def __init__(self, run_stage='', limit=10, since=7, **kwargs) -> None:
+        self.kwargs = copy.deepcopy(kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)
+        
+        self.table_single = kwargs.get('table_single', "")
+        self.table = kwargs.get('table', "")
+        self.data = kwargs.get('data', "")
+        self.start = kwargs.get('start', 0)
+        self.limit = limit
+        self.since_days = since
+        self.sort_order = kwargs.get('sort_order', 'desc')  # 'desc' or 'asc'
+        print('=-----++++++++++++++++--------=----------++++++++++-------===')
+        print(self.limit)
+        if not self.table_single:
+            self.table_single = "tinderJobProfile"
+        
+        if not self.table:
+            self.table = "tinderJobProfiles"
+        
+        if not self.data:
+            logger.info(f"Using default data schema for {self.table_single} ...")
+            
+            # Construct the date filter if since_days is provided
+            date_filter = ""
+            if self.since_days:
+                # Add a date filter for sessions created within the specified number of days
+                date_filter = f'filters: {{createdAt: {{gte: "{self._get_date_since(self.since_days)}" }}}}'
+            
+            # Add sorting option (default to descending by createdAt)
+            sort_clause = f'sort: "createdAt:{self.sort_order}"'
+            
+            # Combine parameters with proper commas
+            params = [f'pagination: {{start: {self.start}, limit: {self.limit}}}']
+            if date_filter:
+                params.append(date_filter)
+            params.append(sort_clause)
+            
+            # Join parameters with commas
+            all_params = ", ".join(params)
+            
+            self.data = f'''
+                data {{
+                    id
+                    attributes {{
+                        attributes
+                        i_persona_sessions({all_params}) {{
+                            data {{
+                                id
+                                attributes {{
+                                    status
+                                    attributes
+                                    createdAt
+                                    i_persona_observer {{
+                                        data {{
+                                            id
+                                            attributes {{
+                                                attributes
+                                                metadata
+                                            }}
+                                        }}
+                                    }}
+                                    tinder_job_profile {{
+                                        data {{
+                                            id
+                                        }}
+                                    }}
+                                    tinder_user_profile {{
+                                        data {{
+                                            id
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }}
+                     %s
+                    }}
+                }}
+            '''
+        else:
+            logger.info(f"Using passed data schema for {self.table_single} ...")
+            
+        self.type_map = {
+            "id": "ID",
+            "attributes": "JSON"
+        }
+        
+        self.id_names_map = { }
+        
+        self.data_template = copy.deepcopy(self.data)
+        self.data = self.data%""
+        _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)
+    
+    def _get_date_since(self, days):
+        """
+        Calculate the date 'days' ago from the current date.
+        Returns ISO format string to use in GraphQL query.
+        """
+        try:
+            from datetime import datetime, timedelta
+            date_since = datetime.now() - timedelta(days=int(days))
+            return date_since.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        except Exception as e:
+            logger.error(f"Error calculating date filter: {str(e)}", exc_info=True)
+            # Return default fallback date (7 days ago)
+            from datetime import datetime, timedelta
+            return (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            
+    def get_job_by_id(self, idval, **kwargs):
+        return self.exists(scol='id', sval=idval, op='eq', stype="ID", **kwargs)        
+    
+    def filter_by_job_id(self, job_profile_id, start=0, limit=20, **kwargs):
+        try:
+            print("tyyyyyyyyyy--------------================")
+            print(self.limit)
+            print(limit)
+            self.start = start if start is not None else self.start
+            self.limit = limit if limit is not None else self.limit
+            print('=----------------------=-----------------------===')
+            print(self.limit)
+            if not job_profile_id:
+                logger.warn("Invalid or missing job_profile_id")
+                return None
+
+            job_filter = f"""
+                filters: {{
+                    id : {{ eq: {job_profile_id} }} 
+                }}
+            """
+            data_json = self.get_all_objects(filter=job_filter, **kwargs)
+            if not data_json:
+                logger.warn(f"No job data found for job_profile_id: {job_profile_id}")
+                return None
+            
+            data = self.get_extracted_data(data_json)
+            if not data:
+                logger.warn(f"No extracted data for job_profile_id: {job_profile_id}")
+                return None
+            cursor = {
+                    "filter": {}, 
+                    "limit": limit,
+                    "start": start,
+                    "query": {},
+                    "total": 58
+                }
+            return data
+
+        except Exception as e:
+            logger.error(f"Error filtering jobs by job_profile_id {job_profile_id}: {e}")
+            return None
+        
+    def get_extracted_data(self, job_json):
+        """
+        Extracts relevant job or job data from a JSON response.
+
+        Parameters:
+        ----------
+        job_json : dict
+            The JSON data containing job or job information.
+
+        Returns:
+        -------
+        list or None
+            A list of extracted job or job data or None if no data is found.
+        """
+        try:
+            if isinstance(job_json, list) and len(job_json) > 0:
+                for entry in job_json:
+                    if 'data' in entry:
+                        job_data = entry.get('data')
+                        return job_data
+                        
+            logger.warn("Invalid job_json format or missing data.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting data: {e}")
+            return None
+      
+        # Initialize logging
+
 class IpersonaSessionOverallObserverSchema(LeapBaseClass):
     '''
     Schema Name:
@@ -1482,6 +1667,7 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
                                 id
                             }
                         }
+                        metadata
                         %s
                     }
                 }
@@ -1492,7 +1678,8 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
             
         self.type_map = {   
             "attributes": "JSON",
-            "i_persona_session": "ID"
+            "i_persona_session": "ID",
+            "metadata": "JSON"
         }
 
         self.id_names_map = {  }
@@ -2015,8 +2202,7 @@ class IpersonaProfileInformationSchema(LeapBaseClass):
 
         except Exception as e:
             logger.error(f"Error extracting profile data: {str(e)}")
-            return {'error': f"Error extracting profile data: {str(e)}"}
-    
+            return {'error': f"Error extracting profile data: {str(e)}"}  
     
 class IpersonaTinderTemplateSchema(LeapBaseClass):
     '''
@@ -2221,3 +2407,126 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error extracting session data from session JSON: {str(e)}")
             return {'error': f"Error extracting session data from session JSON: {str(e)}"}
+
+class IpersonaChallengeDocumentSchema(LeapBaseClass):
+    def __init__(self, run_stage='', **kwargs) -> None:
+        self.kwargs = copy.deepcopy(kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
+        
+        self.table_single = kwargs.get('table_single', "")
+        self.table = kwargs.get('table', "")
+        self.data = kwargs.get('data', "")
+        
+        if not self.table_single:
+            self.table_single = "challengeDocument"
+            
+        if not self.table:
+            self.table = "challengeDocuments"
+            
+        if not self.data:
+            logger.info(f"Using default data schema for {self.table_single} ...")
+            self.data = '''
+                data {
+                    id
+                    attributes {
+                        Title
+                        subtitle
+                        challenge_sections(pagination:{start:0,limit:1000}) {
+                            data {
+                                id
+                                attributes {
+                                    content
+                                }
+                            }
+                        } 
+                        createdAt
+                        updatedAt
+                        %s
+                    }
+                }
+            '''
+        else:
+            logger.info(f"Using passed data schema for {self.table_single} ...")
+     
+            
+        self.type_map = {   
+            "Title": "String",
+            "subtitle": "String",
+            "challenge_sections": "ID"
+        }
+
+        self.id_names_map = {  }
+         
+        self.data_template = copy.deepcopy(self.data)
+        self.data = self.data%""
+        _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)
+    
+    def get_challenge_by_id(self, challengeId, **kwargs):
+        data_json = self.exists(scol='id', sval=challengeId, op='eq', stype="ID", **kwargs)  
+        data = self.get_challenge_data(data_json)   
+        return data
+    
+    def get_all_challenges(self, **kwargs):
+        try:
+          
+            data = self.get_all_objects(**kwargs)
+ 
+            challenge = self.get_challenges_data(data)
+
+            if challenge is None:
+                logger.warn("No challenge data found.")
+                return None
+            
+            return challenge
+
+        except Exception as e:
+            logger.error(f"Error fetching all challenges: {str(e)}")
+            return {'error': f"Error fetching all challenges: {str(e)}"}
+        
+    def save_if_new_user(self, scol, params, **kwargs):
+        return self.save_if_new(scol, params, **kwargs)
+    
+    def get_extracted_data(self, challenge_json):
+        try:
+            if isinstance(challenge_json, list) and len(challenge_json) > 0:
+                for entry in challenge_json:
+                    if 'data' in entry:
+                        challenge = entry.get('data')
+                        return challenge
+                        
+            logger.warn("No valid data found in the challenge JSON.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting data from challenge JSON: {str(e)}")
+            return {'error': f"Error extracting data from challenge JSON: {str(e)}"}  
+  
+    def get_challenges_data(self, challenge_json):
+        try:
+            all_challenges = []
+            if isinstance(challenge_json, list) and len( challenge_json) > 0:
+                for entry in challenge_json:
+                    if 'data' in entry:
+                        trainee = entry.get('data')                            
+                        return trainee
+            logger.warn("No challenges data found in the challenge JSON.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting challenge data from challenge JSON: {str(e)}")
+            return {'error': f"Error extracting challenge data from challenge JSON: {str(e)}"}
+    
+    def get_challenge_data(self, challenge_json):
+        try:
+            all_challenges = []
+            if isinstance(challenge_json, dict) and len(challenge_json) > 0:
+                if 'data' in challenge_json:
+                    return challenge_json['data']
+                        
+                logger.warn("No challenge data found in the challenge JSON.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting challenge data from challenge JSON: {str(e)}")
+            return {'error': f"Error extracting challenge data from challenge JSON: {str(e)}"}

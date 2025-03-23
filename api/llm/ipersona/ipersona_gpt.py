@@ -1,4 +1,4 @@
-import time, asyncio
+import json
 from openai import OpenAI
 import textwrap
 
@@ -59,3 +59,18 @@ def openai_gpt_assistant_without_streaming(msg):
     
     response_message = response.choices[0].message.content  
     return response_message
+
+
+def get_openai_response_async(system_prompt: str, user_prompt: str, **kwargs):
+    """
+    Asynchronous helper function to make OpenAI API calls and return the response.
+    """
+    response = client.chat.completions.create(
+        model = 'gpt-4o-mini',
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        response_format={"type": "json_object"}
+    )
+    return json.loads(response.choices[0].message.content)

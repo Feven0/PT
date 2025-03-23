@@ -2,7 +2,7 @@ import { Spin, Typography } from 'antd';
 import fade from '../assets/fade-circles.svg';
 import hr from '../assets/hr.jpg';
 import { CgProfile } from 'react-icons/cg'
-import {RealTimeEvaluation,LoadingSpinner} from './index'
+import {RealTimeEvaluation, LoadingSpinner} from './index'
 import "../styles/InterviewChat/interviewchat.css"
 import ReactMarkdown from 'react-markdown';
 import { useState } from 'react';
@@ -65,6 +65,7 @@ const Messages: React.FC<Data> = ({interview}) => {
                 <div className='messagecandidate' style={{ backgroundColor: '#ffffff', border: '1px solid #fcf8f8' }}>
                     <Paragraph style={{ margin: 0 }}>
                         <CgProfile size={40} />
+                  
                         <div className="message-text" style={{ fontSize: '1rem', lineHeight: '2rem' }}>
                             {Array.isArray(message?.content?.response) ? (
                                 <ul>
@@ -92,6 +93,17 @@ const Messages: React.FC<Data> = ({interview}) => {
                     )}
                 </div>
             ))}
+
+            {(message?.user_type == 'candidate' && (
+                <div>
+                    {(message?.content?.realtime_evaluation) && (
+                        <RealTimeEvaluation
+                            evaluation={message.content.realtime_evaluation}
+                        />
+                    )}
+                </div>
+            ))}
+            
             
             {(message?.user_type == 'assistant' && (
                 <div>

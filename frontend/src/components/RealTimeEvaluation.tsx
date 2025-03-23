@@ -10,7 +10,6 @@ interface Data {
 
 const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
     const [isVisible, setIsVisible] = useState(false);
-
     const toggleVisibility = () => {
         setIsVisible(!isVisible);
     };
@@ -19,6 +18,7 @@ const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
 
     // Check if evaluation is an array or an object
     const isArray = Array.isArray(evaluation);
+    console.log("hide", isArray)
 
     return (
         <div className='evaluation realtime-evaluation' 
@@ -30,7 +30,10 @@ const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
                 style={{
                     backgroundColor: overall?.relevance === 'strong' ? '#48f50354' : 
                                     overall?.relevance === 'weak' ? '#ff000054' : 
-                                    overall?.relevance === 'medium' ? '#7fc6f554' : '#000000',
+                                    overall?.relevance === 'medium' ? '#7fc6f554' : 
+                                    overall?.relevance === 'valid' ? '#48f50354':
+                                    overall?.relevance === 'invalid' ? '#cccccc' : '',
+
                     display: 'inline-block',
                     borderRadius: '5px 15px 5px 15px',
                     cursor: 'pointer',                  
@@ -62,7 +65,7 @@ const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
                     backgroundColor: '#f9f9f9', 
                     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', 
                 }}>
-                    {isArray ? (
+                    {/* {isArray ? (
                         <Collapse defaultActiveKey={['1']} style={{ marginTop: '1rem' }}>
                             {evaluation.map((item: any, index: number) => (
                                 <Panel 
@@ -76,7 +79,7 @@ const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
                                 </Panel>
                             ))}
                         </Collapse>
-                    ) : (
+                    ) : ( */}
                         <Collapse defaultActiveKey={['1']} style={{ marginTop: '1rem' }}>
                             <Panel 
                                 header="Feedback" 
@@ -88,7 +91,7 @@ const RealTimeEvaluation: React.FC<Data> = ({ evaluation }) => {
                                 </div>
                             </Panel>
                         </Collapse>
-                    )}
+                    {/* )} */}
                 </div>
             )}
         </div>
