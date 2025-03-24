@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, File, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
-from typing import Dict, List, Tuple, Any, Optional, Union
+from typing import Dict, List, Any, Union
 #
 from api import config
 from api.llm.ipersona.ipersona_strapi_schemas import (
@@ -15,7 +15,6 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
     IpersonaSessionOverallObserverSchema, 
     IpersonaSessionMessageSchema, 
     IpersonaSessionObserverSchema,
-    IpersonaProfileInformationSchema,
     IpersonaTinderTemplateSchema,
     IpersonaJobSessionSchema,
     IpersonaChallengeDocumentSchema
@@ -37,47 +36,6 @@ transcriber = aai.Transcriber()
 
 routes = FastAPI(root_path="/api")
 
-# @routes.post("/fetch_profile")
-# def fetch_profile(request: pemodel.AdminDataFiltering):
-#     # all_user_id = 7
-#     # ipersona_profile = IpersonaProfileInformationSchema(run_stage=request.run_stage)
-#     # ipersona_profile_data = ipersona_profile.filter_by_all_user_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
-#     # return ipersona_profile_data
-    
-#     # ipersona_job = IpersonaJobSchema()
-#     # # data = ipersona_job.filter_by_job_id(job_profile_id=request.job_profile_id, since=100, limit=60, nopp=True, dataframe=False)
-#     # data = ipersona_job.get_all_jobs_info(nopp=True, dataframe=False)
-#     # return data
-#     # job_data = [
-#     #     session.get('attributes', {}).get('i_persona_sessions', {}).get('data', {})
-#     #     for session in data
-#     #     if session.get('attributes', {}).get('i_persona_sessions', {}).get('data', {})
-#     # ]     
-#     # job_data = util.extracted_needed_metrics(job_data) 
-    
-#     # limit = request.limit
-#     # since = request.since
-#     # cursor = request.cursor
-#     # filter_data = request.filter
-#     # job_profile_id = request.job_profile_id
-#     # job_data, cursor = ipersona_job.get_trainee_job_profile(limit, since, cursor, filter_data, job_profile_id)
-#     # job_data = util.extracted_needed_metrics(job_data) 
-#     # return job_data
-#     try:
-#         ipersona_challenge = IpersonaChallengeDocumentSchema()
-#         challengeId=84
-#         challenge = ipersona_challenge.get_challenge_by_id(challengeId, nopp=True, dataframe=False)
-#         # challenge = ipersona_challenge.get_all_challenges(nopp=True, dataframe=False)
-#         print('=======================00======================')
-#         print(challenge)
-#         return challenge
-#     except Exception as e:
-#         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
-#         return JSONResponse(
-#             status_code=500,
-#             content={"error": f"Error processing user session: {str(e)}"}
-#         )
- 
 
 @routes.post("/audio_upload")
 async def speech_to_text(file: UploadFile = File(...)) -> dict:
@@ -1074,143 +1032,6 @@ async def calculate_admin_alljobs_data(request: pemodel.AdminDataFiltering) -> D
             "message": f"Error processing data: {str(e)}"
         }
 
-@routes.post("/admin_each_job_overview_data_older") #-> Dict[str, Any]
-async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFiltering) :
-    """
-    Calculate administrative data for all jobs by processing session data.
-
-    Fetches all session data based on provided filters, calculates metrics,
-    and returns summarized results for all jobs.
-
-    Parameters
-    ----------
-    request : pemodel.AdminDataFiltering
-        Object containing:
-        - filter: Optional query filters
-        - return_skip: Flag to include skipped items
-        - information_level: Detail level for results
-        - since: Starting point for pagination
-        - limit: Maximum number of items to return
-        - cursor: Pagination cursor
-
-    Returns
-    -------
-    Dict[str, Any]
-        Jobs data summary or error response with the format:
-        {
-            "data": list,
-            "cursor": list,
-            "status": int,
-            "message": str
-        }
-    """
-    run_stage = request.run_stage
-
-    try:
-        logger.info("Starting admin all jobs data calculation")
-        
-        # Process request parameters
-        job_profile_id = request.job_profile_id
-        query_filter = request.filter or {}
-        since = max(request.since or 1, 1)  # Ensure minimum value of 1
-        limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
-        cursor = request.cursor
-        
-        # Prepare query parameters
-        kwargs = query_filter.copy() if query_filter else {}
-        
-        # -------------- fetch the data with the leap_base.py -------------- #
-
-        # Step 1: Fetch all session data
-        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-        data, cursor = ipersona_session.get_all_sessions(
-            cursor=cursor, 
-            since=since, 
-            limit=limit, 
-            nopp=True, 
-            dataframe=False,
-            **kwargs
-        )        
-        
-        # Step 2: Apply additional filtering by 'job_profile_id'
-        data = [
-            session for session in data
-            if session.get('attributes', {}).get('tinder_job_profile', {}).get('data', {}).get('id') == str(job_profile_id)
-        ]        
-
-        if not data:
-            logger.error(f"No sessions found for job_profile_id: {job_profile_id}")
-            return None
-               
-        # data = ipersona_session.get_alladmin_sessions(
-        #     # cursor=cursor, 
-        #     since=request.since, 
-        #     limit=request.limit, 
-        #     nopp=True, 
-        #     dataframe=False,
-        #     # **kwargs
-        # )
-        # -------------- fetch the data with the leap_base.py -------------- #
-
-        
-        # -------------- fetch the data with the query -------------- #
-        # ipersona_job = IpersonaJobSchema()
-        # data, cursor = ipersona_job.get_trainee_job_profile(limit, since, cursor, query_filter, job_profile_id)
-        # return data
-        # -------------- fetch the data with the query -------------- #
-
-        if not data:
-            logger.warn("No session data found for admin all jobs view")
-            return {
-                "data": [],  
-                "cursor": [],
-                "status": 404, 
-                "message": "No data found with the given parameters"
-            }
-
-        logger.info(f"Processing all jobs metrics for {len(data)} sessions")
-        
-        # Step 2: Summarize all jobs data
-        result, total = util.summarize_eachjob_data(run_stage, data)
-        cursor['total'] = total
-
-        if result:
-            data = result['trainees']
-            job_title = result['job_title']
-            company_name = result['company_name']
-            location = result['location']
-            url = result['url']
-            
-            result = util.add_columns(
-                        data, 
-                        cursor, 
-                        job_profile_id, 
-                        job_title,
-                        company_name,
-                        location,
-                        url,
-                        kind='admin_each_job', 
-                        **kwargs
-                    )
-            
-            return result
-            logger.info("Admin all jobs data calculated successfully")
-            return {
-                "data": result, 
-                "cursor": cursor,                  
-                "status": 200, 
-                "message": ""
-            }
-
-    except Exception as e:
-        logger.error(f"Error processing admin all jobs data: {str(e)}", exc_info=True)
-        return {
-            "data": [],  
-            "cursor": [],
-            "status": 500, 
-            "message": f"Error processing data: {str(e)}"
-        }
-    
 @routes.post("/admin_each_job_overview_data")
 async def calculate_admin_eachjob_(request: pemodel.AdminDataEachJobFiltering) -> Union[List, Dict]:
     """
