@@ -1074,7 +1074,7 @@ async def calculate_admin_alljobs_data(request: pemodel.AdminDataFiltering) -> D
             "message": f"Error processing data: {str(e)}"
         }
 
-@routes.post("/admin_each_job_overview_data") #-> Dict[str, Any]
+@routes.post("/admin_each_job_overview_data_older") #-> Dict[str, Any]
 async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFiltering) :
     """
     Calculate administrative data for all jobs by processing session data.
@@ -1211,123 +1211,123 @@ async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFilterin
             "message": f"Error processing data: {str(e)}"
         }
     
-# @routes.post("/admin_each_job_overview_") #-> Dict[str, Any]
-# async def calculate_admin_eachjob_(request: pemodel.AdminDataEachJobFiltering) :
-#     """
-#     Calculate administrative data for all jobs by processing session data.
+@routes.post("/admin_each_job_overview_data")
+async def calculate_admin_eachjob_(request: pemodel.AdminDataEachJobFiltering) -> Union[List, Dict]:
+    """
+    Calculate administrative data for all jobs by processing session data.
 
-#     Fetches all session data based on provided filters, calculates metrics,
-#     and returns summarized results for all jobs.
+    Fetches all session data based on provided filters, calculates metrics,
+    and returns summarized results for all jobs.
 
-#     Parameters
-#     ----------
-#     request : pemodel.AdminDataFiltering
-#         Object containing:
-#         - filter: Optional query filters
-#         - return_skip: Flag to include skipped items
-#         - information_level: Detail level for results
-#         - since: Starting point for pagination
-#         - limit: Maximum number of items to return
-#         - cursor: Pagination cursor
+    Parameters
+    ----------
+    request : pemodel.AdminDataFiltering
+        Object containing:
+        - filter: Optional query filters
+        - return_skip: Flag to include skipped items
+        - information_level: Detail level for results
+        - since: Starting point for pagination
+        - limit: Maximum number of items to return
+        - cursor: Pagination cursor
 
-#     Returns
-#     -------
-#     Dict[str, Any]
-#         Jobs data summary or error response with the format:
-#         {
-#             "data": list,
-#             "cursor": list,
-#             "status": int,
-#             "message": str
-#         }
-#     """
-#     run_stage = request.run_stage
+    Returns
+    -------
+    Dict[str, Any]
+        Jobs data summary or error response with the format:
+        {
+            "data": list,
+            "cursor": list,
+            "status": int,
+            "message": str
+        }
+    """
+    run_stage = request.run_stage
 
-#     try:
-#         logger.info("Starting admin all jobs data calculation")
+    try:
+        logger.info("Starting admin all jobs data calculation")
         
-#         # Process request parameters
-#         job_profile_id = request.job_profile_id
-#         query_filter = request.filter or {}
-#         since = max(request.since or 1, 1)  
-#         limit = max(request.limit or 1, 1)  
-#         # cursor = request.cursor
+        # Process request parameters
+        job_profile_id = request.job_profile_id
+        query_filter = request.filter or {}
+        since = max(request.since or 1, 1)  
+        limit = max(request.limit or 1, 1)  
+        # cursor = request.cursor
         
-#         # Prepare query parameters
-#         kwargs = query_filter.copy() if query_filter else {}
+        # Prepare query parameters
+        kwargs = query_filter.copy() if query_filter else {}
                 
-#         # -------------- fetch the data with the query -------------- #
-#         ipersona_job = IpersonaJobSessionSchema(run_stage=run_stage, limit=limit, since=since)
-#         data = ipersona_job.filter_by_job_id(
-#             job_profile_id,
-#             start=since,  
-#             limit=limit,  
-#             nopp=True, 
-#             dataframe=False,
-#             **kwargs  # Additional kwargs if needed
-#         )
+        # -------------- fetch the data with the query -------------- #
+        ipersona_job = IpersonaJobSessionSchema(run_stage=run_stage, limit=limit, since=since)
+        data, cursor = ipersona_job.filter_by_job_id(
+            job_profile_id,
+            start=since,  
+            limit=limit,  
+            nopp=True, 
+            dataframe=False,
+            **kwargs  # Additional kwargs if needed
+        )
 
-#         data = [
-#                 session_data
-#                 for session in data
-#                 for session_data in session.get('attributes', {}).get('i_persona_sessions', {}).get('data', [])
-#             ]
+        data = [
+                session_data
+                for session in data
+                for session_data in session.get('attributes', {}).get('i_persona_sessions', {}).get('data', [])
+            ]
         
-#         # data = util.extracted_needed_metrics(data) 
-#         return len(data)
-#         # -------------- fetch the data with the query -------------- #
+        # data = util.extracted_needed_metrics(data) 
+        #return len(data)
+        #return data
+        # -------------- fetch the data with the query -------------- #
 
-#         if not data:
-#             logger.warn("No session data found for admin all jobs view")
-#             return {
-#                 "data": [],  
-#                 "cursor": [],
-#                 "status": 404, 
-#                 "message": "No data found with the given parameters"
-#             }
+        if not data:
+            logger.warn("No session data found for admin all jobs view")
+            return {
+                "data": [],  
+                "cursor": [],
+                "status": 404, 
+                "message": "No data found with the given parameters"
+            }
 
-#         logger.info(f"Processing all jobs metrics for {len(data)} sessions")
+        logger.info(f"Processing all jobs metrics for {len(data)} sessions")
         
-#         # Step 2: Summarize all jobs data
-#         result, total = util.summarize_eachjob_data(run_stage, data)
-#         cursor['total'] = total
+        # Step 2: Summarize all jobs data
+        result, total = util.summarize_eachjob_data(run_stage, data)
+        # cursor['total'] = total
 
-#         if result:
-#             data = result['trainees']
-#             job_title = result['job_title']
-#             company_name = result['company_name']
-#             location = result['location']
-#             url = result['url']
+        if result:
+            data = result['trainees']
+            job_title = result['job_title']
+            company_name = result['company_name']
+            location = result['location']
+            url = result['url']
+            result = util.add_columns(
+                        data, 
+                        cursor, 
+                        job_profile_id, 
+                        job_title,
+                        company_name,
+                        location,
+                        url,
+                        kind='admin_each_job', 
+                        **kwargs
+                    )
             
-#             result = util.add_columns(
-#                         data, 
-#                         cursor, 
-#                         job_profile_id, 
-#                         job_title,
-#                         company_name,
-#                         location,
-#                         url,
-#                         kind='admin_each_job', 
-#                         **kwargs
-#                     )
-            
-#             return result
-#             logger.info("Admin all jobs data calculated successfully")
-#             return {
-#                 "data": result, 
-#                 "cursor": cursor,                  
-#                 "status": 200, 
-#                 "message": ""
-#             }
+            return result
+            logger.info("Admin all jobs data calculated successfully")
+            return {
+                "data": result, 
+                "cursor": cursor,                  
+                "status": 200, 
+                "message": ""
+            }
 
-#     except Exception as e:
-#         logger.error(f"Error processing admin each jobs data: {str(e)}", exc_info=True)
-#         return {
-#             "data": [],  
-#             "cursor": [],
-#             "status": 500, 
-#             "message": f"Error processing data: {str(e)}"
-#         }
+    except Exception as e:
+        logger.error(f"Error processing admin each jobs data: {str(e)}", exc_info=True)
+        return {
+            "data": [],  
+            "cursor": [],
+            "status": 500, 
+            "message": f"Error processing data: {str(e)}"
+        }
         
 @routes.post("/admin_allusers_performance_data")
 async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFiltering) :
@@ -1656,8 +1656,8 @@ def tinder_template(request: pemodel.TinderTemplateRequestRecieved):
         template_questions = request.template_questions
         job_profile_ids = request.job_profile_ids
 
-        ipersona_test = IpersonaManager()
-        data = ipersona_test.create_template(name, type, template_questions, job_profile_ids)
+        ipersona_tinder = IpersonaTinderTemplateSchema()
+        data = ipersona_tinder.create_template(name, type, template_questions, job_profile_ids)
         return data
      
     except Exception as e:
@@ -1695,8 +1695,8 @@ def update_tinder_template(request: pemodel.UpdateTinderTemplateRequestRecieved)
         template_questions = request.template_questions
         job_profile_ids = request.job_profile_ids
 
-        ipersona_test = IpersonaManager()
-        data = ipersona_test.update_template(template_id, name, type, template_questions, job_profile_ids)
+        ipersona_tinder = IpersonaTinderTemplateSchema()
+        data = ipersona_tinder.update_template(template_id, name, type, template_questions, job_profile_ids)
         return data
      
     except Exception as e:

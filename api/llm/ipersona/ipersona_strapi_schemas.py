@@ -5,16 +5,10 @@ import json
 from datetime import datetime, timedelta
 
 
-#from .pathfig import *
-
-
 from api import config
 from api.modules.leap_base import LeapBaseClass
-#from api.modules.leap_trainee import TraineeSchema
-#
 from api.utils.logger import LLPackerLogger
 logger = LLPackerLogger(__file__)
-from collections import defaultdict
 
 capitalize = lambda x: x[0].upper() + x[1:]
 
@@ -953,7 +947,7 @@ class IpersonaJobSessionSchema(LeapBaseClass):
         id: ID,
         attributes: Json
     '''
-    def __init__(self, run_stage='', limit=10, since=7, **kwargs) -> None:
+    def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
         super().__init__(run_stage=run_stage, **kwargs)
         
@@ -961,11 +955,10 @@ class IpersonaJobSessionSchema(LeapBaseClass):
         self.table = kwargs.get('table', "")
         self.data = kwargs.get('data', "")
         self.start = kwargs.get('start', 0)
-        self.limit = limit
-        self.since_days = since
-        self.sort_order = kwargs.get('sort_order', 'desc')  # 'desc' or 'asc'
-        print('=-----++++++++++++++++--------=----------++++++++++-------===')
-        print(self.limit)
+        self.limit = kwargs.get('limit', 10)
+        self.since_days = kwargs.get('since', 10)
+        self.sort_order = kwargs.get('sort_order', 'desc')  
+      
         if not self.table_single:
             self.table_single = "tinderJobProfile"
         
@@ -1050,14 +1043,11 @@ class IpersonaJobSessionSchema(LeapBaseClass):
         Calculate the date 'days' ago from the current date.
         Returns ISO format string to use in GraphQL query.
         """
-        try:
-            from datetime import datetime, timedelta
+        try:            
             date_since = datetime.now() - timedelta(days=int(days))
             return date_since.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         except Exception as e:
             logger.error(f"Error calculating date filter: {str(e)}", exc_info=True)
-            # Return default fallback date (7 days ago)
-            from datetime import datetime, timedelta
             return (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             
     def get_job_by_id(self, idval, **kwargs):
@@ -1065,13 +1055,9 @@ class IpersonaJobSessionSchema(LeapBaseClass):
     
     def filter_by_job_id(self, job_profile_id, start=0, limit=20, **kwargs):
         try:
-            print("tyyyyyyyyyy--------------================")
-            print(self.limit)
-            print(limit)
             self.start = start if start is not None else self.start
             self.limit = limit if limit is not None else self.limit
-            print('=----------------------=-----------------------===')
-            print(self.limit)
+     
             if not job_profile_id:
                 logger.warn("Invalid or missing job_profile_id")
                 return None
@@ -1091,13 +1077,13 @@ class IpersonaJobSessionSchema(LeapBaseClass):
                 logger.warn(f"No extracted data for job_profile_id: {job_profile_id}")
                 return None
             cursor = {
-                    "filter": {}, 
+                    "filter": f'{{createdAt: {{gte: "{self._get_date_since(self.since_days)}" }}}}', 
                     "limit": limit,
                     "start": start,
                     "query": {},
-                    "total": 58
+                    "total": len(data)
                 }
-            return data
+            return data, cursor
 
         except Exception as e:
             logger.error(f"Error filtering jobs by job_profile_id {job_profile_id}: {e}")
@@ -1131,8 +1117,6 @@ class IpersonaJobSessionSchema(LeapBaseClass):
             logger.error(f"Error extracting data: {e}")
             return None
       
-        # Initialize logging
-
 class IpersonaSessionOverallObserverSchema(LeapBaseClass):
     '''
     Schema Name:
@@ -2203,7 +2187,9 @@ class IpersonaProfileInformationSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error extracting profile data: {str(e)}")
             return {'error': f"Error extracting profile data: {str(e)}"}  
-    
+
+
+
 class IpersonaTinderTemplateSchema(LeapBaseClass):
     '''
     Schema Name:
@@ -2339,30 +2325,6 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
         
     def save_if_new_user(self, scol, params, **kwargs):
         return self.save_if_new(scol, params, **kwargs)
-    
-    def update_session(self, params, **kwargs):
-        try:
-            if self.id_name() not in params:
-                logger.error("Id is missing for update!")
-                return []
-            
-            return self.save_or_update_object(params, **kwargs)
-
-        except Exception as e:
-            logger.error(f"Error updating session: {str(e)}")
-            return {'error': f"Error updating session: {str(e)}"}
-
-    def delete_session(self, ids, **kwargs):
-        try:
-            if not ids:
-                logger.error("No IDs provided for deletion!")
-                return {'error': "No IDs provided for deletion!"}
-            
-            return self.delete_objects_by_id(ids, **kwargs)
-
-        except Exception as e:
-            logger.error(f"Error deleting session(s) with IDs {ids}: {str(e)}")
-            return {'error': f"Error deleting session(s) with IDs {ids}: {str(e)}"}
 
     def get_extracted_data(self, session_json):
         try:
@@ -2407,6 +2369,160 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error extracting session data from session JSON: {str(e)}")
             return {'error': f"Error extracting session data from session JSON: {str(e)}"}
+
+    
+    def create_template(self, name, type, template_questions, job_profile_ids):
+        mutation_query = """
+            mutation CreateTinderTemplate($name: String!, $type: String!, $attributes: JSON!, $jobProfileIds: [ID!]) {
+                createTinderTemplate(data: {
+                    name: $name
+                    type: $type
+                    attributes: $attributes
+                    tinder_job_profiles: $jobProfileIds 
+                }) {
+                    data {
+                    id
+                    attributes {
+                        name
+                        type
+                        createdAt
+                        tinder_job_profiles {
+                            data {
+                                id
+                            }
+                        }
+                    }
+                    }
+                }
+            }
+        """
+
+        variables = {
+            "name": name,
+            "type": type,
+            "attributes": {
+                "template_questions": template_questions
+            },
+            "jobProfileIds": job_profile_ids  
+        }
+        
+        # Execute the GraphQL mutation
+        res_json = self.sg.insert_table(query=mutation_query, variables=variables)
+
+        # Parse the response
+        try:
+            response = json.loads(res_json)
+            template_data = response.get("data", {}).get("createTinderTemplate", {}).get("data", {})
+            
+            if template_data:
+                # Extract details
+                template_id = template_data.get("id", "N/A")
+                attributes = template_data.get("attributes", {})
+                name = attributes.get("name", "N/A")
+                template_type = attributes.get("type", "N/A")
+                created_at = attributes.get("createdAt", "N/A")
+                job_profile_ids = [job_profile.get("id") for job_profile in attributes.get("tinder_job_profiles", {}).get("data", [])]
+                
+                return {
+                    "status": "success",
+                    "message": "Template created successfully.",
+                    "data": {
+                        "id": template_id,
+                        "name": name,
+                        "type": template_type,
+                        "createdAt": created_at,
+                        "jobProfileIds": job_profile_ids
+                    }
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": "Failed to create template. No data returned."
+                }
+        
+        except json.JSONDecodeError:
+            return {
+                "status": "error",
+                "message": "Invalid JSON response from the server."
+            }
+
+
+
+    def update_template(self, template_id, name, type, template_questions, job_profile_ids):
+        mutation_query = """
+            mutation UpdateTinderTemplate($id: ID!, $name: String!, $type: String!, $attributes: JSON!, $jobProfileIds: [ID!]) {
+                updateTinderTemplate(id: $id, data: {
+                    name: $name
+                    type: $type
+                    attributes: $attributes
+                    tinder_job_profiles: $jobProfileIds 
+                }) {
+                    data {
+                        id
+                        attributes {
+                            name
+                            type
+                            updatedAt
+                            tinder_job_profiles {
+                                data {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """
+
+        variables = {
+            "id": template_id,
+            "name": name,
+            "type": type,
+            "attributes": {
+                "template_questions": template_questions
+            },
+            "jobProfileIds": job_profile_ids
+        }
+        
+        # Execute the GraphQL mutation
+        res_json = self.sg.insert_table(query=mutation_query, variables=variables)
+
+        # Parse the response
+        try:
+            response = json.loads(res_json)
+            template_data = response.get("data", {}).get("updateTinderTemplate", {}).get("data", {})
+            
+            if template_data:
+                # Extract details
+                template_id = template_data.get("id", "N/A")
+                attributes = template_data.get("attributes", {})
+                name = attributes.get("name", "N/A")
+                template_type = attributes.get("type", "N/A")
+                updated_at = attributes.get("updatedAt", "N/A")
+                job_profile_ids = [job_profile.get("id") for job_profile in attributes.get("tinder_job_profiles", {}).get("data", [])]
+                
+                return {
+                    "status": "success",
+                    "message": "Template updated successfully.",
+                    "data": {
+                        "id": template_id,
+                        "name": name,
+                        "type": template_type,
+                        "updatedAt": updated_at,
+                        "jobProfileIds": job_profile_ids
+                    }
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": "Failed to update template. No data returned."
+                }
+
+        except json.JSONDecodeError:
+            return {
+                "status": "error",
+                "message": "Invalid JSON response from the server."
+            }
 
 class IpersonaChallengeDocumentSchema(LeapBaseClass):
     def __init__(self, run_stage='', **kwargs) -> None:

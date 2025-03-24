@@ -1796,7 +1796,7 @@ def summarize_interviews(
                     'total_interviews_count': total_session_count,
                     "score": average_score
                 })
-                
+            cursor['total'] = len(summary_response)   
             output = add_engagement_columns(summary_response, cursor, kind='jobs', **kwargs)    
         
             return output, cursors

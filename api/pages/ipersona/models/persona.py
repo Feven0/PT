@@ -99,8 +99,6 @@ class AdminDataEachJobFiltering(MyBaseModel):
     since: Optional[int] = default_days_since
     filter: Optional[Dict] = {}
     job_profile_id: int
-    # information_level: Optional[str] = "minimal"
-    # return_skip: Optional[bool] = False
       
 class TinderTemplateRequestRecieved(MyBaseModel):
     name: str
