@@ -136,16 +136,19 @@ class IpersonaSessionSchema(LeapBaseClass):
                 limit=limit, 
                 nopp=True, 
                 dataframe=False)
-        
+
             if not filtered_data:
                 logger.error("No data returned after filtering by 'since' and 'limit'")
                 data = []
+                return data, cursors
             else:
                 # Step 2: Apply additional filtering by 'user_profile_id'
                 data = [session for session in filtered_data if session.get('attributes').get('tinder_user_profile').get('data').get('id') == user_profile_id]
+       
                 if not data:
                     logger.info(f"No sessions found for user_profile_id: {user_profile_id}")
-                    return None
+                    data = []
+                    return data, cursors
           
             return data, cursors
         
@@ -939,6 +942,184 @@ class IpersonaJobSchema(LeapBaseClass):
             logger.error(f"Error during pagination: {e}")
             return {"error": "Pagination failed. Please check logs for more details."}
 
+class IpersonaTraineeSessionSchema(LeapBaseClass):
+    '''
+    Schema Name:
+        TinderJobProfiles
+    Attributes:
+        id: ID,
+        attributes: Json
+    '''
+    def __init__(self, run_stage='', **kwargs) -> None:
+        self.kwargs = copy.deepcopy(kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)
+        
+        self.table_single = kwargs.get('table_single', "")
+        self.table = kwargs.get('table', "")
+        self.data = kwargs.get('data', "")
+        self.start = kwargs.get('start', 0)
+        self.limit = kwargs.get('limit', 10)
+        self.since_days = kwargs.get('since', 10)
+        self.sort_order = kwargs.get('sort_order', 'desc')  
+      
+        if not self.table_single:
+            self.table_single = "tinderUserProfile"
+        
+        if not self.table:
+            self.table = "tinderUserProfiles"
+        
+        if not self.data:
+            logger.info(f"Using default data schema for {self.table_single} ...")
+            
+            # Construct the date filter if since_days is provided
+            date_filter = ""
+            if self.since_days:
+                # Add a date filter for sessions created within the specified number of days
+                date_filter = f'filters: {{createdAt: {{gte: "{self._get_date_since(self.since_days)}" }}}}'
+            
+            # Add sorting option (default to descending by createdAt)
+            sort_clause = f'sort: "createdAt:{self.sort_order}"'
+            
+            # Combine parameters with proper commas
+            params = [f'pagination: {{start: {self.start}, limit: {self.limit}}}']
+            if date_filter:
+                params.append(date_filter)
+            params.append(sort_clause)
+            
+            # Join parameters with commas
+            all_params = ", ".join(params)
+            
+            self.data = f'''
+                data {{
+                    id
+                    attributes {{
+                        # attributes
+                        i_persona_sessions({all_params}) {{
+                            data {{
+                                id
+                                attributes {{
+                                    status
+                                    attributes
+                                    createdAt
+                                    i_persona_observer {{
+                                        data {{
+                                            id
+                                            attributes {{
+                                                attributes
+                                                metadata
+                                            }}
+                                        }}
+                                    }}
+                                    tinder_job_profile {{
+                                        data {{
+                                            id
+                                        }}
+                                    }}
+                                    tinder_user_profile {{
+                                        data {{
+                                            id
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }}
+                     %s
+                    }}
+                }}
+            '''
+        else:
+            logger.info(f"Using passed data schema for {self.table_single} ...")
+            
+        self.type_map = {
+            "id": "ID",
+            "attributes": "JSON"
+        }
+        
+        self.id_names_map = { }
+        
+        self.data_template = copy.deepcopy(self.data)
+        self.data = self.data%""
+        _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)
+    
+    def _get_date_since(self, days):
+        """
+        Calculate the date 'days' ago from the current date.
+        Returns ISO format string to use in GraphQL query.
+        """
+        try:            
+            date_since = datetime.now() - timedelta(days=int(days))
+            return date_since.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        except Exception as e:
+            logger.error(f"Error calculating date filter: {str(e)}", exc_info=True)
+            return (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            
+    def get_user_by_id(self, idval, **kwargs):
+        return self.exists(scol='id', sval=idval, op='eq', stype="ID", **kwargs)        
+    
+    def filter_by_user_id(self, user_profile_id, start=0, limit=20, **kwargs):
+        try:
+            self.start = start if start is not None else self.start
+            self.limit = limit if limit is not None else self.limit
+     
+            if not user_profile_id:
+                logger.warn("Invalid or missing job_profile_id")
+                return None
+
+            job_filter = f"""
+                filters: {{
+                    id : {{ eq: {user_profile_id} }} 
+                }}
+            """
+            data_json = self.get_all_objects(filter=job_filter, **kwargs)
+            if not data_json:
+                logger.warn(f"No job data found for job_profile_id: {user_profile_id}")
+                return None
+            
+            data = self.get_extracted_data(data_json)
+            if not data:
+                logger.warn(f"No extracted data for job_profile_id: {user_profile_id}")
+                return None
+            cursor = {
+                    "filter": f'{{createdAt: {{gte: "{self._get_date_since(self.since_days)}" }}}}', 
+                    "limit": limit,
+                    "start": start,
+                    "query": {},
+                    "total": len(data)
+                }
+            return data, cursor
+
+        except Exception as e:
+            logger.error(f"Error filtering jobs by job_profile_id {user_profile_id}: {e}")
+            return cursor
+        
+    def get_extracted_data(self, data_json):
+        """
+        Extracts relevant job or job data from a JSON response.
+
+        Parameters:
+        ----------
+        job_json : dict
+            The JSON data containing job or job information.
+
+        Returns:
+        -------
+        list or None
+            A list of extracted job or job data or None if no data is found.
+        """
+        try:
+            if isinstance(data_json, list) and len(data_json) > 0:
+                for entry in data_json:
+                    if 'data' in entry:
+                        list_data = entry.get('data')
+                        return list_data
+                        
+            logger.warn("Invalid job_json format or missing data.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting data: {e}")
+            return None
+
 class IpersonaJobSessionSchema(LeapBaseClass):
     '''
     Schema Name:
@@ -1087,7 +1268,7 @@ class IpersonaJobSessionSchema(LeapBaseClass):
 
         except Exception as e:
             logger.error(f"Error filtering jobs by job_profile_id {job_profile_id}: {e}")
-            return None
+            return cursor
         
     def get_extracted_data(self, job_json):
         """
@@ -1116,7 +1297,7 @@ class IpersonaJobSessionSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error extracting data: {e}")
             return None
-      
+
 class IpersonaSessionOverallObserverSchema(LeapBaseClass):
     '''
     Schema Name:

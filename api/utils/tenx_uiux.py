@@ -171,7 +171,7 @@ class BaseTable():
                 url,
                 **kwargs):
         data = copy.deepcopy(dataIn)
-        self.table['cursor'] = cursor  
+        #self.table['cursor'] = cursor  
         self.table['job_profile_id'] = job_profile_id
         self.table['job_title'] = job_title
         self.table['company_name'] = company_name
@@ -226,7 +226,7 @@ class BaseTable():
                 cursor,
                 **kwargs):
         data = copy.deepcopy(dataIn)
-        self.table['cursor'] = cursor  
+        # self.table['cursor'] = cursor  
 
         # Check if data is a dictionary
         if isinstance(data, dict):
@@ -313,7 +313,7 @@ class BaseTable():
             "pagination": kwargs.get('pagination', 25),
             "size": kwargs.get('size', 'middle'),
             "email": kwargs.get('email', False),
-            "cursor": cursor
+            # "cursor": cursor
         }
 
         table.update(additional_fields)

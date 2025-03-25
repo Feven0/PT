@@ -17,7 +17,8 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
     IpersonaSessionObserverSchema,
     IpersonaTinderTemplateSchema,
     IpersonaJobSessionSchema,
-    IpersonaChallengeDocumentSchema
+    IpersonaChallengeDocumentSchema,
+    IpersonaTraineeSessionSchema
 )
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_gpt as gpt
@@ -52,7 +53,7 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
         
     Returns
     -------
-    Dict[str, Any]
+    Union[List, Dict]
         A dictionary containing:
         - 'transcription': The transcribed text or "Failed" on error
         - 'status': HTTP status code (200 for success, 400 for transcription error)
@@ -139,7 +140,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         
     Returns
     -------
-    Dict[str, Any]
+    Union[List, Dict]
         Session data with generated questions removed or error response
         
     Raises
@@ -626,8 +627,8 @@ async def calculate_allstat_progress(request: pemodel.AllUserIdRecieved):
         logger.error(f"Unexpected error during processing: {str(e)} for all_user_id: {request.all_user_id}")
         return JSONResponse(status_code=500, content={"error": f"Unexpected error occurred: {str(e)}"})
 
-@routes.post("/engagement_jobs_status")
-def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved) -> Dict[str, Any]:
+@routes.post("/engagement_jobs_status_older")
+def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved) :
     """
     Calculate interview engagement status for a user across all job types.
     
@@ -648,17 +649,16 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
         
     Returns
     -------
-    Dict[str, Any]
+    Union[List, Dict]
         Engagement summary data or error response
     """
     run_stage = request.run_stage
+    query_filter = request.filter or {}
+    kwargs = query_filter.copy() if query_filter else {}
 
     if not request or not request.all_user_id:
         logger.error("Invalid request: Missing user ID")
         return {
-            "all_user_id": [],
-            "jobs": [],
-            "cursor": [],
             "status": 400,
             "message": "User ID is required"
         }
@@ -679,8 +679,6 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             logger.warn(f"No trainee profiles found for user ID: {request.all_user_id}")
             return {
                 "all_user_id": request.all_user_id,
-                "jobs": [],
-                "cursor": [],
                 "status": 404,
                 "message": "No trainee profiles found for the given user ID"
             }
@@ -690,12 +688,10 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             logger.error(f"Invalid trainee profile for user ID: {request.all_user_id}")
             return {
                 "all_user_id": request.all_user_id,
-                "jobs": [],
-                "cursor": [],
                 "status": 500,
                 "message": "Invalid trainee profile data"
             }
-            
+          
         # Step 2: Process request parameters with defaults
         query_filter = request.filter or {}
         return_skip = request.return_skip
@@ -715,40 +711,167 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             information_level=information_level,
             return_skip=return_skip            
         )
-
         logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
 
         
         # Step 4: Prepare response
-        if data:
+        if len(data) != 0:
+            output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)    
+
             return {
-                "all_user_id": request.all_user_id,
-                "jobs": data, 
-                # "cursor": cursor,                  
-                "status": 200, 
+                "engagement": output,
+                "cursor": cursor,
+                "status": 200,
                 "message": ""
             }
         else: 
+            data = []
+            output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)   
             return {
-                "all_user_id": request.all_user_id, 
-                "jobs": [],  
-                "cursor": [],
-                "status": 404, 
-                "message": "No data found with the given parameters"
+                "engagement": output,
+                "cursor": cursor,
+                "status": 200,
+                "message": ""
             }
 
     except Exception as e:
         logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
         return {
             "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
-            "jobs": [],  
-            "cursor": [],
+            "status": 500, 
+            "message": str(e)
+        }
+
+@routes.post("/engagement_jobs_status")
+def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved) :
+    """
+    Calculate interview engagement status for a user across all job types.
+    
+    Retrieves and summarizes a user's engagement with interview sessions for
+    different job categories.
+    
+    Parameters
+    ----------
+    request : pemodel.AllUserSessionRequestRecieved
+        Object containing:
+        - all_user_id: User identifier
+        - filter: Optional query filters
+        - return_skip: Flag to include skipped items
+        - information_level: Detail level for results
+        - since: Starting point for pagination
+        - limit: Maximum number of items to return
+        - cursor: Pagination cursor
+        
+    Returns
+    -------
+    Union[List, Dict]
+        Engagement summary data or error response
+    """
+    run_stage = request.run_stage
+    query_filter = request.filter or {}
+    kwargs = query_filter.copy() if query_filter else {}
+
+    if not request or not request.all_user_id:
+        logger.error("Invalid request: Missing user ID")
+        return {
+            "status": 400,
+            "message": "User ID is required"
+        }
+        
+    try:
+        logger.info(f"Calculating engagement status for user ID: {request.all_user_id}")
+        
+        # Step 1: Fetch trainee profile data
+        
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(
+            all_user_id=request.all_user_id, 
+            nopp=True, 
+            dataframe=False
+        )
+    
+        if not trainee_profile_data:
+            logger.warn(f"No trainee profiles found for user ID: {request.all_user_id}")
+            return {
+                "all_user_id": request.all_user_id,
+                "status": 404,
+                "message": "No trainee profiles found for the given user ID"
+            }
+        
+        tinder_user_profile_id = trainee_profile_data.get('id')
+        if not tinder_user_profile_id:
+            logger.error(f"Invalid trainee profile for user ID: {request.all_user_id}")
+            return {
+                "all_user_id": request.all_user_id,
+                "status": 500,
+                "message": "Invalid trainee profile data"
+            }
+          
+        # Step 2: Process request parameters with defaults
+        query_filter = request.filter or {}
+        return_skip = request.return_skip
+        information_level = request.information_level
+        since = max(request.since, 1)  # Ensure minimum value of 1
+        limit = max(request.limit, 1)  # Ensure minimum value of 1
+        cursor = request.cursor
+
+        ipersona_job = IpersonaTraineeSessionSchema(run_stage=run_stage, limit=limit, since=since)
+        data, cursor = ipersona_job.filter_by_user_id(
+            tinder_user_profile_id,
+            start=since,  
+            limit=limit,  
+            nopp=True, 
+            dataframe=False,
+            **kwargs  # Additional kwargs if needed
+        )
+        
+        data = [
+                session_data
+                for session in data
+                for session_data in session.get('attributes', {}).get('i_persona_sessions', {}).get('data', [])
+            ]
+        # return data
+        # Step 3: Fetch and summarize interview data
+        data, cursor = util.summarize_interviews_engagement(
+            run_stage,   
+            tinder_user_profile_id,  
+            cursor,                       
+            data          
+        )
+
+        logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
+
+        
+        # Step 4: Prepare response
+        if len(data) != 0:
+            output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)    
+
+            return {
+                "engagement": output,
+                "cursor": cursor,
+                "status": 200,
+                "message": ""
+            }
+        else: 
+            data = []
+            output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)   
+            return {
+                "engagement": output,
+                "cursor": cursor,
+                "status": 200,
+                "message": ""
+            }
+
+    except Exception as e:
+        logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
+        return {
+            "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
             "status": 500, 
             "message": str(e)
         }
         
 @routes.post("/admin_overview_status")
-async def calculate_admin_overview_status(request: pemodel.AdminDataFiltering) -> Dict[str, Any]:
+async def calculate_admin_overview_status(request: pemodel.AdminDataFiltering) -> Union[List, Dict]:
     """
     Calculate an overview of all interview sessions for administrative purposes.
     
@@ -768,7 +891,7 @@ async def calculate_admin_overview_status(request: pemodel.AdminDataFiltering) -
         
     Returns
     -------
-    Dict[str, Any]
+    Union[List, Dict]
         Administrative overview metrics or error response with the format:
         {
             "data": list,
@@ -843,7 +966,7 @@ async def calculate_admin_overview_status(request: pemodel.AdminDataFiltering) -
         }
 
 @routes.post("/admin_allusers_data")
-async def calculate_admin_allusers_data(request: pemodel.AdminDataFiltering) -> Dict[str, Any]:
+async def calculate_admin_allusers_data(request: pemodel.AdminDataFiltering) -> Union[List, Dict]:
     """
     Calculate administrative data for all users by processing session data.
 
@@ -863,7 +986,7 @@ async def calculate_admin_allusers_data(request: pemodel.AdminDataFiltering) -> 
 
     Returns
     -------
-    Dict[str, Any]
+    Union[List, Dict]
         User data summary or error response with the format:
         {
             "data": list,
@@ -938,7 +1061,7 @@ async def calculate_admin_allusers_data(request: pemodel.AdminDataFiltering) -> 
         }
 
 @routes.post("/admin_alljobs_data")
-async def calculate_admin_alljobs_data(request: pemodel.AdminDataFiltering) -> Dict[str, Any]:
+async def calculate_admin_alljobs_data(request: pemodel.AdminDataFiltering) -> Union[List, Dict]:
     """
     Calculate administrative data for all jobs by processing session data.
 
@@ -958,7 +1081,7 @@ async def calculate_admin_alljobs_data(request: pemodel.AdminDataFiltering) -> D
 
     Returns
     -------
-    Dict[str, Any]
+    Union[List, Dict]
         Jobs data summary or error response with the format:
         {
             "data": list,
@@ -1053,7 +1176,7 @@ async def calculate_admin_eachjob_(request: pemodel.AdminDataEachJobFiltering) -
 
     Returns
     -------
-    Dict[str, Any]
+    Union[List, Dict]
         Jobs data summary or error response with the format:
         {
             "data": list,
@@ -1098,14 +1221,30 @@ async def calculate_admin_eachjob_(request: pemodel.AdminDataEachJobFiltering) -
         #return len(data)
         #return data
         # -------------- fetch the data with the query -------------- #
-
+        
         if not data:
             logger.warn("No session data found for admin all jobs view")
+            data = []
+            job_title = ''
+            company_name = ''
+            location = ''
+            url = ''
+            output = util.add_columns(
+                        data, 
+                        cursor, 
+                        job_profile_id, 
+                        job_title,
+                        company_name,
+                        location,
+                        url,
+                        kind='admin_each_job', 
+                        **kwargs
+                    )
             return {
-                "data": [],  
-                "cursor": [],
-                "status": 404, 
-                "message": "No data found with the given parameters"
+                "trainees": output,
+                "cursor": cursor,
+                "status": 200,
+                "message": ""
             }
 
         logger.info(f"Processing all jobs metrics for {len(data)} sessions")
@@ -1120,7 +1259,7 @@ async def calculate_admin_eachjob_(request: pemodel.AdminDataEachJobFiltering) -
             company_name = result['company_name']
             location = result['location']
             url = result['url']
-            result = util.add_columns(
+            output = util.add_columns(
                         data, 
                         cursor, 
                         job_profile_id, 
@@ -1132,20 +1271,17 @@ async def calculate_admin_eachjob_(request: pemodel.AdminDataEachJobFiltering) -
                         **kwargs
                     )
             
-            return result
-            logger.info("Admin all jobs data calculated successfully")
             return {
-                "data": result, 
-                "cursor": cursor,                  
-                "status": 200, 
+                "trainees": output,
+                "cursor": cursor,
+                "status": 200,
                 "message": ""
             }
+            logger.info("Admin all jobs data calculated successfully")
 
     except Exception as e:
         logger.error(f"Error processing admin each jobs data: {str(e)}", exc_info=True)
         return {
-            "data": [],  
-            "cursor": [],
             "status": 500, 
             "message": f"Error processing data: {str(e)}"
         }
@@ -1171,7 +1307,7 @@ async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFi
 
     Returns
     -------
-    Dict[str, Any]
+    Union[List, Dict]
         Performance data summary or error response with the format:
         {
             "data": list,
@@ -1261,7 +1397,7 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> U
 
     Returns
     -------
-    Union[Dict[str, Any], JSONResponse]
+    Union[Union[List, Dict], JSONResponse]
         Session data for the user and job, or an error response
     """  
     run_stage = request.run_stage
@@ -1331,7 +1467,7 @@ async def fetch_chat_history(request: pemodel.SessionIdRequestRecieved)-> Union[
 
     Returns
     -------
-    Union[List[Dict[str, Any]], JSONResponse]
+    Union[List[Union[List, Dict]], JSONResponse]
         List of chat messages or an error response
     """
     run_stage = request.run_stage
@@ -1380,7 +1516,7 @@ async def fetch_user_all_observer(request: pemodel.SessionIdRequestRecieved)-> U
 
     Returns
     -------
-    Union[List[Dict[str, Any]], JSONResponse]
+    Union[List[Union[List, Dict]], JSONResponse]
         List of observers or an error response
     """
     run_stage = request.run_stage
@@ -1429,7 +1565,7 @@ async def fetch_single_session(request: pemodel.SessionIdRequestRecieved) -> Uni
 
     Returns
     -------
-    Union[Dict[str, Any], JSONResponse]
+    Union[Union[List, Dict], JSONResponse]
         Session data or an error response
     """
     run_stage = request.run_stage
