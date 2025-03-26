@@ -628,7 +628,7 @@ async def calculate_allstat_progress(request: pemodel.AllUserIdRecieved):
         return JSONResponse(status_code=500, content={"error": f"Unexpected error occurred: {str(e)}"})
 
 @routes.post("/engagement_jobs_status")
-def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved) :
+def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved) -> Dict[str, Any]:
     """
     Calculate interview engagement status for a user across all job types.
     
@@ -649,16 +649,17 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
         
     Returns
     -------
-    Union[List, Dict]
+    Dict[str, Any]
         Engagement summary data or error response
     """
     run_stage = request.run_stage
-    query_filter = request.filter or {}
-    kwargs = query_filter.copy() if query_filter else {}
 
     if not request or not request.all_user_id:
         logger.error("Invalid request: Missing user ID")
         return {
+            "all_user_id": [],
+            "jobs": [],
+            "cursor": [],
             "status": 400,
             "message": "User ID is required"
         }
@@ -679,6 +680,8 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             logger.warn(f"No trainee profiles found for user ID: {request.all_user_id}")
             return {
                 "all_user_id": request.all_user_id,
+                "jobs": [],
+                "cursor": [],
                 "status": 404,
                 "message": "No trainee profiles found for the given user ID"
             }
@@ -688,10 +691,12 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             logger.error(f"Invalid trainee profile for user ID: {request.all_user_id}")
             return {
                 "all_user_id": request.all_user_id,
+                "jobs": [],
+                "cursor": [],
                 "status": 500,
                 "message": "Invalid trainee profile data"
             }
-          
+            
         # Step 2: Process request parameters with defaults
         query_filter = request.filter or {}
         return_skip = request.return_skip
@@ -711,36 +716,151 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             information_level=information_level,
             return_skip=return_skip            
         )
+
         logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
 
         
         # Step 4: Prepare response
-        if len(data) != 0:
-            output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)    
-
+        if data:
             return {
-                "engagement": output,
-                "cursor": cursor,
-                "status": 200,
+                "all_user_id": request.all_user_id,
+                "jobs": data, 
+                # "cursor": cursor,                  
+                "status": 200, 
                 "message": ""
             }
         else: 
-            data = []
-            output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)   
             return {
-                "engagement": output,
-                "cursor": cursor,
-                "status": 200,
-                "message": ""
+                "all_user_id": request.all_user_id, 
+                "jobs": [],  
+                "cursor": [],
+                "status": 404, 
+                "message": "No data found with the given parameters"
             }
 
     except Exception as e:
         logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
         return {
             "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
+            "jobs": [],  
+            "cursor": [],
             "status": 500, 
             "message": str(e)
         }
+        
+# @routes.post("/engagement_jobs_status_new")
+# def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved) :
+#     """
+#     Calculate interview engagement status for a user across all job types.
+    
+#     Retrieves and summarizes a user's engagement with interview sessions for
+#     different job categories.
+    
+#     Parameters
+#     ----------
+#     request : pemodel.AllUserSessionRequestRecieved
+#         Object containing:
+#         - all_user_id: User identifier
+#         - filter: Optional query filters
+#         - return_skip: Flag to include skipped items
+#         - information_level: Detail level for results
+#         - since: Starting point for pagination
+#         - limit: Maximum number of items to return
+#         - cursor: Pagination cursor
+        
+#     Returns
+#     -------
+#     Union[List, Dict]
+#         Engagement summary data or error response
+#     """
+#     run_stage = request.run_stage
+#     query_filter = request.filter or {}
+#     kwargs = query_filter.copy() if query_filter else {}
+
+#     if not request or not request.all_user_id:
+#         logger.error("Invalid request: Missing user ID")
+#         return {
+#             "status": 400,
+#             "message": "User ID is required"
+#         }
+        
+#     try:
+#         logger.info(f"Calculating engagement status for user ID: {request.all_user_id}")
+        
+#         # Step 1: Fetch trainee profile data
+        
+#         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+#         trainee_profile_data = ipersona_user.filter_by_alluser_id(
+#             all_user_id=request.all_user_id, 
+#             nopp=True, 
+#             dataframe=False
+#         )
+    
+#         if not trainee_profile_data:
+#             logger.warn(f"No trainee profiles found for user ID: {request.all_user_id}")
+#             return {
+#                 "all_user_id": request.all_user_id,
+#                 "status": 404,
+#                 "message": "No trainee profiles found for the given user ID"
+#             }
+        
+#         tinder_user_profile_id = trainee_profile_data.get('id')
+#         if not tinder_user_profile_id:
+#             logger.error(f"Invalid trainee profile for user ID: {request.all_user_id}")
+#             return {
+#                 "all_user_id": request.all_user_id,
+#                 "status": 500,
+#                 "message": "Invalid trainee profile data"
+#             }
+          
+#         # Step 2: Process request parameters with defaults
+#         query_filter = request.filter or {}
+#         return_skip = request.return_skip
+#         information_level = request.information_level
+#         since = max(request.since, 1)  # Ensure minimum value of 1
+#         limit = max(request.limit, 1)  # Ensure minimum value of 1
+#         cursor = request.cursor
+        
+#         # Step 3: Fetch and summarize interview data
+#         data, cursor = util.summarize_interviews(
+#             run_stage,                                                 
+#             tinder_user_profile_id, 
+#             filter=query_filter,
+#             cursor=cursor, 
+#             since=since, 
+#             limit=limit,
+#             information_level=information_level,
+#             return_skip=return_skip            
+#         )
+#         logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
+
+        
+#         # Step 4: Prepare response
+#         if len(data) != 0:
+#             output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)    
+#             return {
+#                 "engagement": output,
+#                 "cursor": cursor,
+#                 "status": 200,
+#                 "message": ""
+#             }
+#         else: 
+#             data = []
+#             output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)   
+#             return {
+#                 "engagement": output,
+#                 "cursor": cursor,
+#                 "status": 200,
+#                 "message": ""
+#             }
+
+#     except Exception as e:
+#         logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
+#         return {
+#             "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
+#             "status": 500, 
+#             "message": str(e)
+#         }
 
 # @routes.post("/engagement_jobs_status")
 # def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved) :

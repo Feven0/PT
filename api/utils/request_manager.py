@@ -4,6 +4,7 @@ from api import config
 from api.services import redis_client as rc
 import api.utils.aws_utils as awsut
 from api.utils import tenx_uiux as uiux
+from api.utils import tenx_uiux_copy as uiux_copy
 from api.utils.logger import LLPackerLogger
 
 logger = LLPackerLogger(__file__)
@@ -55,6 +56,8 @@ class JobReactionManager(JobManagerBase):
         self.url = {},
         # self.uiuxbt = uiux.BaseTable(title=table_title, )
         self.uiuxbt = uiux.BaseTable(title=table_title, cursor=self.cursor)
+        self.uiuxbt_copy = uiux_copy.BaseTable(title=table_title, cursor=self.cursor)
+
 
         # Table column views for different devices
         desktop_view = ['job_title', 'job_match_score', 'job_match', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
@@ -465,15 +468,15 @@ class JobReactionManager(JobManagerBase):
 
             for c, cval in colmap.items():
                 cval['name'] = c
-                _ = self.uiuxbt.add_column(**cval)
+                _ = self.uiuxbt_copy.add_column(**cval)
 
             strifnone = lambda x: x if x else ''
 
             # Remove empty columns and add rows to the table
             if rows:
                 rows = self._remove_empty_columns(params, colmap)
-                _ = self.uiuxbt.add_rows_for_engagment(rows)
+                _ = self.uiuxbt_copy.add_rows_for_engagment(rows)
             else:
-                _ = self.uiuxbt.add_rows_for_engagment(params, cursor)
+                _ = self.uiuxbt_copy.add_rows_for_engagment(params, cursor)
 
-            return self.uiuxbt.table
+            return self.uiuxbt_copy.table

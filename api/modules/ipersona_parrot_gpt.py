@@ -1707,7 +1707,7 @@ def summarize_interviews(
     try:  
         # Fetch a particular user sessions
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-
+    
         query_filter = filter
         kwargs = {}
         if query_filter:
@@ -1721,10 +1721,10 @@ def summarize_interviews(
             nopp=True, 
             dataframe=False,
             **kwargs)
-        
-        summary_response = []
+            
         if len(data) != 0:
             data = extracted_needed_metrics(data)
+
             if len(data) == 0:
                 logger.info("The given trainee has no observer data")
                 return []
@@ -1796,17 +1796,130 @@ def summarize_interviews(
                     'total_interviews_count': total_session_count,
                     "score": average_score
                 })
-            cursors['total'] = len(summary_response)   
+            cursor['total'] = len(summary_response)   
+            output = add_engagement_columns(summary_response, cursor, kind='jobs', **kwargs)    
         
-            return summary_response, cursors
+            return output, cursors
         else:
-            cursors['total'] = len(summary_response)  
             return data, cursors
         
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         error_msg = str(e)
         return error_msg, error_msg
+    
+# def summarize_interviews(
+#     run_stage,
+#     user_profile_id, 
+#     filter,
+#     cursor,
+#     since, 
+#     limit,
+#     information_level,
+#     return_skip):  
+#     try:  
+#         # Fetch a particular user sessions
+#         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+
+#         query_filter = filter
+#         kwargs = {}
+#         if query_filter:
+#             kwargs.update(query_filter)
+            
+#         data, cursors = ipersona_session.filter_by_tinder_user_profile_id(
+#             user_profile_id=user_profile_id, 
+#             cursor=cursor, 
+#             since=since, 
+#             limit=limit, 
+#             nopp=True, 
+#             dataframe=False,
+#             **kwargs)
+        
+#         summary_response = []
+#         if len(data) != 0:
+#             data = extracted_needed_metrics(data)
+#             if len(data) == 0:
+#                 logger.info("The given trainee has no observer data")
+#                 return []
+
+#             job_summary = defaultdict(list)
+
+#             for record in data:
+#                 job_profile_id = record['job_profile_id']
+#                 job_summary[job_profile_id].append(record)
+
+#                 summary_response = []
+#                 complete_sessions_count = 0
+#                 incomplete_sessions_count = 0
+        
+#             # return job_summary
+#             for job_profile_id, records in job_summary.items():
+            
+#                 for session in records:
+#                     complete_status = session.get('complete_status', {})
+                
+#                     if complete_status:
+#                         complete_sessions_count += 1
+#                     else:
+#                         incomplete_sessions_count += 1
+                                
+#                 total_score = sum(
+#                     record.get('overall_performance_score', 0) for record in records if record.get('overall_performance_score') is not None
+#                 )
+                
+#                 if total_score >= 0:
+#                     average_score = round(total_score / complete_sessions_count, 2) if complete_sessions_count > 0 else "N/A"
+#                 else:
+#                     average_score = 'Not Available'
+                
+#                 ipersona_job = IpersonaJobSchema(run_stage=run_stage)
+#                 job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
+                
+#                 if job_title_data and len(job_title_data) > 0:
+#                     job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
+#                 else:
+#                     job_title = 'Unknown Job Title'
+
+#                 tinder_user_profile_id = user_profile_id
+#                 tinder_job_profile_id = job_profile_id
+
+#                 ipersona_match = IpersonaSessionTinderUserJobMatchSchema(run_stage=run_stage)
+#                 job_match_data = ipersona_match.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
+                
+#                 ipersona_reaction = IpersonaSessionTinderUserReactionSchema(run_stage=run_stage)
+#                 reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
+
+#                 if job_match_data and len(job_match_data) > 0:
+#                     match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
+#                     job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
+#                 else:
+#                     match_score = 'Unknown'
+#                     job_match = 'Unknown'
+                            
+#                 total_session_count = complete_sessions_count + incomplete_sessions_count
+
+#                 summary_response.append({
+#                     "job_profile_id": job_profile_id,
+#                     "reaction_id": reaction_id,
+#                     "job_title": job_title,
+#                     "job_match_score": match_score,
+#                     "job_match": job_match,
+#                     'complete_interviews_count': complete_sessions_count,
+#                     'incomplete_interviews_count': incomplete_sessions_count,
+#                     'total_interviews_count': total_session_count,
+#                     "score": average_score
+#                 })
+#             cursors['total'] = len(summary_response)   
+        
+#             return summary_response, cursors
+#         else:
+#             cursors['total'] = len(summary_response)  
+#             return data, cursors
+        
+#     except Exception as e:
+#         logger.error(f"Error processing files: {e}")
+#         error_msg = str(e)
+#         return error_msg, error_msg
     
 def extracted_needed_metrics(data):
     try:
