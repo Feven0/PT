@@ -1878,58 +1878,317 @@ def tinder_template(request: pemodel.TinderTemplateRequestRecieved):
     try:
         name = request.name
         type = request.type
+        tag = request.tag
+        description = request.description
         template_questions = request.template_questions
         job_profile_ids = request.job_profile_ids
 
         ipersona_tinder = IpersonaTinderTemplateSchema()
-        data = ipersona_tinder.create_template(name, type, template_questions, job_profile_ids)
-        return data
-     
+        saved_data = ipersona_tinder.create_template(name, type, tag, description, template_questions, job_profile_ids)
+
+          
+        if saved_data.get('status') == 'error':
+            return {
+                "template": saved_data,
+                "success": 200,
+                "message": 'Process Failed'
+            }
+        else:
+            return {
+                "template": saved_data,
+                "success": 200,
+                "message": 'Template Fetched Successfully.'
+            }
+             
     except Exception as e:
         return JSONResponse(
             status_code=500,
-            content={"error": f"Error processing job question template: {str(e)}"}
+            content={"error": f"Error saving template: {str(e)}"}
         )
      
 @routes.post("/get_tinder_templates")
-def get_tinder_template(request: pemodel.TinderTemplateJobIdRequestRecieved):
+def get_tinder_template(request: pemodel.GetFilteredTinderTemplateRequestRecieved):
     try:
         job_profile_id = request.job_profile_id
+        type = request.type
+        query_filter = request.filter or {}
+        since = max(request.since or 1, 1)  # Ensure minimum value of 1
+        limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
+        cursor = request.cursor
+        
+        # Prepare query parameters
+        kwargs = query_filter.copy() if query_filter else {}
+        
         ipersona_template = IpersonaTinderTemplateSchema()
-        fetch_templates = ipersona_template.filter_by_with_job_id(
-            job_profile_id=job_profile_id, 
+
+        # Conditional filtering
+        if job_profile_id:  # If job_profile_id is provided (and not None)
+            fetch_templates, cursor = ipersona_template.filter_by_with_job_id(
+                job_profile_id=job_profile_id, 
+                cursor=cursor, 
+                since=since, 
+                limit=limit, 
+                nopp=True, 
+                dataframe=False,
+                **kwargs
+            )
+            
+            # Transform the result to replace job profile list with a count
+            transformed_templates = transform_job_profiles_to_count(fetch_templates)
+            output = util.add_template_columns(transformed_templates, cursor, kind='template', **kwargs)    
+
+            if not transformed_templates:
+                cursor['total'] = 0
+                return {
+                    "template": output,
+                    "cursor": cursor,
+                    "success": 200,
+                    "message": 'No templates found for the given job profile ID.'
+                }
+            else: 
+                return {
+                    "template": output,
+                    "cursor": cursor,
+                    "success": 200,
+                    "message": 'Templates Fetched Successfully for Job Profile ID.'
+                }
+        
+        elif type:  # If only type is provided (not None)
+            templates, cursor = ipersona_template.filter_by_type(
+                type=type, 
+                cursor=cursor, 
+                since=since, 
+                limit=limit, 
+                nopp=True, 
+                dataframe=False,
+                **kwargs
+            )
+
+            # Transform the result to replace job profile list with a count
+            transformed_templates = transform_job_profiles_to_count(templates)
+            output = util.add_template_columns(transformed_templates, cursor, kind='template', **kwargs)    
+
+            if not transformed_templates:
+                cursor['total'] = 0
+                return {
+                    "templates": output,
+                    "cursor": cursor,
+                    "success": 200,
+                    "message": f'No templates found for type: {type}.'
+                }
+            else:
+                return {
+                    "templates": output,
+                    "cursor": cursor,
+                    "success": 200,
+                    "message": f'Templates Fetched Successfully for Type: {type}.'
+                }
+
+        else:  # If neither job_profile_id nor type is provided
+            templates, cursor = ipersona_template.get_all_templates(
+                cursor=cursor, 
+                since=since, 
+                limit=limit, 
+                nopp=True, 
+                dataframe=False,
+                **kwargs
+                )
+
+            # Transform the result to replace job profile list with a count
+            transformed_templates = transform_job_profiles_to_count(templates)
+            output = util.add_template_columns(transformed_templates, cursor, kind='template', **kwargs)    
+
+            if not transformed_templates:
+                cursor['total'] = 0
+                return {
+                    "templates": output,
+                    "cursor": cursor,
+                    "success": 200,
+                    "message": 'No templates found.'
+                }
+            else:
+                return {
+                    "templates": output,
+                    "cursor": cursor,
+                    "success": 200,
+                    "message": 'All Templates Fetched Successfully.'
+                }
+        
+    except Exception as e:
+        logger.error(f"Error getting template: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error processing template request: {str(e)}"}
+        )
+    
+# def transform_job_profiles_to_count(templates):
+#     """
+#     Transform the `tinder_job_profiles` to include only the count of profiles instead of listing IDs.
+#     """
+#     if not templates:
+#         return []
+
+#     for template in templates:
+#         if 'attributes' in template and 'tinder_job_profiles' in template['attributes']:
+#             job_profiles = template['attributes']['tinder_job_profiles']['data']
+#             # Replace the list of job profile IDs with the count of profiles
+#             template['attributes']['tinder_job_profiles'] = len(job_profiles)
+    
+#     return templates
+
+def transform_job_profiles_to_count(templates):
+    """
+    Transform the `tinder_job_profiles` to include only the count of profiles 
+    and move attributes fields to the root level.
+    """
+    if not templates:
+        return []
+
+    transformed_templates = []
+
+    for template in templates:
+        # Extract attributes and merge with root-level id
+        transformed_template = {
+            "id": template["id"],
+            **template.get("attributes", {})
+        }
+
+        # Replace the list of job profile IDs with the count of profiles
+        if "tinder_job_profiles" in transformed_template:
+            job_profiles = transformed_template["tinder_job_profiles"].get("data", [])
+            transformed_template["tinder_job_profiles"] = len(job_profiles)
+        
+        transformed_templates.append(transformed_template)
+    
+    return transformed_templates
+
+    
+@routes.post("/get_a_template")
+def get_tinder_template(request: pemodel.GetTemplateRequestRecieved):
+    try:
+        template_id = request.template_id
+        ipersona_template = IpersonaTinderTemplateSchema()
+        fetched_template = ipersona_template.get_tinder_template_id(
+            templateId=template_id, 
             return_object=True, 
             nopp=True, 
             dataframe=False
         )
-        return fetch_templates
+        
+        if not fetched_template:
+            return {
+                "template": fetched_template,
+                "success": 200,
+                "message": ''
+            }
+        else: 
+            return {
+                "template": fetched_template,
+                "success": 200,
+                "message": 'Template Fetched Successfully.'
+            }
+    
         
     except Exception as e:
-        logger.error(f"Error creating job question template: {str(e)}", exc_info=True)
+        logger.error(f"Error getting template: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=500,
-            content={"error": f"Error processing job question template: {str(e)}"}
+            content={"error": f"Error processing getting template: {str(e)}"}
         )
-
+    
 @routes.post("/update_tinder_template")
 def update_tinder_template(request: pemodel.UpdateTinderTemplateRequestRecieved):
     try:
         template_id = request.template_id
         name = request.name
         type = request.type
+        tag = request.tag
+        description = request.description
         template_questions = request.template_questions
         job_profile_ids = request.job_profile_ids
 
         ipersona_tinder = IpersonaTinderTemplateSchema()
-        data = ipersona_tinder.update_template(template_id, name, type, template_questions, job_profile_ids)
-        return data
+        data = ipersona_tinder.update_template(
+            template_id, 
+            name, 
+            type, 
+            tag, 
+            description, 
+            template_questions, 
+            job_profile_ids)
+        
+        if data.get('status') == 'error':
+            return {
+                "template": data,
+                "success": 200,
+                "message": 'Process Failed'
+            }
+        else:
+            return {
+                "template": data,
+                "success": 200,
+                "message": 'Template Updated Sucessfully.'
+            }
      
     except Exception as e:
         return JSONResponse(
             status_code=500,
-            content={"error": f"Error processing job question template: {str(e)}"}
+            content={"error": f"Error processing template update: {str(e)}"}
         )
+
+@routes.post("/attach_job_id_to_template")
+def attach_id_to_template(request: pemodel.TinderTemplateAttachJobIdRequestRecieved):
+    try:
+        template_id = request.template_id
+        new_job_profile_ids = request.job_profile_ids
+        ipersona_template =  IpersonaTinderTemplateSchema()
+        attach_template = ipersona_template.add_job_profiles_to_template(template_id, new_job_profile_ids)
+
+        if attach_template.get('status') == 'error':
+            return {
+                "template": attach_template,
+                "success": 200,
+                "message": 'Process Failed'
+            }
+        else: 
+            return {
+                "template": attach_template,
+                "success": 200,
+                "message": 'Job Id is attached to the template successfully.'
+            }
     
+    except Exception as e:
+        logger.error(f"Error attaching id to template: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error attaching id to template:: {str(e)}"}
+        )
+
+@routes.post("/create_template_by_llm")
+def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
+    try:
+        context = request.context
+        llm_template_response= ''
+
+        if llm_template_response:
+            return {
+                "template": llm_template_response,
+                "success": 200,
+                "message": 'Process Failed'
+            }
+        else: 
+            return {
+                "template": llm_template_response,
+                "success": 200,
+                "message": ''
+            }
+    
+    except Exception as e:
+        logger.error(f"Error attaching id to template: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error attaching id to template:: {str(e)}"}
+        )
 
 #----------------------------------- External Audio Upload Processing APIS -----------------------------------#
 @routes.post("/audio_upload_external")
@@ -2083,7 +2342,7 @@ def fetch_all_challenges():
         challenges = ipersona_challenge.get_all_challenges(nopp=True, dataframe=False)
 
         return {
-            "challenge": challenges,
+            "challenges": challenges,
             "success": 200,
             "message": 'Challenges are Fetched Successfully.'
         }

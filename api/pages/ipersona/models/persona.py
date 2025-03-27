@@ -103,6 +103,8 @@ class AdminDataEachJobFiltering(MyBaseModel):
 class TinderTemplateRequestRecieved(MyBaseModel):
     name: str
     type: str
+    tag: str
+    description: str
     template_questions: Optional[Dict] = {}
     job_profile_ids: Optional[list] = []
 
@@ -110,15 +112,37 @@ class UpdateTinderTemplateRequestRecieved(MyBaseModel):
     template_id: int
     name: str
     type: str
+    tag: str
+    description: str
     template_questions: Optional[Dict] = {}
     job_profile_ids: Optional[list] = []
 
-class TinderTemplateIdRequestRecieved(MyBaseModel):
+class GetFilteredTinderTemplateRequestRecieved(MyBaseModel):
+    job_profile_id: Optional[int] = None  # Optional field for flexibility
+    type: Optional[str] = None  # Optional type field
+    cursor: Optional[Dict] = {}
+    filter: Optional[Dict] = {}
+    limit: Optional[int] = default_limit
+    since: Optional[int] = default_days_since
+    information_level: Optional[str] = "minimal"    
+    return_skip: Optional[bool] = False
+
+class GetTemplateRequestRecieved(MyBaseModel):
     template_id: int
-    
+
 class TinderTemplateJobIdRequestRecieved(MyBaseModel):
     job_profile_id: int
+    
+class TemplateLLMContextRequestRecieved(MyBaseModel):
+    context: str
 
+class TinderTemplateAttachJobIdRequestRecieved(MyBaseModel):
+    template_id: int
+    job_profile_ids: Optional[list] = []
+
+class RunStageSetupRequestRecieved(MyBaseModel):
+    pass
+    
 class ExternalRequestRecieved(MyBaseModel):
     transcribe_chat: Optional[list] = []
     job_profile_id: int

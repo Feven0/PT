@@ -62,9 +62,7 @@ class StrapiGraphql():
     def get_token(self):
        
         return get_auth(ssmkey=self.ssmkey, fconfig=lambda_friendly_path(f'.env/Strapi_token.json'))
-        
-        
-
+      
     def fetch_data(self,table, token=None):
        
         r = requests.get(f"{self.apiroot.replace('graphql','api')}/{table}",
@@ -74,7 +72,6 @@ class StrapiGraphql():
 
                         "Content-Type": "application/json"})
         return r.json()
-    
         
     def insert_data (self,data,table, token=None):
       
@@ -148,7 +145,7 @@ class StrapiGraphql():
         
         return result_json
     
-    def Select_from_table (self,query, variables, headers=None):
+    def Select_from_table (self, query, variables, headers=None):
         
         """
 

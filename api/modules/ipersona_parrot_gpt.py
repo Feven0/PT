@@ -1695,6 +1695,37 @@ def add_engagement_columns(
         logger.error(f'Error adding columns to leap table: {e}')
         output = [] 
 
+
+def add_template_columns(
+    params, 
+    cursor, 
+    kind, 
+    **kwargs):
+    try:
+        output = []
+        if kwargs.get('information_level','minimal')=='minimal':
+            try:
+                job_reaction_manager = JobReactionManager()
+                output = job_reaction_manager.prepare_template_table(
+                    params, 
+                    cursor, 
+                    kind=kind)
+            except Exception as e:
+                logger.error(f'Error preparing leap table: {e}')
+                output = []
+                
+            if isinstance(output, dict):
+                output = [output]
+            elif not isinstance(output, list):
+                output = [output]            
+        else:
+            output = params
+            
+        return output
+    except Exception as e:
+        logger.error(f'Error adding columns to leap table: {e}')
+        output = [] 
+
 def summarize_interviews(
     run_stage,
     user_profile_id, 

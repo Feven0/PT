@@ -2381,23 +2381,24 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
         metadata: Json   
         attributes: Json
         config: Json		
-        tinder_job_profile: Relation with TInderJobProfile
+        tinder_job_profile: Relation with TinderJobProfile
     '''
     def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
         super().__init__(run_stage=run_stage, **kwargs)   
 
-        
         self.table_single = kwargs.get('table_single', "")
         self.table = kwargs.get('table', "")
         self.data = kwargs.get('data', "")
         
+        # Default table names
         if not self.table_single:
             self.table_single = "tinderTemplate"
             
         if not self.table:
             self.table = "tinderTemplates"
-            
+        
+        # Default query schema if not provided
         if not self.data:
             logger.info(f"Using default data schema for {self.table_single} ...")
             self.data = '''
@@ -2406,10 +2407,11 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                     attributes {
                         name
                         type
-                        attributes
-                        metadata
-                        config
-                        createdAt  
+                        tag
+                        description
+                        # attributes
+                        # metadata
+                        # config
                         tinder_job_profiles {
                             data {
                                 id
@@ -2422,26 +2424,26 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
         else:
             logger.info(f"Using passed data schema for {self.table_single} ...")
      
-            
         self.type_map = {   
             "name": "String",
             "type": "String",
+            "tag": "String",
+            "description": "String",
             "attributes": "JSON",
             "metadata": "JSON",
             "config": "JSON",
             "tinder_job_profiles": "[ID!]"
         }
 
-        self.id_names_map = {  }
-         
-        self.data_template = copy.deepcopy(self.data)
-        self.data = self.data%""
+        self.id_names_map = {}
+
+        self.default_data_template = copy.deepcopy(self.data)  # Preserve default schema
+        self.data = self.data % ""
         _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)
     
     def save_session(self, params, **kwargs):
         try:
             session_json = self.save_or_update_object(params, **kwargs)
-            # return session_json
             session = self.get_extracted_data(session_json)
 
             if session is None:
@@ -2455,12 +2457,68 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
             return {'error': f"Error saving session: {str(e)}"}
 
     def get_tinder_template_id(self, templateId, **kwargs):
-        data_json = self.exists(scol='id', sval=templateId, op='eq', stype="ID", **kwargs)  
-        data = self.get_session_data(data_json)   
-        return data
-    
-    def filter_by_with_job_id(self, job_profile_id, **kwargs):
+        # Temporarily override self.data to customize the query for this function
+        original_data = self.data  # Backup the existing self.data
+
         try:
+            # Customize the query for this specific function
+            self.data = '''
+                data {
+                    id
+                    attributes {
+                        name
+                        type
+                        tag
+                        description
+                        attributes
+                        metadata
+                        config
+                        createdAt  
+                        tinder_job_profiles {
+                            data {
+                                id
+                                attributes {
+                                    title
+                                    level
+                                }
+                            }
+                        } 
+                        %s
+                    }
+                }
+            '''
+            data_json = self.exists(scol='id', sval=templateId, op='eq', stype="ID", **kwargs)  
+            data = self.get_session_data(data_json)   
+            return data
+
+        finally:
+            # Restore the original self.data after the query
+            self.data = original_data
+
+    
+    def get_all_templates(self, cursor={}, **kwargs):
+        try:
+            if not cursor:
+                cursor = True
+
+            data, cursor = self.get_all_objects(cursor=cursor, **kwargs)
+            template = self.get_templates_data(data)
+
+            if template is None:
+                logger.warn("No template data found.")
+                return None
+            
+            return template, cursor
+
+        except Exception as e:
+            logger.error(f"Error fetching all templates: {str(e)}")
+            return {'error': f"Error fetching all templates: {str(e)}"}
+    
+    def filter_by_with_job_id(self, job_profile_id, cursor={}, **kwargs):
+        try:
+            if not cursor:
+                cursor = True
+
             if not job_profile_id:
                 logger.error("User Profile ID or Job Profile ID is missing!")
                 return None
@@ -2471,19 +2529,60 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                 }}
             """
 
-            data_json = self.get_all_objects(filter=session_filter, **kwargs)
-
+            data_json, cursor = self.get_all_objects(filter=session_filter, cursor=cursor, **kwargs)
             data = self.get_sessions_data(data_json)
 
             if data is None:
                 logger.warn(f"No session data found for Job Profile ID {job_profile_id}.")
                 return None
-            
-            return data
+            return data, cursor
 
         except Exception as e:
             logger.error(f"Error fetching session data for Job Profile ID {job_profile_id}: {str(e)}")
             return {'error': f"Error fetching session data for Job Profile ID {job_profile_id}: {str(e)}"}
+
+    def filter_by_type(self, type, cursor={}, **kwargs):
+        try:
+            if not cursor:
+                cursor = True
+
+            if not type:
+                logger.error("User Profile ID or Job Profile ID is missing!")
+                return None
+            
+            session_filter = f"""
+                filters: {{
+                    type: {{ eq: "{type}" }}
+                }}
+            """
+
+            data_json, cursor = self.get_all_objects(filter=session_filter, cursor=cursor, **kwargs)
+            data = self.get_sessions_data(data_json)
+
+            if data is None:
+                logger.warn(f"No template data found for the {type}.")
+                return None
+            
+            return data, cursor
+
+        except Exception as e:
+            logger.error(f"Error fetching templates for the type {type}: {str(e)}")
+            return {'error': f"Error fetching templates for the type {type}: {str(e)}"}
+    
+    def get_templates_data(self, templates_json):
+        try:
+            all_templates = []
+            if isinstance(templates_json, list) and len( templates_json) > 0:
+                for entry in templates_json:
+                    if 'data' in entry:
+                        trainee = entry.get('data')                            
+                        return trainee
+            logger.warn("No challenges data found in the challenge JSON.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting challenge data from challenge JSON: {str(e)}")
+            return {'error': f"Error extracting challenge data from challenge JSON: {str(e)}"}
     
     def get_all_sessions(self, cursor={}, **kwargs):
         try:
@@ -2551,90 +2650,89 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
             logger.error(f"Error extracting session data from session JSON: {str(e)}")
             return {'error': f"Error extracting session data from session JSON: {str(e)}"}
 
-    
-    def create_template(self, name, type, template_questions, job_profile_ids):
+        
+    def create_template(self, name, type, tag, description, template_questions, job_profile_ids=None):
+        """
+        Create a new Tinder template with comprehensive validation and error handling.
+        
+        Args:
+            name (str): Name of the template
+            type (str): Type of the template
+            tag (str): Tag for the template
+            description (str): Description of the template
+            template_questions (dict): Questions associated with the template
+            job_profile_ids (list, optional): List of job profile IDs to associate with the template
+        
+        Returns:
+            dict: A dictionary containing either the created template details or error information
+        """
+        # Input validation
+        def validate_input(input_value, field_name, allow_empty=False):
+            """Helper function to validate input fields"""
+            if input_value is None:
+                return f"{field_name.capitalize()} cannot be None"
+            
+            if not allow_empty and not str(input_value).strip():
+                return f"{field_name.capitalize()} cannot be empty"
+            
+            return None
+
+        # Validate required fields
+        validation_errors = []
+        
+        name_error = validate_input(name, "name")
+        if name_error:
+            validation_errors.append(name_error)
+        
+        type_error = validate_input(type, "type")
+        if type_error:
+            validation_errors.append(type_error)
+        
+        tag_error = validate_input(tag, "tag", allow_empty=True)
+        if tag_error:
+            validation_errors.append(tag_error)
+        
+        description_error = validate_input(description, "description", allow_empty=True)
+        if description_error:
+            validation_errors.append(description_error)
+        
+        # Validate template_questions
+        if not isinstance(template_questions, dict):
+            validation_errors.append("Template questions must be a dictionary")
+        
+        # Validate job_profile_ids
+        if job_profile_ids is not None:
+            if not isinstance(job_profile_ids, list):
+                validation_errors.append("Job profile IDs must be a list")
+            else:
+                # Remove None or empty values
+                job_profile_ids = [str(job_id).strip() for job_id in job_profile_ids if job_id]
+        else:
+            job_profile_ids = []
+        
+        # If there are validation errors, return them
+        if validation_errors:
+            return {
+                "status": "error",
+                "code": "INVALID_INPUT",
+                "message": "Input validation failed",
+                "errors": validation_errors
+            }
+
+        # Prepare mutation query
         mutation_query = """
-            mutation CreateTinderTemplate($name: String!, $type: String!, $attributes: JSON!, $jobProfileIds: [ID!]) {
+            mutation CreateTinderTemplate(
+            $name: String!, 
+            $type: String!, 
+            $tag: String!, 
+            $description: String!,
+            $attributes: JSON!, 
+            $jobProfileIds: [ID!]) {
                 createTinderTemplate(data: {
                     name: $name
                     type: $type
-                    attributes: $attributes
-                    tinder_job_profiles: $jobProfileIds 
-                }) {
-                    data {
-                    id
-                    attributes {
-                        name
-                        type
-                        createdAt
-                        tinder_job_profiles {
-                            data {
-                                id
-                            }
-                        }
-                    }
-                    }
-                }
-            }
-        """
-
-        variables = {
-            "name": name,
-            "type": type,
-            "attributes": {
-                "template_questions": template_questions
-            },
-            "jobProfileIds": job_profile_ids  
-        }
-        
-        # Execute the GraphQL mutation
-        res_json = self.sg.insert_table(query=mutation_query, variables=variables)
-
-        # Parse the response
-        try:
-            response = json.loads(res_json)
-            template_data = response.get("data", {}).get("createTinderTemplate", {}).get("data", {})
-            
-            if template_data:
-                # Extract details
-                template_id = template_data.get("id", "N/A")
-                attributes = template_data.get("attributes", {})
-                name = attributes.get("name", "N/A")
-                template_type = attributes.get("type", "N/A")
-                created_at = attributes.get("createdAt", "N/A")
-                job_profile_ids = [job_profile.get("id") for job_profile in attributes.get("tinder_job_profiles", {}).get("data", [])]
-                
-                return {
-                    "status": "success",
-                    "message": "Template created successfully.",
-                    "data": {
-                        "id": template_id,
-                        "name": name,
-                        "type": template_type,
-                        "createdAt": created_at,
-                        "jobProfileIds": job_profile_ids
-                    }
-                }
-            else:
-                return {
-                    "status": "error",
-                    "message": "Failed to create template. No data returned."
-                }
-        
-        except json.JSONDecodeError:
-            return {
-                "status": "error",
-                "message": "Invalid JSON response from the server."
-            }
-
-
-
-    def update_template(self, template_id, name, type, template_questions, job_profile_ids):
-        mutation_query = """
-            mutation UpdateTinderTemplate($id: ID!, $name: String!, $type: String!, $attributes: JSON!, $jobProfileIds: [ID!]) {
-                updateTinderTemplate(id: $id, data: {
-                    name: $name
-                    type: $type
+                    tag: $tag
+                    description: $description
                     attributes: $attributes
                     tinder_job_profiles: $jobProfileIds 
                 }) {
@@ -2643,6 +2741,167 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                         attributes {
                             name
                             type
+                            tag
+                            description
+                            createdAt
+                            tinder_job_profiles {
+                                data {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """
+
+        # Prepare variables
+        variables = {
+            "name": name,
+            "type": type,
+            "tag": tag or "",  # Use empty string if tag is None
+            "description": description or "",  # Use empty string if description is None
+            "attributes": {
+                "template_questions": template_questions or {}
+            },
+            "jobProfileIds": job_profile_ids
+        }
+        
+        try:
+            # Execute the GraphQL mutation
+            res_json = self.sg.insert_table(query=mutation_query, variables=variables)
+            
+            # Validate response
+            if not res_json:
+                return {
+                    "status": "error",
+                    "code": "EMPTY_RESPONSE",
+                    "message": "Received empty response from server."
+                }
+            
+            # Parse response
+            try:
+                response = json.loads(res_json)
+            except json.JSONDecodeError:
+                logger.error(f"Invalid JSON response: {res_json}")
+                return {
+                    "status": "error",
+                    "code": "JSON_PARSE_ERROR",
+                    "message": "Failed to parse server response. Response was not valid JSON.",
+                    "raw_response": res_json
+                }
+            
+            # Check for GraphQL errors
+            if "errors" in response:
+                error_messages = [error.get("message", "Unknown error") for error in response.get("errors", [])]
+                logger.error(f"GraphQL Errors: {error_messages}")
+                return {
+                    "status": "error",
+                    "code": "GRAPHQL_ERROR",
+                    "message": "One or more errors occurred during template creation.",
+                    "errors": error_messages
+                }
+            
+            # Extract template data
+            template_data = response.get("data", {}).get("createTinderTemplate", {}).get("data", {})
+            
+            if not template_data:
+                return {
+                    "status": "error",
+                    "code": "NO_DATA_RETURNED",
+                    "message": "Server returned a successful response but no template data was found."
+                }
+            
+            # Process and return template details
+            attributes = template_data.get("attributes", {})
+            
+            return {
+                    "id": template_data.get("id", "N/A"),
+                    "name": attributes.get("name", "N/A"),
+                    "type": attributes.get("type", "N/A"),
+                    "tag": attributes.get("tag", "N/A"),
+                    "description": attributes.get("description", "N/A"),
+                    "createdAt": attributes.get("createdAt", "N/A"),
+                    "jobProfileIds": [
+                        job_profile.get("id") 
+                        for job_profile in attributes.get("tinder_job_profiles", {}).get("data", [])
+                    ]
+            }
+        
+        except Exception as e:
+            # Catch any unexpected errors
+            logger.error(f"Unexpected error in create_template: {str(e)}", exc_info=True)
+            return {
+                "status": "error",
+                "code": "UNEXPECTED_ERROR",
+                "message": f"An unexpected error occurred: {str(e)}"
+            }
+
+
+    def update_template(self, template_id, name, type, tag, description, template_questions, job_profile_ids):
+        """
+        Update a Tinder template with comprehensive error handling and logging.
+        
+        Args:
+            template_id (str): Unique identifier of the template to update
+            name (str): New name for the template
+            type (str): Type of the template
+            tag (str): Tag for the template
+            description (str): Description of the template
+            template_questions (dict): Questions associated with the template
+            job_profile_ids (list): List of job profile IDs associated with the template
+        
+        Returns:
+            dict: A dictionary containing either the updated template details or error information
+        """
+        # Input validation
+        if not template_id:
+            return {
+                "status": "error",
+                "code": "INVALID_INPUT",
+                "message": "Template ID is required and cannot be empty."
+            }
+        
+        # Validate required fields
+        required_fields = [
+            ("name", name),
+            ("type", type),
+            ("tag", tag),
+            ("description", description)
+        ]
+        
+        for field_name, field_value in required_fields:
+            if not field_value:
+                return {
+                    "status": "error",
+                    "code": "INVALID_INPUT",
+                    "message": f"{field_name.capitalize()} is required and cannot be empty."
+                }
+        
+        mutation_query = """
+            mutation UpdateTinderTemplate(
+            $id: ID!,
+            $name: String!,
+            $type: String!, 
+            $tag: String!, 
+            $description: String!, 
+            $attributes: JSON!, 
+            $jobProfileIds: [ID!]) {
+                updateTinderTemplate(id: $id, data: {
+                    name: $name
+                    type: $type
+                    tag: $tag
+                    description: $description
+                    attributes: $attributes
+                    tinder_job_profiles: $jobProfileIds 
+                }) {
+                    data {
+                        id
+                        attributes {
+                            name
+                            type
+                            tag
+                            description
                             updatedAt
                             tinder_job_profiles {
                                 data {
@@ -2659,44 +2918,143 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
             "id": template_id,
             "name": name,
             "type": type,
+            "tag": tag,
+            "description": description,
             "attributes": {
                 "template_questions": template_questions
             },
-            "jobProfileIds": job_profile_ids
+            "jobProfileIds": job_profile_ids or []  # Handle empty list gracefully
         }
         
-        # Execute the GraphQL mutation
-        res_json = self.sg.insert_table(query=mutation_query, variables=variables)
+        try:
+            # Execute the GraphQL mutation with error handling
+            res_json = self.sg.insert_table(query=mutation_query, variables=variables)
+            
+            # Validate JSON response
+            if not res_json:
+                return {
+                    "status": "error",
+                    "code": "EMPTY_RESPONSE",
+                    "message": "Received empty response from server."
+                }
+            
+            try:
+                response = json.loads(res_json)
+            except json.JSONDecodeError:
+                logger.error(f"Invalid JSON response: {res_json}")
+                return {
+                    "status": "error",
+                    "code": "JSON_PARSE_ERROR",
+                    "message": "Failed to parse server response. Response was not valid JSON.",
+                    "raw_response": res_json
+                }
+            
+            # Check for GraphQL errors
+            if "errors" in response:
+                error_messages = [error.get("message", "Unknown error") for error in response.get("errors", [])]
+                logger.error(f"GraphQL Errors: {error_messages}")
+                return {
+                    "status": "error",
+                    "code": "GRAPHQL_ERROR",
+                    "message": "One or more errors occurred during template update.",
+                    "errors": error_messages
+                }
+            
+            # Extract template data
+            template_data = response.get("data", {}).get("updateTinderTemplate", {}).get("data", {})
+            
+            if not template_data:
+                return {
+                    "status": "error",
+                    "code": "NO_DATA_RETURNED",
+                    "message": "Server returned a successful response but no template data was found."
+                }
+            
+            # Process and return template details
+            attributes = template_data.get("attributes", {})
+            
+            return {
+                    "id": template_data.get("id", "N/A"),
+                    "name": attributes.get("name", "N/A"),
+                    "type": attributes.get("type", "N/A"),
+                    "tag": attributes.get("tag", "N/A"),
+                    "description": attributes.get("description", "N/A"),
+                    "updatedAt": attributes.get("updatedAt", "N/A"),
+                    "jobProfileIds": [
+                        job_profile.get("id") 
+                        for job_profile in attributes.get("tinder_job_profiles", {}).get("data", [])
+                    ]
+            }
+        
+        except Exception as e:
+            # Catch any unexpected errors
+            logger.error(f"Unexpected error in update_template: {str(e)}", exc_info=True)
+            return {
+                "status": "error",
+                "code": "UNEXPECTED_ERROR",
+                "message": f"An unexpected error occurred: {str(e)}"
+            }
+        
+    def add_job_profiles_to_template(self, template_id, new_job_profile_ids):
+        # Step 1: Fetch the existing template data
+        query = """
+            query GetTemplate($id: ID!) {
+                tinderTemplate(id: $id) {
+                    data {
+                        id
+                        attributes {
+                            name
+                            type
+                            tag
+                            description
+                            tinder_job_profiles {
+                                data {
+                                    id
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """
+
+        variables = {
+            "id": template_id
+        }
+
+        # Execute the GraphQL query to get the template
+        res_json = self.sg.Select_from_table(query=query, variables=variables)
 
         # Parse the response
         try:
-            response = json.loads(res_json)
-            template_data = response.get("data", {}).get("updateTinderTemplate", {}).get("data", {})
-            
+            response = res_json
+            template_data = response.get("data", {}).get("tinderTemplate", {}).get("data", {})
+            # return template_data
             if template_data:
-                # Extract details
-                template_id = template_data.get("id", "N/A")
-                attributes = template_data.get("attributes", {})
-                name = attributes.get("name", "N/A")
-                template_type = attributes.get("type", "N/A")
-                updated_at = attributes.get("updatedAt", "N/A")
-                job_profile_ids = [job_profile.get("id") for job_profile in attributes.get("tinder_job_profiles", {}).get("data", [])]
-                
-                return {
-                    "status": "success",
-                    "message": "Template updated successfully.",
-                    "data": {
-                        "id": template_id,
-                        "name": name,
-                        "type": template_type,
-                        "updatedAt": updated_at,
-                        "jobProfileIds": job_profile_ids
-                    }
-                }
+                # Extract existing job_profile_ids
+                existing_job_profile_ids = [job_profile.get("id") for job_profile in template_data.get("attributes", {}).get("tinder_job_profiles", {}).get("data", [])]
+
+                # Step 2: Append new_job_profile_ids if they are not already present
+                updated_job_profile_ids = list(set(existing_job_profile_ids + new_job_profile_ids))
+                # Handle None values for tag and description
+                tag = template_data["attributes"].get("tag", "") if template_data["attributes"].get("tag") is not None else ""
+                description = template_data["attributes"].get("description", "") if template_data["attributes"].get("description") is not None else ""
+
+                # Step 3: Update the template with the new list of job_profile_ids
+                return self.update_template(
+                    template_id=template_id,
+                    name=template_data["attributes"]["name"],
+                    type=template_data["attributes"]["type"],
+                    tag = tag,
+                    description=description,
+                    template_questions={}, 
+                    job_profile_ids=updated_job_profile_ids
+                )
+
             else:
                 return {
                     "status": "error",
-                    "message": "Failed to update template. No data returned."
+                    "message": "Template not found."
                 }
 
         except json.JSONDecodeError:
@@ -2704,6 +3062,7 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                 "status": "error",
                 "message": "Invalid JSON response from the server."
             }
+
 
 class IpersonaChallengeDocumentSchema(LeapBaseClass):
     def __init__(self, run_stage='', **kwargs) -> None:

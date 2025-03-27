@@ -892,11 +892,21 @@ class LeapBaseClass:
     def get_all_objects(self, data="", table='', 
                         limit=0, cursor={}, raw=False, ddcol="", 
                         dataframe=True, **kwargs):
-         
+        
+        print(f'-------> get_all_objects kwargs')
+        print(limit)
+        print(cursor)
+        print('-----------------------')
+        print(data)
+        print(table)
+        
         query_filter = ""
         for k in ['query_filter', 'filter', 'filters']:
             if k in kwargs.keys():
+                print('==============')
+                print(k)
                 query_filter = kwargs.pop(k)
+                print(query_filter)
                 break
         
         kwargs.update({'dataframe':dataframe, 'raw':raw})

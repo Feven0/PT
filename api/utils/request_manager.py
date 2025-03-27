@@ -368,6 +368,44 @@ class JobReactionManager(JobManagerBase):
         for x in keep_columns:
             self.keep_columns.append(x)
 
+        
+
+        # Colums configuration for the admin each job info
+        desktop_view = ['id', 'name', 'type', 'tag', 'description', 'tinder_job_profiles', 'expand']
+        tablet_view = ['id', 'name', 'type', 'tag', 'description', 'tinder_job_profiles', 'expand']
+        mobile_view = ['id', 'name', 'type', 'tag', 'description', 'tinder_job_profiles', 'expand']
+        sorting = ['id', 'name', 'type', 'tag', 'description', 'tinder_job_profiles', 'expand']
+        link_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+        
+        self.template_columns = {
+            'id': {'label': 'Template ID', 'ctype': 'string', 'options': []},
+            'name': {'label': 'Name', 'ctype': 'string', 'options': []},
+            'type': {'label': 'Type', 'ctype': 'string', 'options': []},
+            'tag': {'label': 'Type', 'ctype': 'string', 'options': []},
+            'description': {'label': 'Type', 'ctype': 'string', 'options': []},
+            'tinder_job_profiles': {'label': 'Job Profiles Count', 'ctype': 'number', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]},
+
+        }
+        
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.template_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.template_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.template_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.template_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.template_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.template_columns[x]['icon'] = self.uiuxbt.create_expand_icon("id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+
         # Initialize the table
         self.table = self.uiuxbt.table
 
@@ -480,3 +518,44 @@ class JobReactionManager(JobManagerBase):
                 _ = self.uiuxbt_copy.add_rows_for_engagment(params, cursor)
 
             return self.uiuxbt_copy.table
+    
+
+    def prepare_template_table(self, 
+                        params, 
+                        cursor, 
+                        kind, 
+                        **kwargs):
+            """Prepare a table for displaying reaction data."""
+            rows = []
+            pkey = None
+            self.cursor = cursor
+            if kind == 'jobs':
+                pkey = 'attributes'
+                colmap = self.jobs_columns
+            elif kind == 'admin_overview':
+                colmap = self.admin_overview_columns
+            elif kind == 'admin_alluser':
+                colmap = self.admin_alluser_columns
+            elif kind == 'admin_jobs':
+                colmap = self.admin_jobs_columns
+            elif kind == 'admin_allusers_performance':
+                colmap = self.admin_allusers_performance_columns
+            elif kind == 'admin_each_job':
+                colmap = self.admin_each_job_columns 
+            elif kind == 'template':
+                colmap = self.template_columns
+
+            for c, cval in colmap.items():
+                cval['name'] = c
+                _ = self.uiuxbt.add_column(**cval)
+
+            strifnone = lambda x: x if x else ''
+
+            # Remove empty columns and add rows to the table
+            if rows:
+                rows = self._remove_empty_columns(params, colmap)
+                _ = self.uiuxbt.add_rows_for_template(rows)
+            else:
+                _ = self.uiuxbt.add_rows_for_template(params, cursor)
+            
+            return self.uiuxbt.table
