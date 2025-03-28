@@ -38,7 +38,7 @@ transcriber = aai.Transcriber()
 routes = FastAPI(root_path="/api")
 
 
-@routes.post("/audio_upload")
+@routes.post("/audio_upload", tags=["Audio Endpoints"])
 async def speech_to_text(file: UploadFile = File(...)) -> dict:
     """
     Convert an audio file to text using a speech-to-text service.
@@ -123,7 +123,7 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
             }
         )
     
-@routes.post("/create_user_session")
+@routes.post("/create_user_session", tags=["Session Endpoints"])
 async def user_session_files(request: pemodel.UserSessionRequestRecieved):
     """
     Process user session data and generate interview questions.
@@ -342,7 +342,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             content={"error": f"Error processing user session: {str(e)}"}
         )
         
-@routes.post("/clarify")
+@routes.post("/clarify", tags=["Session Endpoints"])
 async def clarify_question(request: pemodel.ClarificationRequestRecieved) -> dict:
     """
     Clarifies a given question using a clarification utility.
@@ -389,7 +389,7 @@ async def clarify_question(request: pemodel.ClarificationRequestRecieved) -> dic
         elapsed_time = end_time - start_time
         logger.info(f"Time taken for question clarification processing: {elapsed_time:.2f} seconds")
 
-@routes.post("/delete_session")
+@routes.post("/delete_session", tags=["Session Endpoints"])
 async def delete_interview_session(request: pemodel.SessionIdRequestRecieved):
     """
     Mark an interview session as deleted.
@@ -457,7 +457,7 @@ async def delete_interview_session(request: pemodel.SessionIdRequestRecieved):
             content={"error": f"Error deleting session: {str(e)}"}
         )
 
-@routes.post("/close_session")
+@routes.post("/close_session", tags=["Session Endpoints"])
 async def close_interview_session(request: pemodel.ClosedDataRequestRecieved):
     """
     Close an interview session and perform final evaluations.
@@ -513,7 +513,7 @@ async def close_interview_session(request: pemodel.ClosedDataRequestRecieved):
             content={"error": f"Error closing session: {str(e)}"}
         )
 
-@routes.post("/calculate_session_overall_progress")
+@routes.post("/calculate_session_overall_progress", tags=["Session Endpoints"])
 async def calculate_overall_progress(request: pemodel.OverallRequestRecieved):
     """
     Fetch overall progress metrics for a job.
@@ -563,7 +563,7 @@ async def calculate_overall_progress(request: pemodel.OverallRequestRecieved):
         logger.error(f"Unexpected error during session progress calculation: {str(e)}")
         return JSONResponse(status_code=500, content={"error": f"Unexpected error: {str(e)}"})
 
-@routes.post("/calculate_allstat_progress")
+@routes.post("/calculate_allstat_progress", tags=["Session Endpoints"])
 async def calculate_allstat_progress(request: pemodel.AllUserIdRecieved):
     """
     Calculates overall users' progress metrics for all job types.
@@ -627,8 +627,8 @@ async def calculate_allstat_progress(request: pemodel.AllUserIdRecieved):
         logger.error(f"Unexpected error during processing: {str(e)} for all_user_id: {request.all_user_id}")
         return JSONResponse(status_code=500, content={"error": f"Unexpected error occurred: {str(e)}"})
 
-@routes.post("/engagement_jobs_status")
-def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved) -> Dict[str, Any]:
+@routes.post("/engagement_jobs_status", tags=["Session Endpoints"])
+def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved):
     """
     Calculate interview engagement status for a user across all job types.
     
@@ -716,7 +716,7 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             information_level=information_level,
             return_skip=return_skip            
         )
-
+        # return len(data)
         logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
 
         
@@ -990,7 +990,7 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
 #             "message": str(e)
 #         }
         
-@routes.post("/admin_overview_status")
+@routes.post("/admin_overview_status", tags=["Admin Endpoints"])
 async def calculate_admin_overview_status(request: pemodel.AdminDataFiltering) -> Union[List, Dict]:
     """
     Calculate an overview of all interview sessions for administrative purposes.
@@ -1085,7 +1085,7 @@ async def calculate_admin_overview_status(request: pemodel.AdminDataFiltering) -
             "message": f"Error processing data: {str(e)}"
         }
 
-@routes.post("/admin_allusers_data")
+@routes.post("/admin_allusers_data", tags=["Admin Endpoints"])
 async def calculate_admin_allusers_data(request: pemodel.AdminDataFiltering) -> Union[List, Dict]:
     """
     Calculate administrative data for all users by processing session data.
@@ -1180,7 +1180,7 @@ async def calculate_admin_allusers_data(request: pemodel.AdminDataFiltering) -> 
             "message": f"Error processing data: {str(e)}"
         }
 
-@routes.post("/admin_alljobs_data")
+@routes.post("/admin_alljobs_data", tags=["Admin Endpoints"])
 async def calculate_admin_alljobs_data(request: pemodel.AdminDataFiltering) -> Union[List, Dict]:
     """
     Calculate administrative data for all jobs by processing session data.
@@ -1275,7 +1275,7 @@ async def calculate_admin_alljobs_data(request: pemodel.AdminDataFiltering) -> U
             "message": f"Error processing data: {str(e)}"
         }
 
-@routes.post("/admin_each_job_overview_data") #-> Dict[str, Any]
+@routes.post("/admin_each_job_overview_data", tags=["Admin Endpoints"]) #-> Dict[str, Any]
 async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFiltering) :
     """
     Calculate administrative data for all jobs by processing session data.
@@ -1554,7 +1554,7 @@ async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFilterin
 #             "message": f"Error processing data: {str(e)}"
 #         }
       
-@routes.post("/admin_allusers_performance_data")
+@routes.post("/admin_allusers_performance_data", tags=["Admin Endpoints"])
 async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFiltering) :
     """
     Calculate performance metrics for all users by processing session data.
@@ -1648,7 +1648,7 @@ async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFi
             "message": f"Error processing data: {str(e)}"
         }
 
-@routes.post("/fetch_user_session")
+@routes.post("/fetch_user_session", tags=["Session Endpoints"])
 async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> Union[List, Dict]:
     """
     Fetch session data for a specific user and job.
@@ -1705,7 +1705,7 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> U
         if not user_data:
             logger.warn(f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
             return JSONResponse(
-                status_code=404, 
+                status_code=200, 
                 content={"message": f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}"}
             )
 
@@ -1719,7 +1719,7 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> U
             content={"error": f"Error fetching user session: {str(e)}"}
         )
    
-@routes.post("/fetch_chat_history")
+@routes.post("/fetch_chat_history", tags=["Session Endpoints"])
 async def fetch_chat_history(request: pemodel.SessionIdRequestRecieved)-> Union[List, Dict]:
     """
     Fetch chat message history for a specific session.
@@ -1769,7 +1769,7 @@ async def fetch_chat_history(request: pemodel.SessionIdRequestRecieved)-> Union[
             content={"error": f"Error fetching chat history: {str(e)}"}
         )
 
-@routes.post("/fetch_user_all_observer")
+@routes.post("/fetch_user_all_observer", tags=["Session Endpoints"])
 async def fetch_user_all_observer(request: pemodel.SessionIdRequestRecieved)-> Union[List, Dict]:
     """
     Fetch all observers for a specific session.
@@ -1817,7 +1817,7 @@ async def fetch_user_all_observer(request: pemodel.SessionIdRequestRecieved)-> U
             content={"error": f"Error fetching observers: {str(e)}"}
         )
 
-@routes.post("/fetch_single_session")
+@routes.post("/fetch_single_session", tags=["Session Endpoints"])
 async def fetch_single_session(request: pemodel.SessionIdRequestRecieved) -> Union[List, Dict]:
     """
     Fetch data for a single session by its ID.
@@ -1873,7 +1873,7 @@ async def fetch_single_session(request: pemodel.SessionIdRequestRecieved) -> Uni
 
 
 #----------------------------------- Question Template Processing APIS -----------------------------------#
-@routes.post("/save_tinder_template")
+@routes.post("/save_tinder_template", tags=["Template Endpoints"])
 def tinder_template(request: pemodel.TinderTemplateRequestRecieved):
     try:
         name = request.name
@@ -1906,7 +1906,7 @@ def tinder_template(request: pemodel.TinderTemplateRequestRecieved):
             content={"error": f"Error saving template: {str(e)}"}
         )
      
-@routes.post("/get_tinder_templates")
+@routes.post("/get_tinder_templates", tags=["Template Endpoints"])
 def get_tinder_template(request: pemodel.GetFilteredTinderTemplateRequestRecieved):
     try:
         job_profile_id = request.job_profile_id
@@ -2063,7 +2063,7 @@ def transform_job_profiles_to_count(templates):
     return transformed_templates
 
     
-@routes.post("/get_a_template")
+@routes.post("/get_a_template", tags=["Template Endpoints"])
 def get_tinder_template(request: pemodel.GetTemplateRequestRecieved):
     try:
         template_id = request.template_id
@@ -2096,7 +2096,7 @@ def get_tinder_template(request: pemodel.GetTemplateRequestRecieved):
             content={"error": f"Error processing getting template: {str(e)}"}
         )
     
-@routes.post("/update_tinder_template")
+@routes.post("/update_tinder_template", tags=["Template Endpoints"])
 def update_tinder_template(request: pemodel.UpdateTinderTemplateRequestRecieved):
     try:
         template_id = request.template_id
@@ -2136,7 +2136,7 @@ def update_tinder_template(request: pemodel.UpdateTinderTemplateRequestRecieved)
             content={"error": f"Error processing template update: {str(e)}"}
         )
 
-@routes.post("/attach_job_id_to_template")
+@routes.post("/attach_job_id_to_template", tags=["Template Endpoints"])
 def attach_id_to_template(request: pemodel.TinderTemplateAttachJobIdRequestRecieved):
     try:
         template_id = request.template_id
@@ -2164,34 +2164,34 @@ def attach_id_to_template(request: pemodel.TinderTemplateAttachJobIdRequestRecie
             content={"error": f"Error attaching id to template:: {str(e)}"}
         )
 
-@routes.post("/create_template_by_llm")
-def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
-    try:
-        context = request.context
-        llm_template_response= ''
+# @routes.post("/create_template_by_llm")
+# def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
+#     try:
+#         context = request.context
+#         llm_template_response= ''
 
-        if llm_template_response:
-            return {
-                "template": llm_template_response,
-                "success": 200,
-                "message": 'Process Failed'
-            }
-        else: 
-            return {
-                "template": llm_template_response,
-                "success": 200,
-                "message": ''
-            }
+#         if llm_template_response:
+#             return {
+#                 "template": llm_template_response,
+#                 "success": 200,
+#                 "message": 'Process Failed'
+#             }
+#         else: 
+#             return {
+#                 "template": llm_template_response,
+#                 "success": 200,
+#                 "message": ''
+#             }
     
-    except Exception as e:
-        logger.error(f"Error attaching id to template: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Error attaching id to template:: {str(e)}"}
-        )
+#     except Exception as e:
+#         logger.error(f"Error attaching id to template: {str(e)}", exc_info=True)
+#         return JSONResponse(
+#             status_code=500,
+#             content={"error": f"Error attaching id to template:: {str(e)}"}
+#         )
 
 #----------------------------------- External Audio Upload Processing APIS -----------------------------------#
-@routes.post("/audio_upload_external")
+@routes.post("/audio_upload_external", tags=["Audio Endpoints"])
 async def speech_to_text(file: UploadFile = File(...)):
     if not file or not file.filename:
         logger.error("Invalid file: No file or filename provided")
@@ -2267,7 +2267,7 @@ async def speech_to_text(file: UploadFile = File(...)):
             }
         )
     
-@routes.post("/external_data_saving")
+@routes.post("/external_data_saving", tags=["Audio Endpoints"])
 async def external_data_saving(request: pemodel.ExternalRequestRecieved):
     try:
         run_stage = request.run_stage
@@ -2335,7 +2335,7 @@ async def external_data_saving(request: pemodel.ExternalRequestRecieved):
 
 
 #----------------------------------- Challenge Document Processing APIS -----------------------------------#
-@routes.post("/get_all_challenges")
+@routes.post("/get_all_challenges", tags=["Challenge Endpoints"])
 def fetch_all_challenges():
     try:
         ipersona_challenge = IpersonaChallengeDocumentSchema()
@@ -2354,7 +2354,7 @@ def fetch_all_challenges():
             content={"error": f"Error processing user session: {str(e)}"}
         )
  
-@routes.post("/get_a_challenge")
+@routes.post("/get_a_challenge", tags=["Challenge Endpoints"])
 def fetch_a_challenge(request: pemodel.ChallengeRequestFiltering):
     try:
         ipersona_challenge = IpersonaChallengeDocumentSchema()

@@ -1752,7 +1752,7 @@ def summarize_interviews(
             nopp=True, 
             dataframe=False,
             **kwargs)
-            
+        # return data, cursors 
         if len(data) != 0:
             data = extracted_needed_metrics(data)
 
