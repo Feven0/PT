@@ -383,8 +383,8 @@ class JobReactionManager(JobManagerBase):
             'id': {'label': 'Template ID', 'ctype': 'string', 'options': []},
             'name': {'label': 'Name', 'ctype': 'string', 'options': []},
             'type': {'label': 'Type', 'ctype': 'string', 'options': []},
-            'tag': {'label': 'Type', 'ctype': 'string', 'options': []},
-            'description': {'label': 'Type', 'ctype': 'string', 'options': []},
+            'tag': {'label': 'Tag', 'ctype': 'string', 'options': []},
+            'description': {'label': 'Description', 'ctype': 'string', 'options': []},
             'tinder_job_profiles': {'label': 'Job Profiles Count', 'ctype': 'number', 'options': []},
             'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]},
 
