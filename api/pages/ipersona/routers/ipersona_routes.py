@@ -2164,31 +2164,65 @@ def attach_id_to_template(request: pemodel.TinderTemplateAttachJobIdRequestRecie
             content={"error": f"Error attaching id to template:: {str(e)}"}
         )
 
-# @routes.post("/create_template_by_llm")
-# def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
-#     try:
-#         context = request.context
-#         llm_template_response= ''
+@routes.post("/create_template_by_llm", tags=["Template Endpoints"])
+def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
+    try:
+        context = request.context
+        job_profile_ids = request.job_profile_ids
+        run_stage = request.run_stage
+        tinder_user_profile_data = ""
+        
+        # tinder_job_data = util.get_job_data(job_profile_id, run_stage)
+        tinder_job_data = util.get_job_data_template_for_multiple_ids(job_profile_ids, run_stage)
 
-#         if llm_template_response:
-#             return {
-#                 "template": llm_template_response,
-#                 "success": 200,
-#                 "message": 'Process Failed'
-#             }
-#         else: 
-#             return {
-#                 "template": llm_template_response,
-#                 "success": 200,
-#                 "message": ''
-#             }
+        # Load and format prompt templates
+        response_obj = util.fetch_the_structure(type='Default')
+        section_count = response_obj.get('section_count', {})
+        json_format = response_obj.get('json_format', {})
+
+        if response_obj is False:        
+            generated_persona, msg = util.read_prompt_data_for_default(tinder_job_data, tinder_user_profile_data)
+            generated_persona = util.read_prompt_data_for_template(tinder_job_data)
+
+        else:
+            generated_persona = util.read_prompt_data_for_template(tinder_job_data)
+            msg = util.read_generate_question_prompt(json_format, section_count, context)
+        
+        # Generate interview questions
+        content = generated_persona + msg
+        response = gpt.openai_gpt_assistant_without_streaming(content)
+
+        if not response:
+            logger.error("Failed to generate questions: Empty AI response")
+            return JSONResponse(
+                status_code=500,
+                content={"error": "Failed to generate interview questions"}
+            )
+            
+        generated_question_json = util.extract_json(response, quite=False)
+        logger.info("Persona and questions generated successfully")
+
+        generated_question_json = util.add_question_number(generated_question_json)
+
+        if generated_question_json:
+            return {
+                "response": generated_question_json,
+                "success": 200,
+                "message": 'Process Failed'
+            }
+        else: 
+            return {
+                "response": [],
+                "success": 200,
+                "message": ''
+            }
     
-#     except Exception as e:
-#         logger.error(f"Error attaching id to template: {str(e)}", exc_info=True)
-#         return JSONResponse(
-#             status_code=500,
-#             content={"error": f"Error attaching id to template:: {str(e)}"}
-#         )
+    except Exception as e:
+        logger.error(f"Error attaching id to template: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error attaching id to template:: {str(e)}"}
+        )
 
 #----------------------------------- External Audio Upload Processing APIS -----------------------------------#
 @routes.post("/audio_upload_external", tags=["Audio Endpoints"])

@@ -105,7 +105,7 @@ class TinderTemplateRequestRecieved(MyBaseModel):
     type: str
     tag: str
     description: str
-    template_questions: Optional[Dict] = {}
+    template_questions: Optional[list] = []
     job_profile_ids: Optional[list] = []
 
 class UpdateTinderTemplateRequestRecieved(MyBaseModel):
@@ -135,6 +135,7 @@ class TinderTemplateJobIdRequestRecieved(MyBaseModel):
     
 class TemplateLLMContextRequestRecieved(MyBaseModel):
     context: str
+    job_profile_ids: Optional[list] = []
 
 class TinderTemplateAttachJobIdRequestRecieved(MyBaseModel):
     template_id: int

@@ -8,7 +8,18 @@ import api.llm.ipersona.ipersona_strapi as strapi
 from datetime import datetime
 from api.utils.logger import LLPackerLogger
 import api.llm.ipersona.ipersona_gpt as gpt
-from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionTinderUserJobMatchSchema, IpersonaSessionTinderUserReactionSchema, IpersonaSessionSchema, IpersonaTraineeSchema, IpersonaJobSchema, IpersonaSessionOverallObserverSchema, IpersonaSessionMessageSchema, IpersonaSessionObserverSchema, IpersonaAllUserSchema, IpersonaProfileInformationSchema
+from api.llm.ipersona.ipersona_strapi_schemas import (
+    IpersonaSessionTinderUserJobMatchSchema, 
+    IpersonaSessionTinderUserReactionSchema, 
+    IpersonaSessionSchema, IpersonaTraineeSchema, 
+    IpersonaJobSchema, 
+    IpersonaSessionOverallObserverSchema, 
+    IpersonaSessionMessageSchema, 
+    IpersonaSessionObserverSchema, 
+    IpersonaAllUserSchema, 
+    IpersonaProfileInformationSchema,
+    IpersonaTinderTemplateSchema)
+
 from api.utils.request_manager import JobReactionManager
 from api.services.async_task_analyzer import AsyncTaskAnalyzer
 
@@ -279,29 +290,340 @@ async def choose_interview_question(run_stage, collection: dict, data: dict, tem
         logger.error(f"Choosing question process failed: ${str(e)}")
         return {'error': str(e)}
 
-# async def choose_interview_question_challenge(run_stage, collection: dict, data: dict, sessionId):
-#     try:  
-#         section = collection["Technical"]
-#         question_type = "Technical"
-#         question_count = 12
-#         chat_count = ''
-#         count = ''
-#         template_id = None
-#         response = await helper_func(
-#             run_stage, 
-#             chat_count,
-#             count, 
-#             question_type, 
-#             section, 
-#             data, 
-#             sessionId,
-#             template_id,
-#             question_count)
-#         return response
-#     except Exception as e:
-#         logger.error(f"Choosing question process failed: ${str(e)}")
-#         return {'error': str(e)}
+#-------------------------------------------- Choose Question from the new structure Generated ----------------------------------
+async def choose_interview_question_new_structure(
+        run_stage, 
+        collection: list,  # Changed from dict to list 
+        question_count, 
+        data: dict, 
+        template_id, 
+        challenge_id, 
+        sessionId):
+    try: 
+        # Fetch session chat history
+        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
+        session_chathistory = ipersona_message.filter_by_session_id(
+            sessionId=sessionId, 
+            nopp=True, 
+            dataframe=False,
+            sort='asc')
+  
+        # Determine chat count
+        chat = session_chathistory['count']
+        global chat_count
+        chat_count = 1
+        
+        if chat != 0:  
+            chat = session_chathistory['total']
+            assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
+            chat_count += assistant_count 
+            logger.info(f"Number of assistant entries: {chat_count}")
+        else:
+            logger.error("Chat is empty.")
+        
+        # Dynamically calculate section question counts
+        question_counts = {section['sectionType']: len(section['questions']) for section in collection}
+        total_questions = sum(question_counts.values())
+        
+        # Create a cumulative section boundaries
+        section_boundaries = {}
+        current_boundary = 1  # Start from 1
+        for section in collection:
+            section_type = section['sectionType']
+            count = len(section['questions'])
+            section_boundaries[section_type] = {
+                'start': current_boundary,
+                'end': current_boundary + count
+            }
+            current_boundary += count
+        
+        # Dynamically determine the current section
+        current_section = None
+        final_flag = False
+        for section in collection:
+            section_type = section['sectionType']
+            boundaries = section_boundaries[section_type]
 
+            if chat_count < boundaries['end']:
+                current_section = section
+                break
+            else:
+                final_flag = True
+        
+        # If a section is found, process the interview question
+        if current_section:
+            question_type = current_section['sectionType']
+            
+            # Determine if this is a specific chat count moment (optional)
+            count = None
+            section_start = section_boundaries[question_type]['start']
+            if chat_count == section_start:
+                count = chat_count
+            
+            # Call helper function to fetch or generate question
+            response = await helper_func(
+                run_stage, 
+                total_questions,
+                chat_count, 
+                count, 
+                question_type, 
+                current_section['questions'], 
+                data, 
+                sessionId,
+                template_id,
+                challenge_id)
+
+            return response
+        
+        # If no section is found (all questions exhausted)
+        if final_flag:
+            interview_question_json = None
+            realtime_evaluation = None
+            status = None
+            
+            # Fetch last assistant response
+            last_assistant_response = fetch_the_last_question(run_stage, data, sessionId) 
+
+            # Prepare closing evaluation prompt
+            # ipersona_metric = IpersonaSmgCretrionMetricSchema()
+            # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=167, nopp=True, dataframe=False)
+            # data_content = data_content.get('attributes', {}).get('content', {})
+            # closing_content = data_content.replace("{closing_question}", str(last_assistant_response))
+            # closing_content = data_content.replace("{candidate_response}" , str(data['response']))
+            
+            prompt_text = file_reader(prompt_path('ipersona/closing_question_realtime_evaluation.txt'))
+            closing_content = prompt_text \
+                        .replace("{closing_question}", str(last_assistant_response)) \
+                        .replace("{candidate_response}" , str(data['response']))
+      
+            # Get realtime evaluation
+            realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(closing_content)
+
+            realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False) 
+            realtime_evaluation = "null" if realtime_evaluation_response is None else realtime_evaluation_response.get("realtime_evaluation")
+
+            logger.info(f"Realtime evaluation is: {realtime_evaluation}")
+            if realtime_evaluation != "null":
+                status = "final"
+                final = 'true'
+                strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId)
+                           
+            rstage = ''
+            status = "Completed"
+            await overall_interview_evaluations(rstage, data, status, sessionId)
+            logger.info("Calculate the overall and save to database done.")            
+                
+            response = {
+                "interview": interview_question_json,
+                "status": status,
+                "realtime": realtime_evaluation
+            }
+            return response
+
+    except Exception as e:
+        logger.error(f"Choosing question process failed: {str(e)}")
+        return {'error': str(e)}
+    
+async def choose_interview_question_challenge_new_structure(
+    run_stage, 
+    collection: list, 
+    question_count, 
+    data: dict, 
+    template_id, 
+    challenge_id, 
+    sessionId):
+    try: 
+        # Fetch session chat history
+        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
+        session_chathistory = ipersona_message.filter_by_session_id(
+            sessionId=sessionId, 
+            nopp=True, 
+            dataframe=False,
+            sort='asc')
+  
+        # Determine chat count
+        chat = session_chathistory['count']
+        global chat_count
+        chat_count = 1
+        
+        if chat != 0:  
+            chat = session_chathistory['total']
+            assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
+            chat_count += assistant_count 
+            logger.info(f"Number of assistant entries: {chat_count}")
+        else:
+            logger.error("Chat is empty.")
+        
+        # Dynamically calculate section question counts
+        question_counts = {section['sectionType']: len(section['questions']) for section in collection}
+        total_questions = sum(question_counts.values())
+        
+        # Create a cumulative section boundaries
+        section_boundaries = {}
+        current_boundary = 1  # Start from 1
+        for section in collection:
+            section_type = section['sectionType']
+            count = len(section['questions'])
+            section_boundaries[section_type] = {
+                'start': current_boundary,
+                'end': current_boundary + count
+            }
+            current_boundary += count
+        
+        # Dynamically determine the current section
+        current_section = None
+        final_flag = False
+        for section in collection:
+            section_type = section['sectionType']
+            boundaries = section_boundaries[section_type]
+            if chat_count < boundaries['end']:
+                current_section = section
+                break
+            else:
+                final_flag = True
+        
+        # If a section is found, process the interview question
+        if current_section:
+            question_type = current_section['sectionType']
+            
+            # Determine if this is a specific chat count moment (optional)
+            count = None
+            section_start = section_boundaries[question_type]['start']
+            if chat_count == section_start:
+                count = chat_count
+            
+            # Call helper function to fetch or generate question
+            response = await helper_func(
+                run_stage, 
+                total_questions,
+                chat_count, 
+                count, 
+                question_type, 
+                current_section['questions'], 
+                data, 
+                sessionId,
+                template_id,
+                challenge_id)
+
+            return response
+        
+        # If no section is found (all questions exhausted)
+        if final_flag:
+            interview_question_json = None
+            realtime_evaluation = None
+            status = None
+            
+            # Realtime evaluation response
+            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId)
+            realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
+           
+            logger.info(f"Realtime evaluation is: {realtime_evaluation}")
+            if realtime_evaluation != "null":
+                status = "final"
+                final = 'true'
+                strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId)
+
+            rstage = ''
+            status = "Completed"
+            await overall_interview_evaluations(rstage, data, status, sessionId)
+            logger.info("Calculate the overall and save to database done.")            
+                
+            response = {
+                "interview": interview_question_json,
+                "status": status,
+                "realtime": realtime_evaluation
+            }
+
+            return response
+
+    except Exception as e:
+        logger.error(f"Choosing question process failed: {str(e)}")
+        return {'error': str(e)}
+
+async def helper_func_(
+    run_stage, 
+    question_count,
+    chat_count, 
+    count: int, 
+    question_type: str, 
+    section: list, 
+    data: dict, 
+    sessionId,
+    template_id,
+    challenge_id):
+    """
+    Processes interview questions and evaluations based on candidate responses.
+
+    This asynchronous function evaluates candidate responses and fetches 
+    appropriate interview questions from the specified section. It also handles 
+    real-time and overall evaluations based on the current question counter.
+
+    Parameters:
+    ----------
+    count : int
+        The current question count, indicating which question is being processed.
+
+    question_type : str
+        The type of question being asked (e.g., Background, Technical).
+
+    section : list
+        A list of questions from which to fetch the current interview question.
+
+    data : dict
+        A dictionary containing session information, including candidate responses 
+        and the current question counter.
+
+    Returns:
+    -------
+    dict
+        A JSON object containing the interview question, real-time evaluations, 
+        overall evaluations, and metrics. If an error occurs, it returns an error 
+        message instead.
+    """
+    try:
+        interview_question_json = None
+        realtime_evaluation = None
+        status = None
+                
+        if chat_count < question_count + 2:
+            if data['response']:
+                if count is not None:
+                    interview_question_json = await fetch_interview_question(section, question_type, data, question_count) 
+                else:
+                    response = await check_if_followup(data['response'])
+           
+                    if not response:
+                        interview_question_json = await fetch_interview_question(section, question_type, data, question_count)
+                    else:
+                        interview_question_json = await generate_followup(data)
+                       
+            else:
+                interview_question_json = await fetch_interview_question(section, question_type, data, question_count) 
+   
+        else:  
+            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId)
+            realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
+            logger.info(f"Realtime evaluation is: {realtime_evaluation}")
+            if realtime_evaluation != "null":
+                status = "final"
+                final = 'true'
+                strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId)
+            rstage=''
+            status = "Completed"
+            await overall_interview_evaluations(rstage, data, status, sessionId)
+            logger.info("Calculate the overall and save to database done.")            
+                
+        response = {
+            "interview": interview_question_json,
+            "status": status,
+            "realtime": realtime_evaluation
+        } 
+        return response
+    
+    except Exception as e:
+        logger.error(f"Choosing question helper process failed: ${str(e)}")
+        return {'error': str(e)}
+    
 #----------------------------------------- Helper Functions for Choosing Question ---------------------------------
 async def helper_func(
     run_stage, 
@@ -3241,3 +3563,281 @@ def extract_job_neccessary_values(data):
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
+
+def fetch_the_last_question(run_stage, data: dict, sessionId) -> dict:
+    try:
+        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
+        session_chathistory = ipersona_message.filter_by_session_id(
+            sessionId=sessionId, 
+            nopp=True, 
+            dataframe=False,
+            sort='asc')
+        
+        history = session_chathistory['total']
+        
+        last_assistant_response = None
+        for entry in reversed(history):
+            message = entry            
+            if message["user_type"] == "assistant":
+                last_assistant_response = message["content"].get("full_response")  
+                break  
+
+        if last_assistant_response:
+            logger.info("Last assistant response For Realtime Evaluation")
+        else:
+            logger.warn("No assistant response found in the chat history.")
+
+        return last_assistant_response   
+
+    except Exception as e:
+        logger.error(f"Real time evaluation process failed: ${str(e)}")
+        return {'error': str(e)} 
+
+# --------------------------------------------- Helper Functions -------------------------------------------- #
+def fetch_the_structure(type):
+    try:
+        since = 7
+        limit = 10
+        ipersona_template = IpersonaTinderTemplateSchema()
+        templates = ipersona_template.filter_by_type_without_cursor(
+                        type=type, 
+                        # since=since, 
+                        # limit=limit, 
+                        nopp=True, 
+                        dataframe=False,
+                        # **kwargs
+                    )
+        if not templates:
+            return False
+        else:
+            data = templates[0].get('attributes', {}).get('attributes', {})
+            if data:
+                section_count = count_section_questions(data)
+                json_format = interview_questions_generator_json(data)
+                return {
+                    "section_count": section_count,
+                    "json_format": json_format
+                }
+            else:
+                return False
+        
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+    
+def count_section_questions(structure_data):
+    try:
+        structure = structure_data.get('structure', [])
+        section_counts = {}
+        
+        for section in structure:
+            section_type = section.get('sectionType', '')
+            num_questions = section.get('numberofquestions', 0)
+            section_counts[section_type] = num_questions
+        
+        return section_counts
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+
+def interview_questions_generator_json(structure_data):
+    """
+    Generate a JSON template for interview questions based on the given structure.
+    
+    :param structure_data: A dictionary containing the interview section structure
+    :return: A list of dictionaries representing interview question sections
+    """
+    try:
+        structure = structure_data.get('structure', [])
+        
+        interview_questions = []
+        
+        for section in structure:
+            section_type = section.get('sectionType', '')
+            num_questions = section.get('numberofquestions', 0)
+            
+            questions = []
+            for i in range(num_questions):
+                questions.append({
+                    "question": "here you need to put the interview question",
+                    "ideal_answer": "Here you put an ideal great answer for the question"
+                })
+            
+            questions.append(f"// add more questions based on the provided count only for {section_type.lower()} interview questions, not more or less the count provided in the structure")
+            
+            section_dict = {
+                "sectionType": section_type,
+                "questions": questions
+            }
+            
+            interview_questions.append(section_dict)
+        
+        return interview_questions
+
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+
+def transform_job_profiles_to_count(templates):
+    """
+    Transform the `tinder_job_profiles` to include only the count of profiles 
+    and move attributes fields to the root level.
+    """
+    if not templates:
+        return []
+
+    transformed_templates = []
+
+    for template in templates:
+        # Extract attributes and merge with root-level id
+        transformed_template = {
+            "id": template["id"],
+            **template.get("attributes", {})
+        }
+
+        # Replace the list of job profile IDs with the count of profiles
+        if "tinder_job_profiles" in transformed_template:
+            job_profiles = transformed_template["tinder_job_profiles"].get("data", [])
+            transformed_template["tinder_job_profiles"] = len(job_profiles)
+        
+        transformed_templates.append(transformed_template)
+    
+    return transformed_templates
+
+def get_job_data_template_for_multiple_ids(job_profile_ids, run_stage):
+    jobs_data = {}
+    for job_profile_id in job_profile_ids:
+        ipersona_job = IpersonaJobSchema(run_stage=run_stage)
+        tinder_job_data = ipersona_job.filter_by_job_id(
+            job_profile_id=job_profile_id, nopp=True, dataframe=False
+        )
+
+        if not tinder_job_data:
+            logger.warn(f"No job data found for job_profile_id: {job_profile_id}")
+            jobs_data[f"job_{job_profile_id}"] = {"error": "No job data found for this job_profile_id"}
+        else:
+            extracted_data = extract_job_neccessary_values(tinder_job_data)
+            logger.info(f"Job data extracted for job_profile_id: {job_profile_id}")
+            jobs_data[f"job_{job_profile_id}"] = extracted_data
+
+    return jobs_data
+
+def get_job_data(job_profile_id, run_stage):
+    # Step 2: Fetch job profile data
+    ipersona_job = IpersonaJobSchema(run_stage=run_stage)
+    tinder_job_data = ipersona_job.filter_by_job_id(
+        job_profile_id=job_profile_id, nopp=True, dataframe=False
+    )
+
+    if not tinder_job_data:
+        logger.warn(f"No job data found for job_profile_id: {job_profile_id}")
+        return {
+            "status_code": 404,
+            "content": {"error": "No job data found for the job_profile_id"}
+        }
+
+    tinder_job_data = extract_job_neccessary_values(tinder_job_data)
+    logger.info(f"Job data extracted for job_profile_id: {job_profile_id}")
+    return tinder_job_data
+
+def get_user_data(all_user_id, run_stage):
+    # Step 2: Fetch user profile data
+    ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+    trainee_profile_data = ipersona_user.filter_by_alluser_id(
+        all_user_id=all_user_id, nopp=True, dataframe=False
+    )
+
+    if not trainee_profile_data:
+        logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
+        return {
+            "status_code": 404,
+            "content":{"error": "No trainee user profiles found for the given all_user_id"}
+        }
+
+    tinder_user_profile_id = trainee_profile_data.get('id')
+    if not tinder_user_profile_id:
+        return {
+            "status_code": 500,
+            "content": {"error": "Invalid trainee profile: missing ID"}
+        }
+    
+    tinder_user_profile_data = extract_trainee_neccessary_values(trainee_profile_data)
+    logger.info(f"User profile data extracted for user ID: {tinder_user_profile_id}")
+    return tinder_user_profile_data, tinder_user_profile_id
+
+async def read_prompt_data_for_challenge_default():
+    prompt_text = file_reader(prompt_path('ipersona/generate_challenge_question_default.txt'))
+    content = await analysis_challenge()
+    challenge_prompt = prompt_text \
+        .replace("{challenge_document}", str(content)) \
+        .replace("{count}", str(5))
+        
+    return challenge_prompt
+
+async def read_prompt_data_for_challenge(json_format, count):
+    prompt_text = file_reader(prompt_path('ipersona/generate_challenge_question.txt'))
+    content = await analysis_challenge()
+    challenge_prompt = prompt_text \
+        .replace("{challenge_document}", str(content)) \
+        .replace("{count}", str(count)) \
+        .replace("{json}", str(json_format))
+        
+    return challenge_prompt
+
+def read_prompt_data_for_template(tinder_job_data):
+    prompt_text = file_reader(prompt_path('ipersona/persona.txt'))
+    created_persona = create_persona(str(tinder_job_data))
+
+    generated_persona = prompt_text \
+        .replace("{hr_persona}", created_persona) \
+        .replace("{job_description}", str(tinder_job_data)) 
+        
+    return generated_persona
+
+def read_prompt_data_for_default(tinder_job_data, tinder_user_profile_data):
+    prompt_text = file_reader(prompt_path('ipersona/persona.txt'))
+    created_persona = create_persona(str(tinder_job_data))
+    generated_persona = prompt_text \
+        .replace("{hr_persona}", created_persona) \
+        .replace("{job_description}", str(tinder_job_data))  \
+        .replace("{profile}", str(tinder_user_profile_data))
+
+    question_template = file_reader(prompt_path('ipersona/generate_question_default.txt'))
+    msg = question_template \
+        .replace("{introduction_count}", str(1)) \
+        .replace("{background_count}", str(1)) \
+        .replace("{technical_count}", str(1)) \
+        .replace("{behavioral_count}", str(1)) \
+        .replace("{ability_count}", str(1))\
+        .replace("{closing_count}", str(1))
+        
+    return generated_persona, msg
+
+def add_question_number(generated_question_json):
+    # Iterate over the list of sections and add question numbers
+    question_number = 1
+
+    for section_dict in generated_question_json:
+        # Check if 'questions' exists and is a list
+        if 'questions' in section_dict and isinstance(section_dict['questions'], list):
+            # Iterate over the questions in the section
+            for question in section_dict['questions']:
+                # Ensure the question is a dictionary before adding the question_number
+                if isinstance(question, dict):
+                    question["question_number"] = str(question_number)  # Add question number
+                    question_number += 1
+                else:
+                    logger.warn(f"Unexpected question format: {question}")  # Debug unexpected format
+        else:
+            logger.warn(f"Unexpected section format or missing questions: {section_dict}")  # Debug unexpected format
+
+    return generated_question_json
+
+def read_generate_question_prompt(json_format, context, section_count):
+    prompt_text = file_reader(prompt_path('ipersona/generate_question.txt'))
+    message = prompt_text \
+                .replace("{section_count}", str(section_count)) \
+                .replace("{json}", str(json_format)) \
+                .replace("{context}", str(context))
+    return message

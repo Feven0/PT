@@ -2697,7 +2697,7 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
             validation_errors.append(description_error)
         
         # Validate template_questions
-        if not isinstance(template_questions, dict):
+        if not isinstance(template_questions, list):
             validation_errors.append("Template questions must be a dictionary")
         
         # Validate job_profile_ids
@@ -2762,7 +2762,7 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
             "tag": tag or "",  # Use empty string if tag is None
             "description": description or "",  # Use empty string if description is None
             "attributes": {
-                "template_questions": template_questions or {}
+                "template_questions": template_questions or []
             },
             "jobProfileIds": job_profile_ids
         }
@@ -3063,7 +3063,6 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                 "message": "Invalid JSON response from the server."
             }
 
-
 class IpersonaChallengeDocumentSchema(LeapBaseClass):
     def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
@@ -3186,3 +3185,113 @@ class IpersonaChallengeDocumentSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error extracting challenge data from challenge JSON: {str(e)}")
             return {'error': f"Error extracting challenge data from challenge JSON: {str(e)}"}
+
+class IpersonaSmgCretrionMetricSchema(LeapBaseClass):
+    def __init__(self, run_stage='', **kwargs) -> None:
+        self.kwargs = copy.deepcopy(kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
+        
+        self.table_single = kwargs.get('table_single', "")
+        self.table = kwargs.get('table', "")
+        self.data = kwargs.get('data', "")
+        
+        if not self.table_single:
+            self.table_single = "smgCriterionMetric"
+            
+        if not self.table:
+            self.table = "smgCriterionMetrics"
+            
+        if not self.data:
+            logger.info(f"Using default data schema for {self.table_single} ...")
+            self.data = '''
+                data {
+                    id
+                    attributes {
+                        title
+                        tag
+                        content
+                        %s
+                    }
+                }
+            '''
+        else:
+            logger.info(f"Using passed data schema for {self.table_single} ...")
+     
+            
+        self.type_map = {   
+            "title": "String",
+            "tag": "String",
+            "content": "String"
+        }
+
+        self.id_names_map = {  }
+         
+        self.data_template = copy.deepcopy(self.data)
+        self.data = self.data%""
+        _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)
+    
+    def get_smgCriterionMetric_by_id(self, metricId, **kwargs):
+        data_json = self.exists(scol='id', sval=metricId, op='eq', stype="ID", **kwargs)  
+        data = self.get_smgCriterionMetric_data(data_json)   
+        return data
+    
+    def get_all_smgCriterionMetrics(self, **kwargs):
+        try:
+          
+            data = self.get_all_objects(**kwargs)
+            metric = self.get_smgCriterionMetrics_data(data)
+
+            if metric is None:
+                logger.warn("No metric data found.")
+                return None
+            
+            return metric
+
+        except Exception as e:
+            logger.error(f"Error fetching all metrics: {str(e)}")
+            return {'error': f"Error fetching all metrics: {str(e)}"}
+    
+    def get_extracted_data(self, metric_json):
+        try:
+            if isinstance(metric_json, list) and len(metric_json) > 0:
+                for entry in metric_json:
+                    if 'data' in entry:
+                        metric = entry.get('data')
+                        return metric
+                        
+            logger.warn("No valid data found in the metric JSON.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting data from metric JSON: {str(e)}")
+            return {'error': f"Error extracting data from metric JSON: {str(e)}"}  
+  
+    def get_smgCriterionMetrics_data(self, metric_json):
+        try:
+            all_metrics = []
+            if isinstance(metric_json, list) and len( metric_json) > 0:
+                for entry in metric_json:
+                    if 'data' in entry:
+                        trainee = entry.get('data')                            
+                        return trainee
+            logger.warn("No metrics data found in the metric JSON.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting metric data from metric JSON: {str(e)}")
+            return {'error': f"Error extracting metric data from metric JSON: {str(e)}"}
+    
+    def get_smgCriterionMetric_data(self, metric_json):
+        try:
+            all_metrics = []
+            if isinstance(metric_json, dict) and len(metric_json) > 0:
+                if 'data' in metric_json:
+                    return metric_json['data']
+                        
+                logger.warn("No metric data found in the metric JSON.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting metric data from metric JSON: {str(e)}")
+            return {'error': f"Error extracting metric data from metric JSON: {str(e)}"}
