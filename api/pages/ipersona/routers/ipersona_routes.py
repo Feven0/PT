@@ -2184,7 +2184,7 @@ def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
             )
             
         generated_question_json = util.extract_json(response, quite=False)
-        return generated_question_json
+
         logger.info("Persona and questions generated successfully")
         generated_question_json = util.add_question_number(generated_question_json)
 
