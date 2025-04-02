@@ -2569,6 +2569,56 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
             logger.error(f"Error fetching templates for the type {type}: {str(e)}")
             return {'error': f"Error fetching templates for the type {type}: {str(e)}"}
     
+    def filter_by_type_without_cursor(self, type, **kwargs):
+        try:
+            self.data = '''
+                data {
+                    id
+                    attributes {
+                        name
+                        type
+                        tag
+                        description
+                        attributes
+                        metadata
+                        config
+                        createdAt  
+                        tinder_job_profiles {
+                            data {
+                                id
+                                attributes {
+                                    title
+                                    level
+                                }
+                            }
+                        } 
+                        %s
+                    }
+                }
+            '''
+            if not type:
+                logger.warn("type is missing!")
+                return None
+            
+            session_filter = f"""
+                filters: {{
+                    type: {{ eq: "{type}" }}
+                }}
+            """
+
+            data_json = self.get_all_objects(filter=session_filter, **kwargs)
+            data = self.get_sessions_data(data_json)
+
+            if data is None:
+                logger.warn(f"No template data found for the {type}.")
+                return None
+            
+            return data
+
+        except Exception as e:
+            logger.error(f"Error fetching templates for the type {type}: {str(e)}")
+            return {'error': f"Error fetching templates for the type {type}: {str(e)}"}
+        
     def get_templates_data(self, templates_json):
         try:
             all_templates = []

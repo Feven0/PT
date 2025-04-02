@@ -2020,21 +2020,6 @@ def get_tinder_template(request: pemodel.GetFilteredTinderTemplateRequestRecieve
             status_code=500,
             content={"error": f"Error processing template request: {str(e)}"}
         )
-    
-# def transform_job_profiles_to_count(templates):
-#     """
-#     Transform the `tinder_job_profiles` to include only the count of profiles instead of listing IDs.
-#     """
-#     if not templates:
-#         return []
-
-#     for template in templates:
-#         if 'attributes' in template and 'tinder_job_profiles' in template['attributes']:
-#             job_profiles = template['attributes']['tinder_job_profiles']['data']
-#             # Replace the list of job profile IDs with the count of profiles
-#             template['attributes']['tinder_job_profiles'] = len(job_profiles)
-    
-#     return templates
 
 def transform_job_profiles_to_count(templates):
     """
@@ -2174,17 +2159,16 @@ def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
         
         # tinder_job_data = util.get_job_data(job_profile_id, run_stage)
         tinder_job_data = util.get_job_data_template_for_multiple_ids(job_profile_ids, run_stage)
-
         # Load and format prompt templates
         response_obj = util.fetch_the_structure(type='Default')
-        section_count = response_obj.get('section_count', {})
-        json_format = response_obj.get('json_format', {})
-
+       
         if response_obj is False:        
             generated_persona, msg = util.read_prompt_data_for_default(tinder_job_data, tinder_user_profile_data)
             generated_persona = util.read_prompt_data_for_template(tinder_job_data)
 
         else:
+            section_count = response_obj.get('section_count', {})
+            json_format = response_obj.get('json_format', {})
             generated_persona = util.read_prompt_data_for_template(tinder_job_data)
             msg = util.read_generate_question_prompt(json_format, section_count, context)
         
@@ -2200,8 +2184,8 @@ def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
             )
             
         generated_question_json = util.extract_json(response, quite=False)
+        return generated_question_json
         logger.info("Persona and questions generated successfully")
-
         generated_question_json = util.add_question_number(generated_question_json)
 
         if generated_question_json:
@@ -2218,10 +2202,10 @@ def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
             }
     
     except Exception as e:
-        logger.error(f"Error attaching id to template: {str(e)}", exc_info=True)
+        logger.error(f"Error processing: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=500,
-            content={"error": f"Error attaching id to template:: {str(e)}"}
+            content={"error": f"Error processing: {str(e)}"}
         )
 
 #----------------------------------- External Audio Upload Processing APIS -----------------------------------#

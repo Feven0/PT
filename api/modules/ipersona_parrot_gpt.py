@@ -3607,13 +3607,14 @@ def fetch_the_structure(type):
                         dataframe=False,
                         # **kwargs
                     )
+        
         if not templates:
             return False
         else:
             data = templates[0].get('attributes', {}).get('attributes', {})
             if data:
                 section_count = count_section_questions(data)
-                json_format = interview_questions_generator_json(data)
+                json_format = interview_questions_generator_json_with_timelimt(data)
                 return {
                     "section_count": section_count,
                     "json_format": json_format
@@ -3679,6 +3680,45 @@ def interview_questions_generator_json(structure_data):
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
 
+def interview_questions_generator_json_with_timelimt(structure_data):
+    """
+    Generate a JSON template for interview questions based on the given structure.
+    
+    :param structure_data: A dictionary containing the interview section structure
+    :return: A list of dictionaries representing interview question sections
+    """
+    try:
+        structure = structure_data.get('structure', [])
+        
+        interview_questions = []
+        
+        for section in structure:
+            section_type = section.get('sectionType', '')
+            num_questions = section.get('numberofquestions', 0)
+            
+            questions = []
+            for i in range(num_questions):
+                questions.append({
+                    "question": "here you need to put the interview question",
+                    "time_limit": "here you the time limit need to answer the question in this format (minutes: second) 00:00",
+                    "ideal_answer": "Here you put an ideal great answer for the question"
+                })
+            
+            questions.append(f"// add more questions based on the provided count only for {section_type.lower()} interview questions, not more or less the count provided in the structure")
+            
+            section_dict = {
+                "sectionType": section_type,
+                "questions": questions
+            }
+            
+            interview_questions.append(section_dict)
+        
+        return interview_questions
+
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+    
 def transform_job_profiles_to_count(templates):
     """
     Transform the `tinder_job_profiles` to include only the count of profiles 
