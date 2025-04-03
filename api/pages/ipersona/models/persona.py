@@ -107,6 +107,8 @@ class TinderTemplateRequestRecieved(MyBaseModel):
     description: str
     template_questions: Optional[list] = []
     job_profile_ids: Optional[list] = []
+    prompt_ids: Optional[list] = []
+    challenge_ids: Optional[list] = []
 
 class UpdateTinderTemplateRequestRecieved(MyBaseModel):
     template_id: int
@@ -116,9 +118,13 @@ class UpdateTinderTemplateRequestRecieved(MyBaseModel):
     description: str
     template_questions: Optional[Dict] = {}
     job_profile_ids: Optional[list] = []
+    prompt_ids: Optional[list] = []
+    challenge_ids: Optional[list] = []
 
 class GetFilteredTinderTemplateRequestRecieved(MyBaseModel):
-    job_profile_id: Optional[int] = None  # Optional field for flexibility
+    job_profile_id: Optional[int] = None  
+    challenge_id: Optional[int] = None
+    prompt_id: Optional[int] = None
     type: Optional[str] = None  # Optional type field
     cursor: Optional[Dict] = {}
     filter: Optional[Dict] = {}
@@ -140,6 +146,8 @@ class TemplateLLMContextRequestRecieved(MyBaseModel):
 class TinderTemplateAttachJobIdRequestRecieved(MyBaseModel):
     template_id: int
     job_profile_ids: Optional[list] = []
+    prompt_ids: Optional[list] = []
+    challenge_ids: Optional[list] = []
 
 class RunStageSetupRequestRecieved(MyBaseModel):
     pass

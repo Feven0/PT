@@ -1882,10 +1882,19 @@ def tinder_template(request: pemodel.TinderTemplateRequestRecieved):
         description = request.description
         template_questions = request.template_questions
         job_profile_ids = request.job_profile_ids
+        prompt_ids = request.prompt_ids
+        challenge_ids = request.challenge_ids
 
         ipersona_tinder = IpersonaTinderTemplateSchema()
-        saved_data = ipersona_tinder.create_template(name, type, tag, description, template_questions, job_profile_ids)
-
+        saved_data = ipersona_tinder.create_template(
+            name, 
+            type, 
+            tag,
+            description,
+            template_questions, 
+            job_profile_ids, 
+            prompt_ids, 
+            challenge_ids)
           
         if saved_data.get('status') == 'error':
             return {
@@ -1910,6 +1919,8 @@ def tinder_template(request: pemodel.TinderTemplateRequestRecieved):
 def get_tinder_template(request: pemodel.GetFilteredTinderTemplateRequestRecieved):
     try:
         job_profile_id = request.job_profile_id
+        challenge_id = request.challenge_id
+        prompt_id = request.prompt_id
         type = request.type
         query_filter = request.filter or {}
         since = max(request.since or 1, 1)  # Ensure minimum value of 1
@@ -1952,7 +1963,68 @@ def get_tinder_template(request: pemodel.GetFilteredTinderTemplateRequestRecieve
                     "success": 200,
                     "message": 'Templates Fetched Successfully for Job Profile ID.'
                 }
-        
+        elif challenge_id != 0:  # If job_profile_id is provided (and not None)
+            fetch_templates, cursor = ipersona_template.filter_by_with_challenge_id(
+                challenge_id=challenge_id, 
+                cursor=cursor, 
+                since=since, 
+                limit=limit, 
+                nopp=True, 
+                dataframe=False,
+                **kwargs
+            )
+            
+            # Transform the result to replace job profile list with a count
+            transformed_templates = util.transform_job_profiles_to_count(fetch_templates)
+            output = util.add_template_columns(transformed_templates, cursor, kind='template', **kwargs)    
+
+            if not transformed_templates:
+                cursor['total'] = 0
+                return {
+                    "template": output,
+                    "cursor": cursor,
+                    "success": 200,
+                    "message": 'No templates found for the given job profile ID.'
+                }
+            else: 
+                return {
+                    "template": output,
+                    "cursor": cursor,
+                    "success": 200,
+                    "message": 'Templates Fetched Successfully for Job Profile ID.'
+                }
+            
+        elif prompt_id != 0:  # If prompt_id is provided (and not None)
+            fetch_templates, cursor = ipersona_template.filter_by_with_prompt_id(
+                prompt_id=prompt_id, 
+                cursor=cursor, 
+                since=since, 
+                limit=limit, 
+                nopp=True, 
+                dataframe=False,
+                **kwargs
+            )
+            
+            # Transform the result to replace job profile list with a count
+            transformed_templates = util.transform_job_profiles_to_count(fetch_templates)
+            output = util.add_template_columns(transformed_templates, cursor, kind='template', **kwargs)    
+
+            if not transformed_templates:
+                cursor['total'] = 0
+                return {
+                    "template": output,
+                    "cursor": cursor,
+                    "success": 200,
+                    "message": 'No templates found for the given job profile ID.'
+                }
+            else: 
+                return {
+                    "template": output,
+                    "cursor": cursor,
+                    "success": 200,
+                    "message": 'Templates Fetched Successfully for Job Profile ID.'
+                }
+            
         elif type:  # If only type is provided (not None)
             templates, cursor = ipersona_template.filter_by_type(
                 type=type, 
@@ -2046,7 +2118,6 @@ def transform_job_profiles_to_count(templates):
         transformed_templates.append(transformed_template)
     
     return transformed_templates
-
     
 @routes.post("/get_a_template", tags=["Template Endpoints"])
 def get_tinder_template(request: pemodel.GetTemplateRequestRecieved):
@@ -2091,16 +2162,20 @@ def update_tinder_template(request: pemodel.UpdateTinderTemplateRequestRecieved)
         description = request.description
         template_questions = request.template_questions
         job_profile_ids = request.job_profile_ids
+        prompt_ids = request.prompt_ids
+        challenge_ids = request.challenge_ids
 
         ipersona_tinder = IpersonaTinderTemplateSchema()
         data = ipersona_tinder.update_template(
             template_id, 
             name, 
             type, 
-            tag, 
-            description, 
+            tag,
+            description,
             template_questions, 
-            job_profile_ids)
+            job_profile_ids,
+            prompt_ids, 
+            challenge_ids)
         
         if data.get('status') == 'error':
             return {
@@ -2125,9 +2200,16 @@ def update_tinder_template(request: pemodel.UpdateTinderTemplateRequestRecieved)
 def attach_id_to_template(request: pemodel.TinderTemplateAttachJobIdRequestRecieved):
     try:
         template_id = request.template_id
-        new_job_profile_ids = request.job_profile_ids
+        job_profile_ids = request.job_profile_ids
+        prompt_ids = request.prompt_ids
+        challenge_ids = request.challenge_ids
+
         ipersona_template =  IpersonaTinderTemplateSchema()
-        attach_template = ipersona_template.add_job_profiles_to_template(template_id, new_job_profile_ids)
+        attach_template = ipersona_template.add_job_profiles_to_template(
+            template_id, 
+            job_profile_ids, 
+            prompt_ids, 
+            challenge_ids)
 
         if attach_template.get('status') == 'error':
             return {
@@ -2160,7 +2242,7 @@ def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
         # tinder_job_data = util.get_job_data(job_profile_id, run_stage)
         tinder_job_data = util.get_job_data_template_for_multiple_ids(job_profile_ids, run_stage)
         # Load and format prompt templates
-        response_obj = util.fetch_the_structure(type='Default')
+        response_obj = util.fetch_the_structure(type='job_interview_config')
        
         if response_obj is False:        
             generated_persona, msg = util.read_prompt_data_for_default(tinder_job_data, tinder_user_profile_data)
