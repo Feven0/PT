@@ -2423,6 +2423,11 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                             data {
                                 id
                             }
+                        }
+                        i_persona_sessions {
+                            data {
+                                id
+                            }
                         } 
                         %s
                     }
@@ -2441,7 +2446,8 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
             "config": "JSON",
             "tinder_job_profiles": "[ID!]",
             "challenge_documents": "[ID!]",
-            "smg_criterion_metrics": "[ID!]"
+            "smg_criterion_metrics": "[ID!]",
+            "i_persona_sessions": "[ID!]"
         }
 
         self.id_names_map = {}
@@ -2510,6 +2516,11 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                                 }
                             }
                         } 
+                        i_persona_sessions {
+                            data {
+                                id
+                            }
+                        }
                         %s
                     }
                 }
@@ -2657,19 +2668,14 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                     id
                     attributes {
                         name
-                        type
-                        tag
-                        description
                         attributes
-                        metadata
-                        config
-                        createdAt  
-                        tinder_job_profiles {
+                        smg_criterion_metrics(pagination:{start:0,limit:1000}) {
                             data {
                                 id
                                 attributes {
                                     title
-                                    level
+                                    tag
+                                    content
                                 }
                             }
                         } 
@@ -2699,7 +2705,7 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error fetching templates for the type {type}: {str(e)}")
             return {'error': f"Error fetching templates for the type {type}: {str(e)}"}
-        
+    
     def get_templates_data(self, templates_json):
         try:
             all_templates = []
@@ -2826,6 +2832,11 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                                 id
                             }
                         }
+                        i_persona_sessions {
+                            data {
+                                id
+                            }
+                        }
                     }
                     }
                 }
@@ -2887,18 +2898,70 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                 "message": "Invalid JSON response from the server."
             }
 
-    def update_template(self, template_id, name, type, tag, description, template_questions, job_profile_ids, smgIds, challengeIds):
+    def update_template(self, template_id, name=None, type=None, tag=None, description=None, 
+                    template_questions=None, job_profile_ids=None, smgIds=None, 
+                    challengeIds=None, sessionIds=None):
+        """
+        Updates the given template by merging new values with the existing structure.
+        
+        :param template_id: ID of the template to update.
+        :param name, type, tag, description: Optional fields to update.
+        :param template_questions: Updated template questions.
+        :param job_profile_ids, smgIds, challengeIds, sessionIds: Lists of updated IDs (if provided).
+        :return: API response after mutation.
+        """
+        
+        # Step 1: Fetch the existing template data
+        existing_template = self.get_tinder_template_id(
+            templateId=template_id, 
+            return_object=True, 
+            nopp=True, 
+            dataframe=False)  # Assuming this returns the full structure
+
+        if not existing_template:
+            return {"status": "error", "message": "Template not found."}
+
+        # Extract attributes
+        attributes = existing_template.get("attributes", {})
+
+        # Preserve current values if no update is provided
+        updated_data = {
+            "id": template_id,
+            "name": name if name is not None else attributes.get("name", ""),
+            "type": type if type is not None else attributes.get("type", ""),
+            "tag": tag if tag is not None else attributes.get("tag", ""),
+            "description": description if description is not None else attributes.get("description", ""),
+            "attributes": {
+                "template_questions": template_questions if template_questions else attributes.get("attributes", {}).get("template_questions", {})
+            },
+
+            "jobProfileIds": job_profile_ids if job_profile_ids is not None else [
+                job["id"] for job in attributes.get("tinder_job_profiles", {}).get("data", [])
+            ],
+            "smgIds": smgIds if smgIds is not None else [
+                metric["id"] for metric in attributes.get("smg_criterion_metrics", {}).get("data", [])
+            ],
+            "challengeIds": challengeIds if challengeIds is not None else [
+                challenge["id"] for challenge in attributes.get("challenge_documents", {}).get("data", [])
+            ],
+            "sessionIds": sessionIds if sessionIds is not None else [
+                session["id"] for session in attributes.get("i_persona_sessions", {}).get("data", [])
+            ],
+        }
+        # return updated_data
+        # Step 3: Send the GraphQL mutation
         mutation_query = """
             mutation UpdateTinderTemplate(
-            $id: ID!, 
-            $name: String!, 
-            $type: String!, 
-            $tag: String!,
-            $description: String!,
-            $attributes: JSON!, 
-            $jobProfileIds: [ID!],
-            $smgIds: [ID!],
-            $challengeIds: [ID!]
+                $id: ID!, 
+                $name: String!, 
+                $type: String!, 
+                $tag: String!,
+                $description: String!,
+                $attributes: JSON!, 
+                $jobProfileIds: [ID!],
+                $smgIds: [ID!],
+                $challengeIds: [ID!],
+                $sessionIds: [ID!]
             ) {
                 updateTinderTemplate(id: $id, data: {
                     name: $name
@@ -2909,6 +2972,7 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                     tinder_job_profiles: $jobProfileIds 
                     smg_criterion_metrics: $smgIds
                     challenge_documents: $challengeIds
+                    i_persona_sessions: $sessionIds
                 }) {
                     data {
                         id
@@ -2918,82 +2982,48 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                             tag
                             description
                             updatedAt
-                            tinder_job_profiles {
-                                data {
-                                    id
-                                }
-                            }
-                            challenge_documents {
-                                data {
-                                    id
-                                }
-                            }
-                            smg_criterion_metrics {
-                                data {
-                                    id
-                                }
-                            }
+                            tinder_job_profiles { data { id } }
+                            challenge_documents { data { id } }
+                            smg_criterion_metrics { data { id } }
+                            i_persona_sessions { data { id } }
                         }
                     }
                 }
             }
         """
 
-        variables = {
-            "id": template_id,
-            "name": name,
-            "type": type,
-            "tag": tag,
-            "description": description,
-            "attributes": {
-                "template_questions": template_questions
-            },
-            "jobProfileIds": job_profile_ids,
-            "smgIds": smgIds,
-            "challengeIds": challengeIds
-        }
-        
-        # Execute the GraphQL mutation
-        res_json = self.sg.insert_table(query=mutation_query, variables=variables)
+        # Step 4: Execute mutation
+        res_json = self.sg.insert_table(query=mutation_query, variables=updated_data)
 
-        # Parse the response
+        # Step 5: Parse the response
         try:
             response = json.loads(res_json)
             template_data = response.get("data", {}).get("updateTinderTemplate", {}).get("data", {})
             
             if template_data:
-                # Extract details
-                template_id = template_data.get("id", "N/A")
-                attributes = template_data.get("attributes", {})
-                name = attributes.get("name", "N/A")
-                template_type = attributes.get("type", "N/A")
-                updated_at = attributes.get("updatedAt", "N/A")
-                job_profile_ids = [job_profile.get("id") for job_profile in attributes.get("tinder_job_profiles", {}).get("data", [])]
-                
                 return {
                     "status": "success",
                     "message": "Template updated successfully.",
                     "data": {
-                        "id": template_id,
-                        "name": name,
-                        "type": template_type,
-                        "updatedAt": updated_at
-                        # "jobProfileIds": job_profile_ids
+                        "id": template_data.get("id"),
+                        "name": template_data["attributes"].get("name"),
+                        "type": template_data["attributes"].get("type"),
+                        "updatedAt": template_data["attributes"].get("updatedAt"),
                     }
                 }
             else:
-                return {
-                    "status": "error",
-                    "message": "Failed to update template. No data returned."
-                }
+                return {"status": "error", "message": "Failed to update template. No data returned."}
 
         except json.JSONDecodeError:
-            return {
-                "status": "error",
-                "message": "Invalid JSON response from the server."
-            }
- 
-    def add_job_profiles_to_template(self, template_id, new_job_profile_ids, new_smg_criterion_metric_ids=[], new_challenge_document_ids=[]):
+            return {"status": "error", "message": "Invalid JSON response from the server."}
+
+    def add_job_profiles_to_template(
+            self, 
+            template_id, 
+            new_job_profile_ids, 
+            new_smg_criterion_metric_ids=[], 
+            new_challenge_document_ids=[],
+            new_session_ids=[]):
         # Step 1: Fetch the existing template data
         query = """
             query GetTemplate($id: ID!) {
@@ -3020,6 +3050,11 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                                     id
                                 }
                             }
+                            i_persona_sessions {
+                                data {
+                                    id
+                                }
+                            }
                         }
                     }
                 }
@@ -3028,14 +3063,15 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
         
         variables = {"id": template_id}
         res_json = self.sg.Select_from_table(query=query, variables=variables)
+
         try:
             response = res_json
             
             # The correct path based on the log output
             if "data" in response and "tinderTemplate" in response["data"]:
                 tinder_template = response["data"]["tinderTemplate"]
-
-                if tinder_template['data']:
+                
+                if "data" in tinder_template:
                     template_data = tinder_template["data"]
 
                     if "attributes" in template_data:
@@ -3051,10 +3087,16 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                         metrics = attributes.get("smg_criterion_metrics", {})
                         metrics_data = metrics
                         existing_smg_criterion_metric_ids = [metric.get("id") for metric in metrics_data['data'] if isinstance(metric, dict)]
+
+                        sessions = attributes.get("i_persona_sessions", {})
+                        sessions_data = sessions
+                        existing_i_persona_sessions_ids = [session.get("id") for session in sessions_data['data'] if isinstance(session, dict)]
                        
                         updated_job_profile_ids = list(set(existing_job_profile_ids + new_job_profile_ids))
                         updated_challenge_document_ids = list(set(existing_challenge_document_ids + new_challenge_document_ids))
                         updated_smg_criterion_metric_ids = list(set(existing_smg_criterion_metric_ids + new_smg_criterion_metric_ids))
+                        updated_session_ids = list(set(existing_i_persona_sessions_ids + new_session_ids))
+                        
 
                         # Handle None values for tag and description
                         tag = attributes.get("tag", "") or ""
@@ -3070,7 +3112,8 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                             template_questions={},
                             job_profile_ids=updated_job_profile_ids,
                             smgIds=updated_smg_criterion_metric_ids,
-                            challengeIds=updated_challenge_document_ids
+                            challengeIds=updated_challenge_document_ids,
+                            sessionIds=updated_session_ids
                         )
                     else:
                         return {"status": "error", "message": "No attributes found in template data."}

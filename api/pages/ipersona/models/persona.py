@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from api.pages.ipersona.models.model_parrot_basic import MyBaseModel
 
 default_days_since = 7
@@ -116,10 +116,10 @@ class UpdateTinderTemplateRequestRecieved(MyBaseModel):
     type: str
     tag: str
     description: str
-    template_questions: Optional[Dict] = {}
-    job_profile_ids: Optional[list] = []
-    prompt_ids: Optional[list] = []
-    challenge_ids: Optional[list] = []
+    template_questions: Optional[Union[list, str]] = {}
+    job_profile_ids: Optional[Union[list, str]] = []
+    prompt_ids: Optional[Union[list, str]] = []
+    challenge_ids: Optional[Union[list, str]] = []
 
 class GetFilteredTinderTemplateRequestRecieved(MyBaseModel):
     job_profile_id: Optional[int] = None  
@@ -141,7 +141,9 @@ class TinderTemplateJobIdRequestRecieved(MyBaseModel):
     
 class TemplateLLMContextRequestRecieved(MyBaseModel):
     context: str
+    all_user_id: int
     job_profile_ids: Optional[list] = []
+    challenge_ids: Optional[list] = []
 
 class TinderTemplateAttachJobIdRequestRecieved(MyBaseModel):
     template_id: int

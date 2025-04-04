@@ -3854,6 +3854,27 @@ def read_prompt_data_for_default(tinder_job_data, tinder_user_profile_data):
         
     return generated_persona, msg
 
+def read_prompt_data_for_default_(type, tag):
+    content = fetch_config_template(type, tag)
+    message = content.get('content', '')
+    message = message.replace("{introduction_count}", str(1))
+    message = message.replace("{background_count}", str(1))
+    message = message.replace("{technical_count}", str(1))
+    message = message.replace("{behavioral_count}", str(1))
+    message = message.replace("{ability_count}", str(1))
+    message = message.replace("{closing_count}", str(1))
+    msg = message
+
+    return  msg
+
+def read_generate_question_prompt_(json_format, context, section_count, tag, type):
+    content = fetch_config_template(type, tag)
+    message = content.get('content', '')
+    message = message.replace("{section_count}", str(section_count))
+    message = message.replace("{json}", str(json_format))
+    message = message.replace("{context}", str(context))
+    return message
+
 def add_question_number(generated_question_json):
     # Iterate over the list of sections and add question numbers
     question_number = 1
@@ -3881,3 +3902,98 @@ def read_generate_question_prompt(json_format, context, section_count):
                 .replace("{json}", str(json_format)) \
                 .replace("{context}", str(context))
     return message
+
+
+
+def read_prompt_persona(tinder_job_data, tinder_user_profile_data, type, tag):
+    content = fetch_config_template(type, tag)
+    message = content.get('content', '')
+    created_persona = create_persona(str(tinder_job_data))
+    message = message.replace("{hr_persona}", str(created_persona))
+    message = message.replace("{job_description}", str(tinder_job_data)) 
+    message = message.replace("{profile}", str(tinder_user_profile_data))
+    generated_persona = message
+    return generated_persona
+
+def read_prompt_data_for_multiple_challenge_default(challenges_data, type, tag):
+    content = fetch_config_template(type, tag)
+    message = content.get('content', '')
+    message = message.replace("{challenge_document}", str(challenges_data)) 
+    message = message.replace("{count}", str(5))
+    challenge_prompt = message
+
+    return challenge_prompt
+
+def read_prompt_data_for_multiple_challenge(
+        json_format, 
+        count, 
+        challenges_data, 
+        type, 
+        tag):
+    content = fetch_config_template(type, tag)
+    message = content.get('content', '')
+    message = message.replace("{challenge_document}", str(challenges_data))
+    message = message.replace("{count}", str(count))
+    message = message.replace("{json}", str(json_format))
+    challenge_prompt = message
+
+    return challenge_prompt
+
+def fetch_config_template(type, tag):
+    try:
+        ipersona_template = IpersonaTinderTemplateSchema()
+        templates = ipersona_template.filter_by_type_without_cursor(
+                        type=type, 
+                        nopp=True, 
+                        dataframe=False
+                    )
+
+        content = filter_smg_criterion_metrics_by_tag(templates, tag)
+        return content
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+    
+def filter_smg_criterion_metrics_by_tag(data, tag):
+    """
+    Filters the 'smg_criterion_metrics' inside the given data based on the specified tag.
+    
+    :param data: List of dictionaries containing 'smg_criterion_metrics'.
+    :param tag: The tag to filter by.
+    :return: A single dictionary matching the tag with only id, tag, and content.
+    """
+    for item in data:
+        attributes = item.get("attributes", {})
+        smg_metrics = attributes.get("smg_criterion_metrics", {}).get("data", [])
+        
+        for metric in smg_metrics:
+            metric_attributes = metric.get("attributes", {})
+            if metric_attributes.get("tag") == tag:
+                return {
+                    "id": metric["id"],
+                    "tag": metric_attributes["tag"],
+                    "content": metric_attributes["content"]
+                }
+    
+    return {} 
+
+async def analyze_multiple_challenges(challenge_ids):
+    challenges_data = {}
+
+    for challenge_id in challenge_ids:
+        try:
+            ipersona_challenge = AsyncTaskAnalyzer()
+            content = ipersona_challenge.get_task_document(challenge_id)
+            content = ipersona_challenge.clean_content(content)
+            result = await ipersona_challenge.analyze_sections(content)
+
+            logger.info(f"Challenge analysis completed for challenge_id: {challenge_id}")
+            challenges_data[f"challenge_{challenge_id}"] = result
+
+        except Exception as e:
+            logger.error(f"Error processing challenge_id {challenge_id}: {e}")
+            challenges_data[f"challenge_{challenge_id}"] = {"error": str(e)}
+
+    return challenges_data
+

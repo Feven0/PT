@@ -2156,14 +2156,16 @@ def get_tinder_template(request: pemodel.GetTemplateRequestRecieved):
 def update_tinder_template(request: pemodel.UpdateTinderTemplateRequestRecieved):
     try:
         template_id = request.template_id
-        name = request.name
-        type = request.type
-        tag = request.tag
-        description = request.description
-        template_questions = request.template_questions
-        job_profile_ids = request.job_profile_ids
-        prompt_ids = request.prompt_ids
-        challenge_ids = request.challenge_ids
+        name = request.name if request.name != "" else None
+        type = request.type if request.type != "" else None
+        tag = request.tag if request.tag != "" else None
+        description = request.description if request.description != "" else None
+        template_questions = request.template_questions if request.template_questions != "" else None
+        job_profile_ids = request.job_profile_ids if request.job_profile_ids != "" else None
+        prompt_ids = request.prompt_ids if request.prompt_ids != "" else None
+        challenge_ids = request.challenge_ids if request.challenge_ids != "" else None
+        session_ids = ""
+        session_ids = None if session_ids == "" else session_ids
 
         ipersona_tinder = IpersonaTinderTemplateSchema()
         data = ipersona_tinder.update_template(
@@ -2175,7 +2177,8 @@ def update_tinder_template(request: pemodel.UpdateTinderTemplateRequestRecieved)
             template_questions, 
             job_profile_ids,
             prompt_ids, 
-            challenge_ids)
+            challenge_ids,
+            session_ids)
         
         if data.get('status') == 'error':
             return {
@@ -2203,13 +2206,15 @@ def attach_id_to_template(request: pemodel.TinderTemplateAttachJobIdRequestRecie
         job_profile_ids = request.job_profile_ids
         prompt_ids = request.prompt_ids
         challenge_ids = request.challenge_ids
+        session_ids = []
 
         ipersona_template =  IpersonaTinderTemplateSchema()
         attach_template = ipersona_template.add_job_profiles_to_template(
             template_id, 
             job_profile_ids, 
             prompt_ids, 
-            challenge_ids)
+            challenge_ids,
+            session_ids)
 
         if attach_template.get('status') == 'error':
             return {
@@ -2232,30 +2237,89 @@ def attach_id_to_template(request: pemodel.TinderTemplateAttachJobIdRequestRecie
         )
 
 @routes.post("/create_template_by_llm", tags=["Template Endpoints"])
-def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
+async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecieved):
     try:
         context = request.context
+        all_user_id = request.all_user_id
         job_profile_ids = request.job_profile_ids
+        challenge_ids = request.challenge_ids
         run_stage = request.run_stage
         tinder_user_profile_data = ""
         
-        # tinder_job_data = util.get_job_data(job_profile_id, run_stage)
-        tinder_job_data = util.get_job_data_template_for_multiple_ids(job_profile_ids, run_stage)
-        # Load and format prompt templates
-        response_obj = util.fetch_the_structure(type='job_interview_config')
-       
-        if response_obj is False:        
-            generated_persona, msg = util.read_prompt_data_for_default(tinder_job_data, tinder_user_profile_data)
-            generated_persona = util.read_prompt_data_for_template(tinder_job_data)
+        if len(job_profile_ids) != 0:
+            type='job_interview_config'
+            persona_tag = 'parrot_persona'
 
-        else:
+            tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
+            tinder_job_data = util.get_job_data_template_for_multiple_ids(job_profile_ids, run_stage)
+            # Load and format prompt templates
+            response_obj = util.fetch_the_structure(type)
             section_count = response_obj.get('section_count', {})
             json_format = response_obj.get('json_format', {})
-            generated_persona = util.read_prompt_data_for_template(tinder_job_data)
-            msg = util.read_generate_question_prompt(json_format, section_count, context)
+
+            if response_obj is False:        
+                tag ='parrot_question_generator_default'
+                generated_persona = util.read_prompt_persona(
+                    tinder_job_data, 
+                    tinder_user_profile_data, 
+                    type, 
+                    persona_tag)
+                
+                msg = util.read_prompt_data_for_default_(
+                    tinder_job_data,
+                    tinder_user_profile_data,
+                    type, 
+                    tag)
+                
+                content = generated_persona + msg
+
+            else:
+                tag = 'parrot_generate_question'
+                generated_persona = util.read_prompt_persona(
+                    tinder_job_data, 
+                    tinder_user_profile_data, 
+                    type, 
+                    persona_tag)
+                msg = util.read_generate_question_prompt_(
+                    json_format, 
+                    section_count, 
+                    context,
+                    tag,
+                    type)
+
+                content = generated_persona + msg
+           
         
+        if len(challenge_ids) != 0:
+            type = 'challenge_interview_config'
+            persona_tag = 'parrot_persona'
+
+            tinder_challenge_data = await util.analyze_multiple_challenges(challenge_ids)
+            
+            # Load and format prompt templates
+            response_obj = util.fetch_the_structure(type)
+            section_count = response_obj.get('section_count', {})
+            json_format = response_obj.get('json_format', {})
+
+            if response_obj is False:
+                # if there no challenge structure found, fallback to default prompt    REMOVE THE JSON_DUMP FROM CHALLENGE
+                tag ='parrot_challenge_question_generation_default'
+                content = util.read_prompt_data_for_multiple_challenge_default(
+                    tinder_challenge_data, 
+                    type, 
+                    tag)
+            else: 
+                tag = 'parrot_challenge_question_generation' 
+                section_count = response_obj.get('section_count', {})
+                json_format = response_obj.get('json_format', {})
+                content = util.read_prompt_data_for_multiple_challenge(
+                    json_format, 
+                    section_count,
+                    tinder_challenge_data, 
+                    type, 
+                    tag)
+
         # Generate interview questions
-        content = generated_persona + msg
         response = gpt.openai_gpt_assistant_without_streaming(content)
 
         if not response:
@@ -2266,8 +2330,8 @@ def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
             )
             
         generated_question_json = util.extract_json(response, quite=False)
-
         logger.info("Persona and questions generated successfully")
+
         generated_question_json = util.add_question_number(generated_question_json)
 
         if generated_question_json:
@@ -2284,12 +2348,12 @@ def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
             }
     
     except Exception as e:
-        logger.error(f"Error processing: {str(e)}", exc_info=True)
+        logger.error(f"Error process failed: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=500,
-            content={"error": f"Error processing: {str(e)}"}
+            content={"error": f"Error process failed: {str(e)}"}
         )
-
+    
 #----------------------------------- External Audio Upload Processing APIS -----------------------------------#
 @routes.post("/audio_upload_external", tags=["Audio Endpoints"])
 async def speech_to_text(file: UploadFile = File(...)):
