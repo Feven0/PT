@@ -59,7 +59,7 @@ class IpersonaSessionSchema(LeapBaseClass):
                                 }
                             }        	
                         }
-                        i_persona_messages(pagination:{start: 0, limit:1000}){
+                        i_persona_messages(pagination:{start: 0, limit:-1}){
                             data {
                                 id
                                 attributes {
@@ -3135,22 +3135,22 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                             type
                             tag
                             description
-                            tinder_job_profiles {
+                            tinder_job_profiles(pagination:{start: 0, limit:-1}) {
                                 data {
                                     id
                                 }
                             }
-                            challenge_documents {
+                            challenge_documents(pagination:{start: 0, limit:-1}) {
                                 data {
                                     id
                                 }
                             }
-                            smg_criterion_metrics {
+                            smg_criterion_metrics(pagination:{start: 0, limit:-1}) {
                                 data {
                                     id
                                 }
                             }
-                            i_persona_sessions {
+                            i_persona_sessions(pagination:{start: 0, limit:-1}) {
                                 data {
                                     id
                                 }

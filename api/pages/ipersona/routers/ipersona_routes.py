@@ -37,7 +37,6 @@ transcriber = aai.Transcriber()
 
 routes = FastAPI(root_path="/api")
 
-
 @routes.post("/audio_upload", tags=["Audio Endpoints"])
 async def speech_to_text(file: UploadFile = File(...)) -> dict:
     """
@@ -2388,7 +2387,7 @@ def attach_id_to_template(request: pemodel.TinderTemplateAttachJobIdRequestRecie
         )
 
 @routes.post("/create_template_by_llm", tags=["Template Endpoints"])
-async def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
+async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecieved):
     try:
         context = request.context
         all_user_id = request.all_user_id
@@ -2505,6 +2504,8 @@ async def attach_id_to_template(request: pemodel.TemplateLLMContextRequestReciev
             status_code=500,
             content={"error": f"Error attaching id to template:: {str(e)}"}
         )
+
+
 #----------------------------------- External Audio Upload Processing APIS -----------------------------------#
 @routes.post("/audio_upload_external", tags=["Audio Endpoints"])
 async def speech_to_text(file: UploadFile = File(...)):

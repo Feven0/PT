@@ -3614,9 +3614,8 @@ def create_session(
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}  
 
-async def analysis_challenge():
+async def analysis_challenge(challenge_id):
     try:
-        challenge_id =84
         ipersona_challenge = AsyncTaskAnalyzer()
         content = ipersona_challenge.get_task_document(challenge_id)
         content = ipersona_challenge.clean_content(content)
