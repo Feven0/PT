@@ -4,7 +4,7 @@ from api.pages.ipersona.models.model_parrot_basic import MyBaseModel
 
 default_days_since = 7
 default_limit = 10
-
+default_status = "all"
 
 class UserRequestRecieved(MyBaseModel):
     userId: str
@@ -93,6 +93,24 @@ class AdminDataTempFiltering(MyBaseModel):
     job_profile_id: int
     # information_level: Optional[str] = "minimal"
     # return_skip: Optional[bool] = False
+class AdminInterviewByTemplateIdFiltering(MyBaseModel):
+    cursor: Optional[Dict] = {}
+    filter: Optional[Dict] = {}
+    limit: Optional[int] = default_limit
+    since: Optional[int] = default_days_since
+    information_level: Optional[str] = "minimal"
+    return_skip: Optional[bool] = False
+    template_id: int
+    status: str = default_status
+
+class AdminJobByTemplateIdFiltering(MyBaseModel):
+    cursor: Optional[Dict] = {}
+    filter: Optional[Dict] = {}
+    limit: Optional[int] = default_limit
+    since: Optional[int] = default_days_since
+    information_level: Optional[str] = "minimal"
+    return_skip: Optional[bool] = False
+    template_id: int
 
 class AdminDataEachJobFiltering(MyBaseModel):
     limit: Optional[int] = default_limit

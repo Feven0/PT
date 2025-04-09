@@ -70,7 +70,7 @@ class BaseTable():
         "icon":{
             "type": "with_text,icon_only",
             "source":"If the icon is an avatar will take the source from the data provided ",
-            "icon": "first-letter, download, link, avatar,expand"
+            "icon": "first-letter, download, link, avatar,expand, preview"
         }
         '''       
         if not iformat:
@@ -79,7 +79,7 @@ class BaseTable():
             logger.warn("Avatar icon requires source")
             return {}
         
-        if iformat not in ['first-letter', 'download', 'link', 'avatar', 'expand']:
+        if iformat not in ['first-letter', 'download', 'link', 'avatar', 'expand', 'preview']:
             logger.warn("Invalid icon format")
             return {}
         if itype not in ['with_text', 'icon_only']:
@@ -105,7 +105,10 @@ class BaseTable():
         return self.create_icon('avatar', source)
     
     def create_expand_icon(self, source):
-        return self.create_icon('expand', source)    
+        return self.create_icon('expand', source)  
+      
+    def create_preview_icon(self, source):
+        return self.create_icon('preview', source)    
     
     def visible(self, mobile=False, tablet=False, desktop=False):
         return {"mobile":mobile, "tablet":tablet, "desktop":desktop}    
@@ -275,7 +278,6 @@ class BaseTable():
                 dataIn, 
                 cursor,
                 **kwargs):
-        print("they------------------------====================================")
         
         data = copy.deepcopy(dataIn)
         # self.table['cursor'] = cursor  

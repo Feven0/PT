@@ -406,7 +406,6 @@ async def interview_endpoint(sid, data):
         None: Responses are sent via socket.io events
     """
     try:
-        print('---------===========================-----------------------==========================---------')
         logger.info(f"Received interview request with template_id: {data.get('template_id')}")
         
         # Validate input data
@@ -464,8 +463,7 @@ async def interview_endpoint(sid, data):
         
         #-----------------------------------------------------------------------------------#
         # Handle template-based or session-based interviews
-        print("-==================================-")
-        print(data.get('template'))
+    
         try:
             if data.get('template'):
                 try:

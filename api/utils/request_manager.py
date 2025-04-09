@@ -406,6 +406,156 @@ class JobReactionManager(JobManagerBase):
         for x in keep_columns:
             self.keep_columns.append(x)
 
+        # Colums configuration for the admin each job info
+        desktop_view = ['id', 'name', 'type', 'tag', 'description', 'tinder_job_profiles', 'expand']
+        tablet_view = ['id', 'name', 'type', 'tag', 'description', 'tinder_job_profiles', 'expand']
+        mobile_view = ['id', 'name', 'type', 'tag', 'description', 'tinder_job_profiles', 'expand']
+        sorting = ['id', 'name', 'type', 'tag', 'description', 'tinder_job_profiles', 'expand']
+        link_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+        
+        self.template_columns = {
+            'id': {'label': 'Template ID', 'ctype': 'string', 'options': []},
+            'name': {'label': 'Name', 'ctype': 'string', 'options': []},
+            'type': {'label': 'Type', 'ctype': 'string', 'options': []},
+            'tag': {'label': 'Tag', 'ctype': 'tag_list', 'options': []},
+            'description': {'label': 'Description', 'ctype': 'string', 'options': []},
+            'tinder_job_profiles': {'label': 'Job Profiles Count', 'ctype': 'number', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]},
+
+        }
+        
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.template_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.template_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.template_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.template_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.template_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.template_columns[x]['icon'] = self.uiuxbt.create_expand_icon("id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+
+
+
+        # Colums configuration for the admin job by template_id info
+        desktop_view = ['title', 'company','level', 'job_link']
+        tablet_view = ['title', 'company','level', 'job_link']
+        mobile_view = ['title', 'company','level', 'job_link']
+        sorting = ['title', 'company','level', 'job_link']
+        link_icon = ['job_link']
+        expand_icon = []
+        keep_columns = []
+        
+
+        self.job_by_template_columns = {
+            'job_id': {'label': 'Job ID', 'ctype': 'string', 'options': []},
+            'title': {'label': 'Title', 'ctype': 'string', 'options': []},
+            'company': {'label': 'Company', 'ctype': 'string', 'options': []},
+            'level': {'label': 'Level', 'ctype': 'string', 'options': []},
+            'job_link': {'label': 'Apply linK', 'ctype': 'icon', 'options': []},
+            # 'preview': {'label':'Preview', 'ctype':'preview', 'csource':'preview','cformat':'page', 'options':[]},
+
+        }
+        
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.job_by_template_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.job_by_template_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.job_by_template_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.job_by_template_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.job_by_template_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.job_by_template_columns[x]['icon'] = self.uiuxbt.create_preview_icon("job_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+
+
+        # Colums configuration for the admin challenge by template_id info
+        desktop_view = ['title', 'preview']
+        tablet_view = ['title', 'preview']
+        mobile_view = ['title', 'preview']
+        sorting = ['title', 'preview']
+        link_icon = []
+        expand_icon = ["preview"]
+        keep_columns = ["preview"]
+        
+
+        self.challenge_by_template_columns = {
+            'challenge_id': {'label': 'Challenge ID', 'ctype': 'string', 'options': []},
+            'title': {'label': 'Title', 'ctype': 'string', 'options': []},
+            'subtitle': {'label': 'Subtitle', 'ctype': 'string', 'options': []},
+            'preview': {'label':'Preview', 'ctype':'preview', 'csource':'preview','cformat':'page', 'options':[]},
+        }
+        
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.challenge_by_template_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.challenge_by_template_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.challenge_by_template_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.challenge_by_template_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.challenge_by_template_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.challenge_by_template_columns[x]['icon'] = self.uiuxbt.create_preview_icon("challenge_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+
+        # Colums configuration for the admin challenge by template_id info
+        desktop_view = ['tag', "trainee_name", 'email', 'title', 'total_interview_count', "average_score", 'preview' ]
+        tablet_view = ['tag', "trainee_name", 'email', 'title', 'total_interview_count', "average_score", 'preview']
+        mobile_view = ['tag', "trainee_name", 'email', 'title', 'total_interview_count', "average_score", 'preview']
+        sorting = ['tag', "trainee_name", 'email', 'title', 'total_interview_count', "average_score", 'preview']
+        link_icon = []
+        expand_icon = ["preview"]
+        keep_columns = ["preview"]
+        
+
+        self.interview_by_template_columns = {
+            "trainee_name": {'label': 'Trainee Name', 'ctype': 'string', 'options': []},
+            "email": {'label': 'Trainee Email', 'ctype': 'string', 'options': []},
+            'title': {'label': 'Title', 'ctype': 'string', 'options': []},
+            'total_interview_count': {'label': 'Total Interview Count', 'ctype': 'number', 'options': []},
+            "average_score": {'label': 'Average Score', 'ctype': 'string', 'options': []},            'user_profile_id': {'label': 'User Profile ID', 'ctype': 'string', 'options': []},
+            'complete_sessions_count': {'label': 'Complete Sessions Count', 'ctype': 'number', 'options': []},
+            'incomplete_sessions_count': {'label': 'Incomplete Sessions Count', 'ctype': 'number', 'options': []},
+            'tag': {'label': 'Tag', 'ctype': 'string', 'options': []},
+            'template_id': {'label': 'Template ID', 'ctype': 'string', 'options': []},
+            'user_profile_id': {'label': 'User Profile ID', 'ctype': 'string', 'options': []},
+            'job_profile_id': {'label': 'Job Profile ID', 'ctype': 'string', 'options': []},
+            'challenge_id': {'label': 'Challenge ID', 'ctype': 'string', 'options': []},
+            'preview': {'label':'Preview', 'ctype':'preview', 'csource':'preview','cformat':'page', 'options':[]},
+        }
+        
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.interview_by_template_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.interview_by_template_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.interview_by_template_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.interview_by_template_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.interview_by_template_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.interview_by_template_columns[x]['icon'] = self.uiuxbt.create_preview_icon("")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+
         # Initialize the table
         self.table = self.uiuxbt.table
 
@@ -544,6 +694,12 @@ class JobReactionManager(JobManagerBase):
                 colmap = self.admin_each_job_columns 
             elif kind == 'template':
                 colmap = self.template_columns
+            elif kind == 'job_by_template':
+                colmap = self.job_by_template_columns
+            elif kind == 'challenge_by_template':
+                colmap = self.challenge_by_template_columns
+            elif kind == 'interview_by_template':
+                colmap = self.interview_by_template_columns
 
             for c, cval in colmap.items():
                 cval['name'] = c

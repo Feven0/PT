@@ -1648,6 +1648,157 @@ async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFi
             "message": f"Error processing data: {str(e)}"
         }
 
+@routes.post("/admin_job_by_template_id", tags=["Admin Endpoints"])
+async def calculate_admin_job_by_template_id(request: pemodel.AdminJobByTemplateIdFiltering) -> Union[List, Dict]:
+    try:
+        run_stage = request.run_stage
+        template_id = request.template_id
+        query_filter = request.filter or {}
+        since = max(request.since or 1, 1)  # Ensure minimum value of 1
+        limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
+        # cursor = request.cursor
+        # Prepare query parameters
+        kwargs = query_filter.copy() if query_filter else {}
+        logger.info(f"Starting admin job by template ID calculation for template ID: {template_id}")
+        
+        ipersona_job = IpersonaJobSchema(run_stage=run_stage, limit=limit, since=since)
+        data, cursor = ipersona_job.filter_by_template_id(
+            template_id=template_id, 
+            since=request.since, 
+            limit=request.limit, 
+            nopp=True, 
+            dataframe=False,
+            **kwargs
+        )
+
+        # Step 4: Prepare response
+        result = util.add_template_columns(
+                    data, 
+                    cursor, 
+                    kind='job_by_template', 
+                    **kwargs
+                )
+        return {
+                "jobs": result, 
+                "cursor": cursor,                  
+                "status": 200, 
+                "message": ""
+            }
+   
+    except Exception as e:
+        logger.error(f"Error processing admin job by template ID: {str(e)}", exc_info=True)
+        return {
+            "jobs": [],  
+            "cursor": [],
+            "status": 500, 
+            "message": f"Error processing data: {str(e)}"
+        }
+    
+@routes.post("/admin_challenge_by_template_id", tags=["Admin Endpoints"])
+async def calculate_admin_challenge_by_template_id(request: pemodel.AdminJobByTemplateIdFiltering) -> Union[List, Dict]:
+    try:
+        run_stage = request.run_stage
+        template_id = request.template_id
+        query_filter = request.filter or {}
+        since = max(request.since or 1, 1)  # Ensure minimum value of 1
+        limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
+        # cursor = request.cursor
+        # Prepare query parameters
+        kwargs = query_filter.copy() if query_filter else {}
+        logger.info(f"Starting admin challenge by template ID calculation for template ID: {template_id}")
+        
+        ipersona_challenge = IpersonaChallengeDocumentSchema(run_stage=run_stage, limit=limit, since=since)
+        data, cursor = ipersona_challenge.filter_by_template_id(
+            template_id=template_id, 
+            since=request.since, 
+            limit=request.limit, 
+            nopp=True, 
+            dataframe=False,
+            **kwargs
+        )
+
+        result = util.add_template_columns(
+                    data, 
+                    cursor, 
+                    kind='challenge_by_template', 
+                    **kwargs
+                )
+        return {
+                "challenges": result, 
+                "cursor": cursor,                  
+                "status": 200, 
+                "message": ""
+            }
+    
+    except Exception as e:
+        logger.error(f"Error processing admin challenge by template ID: {str(e)}", exc_info=True)
+        return {
+            "challenges": [],  
+            "cursor": [],
+            "status": 500, 
+            "message": f"Error processing data: {str(e)}"
+        }
+
+@routes.post("/admin_interview_by_template", tags=["Admin Endpoints"])
+async def calculate_admin_interview_by_template(request: pemodel.AdminInterviewByTemplateIdFiltering) -> Union[List, Dict]:
+    try:
+        run_stage = request.run_stage
+        filter_by_status = request.status.lower()
+        template_id = request.template_id
+        query_filter = request.filter or {}
+        since = max(request.since or 1, 1)  # Ensure minimum value of 1
+        limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
+        cursor = request.cursor
+        # Prepare query parameters
+        kwargs = query_filter.copy() if query_filter else {}
+        logger.info(f"Starting admin challenge by template ID calculation for template ID: {template_id}")
+        
+        # Step 1: Fetch all session data
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        data, cursor = ipersona_session.get_all_sessions(
+            cursor=cursor, 
+            since=since, 
+            limit=limit, 
+            nopp=True, 
+            dataframe=False,
+            **kwargs
+        ) 
+        # Step 2: Apply additional filtering by 'template_id'
+        filtered_data = [
+            session for session in data
+            if session.get("attributes", {}).get("tinder_template", {}).get("data") 
+            and session["attributes"]["tinder_template"]["data"].get("id") == str(template_id)
+        ]
+
+        data, cursor = util.summarize_interview_by_template_data(
+            run_stage, 
+            filtered_data, 
+            cursor,
+            filter_by_status)
+
+        result = util.add_template_columns(
+                    data, 
+                    cursor, 
+                    kind='interview_by_template', 
+                    **kwargs
+                )
+        return {
+                "interviews": result, 
+                "cursor": cursor,                  
+                "status": 200, 
+                "message": ""
+            }
+    
+    except Exception as e:
+        logger.error(f"Error processing admin challenge by template ID: {str(e)}", exc_info=True)
+        return {
+            "interviews": [],  
+            "cursor": [],
+            "status": 500, 
+            "message": f"Error processing data: {str(e)}"
+        }
+
+# ----------------------------------- Fetching session Data ---------------------#
 @routes.post("/fetch_user_session", tags=["Session Endpoints"])
 async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> Union[List, Dict]:
     """
@@ -2237,7 +2388,7 @@ def attach_id_to_template(request: pemodel.TinderTemplateAttachJobIdRequestRecie
         )
 
 @routes.post("/create_template_by_llm", tags=["Template Endpoints"])
-async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecieved):
+async def attach_id_to_template(request: pemodel.TemplateLLMContextRequestRecieved):
     try:
         context = request.context
         all_user_id = request.all_user_id
@@ -2254,8 +2405,7 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
             tinder_job_data = util.get_job_data_template_for_multiple_ids(job_profile_ids, run_stage)
             # Load and format prompt templates
             response_obj = util.fetch_the_structure(type)
-            section_count = response_obj.get('section_count', {})
-            json_format = response_obj.get('json_format', {})
+    
 
             if response_obj is False:        
                 tag ='parrot_question_generator_default'
@@ -2265,31 +2415,31 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
                     type, 
                     persona_tag)
                 
-                msg = util.read_prompt_data_for_default_(
-                    tinder_job_data,
-                    tinder_user_profile_data,
+                msg = util.read_prompt_data_for_default(
                     type, 
                     tag)
                 
                 content = generated_persona + msg
 
             else:
+                section_count = response_obj.get('section_count', {})
+                json_format = response_obj.get('json_format', {})
+
                 tag = 'parrot_generate_question'
                 generated_persona = util.read_prompt_persona(
                     tinder_job_data, 
                     tinder_user_profile_data, 
                     type, 
                     persona_tag)
-                msg = util.read_generate_question_prompt_(
+                
+                msg = util.read_generate_question_prompt(
                     json_format, 
                     section_count, 
                     context,
                     tag,
                     type)
-
                 content = generated_persona + msg
-           
-        
+
         if len(challenge_ids) != 0:
             type = 'challenge_interview_config'
             persona_tag = 'parrot_persona'
@@ -2298,8 +2448,7 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
             
             # Load and format prompt templates
             response_obj = util.fetch_the_structure(type)
-            section_count = response_obj.get('section_count', {})
-            json_format = response_obj.get('json_format', {})
+         
 
             if response_obj is False:
                 # if there no challenge structure found, fallback to default prompt    REMOVE THE JSON_DUMP FROM CHALLENGE
@@ -2309,6 +2458,9 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
                     type, 
                     tag)
             else: 
+                section_count = response_obj.get('section_count', {})
+                json_format = response_obj.get('json_format', {})
+               
                 tag = 'parrot_challenge_question_generation' 
                 section_count = response_obj.get('section_count', {})
                 json_format = response_obj.get('json_format', {})
@@ -2348,12 +2500,11 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
             }
     
     except Exception as e:
-        logger.error(f"Error process failed: {str(e)}", exc_info=True)
+        logger.error(f"Error attaching id to template: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=500,
-            content={"error": f"Error process failed: {str(e)}"}
+            content={"error": f"Error attaching id to template:: {str(e)}"}
         )
-    
 #----------------------------------- External Audio Upload Processing APIS -----------------------------------#
 @routes.post("/audio_upload_external", tags=["Audio Endpoints"])
 async def speech_to_text(file: UploadFile = File(...)):

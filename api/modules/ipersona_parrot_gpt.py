@@ -18,10 +18,12 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
     IpersonaSessionObserverSchema, 
     IpersonaAllUserSchema, 
     IpersonaProfileInformationSchema,
-    IpersonaTinderTemplateSchema)
+    IpersonaTinderTemplateSchema,
+    IpersonaChallengeDocumentSchema)
 
 from api.utils.request_manager import JobReactionManager
 from api.services.async_task_analyzer import AsyncTaskAnalyzer
+import api.modules.reading_fallback_prompts as fallback
 
 
 logger = LLPackerLogger(os.path.basename(__file__))
@@ -2320,9 +2322,26 @@ def extracted_needed_metrics(data):
                 extracted_session['engagement'] = None
 
             # Extract additional session details
-            extracted_session['createdAt'] = session['attributes'].get('createdAt')
-            extracted_session['job_profile_id'] = session['attributes']['tinder_job_profile']['data']['id']
-            extracted_session['user_profile_id'] = session['attributes']['tinder_user_profile']['data']['id']
+            attributes = session.get('attributes', {})
+
+            extracted_session['createdAt'] = attributes.get('createdAt')
+
+            extracted_session['job_profile_id'] = (
+                attributes.get('tinder_job_profile', {}).get('data', {}) or {}
+            ).get('id')
+
+            extracted_session['template_id'] = (
+                attributes.get('tinder_template', {}).get('data', {}) or {}
+            ).get('id')
+
+            extracted_session['challenge_id'] = (
+                attributes.get('challenge_document', {}).get('data', {}) or {}
+            ).get('id')
+
+            extracted_session['user_profile_id'] = (
+                attributes.get('tinder_user_profile', {}).get('data', {}) or {}
+            ).get('id')
+
             # extracted_session['slug'] = slug
             # Append extracted session data
             extracted_observers.append(extracted_session)
@@ -3254,6 +3273,148 @@ def summarize_allusers_performance_data(run_stage, data):
         logger.error(f"Critical error in summarize_allusers_performance_data: {e}")
         return {'error': str(e)}
 
+def summarize_interview_by_template_data(run_stage, data, cursor, filter_by_status):
+    try:
+        data = extracted_needed_metrics(data)
+        template_summary = defaultdict(list)
+
+        # Group records by template_id
+        for record in data:
+            template_id = record['template_id']
+            template_summary[template_id].append(record)
+
+        all_trainee_data = []
+        processed_users = {}
+
+        for template_id, records in template_summary.items():
+            ipersona_template = IpersonaTinderTemplateSchema()
+            fetched_template = ipersona_template.get_tinder_template_id(
+                templateId=template_id,
+                return_object=True,
+                nopp=True,
+                dataframe=False
+            )
+            template_type = fetched_template.get('attributes', {}).get('type', '')
+
+            # Group records by (user_profile_id, job_profile_id, challenge_id)
+            user_job_challenge_map = defaultdict(list)
+            for record in records:
+                key = (
+                    record.get('user_profile_id'),
+                    record.get('job_profile_id'),
+                    record.get('challenge_id')
+                )
+                user_job_challenge_map[key].append(record)
+
+            for (user_profile_id, job_profile_id, challenge_id), user_records in user_job_challenge_map.items():
+                complete_sessions_count = 0
+                incomplete_sessions_count = 0
+                total_interviews_count = 0
+                total_score = 0
+                score_count = 0
+                individual_scores = []
+
+                # Filter sessions based on completion status
+                for session in user_records:
+                    is_complete = session.get('complete_status') is True
+                    if filter_by_status == "complete" and not is_complete:
+                        continue
+                    elif filter_by_status == "incomplete" and is_complete:
+                        continue
+
+                    total_interviews_count += 1
+                    if is_complete:
+                        complete_sessions_count += 1
+                    else:
+                        incomplete_sessions_count += 1
+
+                    score = session.get('overall_performance_score')
+                    if score is not None:
+                        total_score += score
+                        score_count += 1
+                        individual_scores.append(score)
+
+                if total_interviews_count == 0:
+                    continue  # Skip if nothing matched the filter
+
+                average_score = round(total_score / score_count, 2) if score_count > 0 else "N/A"
+
+                # Fetch trainee info
+                if user_profile_id not in processed_users:
+                    ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+                    all_user_data = ipersona_user.get_trainee_by_id(
+                        user_profile_id=user_profile_id,
+                        nopp=True,
+                        dataframe=False,
+                        return_object=True
+                    )
+                    all_user_id = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
+
+                    ipersona_alluser = IpersonaAllUserSchema(run_stage=run_stage)
+                    ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(
+                        all_user_id=all_user_id,
+                        nopp=True,
+                        dataframe=False,
+                        return_object=True
+                    )
+                    trainee_name = ipersona_alluser_data.get('name', 'Unknown')
+                    trainee_email = ipersona_alluser_data.get('email', 'Unknown')
+
+                    processed_users[user_profile_id] = (trainee_name, trainee_email)
+                else:
+                    trainee_name, trainee_email = processed_users[user_profile_id]
+
+                # Fetch job or challenge title
+                extracted_title = 'Unknown Job Title'
+                company_name = ''
+                if job_profile_id:
+                    template_tag = 'job'
+                    ipersona_job = IpersonaJobSchema(run_stage=run_stage)
+                    job_title_data = ipersona_job.filter_by_job_id(
+                        job_profile_id=job_profile_id,
+                        nopp=True,
+                        dataframe=False
+                    )
+                    if job_title_data:
+                        job_attrs = job_title_data[0]['attributes']['attributes']
+                        extracted_title = job_attrs.get('title', 'Unknown Job Title')
+                        company_name = job_attrs.get('company_name', '')
+
+                elif challenge_id:
+                    template_tag = 'challenge'
+                    ipersona_challenge = IpersonaChallengeDocumentSchema()
+                    challenge_data = ipersona_challenge.get_challenge_by_id(
+                        challengeId=challenge_id,
+                        nopp=True,
+                        dataframe=False
+                    )
+                    if challenge_data:
+                        extracted_title = challenge_data['attributes'].get('Title', 'Unknown Job Title')
+
+                all_trainee_data.append({
+                    'trainee_name': trainee_name,
+                    'email': trainee_email,
+                    'title': extracted_title,
+                    'company_name': company_name,
+                    'average_score': average_score,
+                    'total_interview_count': total_interviews_count,
+                    'complete_sessions_count': complete_sessions_count,
+                    'incomplete_sessions_count': incomplete_sessions_count,
+                    'tag': template_tag,
+                    'template_id': template_id,
+                    'user_profile_id': user_profile_id,
+                    'job_profile_id': job_profile_id,
+                    'challenge_id': challenge_id
+                })
+
+        cursor['total'] = len(all_trainee_data)
+        return all_trainee_data, cursor
+
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+
+
 #-------------------------------------------- FIle reader --------------------------------------------
 def parse_iso_format_with_z(iso_str):
     return datetime.strptime(iso_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
@@ -3806,74 +3967,310 @@ def get_user_data(all_user_id, run_stage):
     logger.info(f"User profile data extracted for user ID: {tinder_user_profile_id}")
     return tinder_user_profile_data, tinder_user_profile_id
 
-async def read_prompt_data_for_challenge_default():
-    prompt_text = file_reader(prompt_path('ipersona/generate_challenge_question_default.txt'))
-    content = await analysis_challenge()
-    challenge_prompt = prompt_text \
-        .replace("{challenge_document}", str(content)) \
-        .replace("{count}", str(5))
-        
-    return challenge_prompt
+async def read_prompt_data_for_challenge_default(challenge_id, type, tag):
+    # ipersona_metric = IpersonaSmgCretrionMetricSchema()
+    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=165, nopp=True, dataframe=False)
+    # message = data_content.get('attributes', {}).get('content', {})
 
-async def read_prompt_data_for_challenge(json_format, count):
-    prompt_text = file_reader(prompt_path('ipersona/generate_challenge_question.txt'))
-    content = await analysis_challenge()
-    challenge_prompt = prompt_text \
-        .replace("{challenge_document}", str(content)) \
-        .replace("{count}", str(count)) \
-        .replace("{json}", str(json_format))
-        
-    return challenge_prompt
+    contents = await analysis_challenge(challenge_id)
+    if contents:
+        content = fetch_config_template(type, tag)
+        if content:
+            message = content.get('content', '')
+            message = message.replace("{challenge_document}", str(contents)) 
+            message = message.replace("{count}", str(5))
+            challenge_prompt = message
 
-def read_prompt_data_for_template(tinder_job_data):
-    prompt_text = file_reader(prompt_path('ipersona/persona.txt'))
-    created_persona = create_persona(str(tinder_job_data))
+            return challenge_prompt
+        else:   
+            # Fallback to default challenge generation
+            challenge_prompt = await fallback.read_prompt_data_for_challenge_default(challenge_id)
+            return challenge_prompt
+    else:
+        return 'Challenge content not found, or challenge ID is invalid'
 
-    generated_persona = prompt_text \
-        .replace("{hr_persona}", created_persona) \
-        .replace("{job_description}", str(tinder_job_data)) 
-        
-    return generated_persona
-
-def read_prompt_data_for_default(tinder_job_data, tinder_user_profile_data):
-    prompt_text = file_reader(prompt_path('ipersona/persona.txt'))
-    created_persona = create_persona(str(tinder_job_data))
-    generated_persona = prompt_text \
-        .replace("{hr_persona}", created_persona) \
-        .replace("{job_description}", str(tinder_job_data))  \
-        .replace("{profile}", str(tinder_user_profile_data))
-
-    question_template = file_reader(prompt_path('ipersona/generate_question_default.txt'))
-    msg = question_template \
-        .replace("{introduction_count}", str(1)) \
-        .replace("{background_count}", str(1)) \
-        .replace("{technical_count}", str(1)) \
-        .replace("{behavioral_count}", str(1)) \
-        .replace("{ability_count}", str(1))\
-        .replace("{closing_count}", str(1))
-        
-    return generated_persona, msg
-
-def read_prompt_data_for_default_(type, tag):
+def read_prompt_data_for_multiple_challenge_default(challenges_data, type, tag):
     content = fetch_config_template(type, tag)
-    message = content.get('content', '')
-    message = message.replace("{introduction_count}", str(1))
-    message = message.replace("{background_count}", str(1))
-    message = message.replace("{technical_count}", str(1))
-    message = message.replace("{behavioral_count}", str(1))
-    message = message.replace("{ability_count}", str(1))
-    message = message.replace("{closing_count}", str(1))
-    msg = message
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{challenge_document}", str(challenges_data)) 
+        message = message.replace("{count}", str(5))
+        challenge_prompt = message
+        return challenge_prompt
+    
+    else:
+        # Fallback to default challenge generation
+        challenge_prompt = fallback.read_prompt_data_for_challenge_default(challenges_data)
+        return challenge_prompt
 
-    return  msg
-
-def read_generate_question_prompt_(json_format, context, section_count, tag, type):
+def read_prompt_data_for_multiple_challenge(
+        json_format, 
+        count, 
+        challenges_data, 
+        type, 
+        tag):
     content = fetch_config_template(type, tag)
-    message = content.get('content', '')
-    message = message.replace("{section_count}", str(section_count))
-    message = message.replace("{json}", str(json_format))
-    message = message.replace("{context}", str(context))
-    return message
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{challenge_document}", str(challenges_data))
+        message = message.replace("{count}", str(count))
+        message = message.replace("{json}", str(json_format))
+        challenge_prompt = message
+
+        return challenge_prompt
+    else:
+        # Fallback to default challenge generation
+        challenge_prompt = fallback.read_prompt_data_for_challenge(json_format, count)
+        return challenge_prompt
+
+async def read_prompt_data_for_challenge(
+        json_format, 
+        count, 
+        challenge_id, 
+        type, 
+        tag):
+    # ipersona_metric = IpersonaSmgCretrionMetricSchema()
+    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=164, nopp=True, dataframe=False)
+    # message = data_content.get('attributes', {}).get('content', {})
+    
+    contents = await analysis_challenge(challenge_id)
+    if contents:
+        content = fetch_config_template(type, tag)
+        if content:
+            message = content.get('content', '')
+            message = message.replace("{challenge_document}", str(contents))
+            message = message.replace("{count}", str(count))
+            message = message.replace("{json}", str(json_format))
+            challenge_prompt = message
+
+            return challenge_prompt
+        else:
+            # Fallback to default challenge generation
+            challenge_prompt = await fallback.read_prompt_data_for_challenge(
+                json_format, count, challenge_id
+            )
+            return challenge_prompt
+    else:
+        return 'Challenge content not found, or challenge ID is invalid'
+
+# def read_prompt_data_for_template(tinder_job_data, type, tag):
+#     ipersona_metric = IpersonaSmgCretrionMetricSchema()
+#     data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=174, nopp=True, dataframe=False)
+#     message = data_content.get('attributes', {}).get('content', {})
+#     created_persona = create_persona(str(tinder_job_data))
+#     content = fetch_config_template(type, tag)
+#     message = content.get('content', '')
+#     message = message.replace("{hr_persona}", created_persona) 
+#     message = message.replace("{job_description}", str(tinder_job_data)) 
+#     generated_persona = message
+#     return generated_persona
+
+def read_prompt_persona(tinder_job_data, tinder_user_profile_data, type, tag):
+    # ipersona_metric = IpersonaSmgCretrionMetricSchema()
+    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=174, nopp=True, dataframe=False)
+    # message = data_content.get('attributes', {}).get('content', {})
+
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')
+        created_persona = create_persona(str(tinder_job_data))
+        message = message.replace("{hr_persona}", created_persona) 
+        message = message.replace("{job_description}", str(tinder_job_data)) 
+        message = message.replace("{profile}", str(tinder_user_profile_data))
+        generated_persona = message
+        return generated_persona
+    else:
+        # Fallback to default persona generation
+        generated_persona = fallback.read_prompt_persona(tinder_job_data, tinder_user_profile_data)
+        return generated_persona
+
+def read_prompt_data_for_default(type, tag):
+    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=160, nopp=True, dataframe=False)
+    # message = data_content.get('attributes', {}).get('content', {})
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{introduction_count}", str(1))
+        message = message.replace("{background_count}", str(1))
+        message = message.replace("{technical_count}", str(1))
+        message = message.replace("{behavioral_count}", str(1))
+        message = message.replace("{ability_count}", str(1))
+        message = message.replace("{closing_count}", str(1))
+        msg = message
+
+        return  msg
+    else:
+        msg = fallback.read_prompt_data_for_default()
+        return msg
+
+def read_generate_question_prompt(json_format, context, section_count, tag, type):
+    # ipersona_metric = IpersonaSmgCretrionMetricSchema()
+    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=162, nopp=True, dataframe=False)
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{section_count}", str(section_count))
+        message = message.replace("{json}", str(json_format))
+        message = message.replace("{context}", str(context))
+        return message
+    else:
+        # Fallback to default question generation
+        message = fallback.read_prompt_data_for_default()
+        return message
+
+def read_prompt_interview_closing(type):
+    tag = 'parrot_interview_closing'
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')  
+        return message
+    else:
+        # Fallback to default interview closing
+        message = fallback.read_prompt_interview_closing()
+        return message
+
+def read_prompt_pick_interview_question(type):
+    tag = 'parrot_pick_interview_question'
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')  
+        return message
+    else:
+        # Fallback to default pick interview question
+        message = fallback.read_prompt_pick_interview_question()
+        return message
+  
+def read_prompt_followup_checker(type, candidate_response):
+    tag = 'parrot_followup_checker'
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{candidate_response}", candidate_response) 
+        return message
+    else:
+        # Fallback to default follow-up question generation
+        message = fallback.read_prompt_followup_checker(candidate_response)
+        return message
+
+def read_prompt_followup_question_generator(type, candidate_response):
+    tag = 'parrot_followup_question_generator'
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{candidate_response}", candidate_response)
+        return message
+    else:
+        # Fallback to default follow-up question generation
+        message = fallback.read_prompt_followup_question_generator(candidate_response)
+        return message
+    
+def read_realtime_evaluation():
+    tag = 'parrot_realtime_evaluation'
+    type = 'job_interview_config'
+    content = fetch_config_template(type, tag)
+    if content:
+        realtime_msg = content.get('content', '')
+        return realtime_msg
+    else:
+        # Fallback to default realtime evaluation
+        realtime_prompt = file_reader(prompt_path('realtime_evaluation.txt'))
+        return realtime_prompt
+    
+def read_prompt_realtime_evaluation(type, data, last_assistant_response):
+    tag = 'parrot_realtime_evaluation'
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{question}", last_assistant_response)
+        message = message.replace("{candidate_response}", data['response'])
+        return message
+    else:
+        # Fallback to default realtime evaluation
+        realtime_prompt = fallback.read_prompt_realtime_evaluation(data, last_assistant_response)
+        return realtime_prompt
+    
+def read_prompt_closing_question_realtime_evaluation(type, last_assistant_response, candidate_response):
+    tag = 'parrot_closing_question_realtime_evaluation'
+    content = fetch_config_template(type, tag)
+    if content:
+        data_content = content.get('content', '')
+        closing_content = data_content.replace("{closing_question}", str(last_assistant_response))
+        closing_content = data_content.replace("{candidate_response}" , str(candidate_response))
+        return closing_content
+    else:
+        # Fallback to default closing question realtime evaluation
+        closing_prompt = fallback.read_prompt_closing_question_realtime_evaluation(
+            last_assistant_response, candidate_response
+        )
+        return closing_prompt
+    
+def read_prompt_clarify(question):
+    tag = 'parrot_clarify_question'
+    type = 'job_interview_config'
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{question}", question) 
+        return message
+    else:
+        # Fallback to default clarification prompt
+        message = fallback.read_prompt_clarify(question)
+        return message
+    
+def read_prompt_time_limit_generator(type, question):
+    tag = 'parrot_interview_question_time_limit_generatorg'
+    type = 'job_interview_config'
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{question}", question)
+        return message
+    else:
+        # Fallback to default time limit generator
+        message = fallback.read_prompt_time_limit_generator(question)
+        return message
+
+def read_prompt_overall_evaluation(type, history_str):
+    tag = 'parrot_overall_evaluation'
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{history}", history_str)  
+        return message  
+    else:
+        # Fallback to default overall evaluation
+        message = fallback.read_prompt_overall_evaluation(history_str)
+        return message
+
+def read_prompt_interview_evaluation_metrics(type, history_str):
+    tag = 'parrot_interview_evaluation_metrics'
+    content = fetch_config_template(type, tag)
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{history}", history_str)  
+        return message 
+    else:
+        # Fallback to default interview evaluation metrics
+        message = fallback.read_prompt_interview_evaluation_metrics(history_str)
+        return message
+
+def read_external_audio_analysis(transcript, type, tag):
+    # ipersona_metric = IpersonaSmgCretrionMetricSchema()
+    # realtime_prompt = ipersona_metric.get_smgCriterionMetric_by_id(metricId=161, nopp=True, dataframe=False)
+    # realtime_prompt = realtime_prompt.get('attributes', {}).get('content', {})
+
+    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=177, nopp=True, dataframe=False)
+    # message = data_content.get('attributes', {}).get('content', {})
+    content = fetch_config_template(type, tag)
+    realtime_prompt = read_realtime_evaluation()
+    if content:
+        message = content.get('content', '')
+        message = message.replace("{transcription}", str(transcript))
+        message = message.replace("{realtime}", str(realtime_prompt)) 
+
+        return message
+    else:
+       message = fallback.read_external_audio_analysis(transcript)
 
 def add_question_number(generated_question_json):
     # Iterate over the list of sections and add question numbers
@@ -3895,50 +4292,6 @@ def add_question_number(generated_question_json):
 
     return generated_question_json
 
-def read_generate_question_prompt(json_format, context, section_count):
-    prompt_text = file_reader(prompt_path('ipersona/generate_question.txt'))
-    message = prompt_text \
-                .replace("{section_count}", str(section_count)) \
-                .replace("{json}", str(json_format)) \
-                .replace("{context}", str(context))
-    return message
-
-
-
-def read_prompt_persona(tinder_job_data, tinder_user_profile_data, type, tag):
-    content = fetch_config_template(type, tag)
-    message = content.get('content', '')
-    created_persona = create_persona(str(tinder_job_data))
-    message = message.replace("{hr_persona}", str(created_persona))
-    message = message.replace("{job_description}", str(tinder_job_data)) 
-    message = message.replace("{profile}", str(tinder_user_profile_data))
-    generated_persona = message
-    return generated_persona
-
-def read_prompt_data_for_multiple_challenge_default(challenges_data, type, tag):
-    content = fetch_config_template(type, tag)
-    message = content.get('content', '')
-    message = message.replace("{challenge_document}", str(challenges_data)) 
-    message = message.replace("{count}", str(5))
-    challenge_prompt = message
-
-    return challenge_prompt
-
-def read_prompt_data_for_multiple_challenge(
-        json_format, 
-        count, 
-        challenges_data, 
-        type, 
-        tag):
-    content = fetch_config_template(type, tag)
-    message = content.get('content', '')
-    message = message.replace("{challenge_document}", str(challenges_data))
-    message = message.replace("{count}", str(count))
-    message = message.replace("{json}", str(json_format))
-    challenge_prompt = message
-
-    return challenge_prompt
-
 def fetch_config_template(type, tag):
     try:
         ipersona_template = IpersonaTinderTemplateSchema()
@@ -3947,9 +4300,11 @@ def fetch_config_template(type, tag):
                         nopp=True, 
                         dataframe=False
                     )
-
-        content = filter_smg_criterion_metrics_by_tag(templates, tag)
-        return content
+        if templates:
+            content = filter_smg_criterion_metrics_by_tag(templates, tag)
+            return content
+        else:
+            return False
     
     except Exception as e:
         logger.error(f"Error processing files: {e}")

@@ -59,6 +59,14 @@ class IpersonaSessionSchema(LeapBaseClass):
                                 }
                             }        	
                         }
+                        i_persona_messages(pagination:{start: 0, limit:1000}){
+                            data {
+                                id
+                                attributes {
+                                    attributes
+                                }
+                            }        	
+                        }
                         tinder_job_profile {
                             data {
                                 id
@@ -69,6 +77,16 @@ class IpersonaSessionSchema(LeapBaseClass):
                                 id
                             }
                         } 
+                        tinder_template {
+                            data {
+                                id
+                            }
+                        }
+                        challenge_document {
+                            data {
+                                id
+                            }
+                        }
                         metadata
                         %s
                     }
@@ -598,7 +616,10 @@ class IpersonaJobSchema(LeapBaseClass):
                 data {
                     id
                     attributes {
-                        attributes  
+                        title
+                        applyLink
+                        level
+                        attributes    
                         i_persona_sessions {
                             data {
                                 id
@@ -618,6 +639,11 @@ class IpersonaJobSchema(LeapBaseClass):
                                 }
                             }
                         } 
+                        tinder_templates {
+                            data {
+                                id
+                            }
+                        }
                       %s                                                   
                     }
                 }
@@ -682,6 +708,79 @@ class IpersonaJobSchema(LeapBaseClass):
             logger.error(f"Error filtering jobs by job_profile_id {job_profile_id}: {e}")
             return None
 
+    def filter_by_template_id(self, template_id, cursor={}, **kwargs):
+        try:
+            if not cursor:
+                cursor = True
+
+            if not template_id:
+                logger.warn("Invalid or missing template_id")
+                return None
+
+            template_id_filter = f"""
+                filters: {{
+                    tinder_templates : {{ id: {{ eq: {template_id} }} }}
+                }}
+            """
+            data_json, cursor = self.get_all_objects(filter=template_id_filter, cursor=cursor, **kwargs)
+            
+
+            if not data_json:
+                logger.warn(f"No job data found for template_id: {template_id}")
+                return None
+            
+            data = self.get_extracted_data(data_json)
+            data = self.job_extracted_data(data)
+            # data = self.get_extracted_from_user_job_data(data_json)
+            if not data:
+                logger.warn(f"No extracted data for template_id: {template_id}")
+                return None
+
+            return data, cursor
+
+        except Exception as e:
+            logger.error(f"Error filtering jobs by template_id {template_id}: {e}")
+            return None
+    
+    def job_extracted_data(self, data):
+        """
+        Extracts relevant job data from a JSON response.
+
+        Parameters:
+        ----------
+        data : dict
+            The JSON data containing job information.
+
+        Returns:
+        -------
+        dict or None
+            A dictionary of job data or None if no data is found.
+        """
+        try:
+            # Extracted results
+            simplified_jobs = []
+
+            for job in data:
+                job_id = job.get("id")
+                attr = job.get("attributes", {})
+                nested_attr = attr.get("attributes", {})
+
+                job_info = {
+                    "job_id": job_id,
+                    "title": attr.get("title") or nested_attr.get("title"),
+                    "company": nested_attr.get("company_name") or nested_attr.get("company_info", {}).get("name"),
+                    "level": attr.get("level") or nested_attr.get("level"),
+                    "job_link": attr.get("applyLink")
+                }
+
+                simplified_jobs.append(job_info)
+
+            return simplified_jobs
+
+        except Exception as e:
+            logger.error(f"Error extracting job data: {e}")
+            return None
+    
     def get_all_jobs_info(self, **kwargs):
         """
         Fetches all jobs' information.
@@ -2191,6 +2290,7 @@ class IpersonaAllUserSchema(LeapBaseClass):
                     id
                     attributes {
                         name
+                        email
                         role
                         Batch      
                       %s                                                   
@@ -2203,6 +2303,7 @@ class IpersonaAllUserSchema(LeapBaseClass):
             
         self.type_map = {    
             "name": "String",
+            "email": "String",
             "role": "String",
             "Batch": "String"
         }
@@ -2229,6 +2330,7 @@ class IpersonaAllUserSchema(LeapBaseClass):
 
             result = {
                 "name": data['attributes']['name'],
+                "email": data['attributes']['email'],
                 "role": data['attributes']['role'],
                 "Batch": data['attributes']['Batch']
             }
@@ -2486,54 +2588,52 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                         tag
                         description
                         attributes
-                        metadata
-                        config
-                        createdAt  
-                        tinder_job_profiles {
-                            data {
-                                id
-                                attributes {
-                                    title
-                                    level
-                                }
-                            }
-                        } 
-                        challenge_documents {
-                            data {
-                                id
-                                attributes {
-                                    Title
-                                    type
-                                }
-                            }
-                        }
-                        smg_criterion_metrics {
+                        smg_criterion_metrics(pagination:{start:0, limit:null}) {
                             data {
                                 id
                                 attributes {
                                     title
                                     tag
+                                    content
                                 }
                             }
                         } 
-                        i_persona_sessions {
-                            data {
-                                id
-                            }
-                        }
                         %s
                     }
                 }
             '''
             data_json = self.exists(scol='id', sval=templateId, op='eq', stype="ID", **kwargs)  
-            data = self.get_session_data(data_json)   
+            data = self.get_session_data(data_json)
+            data = self.flatten_prompt_data(data)
+   
             return data
 
         finally:
             # Restore the original self.data after the query
             self.data = original_data
 
-    
+    def flatten_prompt_data(self, data):
+        try:
+            modified_template = copy.deepcopy(data)
+            metrics = modified_template["attributes"].get("smg_criterion_metrics", {}).get("data", [])
+
+            flattened_metrics = [
+                {
+                    "id": metric["id"],
+                    "title": metric["attributes"].get("title"),
+                    "tag": metric["attributes"].get("tag"),
+                    "content": metric["attributes"].get("content")
+                }
+                for metric in metrics
+            ]
+            modified_template["attributes"]["smg_criterion_metrics"]["data"] = flattened_metrics
+
+            return modified_template
+
+        except Exception as e:
+            logger.error(f"Error flattening the cretrion prompt data: {str(e)}")
+            return {'error': f"Error flattening the cretrion prompt data: {str(e)}"}
+
     def get_all_templates(self, cursor={}, **kwargs):
         try:
             if not cursor:
@@ -3248,6 +3348,77 @@ class IpersonaChallengeDocumentSchema(LeapBaseClass):
             logger.error(f"Error extracting challenge data from challenge JSON: {str(e)}")
             return {'error': f"Error extracting challenge data from challenge JSON: {str(e)}"}
 
+    def filter_by_template_id(self, template_id, cursor={}, **kwargs):
+        try:
+            if not cursor:
+                cursor = True
+
+            if not template_id:
+                logger.warn("Invalid or missing template_id")
+                return None
+
+            template_id_filter = f"""
+                filters: {{
+                    tinder_templates : {{ id: {{ eq: {template_id} }} }}
+                }}
+            """
+            data_json, cursor = self.get_all_objects(filter=template_id_filter, cursor=cursor, **kwargs)
+            
+
+            if not data_json:
+                logger.warn(f"No job data found for template_id: {template_id}")
+                return None
+            
+            data = self.get_extracted_data(data_json)
+            data = self.challenge_extracted_data(data)
+            # data = self.get_extracted_from_user_job_data(data_json)
+            if not data:
+                logger.warn(f"No extracted data for template_id: {template_id}")
+                return None
+
+            return data, cursor
+
+        except Exception as e:
+            logger.error(f"Error filtering challenges by template_id {template_id}: {e}")
+            return None
+
+    def challenge_extracted_data(self, data):
+        """
+        Extracts relevant challenge data from a JSON response.
+
+        Parameters:
+        ----------
+        data : dict
+            The JSON data containing challenge information.
+
+        Returns:
+        -------
+        dict or None
+            A dictionary of challenge data or None if no data is found.
+        """
+        try:
+            # Extracted results
+            simplified_challenges = []
+
+            for challenge in data:
+                challenge_id = challenge.get("id")
+                attr = challenge.get("attributes", {})
+                nested_attr = attr.get("attributes", {})
+
+                challenge_info = {
+                    "challenge_id": challenge_id,
+                    "title": attr.get("Title") or nested_attr.get("Title"),
+                    "subtitle": attr.get("subtitle") or nested_attr.get("subtitle"),
+                }
+
+                simplified_challenges.append(challenge_info)
+
+            return simplified_challenges
+
+        except Exception as e:
+            logger.error(f"Error extracting challenge data: {e}")
+            return None
+        
 class IpersonaSmgCretrionMetricSchema(LeapBaseClass):
     def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)
