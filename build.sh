@@ -167,12 +167,12 @@ EOF
 #-----------------------------------------------
 #---- build image ------------
 #-----------------------------------------------
-docker-compose down --remove-orphans -t 0 $name
+# docker-compose down --remove-orphans -t 0 $name
 
-res=$(docker ps -aq)
-if [[ ! -z $res ]]; then
-    docker rm $res
-fi
+# res=$(docker ps -aq)
+# if [[ ! -z $res ]]; then
+#     docker rm $res
+# fi
 
 export PORT=$tport
 docker-compose build $name
