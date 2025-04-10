@@ -176,7 +176,8 @@ EOF
 
 export PORT=$tport
 docker-compose build $name
-docker-compose up --remove-orphans --force-recreate -d $name
+docker-compose up -d $name
+# --remove-orphans --force-recreate -d $name
 docker ps
 
 echo "----- Logs so far ..-----"
