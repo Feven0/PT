@@ -59,7 +59,8 @@ async def connect(sid, environ):
 @sio.on("disconnect")
 async def disconnect(sid):
     logger.info(f"Client disconnected with SID: {sid}")
-   
+    print("work testing")
+ 
 # assembly streaming
 @sio.on("audio transcribe")
 async def audio_endpoint(sid, data):

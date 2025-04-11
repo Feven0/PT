@@ -290,7 +290,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             question_number = 1
             for category, questions in generated_question_json.items():
                 for question in questions:
-                    question["question_number"] = str(question_number)
+                    question["question_number"] = int(question_number)
                     question_number += 1
 
             

@@ -4282,7 +4282,7 @@ def add_question_number(generated_question_json):
             for question in section_dict['questions']:
                 # Ensure the question is a dictionary before adding the question_number
                 if isinstance(question, dict):
-                    question["question_number"] = str(question_number)  # Add question number
+                    question["question_number"] = int(question_number)  # Add question number
                     question_number += 1
                 else:
                     logger.warn(f"Unexpected question format: {question}")  # Debug unexpected format
