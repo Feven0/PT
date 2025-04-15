@@ -16,9 +16,9 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
     IpersonaSessionMessageSchema, 
     IpersonaSessionObserverSchema,
     IpersonaTinderTemplateSchema,
-    IpersonaJobSessionSchema,
+    IpersonaSessionTinderUserReactionSchema,
     IpersonaChallengeDocumentSchema,
-    IpersonaTraineeSessionSchema
+    IpersonaSessionTinderUserJobMatchSchema
 )
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_gpt as gpt
@@ -36,6 +36,16 @@ aai.settings.api_key = config.assemblyai.api_key
 transcriber = aai.Transcriber()
 
 routes = FastAPI(root_path="/api")
+
+@routes.get("/health", tags=["Health Check"])
+async def health_check() -> JSONResponse:
+    ipersona_reaction = IpersonaSessionTinderUserJobMatchSchema(run_stage='dev')
+    reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=198, job_profile_id=1855, nopp=True, dataframe=False)
+
+    data = IpersonaSessionOverallObserverSchema(run_stage='dev')
+    data = data.filter_by_with_user_and_job_id(user_profile_id=198, job_profile_id=1855, nopp=True, dataframe=False)
+    return data
+    return reaction_id
 
 @routes.post("/audio_upload", tags=["Audio Endpoints"])
 async def speech_to_text(file: UploadFile = File(...)) -> dict:
@@ -242,6 +252,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             challenge_prompt = prompt_text \
                 .replace("{challenge_document}", str(content)) \
                 .replace("{count}", str(11)) 
+            
             saved_session =  util.create_session(
                 run_stage, 
                 request, 
@@ -308,8 +319,10 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
                     "external": False,
                     "challenge": False
                 },
-                "user_profile_id": tinder_user_profile_id,
-                "job_profile_id": request.job_profile_id
+                "tinder_user_profile": tinder_user_profile_id,
+                "tinder_job_profile": request.job_profile_id,
+                "tinder_template": template_id,
+                "challenge_document": challenge_id
             }
             
             ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
@@ -674,7 +687,7 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             nopp=True, 
             dataframe=False
         )
-    
+        
         if not trainee_profile_data:
             logger.warn(f"No trainee profiles found for user ID: {request.all_user_id}")
             return {
@@ -686,6 +699,7 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             }
         
         tinder_user_profile_id = trainee_profile_data.get('id')
+
         if not tinder_user_profile_id:
             logger.error(f"Invalid trainee profile for user ID: {request.all_user_id}")
             return {
@@ -703,7 +717,7 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
         since = max(request.since, 1)  # Ensure minimum value of 1
         limit = max(request.limit, 1)  # Ensure minimum value of 1
         cursor = request.cursor
-        
+
         # Step 3: Fetch and summarize interview data
         data, cursor = util.summarize_interviews(
             run_stage,                                                 
@@ -715,27 +729,27 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             information_level=information_level,
             return_skip=return_skip            
         )
-        # return len(data)
+
         logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
 
         
         # Step 4: Prepare response
-        if data:
-            return {
-                "all_user_id": request.all_user_id,
-                "jobs": data, 
-                # "cursor": cursor,                  
-                "status": 200, 
-                "message": ""
-            }
-        else: 
-            return {
-                "all_user_id": request.all_user_id, 
-                "jobs": [],  
-                "cursor": [],
-                "status": 404, 
-                "message": "No data found with the given parameters"
-            }
+        # if data:
+        return {
+            "all_user_id": request.all_user_id,
+            "jobs": data, 
+            # "cursor": cursor,                  
+            "status": 200, 
+            "message": ""
+        }
+        # else: 
+        #     return {
+        #         "all_user_id": request.all_user_id, 
+        #         "jobs": [],  
+        #         "cursor": [],
+        #         "status": 404, 
+        #         "message": "No data found with the given parameters"
+        #     }
 
     except Exception as e:
         logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
@@ -1655,16 +1669,17 @@ async def calculate_admin_job_by_template_id(request: pemodel.AdminJobByTemplate
         query_filter = request.filter or {}
         since = max(request.since or 1, 1)  # Ensure minimum value of 1
         limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
-        # cursor = request.cursor
+        cursor = request.cursor
         # Prepare query parameters
         kwargs = query_filter.copy() if query_filter else {}
         logger.info(f"Starting admin job by template ID calculation for template ID: {template_id}")
         
-        ipersona_job = IpersonaJobSchema(run_stage=run_stage, limit=limit, since=since)
-        data, cursor = ipersona_job.filter_by_template_id(
+        ipersona_job = IpersonaJobSchema(run_stage=run_stage)
+        data, cursors = ipersona_job.filter_by_template_id(
             template_id=template_id, 
-            since=request.since, 
-            limit=request.limit, 
+            cursor=cursor, 
+            since=since, 
+            limit=limit, 
             nopp=True, 
             dataframe=False,
             **kwargs
@@ -1754,20 +1769,28 @@ async def calculate_admin_interview_by_template(request: pemodel.AdminInterviewB
         
         # Step 1: Fetch all session data
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-        data, cursor = ipersona_session.get_all_sessions(
+        # data, cursor = ipersona_session.get_all_sessions(
+        #     cursor=cursor, 
+        #     since=since, 
+        #     limit=limit, 
+        #     nopp=True, 
+        #     dataframe=False,
+        #     **kwargs
+        # ) 
+        # # Step 2: Apply additional filtering by 'template_id'
+        # filtered_data = [
+        #     session for session in data
+        #     if session.get("attributes", {}).get("tinder_template", {}).get("data") 
+        #     and session["attributes"]["tinder_template"]["data"].get("id") == str(template_id)
+        # ]
+        filtered_data, cursor = ipersona_session.filter_by_template_id(
+            template_id=template_id, 
             cursor=cursor, 
             since=since, 
             limit=limit, 
             nopp=True, 
             dataframe=False,
-            **kwargs
-        ) 
-        # Step 2: Apply additional filtering by 'template_id'
-        filtered_data = [
-            session for session in data
-            if session.get("attributes", {}).get("tinder_template", {}).get("data") 
-            and session["attributes"]["tinder_template"]["data"].get("id") == str(template_id)
-        ]
+            **kwargs)
 
         data, cursor = util.summarize_interview_by_template_data(
             run_stage, 

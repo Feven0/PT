@@ -2067,7 +2067,7 @@ def summarize_interviews(
         kwargs = {}
         if query_filter:
             kwargs.update(query_filter)
-            
+
         data, cursors = ipersona_session.filter_by_tinder_user_profile_id(
             user_profile_id=user_profile_id, 
             cursor=cursor, 
@@ -2076,7 +2076,7 @@ def summarize_interviews(
             nopp=True, 
             dataframe=False,
             **kwargs)
-        # return data, cursors 
+        
         if len(data) != 0:
             data = extracted_needed_metrics(data)
 
@@ -2127,6 +2127,9 @@ def summarize_interviews(
 
                 ipersona_match = IpersonaSessionTinderUserJobMatchSchema(run_stage=run_stage)
                 job_match_data = ipersona_match.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
+                print("??????????????????????????============??????????//?????????????????????")
+                print(job_match_data)
+                print("??????????????????????????============??????????//?????????????????????")
                 
                 ipersona_reaction = IpersonaSessionTinderUserReactionSchema(run_stage=run_stage)
                 reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
@@ -2156,7 +2159,9 @@ def summarize_interviews(
         
             return output, cursors
         else:
-            return data, cursors
+            data = []
+            output = add_engagement_columns(data, cursor, kind='jobs', **kwargs)    
+            return output, cursors
         
     except Exception as e:
         logger.error(f"Error processing files: {e}")
@@ -3285,7 +3290,7 @@ def summarize_interview_by_template_data(run_stage, data, cursor, filter_by_stat
 
         all_trainee_data = []
         processed_users = {}
-
+        # return template_summary, {}
         for template_id, records in template_summary.items():
             ipersona_template = IpersonaTinderTemplateSchema()
             fetched_template = ipersona_template.get_tinder_template_id(
@@ -3578,8 +3583,10 @@ def create_session(
                     "challenge": True
 
                 },
-                "user_profile_id": user_profile_id,
-                "job_profile_id": job_profile_id
+                "tinder_user_profile": user_profile_id,
+                "tinder_job_profile": job_profile_id,
+                "tinder_template": template_id,
+                "challenge_document": challenge_id
             }
         else:
             session_data = {
@@ -3589,8 +3596,10 @@ def create_session(
                         "template_id": template_id
                     },
                     "metadata": metadata,
-                    "user_profile_id": user_profile_id,
-                    "job_profile_id": job_profile_id
+                    "tinder_user_profile": user_profile_id,
+                    "tinder_job_profile": job_profile_id,
+                    "tinder_template": template_id,
+                    "challenge_document": challenge_id
                 }
                 
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)

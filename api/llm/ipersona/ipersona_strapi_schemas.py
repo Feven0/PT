@@ -101,8 +101,11 @@ class IpersonaSessionSchema(LeapBaseClass):
             "status": "String",
             "attributes": "JSON",
             "i_persona_observer": "ID",
+            "i_persona_messages": "ID",
             "tinder_job_profile": "ID",
             "tinder_user_profile": "ID",
+            "tinder_template": "ID",
+            "challenge_document": "ID",
             "metadata": "JSON"
         }
 
@@ -141,39 +144,112 @@ class IpersonaSessionSchema(LeapBaseClass):
             logger.error(f"Error fetching data for Observer ID {vid}: {str(e)}")
             return {'error': f"Error fetching data for Observer ID {vid}: {str(e)}"}
 
-    def filter_by_tinder_user_profile_id(self, user_profile_id, cursor={}, since=0, limit=0, **kwargs):
+    # def filter_by_tinder_user_profile_id(self, user_profile_id, cursor={}, **kwargs):
+    #     try:
+    #         if not user_profile_id:
+    #             logger.error("User Profile ID is missing!")
+    #             return None
+            
+            # Step 1: Get the initial filtered data by 'since' and 'limit'
+            # filtered_data, cursors = self.get_all_sessions(
+            #     cursor=cursor, 
+            #     since=since, 
+            #     limit=limit, 
+            #     nopp=True, 
+            #     dataframe=False)
+
+            # if not filtered_data:
+            #     logger.error("No data returned after filtering by 'since' and 'limit'")
+            #     data = []
+            #     return data, cursors
+            # else:
+            #     # Step 2: Apply additional filtering by 'user_profile_id'
+            #     data = [session for session in filtered_data if session.get('attributes').get('tinder_user_profile').get('data').get('id') == str(user_profile_id)]
+                
+            #     if not data:
+            #         logger.info(f"No sessions found for user_profile_id: {user_profile_id}")
+            #         data = []
+            #         return data, cursors
+          
+            # return data, cursors
+        
+        # except Exception as e:
+        #     logger.error(f"Error filtering by tinder_user_profile_id: {e}")
+        #     return None
+    
+    def filter_by_tinder_user_profile_id(self, user_profile_id, cursor={}, since=None, limit=None, **kwargs):
         try:
             if not user_profile_id:
                 logger.error("User Profile ID is missing!")
                 return None
-            
-            # Step 1: Get the initial filtered data by 'since' and 'limit'
-            filtered_data, cursors = self.get_all_sessions(
-                cursor=cursor, 
-                since=since, 
-                limit=limit, 
-                nopp=True, 
-                dataframe=False)
 
-            if not filtered_data:
-                logger.error("No data returned after filtering by 'since' and 'limit'")
-                data = []
-                return data, cursors
-            else:
-                # Step 2: Apply additional filtering by 'user_profile_id'
-                data = [session for session in filtered_data if session.get('attributes').get('tinder_user_profile').get('data').get('id') == user_profile_id]
-       
-                if not data:
-                    logger.info(f"No sessions found for user_profile_id: {user_profile_id}")
-                    data = []
-                    return data, cursors
-          
+            # Step 1: Build the filter for 'tinder_user_profile'
+            session_filter = f"""
+                filters: {{
+                    tinder_user_profile : {{ id: {{ eq: {user_profile_id} }} }}
+            """
+
+            # Step 2: Add 'since' filter if provided
+            if since:
+                since_date = (datetime.utcnow() - timedelta(days=since)).isoformat() + 'Z'
+                session_filter += f', createdAt: {{ gte: "{since_date}" }}'
+
+            session_filter += " }"
+
+            # Step 3: Fetch data with the filter
+            data_json, cursors = self.get_all_objects(filter=session_filter, cursor=cursor, **kwargs)
+
+            # Step 4: Extract session data
+            data = self.get_sessions_data(data_json)
+
+            # Step 5: Apply 'limit' if provided
+            if limit and data:
+                data = data[:limit]
+
             return data, cursors
-        
+
         except Exception as e:
             logger.error(f"Error filtering by tinder_user_profile_id: {e}")
             return None
     
+    def filter_by_template_id(self, template_id, cursor={}, since=None, limit=None, **kwargs):
+        try:
+            if not template_id:
+                logger.error("Template ID is missing!")
+                return None
+
+            # Step 1: Build the filter for 'tinder_user_profile'
+            session_filter = f"""
+                filters: {{
+                    tinder_template : {{ id: {{ eq: {template_id} }} }}
+            """
+
+            # Step 2: Add 'since' filter if provided
+            if since:
+                since_date = (datetime.utcnow() - timedelta(days=since)).isoformat() + 'Z'
+                session_filter += f', createdAt: {{ gte: "{since_date}" }}'
+
+            session_filter += " }"
+
+            # Step 3: Fetch data with the filter
+            data_json, cursors = self.get_all_objects(
+                filter=session_filter, 
+                cursor=cursor,
+                **kwargs)
+            
+            # Step 4: Extract session data
+            data = self.get_sessions_data(data_json)
+
+            # Step 5: Apply 'limit' if provided
+            if limit and data:
+                data = data[:limit]
+
+            return data, cursors
+
+        except Exception as e:
+            logger.error(f"Error filtering by template_id: {e}")
+            return None
+        
     def filter_by_with_user_job_id(self, user_profile_id, job_profile_id, **kwargs):
         try:
             if not user_profile_id or not job_profile_id:
@@ -639,11 +715,12 @@ class IpersonaJobSchema(LeapBaseClass):
                                 }
                             }
                         } 
-                        tinder_templates {
+                        tinder_templates(pagination:{start:0, limit:-1}) {
                             data {
                                 id
                             }
                         }
+                        createdAt
                       %s                                                   
                     }
                 }
@@ -654,7 +731,9 @@ class IpersonaJobSchema(LeapBaseClass):
             
         self.type_map = {    
             "id": "ID",
-            "attributes": "JSON"
+            "attributes": "JSON",
+            "i_persona_sessions": "ID",
+            "tinder_templates": "ID"
         }
 
         self.id_names_map = {  }
@@ -708,7 +787,7 @@ class IpersonaJobSchema(LeapBaseClass):
             logger.error(f"Error filtering jobs by job_profile_id {job_profile_id}: {e}")
             return None
 
-    def filter_by_template_id(self, template_id, cursor={}, **kwargs):
+    def filter_by_template_id(self, template_id, cursor={}, since=None, limit=None, **kwargs):
         try:
             if not cursor:
                 cursor = True
@@ -722,8 +801,12 @@ class IpersonaJobSchema(LeapBaseClass):
                     tinder_templates : {{ id: {{ eq: {template_id} }} }}
                 }}
             """
-            data_json, cursor = self.get_all_objects(filter=template_id_filter, cursor=cursor, **kwargs)
+            data_json, cursor = self.get_all_objects(
+                filter=template_id_filter, 
+                cursor=cursor, 
+                **kwargs)
             
+            # return data_json, cursor
 
             if not data_json:
                 logger.warn(f"No job data found for template_id: {template_id}")
@@ -742,6 +825,46 @@ class IpersonaJobSchema(LeapBaseClass):
             logger.error(f"Error filtering jobs by template_id {template_id}: {e}")
             return None
     
+    # def filter_by_templates_id(self, template_id, cursor={}, since=None, limit=None, **kwargs):
+    #     try:
+    #         if not template_id:
+    #             logger.warn("Invalid or missing template_id")
+    #             return None
+
+    #         # Step 1: Build the filter for 'template_id'
+    #         session_filter = f"""
+    #             filters: {{
+    #                 tinder_templates : {{ id: {{ eq: {template_id} }} }}
+    #         """
+
+    #         # Step 2: Add 'since' filter if provided
+    #         if since:
+    #             since_date = (datetime.utcnow() - timedelta(days=since)).isoformat() + 'Z'
+    #             session_filter += f', createdAt: {{ gte: "{since_date}" }}'
+
+    #         session_filter += " }"
+    #         print('=------------------------------------------------------------------')
+    #         print(session_filter)
+    #         # Step 3: Fetch data with the filter
+    #         data_json, cursors = self.get_all_objects(filter=session_filter, cursor=cursor, **kwargs)
+    #         print('=------------------------------------------------------------------')
+    #         print(data_json)
+    #         return data_json, cursors
+    #         # Step 4: Extract session data
+    #         # data = self.get_sessions_data(data_json)
+    #         # data = self.get_extracted_data(data_json)
+    #         # data = self.job_extracted_data(data)
+
+    #         # Step 5: Apply 'limit' if provided
+    #         if limit and data:
+    #             data = data[:limit]
+
+    #         return data, cursor
+
+    #     except Exception as e:
+    #         logger.error(f"Error filtering jobs by template_id {template_id}: {e}")
+    #         return None
+
     def job_extracted_data(self, data):
         """
         Extracts relevant job data from a JSON response.
@@ -2588,7 +2711,7 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                         tag
                         description
                         attributes
-                        smg_criterion_metrics(pagination:{start:0, limit:null}) {
+                        smg_criterion_metrics(pagination:{start:0, limit:-1}) {
                             data {
                                 id
                                 attributes {
@@ -3249,7 +3372,7 @@ class IpersonaChallengeDocumentSchema(LeapBaseClass):
                     attributes {
                         Title
                         subtitle
-                        challenge_sections(pagination:{start:0,limit:1000}) {
+                        challenge_sections(pagination:{start:0,limit:-1}) {
                             data {
                                 id
                                 attributes {
@@ -3257,6 +3380,11 @@ class IpersonaChallengeDocumentSchema(LeapBaseClass):
                                 }
                             }
                         } 
+                        tinder_templates(pagination:{start:0, limit:-1}) {
+                            data {
+                                id
+                            }
+                        }
                         createdAt
                         updatedAt
                         %s
@@ -3270,7 +3398,8 @@ class IpersonaChallengeDocumentSchema(LeapBaseClass):
         self.type_map = {   
             "Title": "String",
             "subtitle": "String",
-            "challenge_sections": "ID"
+            "challenge_sections": "ID",
+            "tinder_templates": "[ID!]"
         }
 
         self.id_names_map = {  }
