@@ -3301,7 +3301,7 @@ def summarize_interview_by_template_data(run_stage, data, cursor, filter_by_stat
             )
             template_type = fetched_template.get('attributes', {}).get('type', '')
 
-            # Group records by (user_profile_id, job_profile_id, challenge_id)
+            # Group records by (tuser_profile_id, job_profile_id, challenge_id)
             user_job_challenge_map = defaultdict(list)
             for record in records:
                 key = (
