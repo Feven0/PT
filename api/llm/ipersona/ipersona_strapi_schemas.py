@@ -3,6 +3,7 @@ import re
 import copy
 import json
 from datetime import datetime, timedelta
+import logging
 
 
 from api import config
@@ -116,8 +117,8 @@ class IpersonaSessionSchema(LeapBaseClass):
         _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)
     
     def get_session_by_id(self, sessionId, **kwargs):
-        data_json = self.exists(scol='id', sval=sessionId, op='eq', stype="ID", **kwargs)  
-        data = self.get_session_data(data_json)   
+        data = self.exists(scol='id', sval=sessionId, op='eq', stype="ID", **kwargs)  
+        data = self.get_session_data(data)   
         return data
     
     def filter_by_observer_id(self, vid, **kwargs):

@@ -111,8 +111,7 @@ class StrapiGraphql():
             raise
             
         return r
-          
-        
+           
     def insert_table (self, query, variables, headers=None):
         """
 
@@ -170,6 +169,9 @@ class StrapiGraphql():
             kwargs = {'query': query, 'variables': variables}
            
             
+        print(f"[DEBUG] StrapiGraphql Select_from_table URL: {self.apiroot}")
+        print(f"[DEBUG] StrapiGraphql Select_from_table Headers: {headers}")
+        print(f"[DEBUG] StrapiGraphql Select_from_table Payload: {kwargs}")
         try:
             request = requests.post(self.apiroot, 
                                     headers=headers,
@@ -702,7 +704,26 @@ class StrapiGraphql():
             response = {}
         
         return response
-                
+
+    def get_user_infos(self):
+        variables = {"email": "mahlet@10academy.org", "password":"12341234"}
+        query = """ query getTraineeId{
+                    trainees(pagination:{start:0,limit:200} filters:{batch:{Batch:{eq:5}}}){
+                        data{
+                        id
+                        attributes{
+                            trainee_id
+                            email
+                            
+                        }
+                        }
+                    }
+                    }
+            """
+        # print(self.Select_from_table(query, variables=variables))
+        response = self.Select_from_table(query, variables=variables)
+        return response
+                 
 if __name__ == "__main__":
     obj = StrapiGraphql()
     

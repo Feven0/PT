@@ -1076,7 +1076,11 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
             "i_persona_session_id": sessionId, 
             "status": status,
         }
-        updated_session = ipersona_session.update_session(params=session_data, nopp=True, dataframe=False, return_object=True)
+        updated_session = ipersona_session.update_session(
+            params=session_data, 
+            nopp=True, 
+            dataframe=False, 
+            return_object=True)
      
         if updated_session:
             logger.info("session status updated to closed")
@@ -1227,7 +1231,12 @@ async def overall_interview_evaluations_external(run_stage, data: dict, status, 
 
         if status == 'External':  
             print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")       
-            await calculate_overall_progress_external(run_stage, all_user_id,  tinder_user_profile_id, job_profile_id, session_chatobserver) 
+            await calculate_overall_progress_external(
+                run_stage, 
+                all_user_id,  
+                tinder_user_profile_id, 
+                job_profile_id, 
+                session_chatobserver) 
       
         #################################################################################################
       
@@ -1662,7 +1671,11 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 return []
         tinder_user_profile_id = trainee_profile_data['id']    
             
-        session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=userdata['job_profile_id'], nopp=True, dataframe=False)
+        session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(
+            user_profile_id=tinder_user_profile_id, 
+            job_profile_id=userdata['job_profile_id'], 
+            nopp=True, 
+            dataframe=False)
        
         
         if not session_chatobserver.get("error"): 
@@ -1687,7 +1700,12 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                     "i_persona_session_overall_observer_id": session_chatobserver['id'], 
                     "attributes": attributes,
                 }
-                response = ipersona_overall.update_session(params=overall_data, nopp=True, dataframe=False, return_object=True)
+                response = ipersona_overall.update_session(
+                    params=overall_data, 
+                    nopp=True, 
+                    dataframe=False, 
+                    return_object=True)
+                
                 if response:
                     logger.success(f"session overall observer data update with new insert anlaysis")   
         else:  
@@ -1724,7 +1742,12 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
         return f'Error: {str(e)}'  
     
 
-async def calculate_overall_progress_external(run_stage, all_user_id,  tinder_user_profile_id, job_profile_id, data: list):
+async def calculate_overall_progress_external(
+        run_stage, 
+        all_user_id,  
+        tinder_user_profile_id, 
+        job_profile_id, 
+        data: list):
     try:
         logger.info(f"calculating overall progress for a job overtime")
         confidence_overtime = []  

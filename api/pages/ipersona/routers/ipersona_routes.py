@@ -26,7 +26,7 @@ import api.pages.ipersona.models.persona as pemodel
 from api.utils.logger import LLPackerLogger
 from api.services.strapi_ipersona import IpersonaManager
 import api.llm.ipersona.ipersona_strapi as strapi
-
+from api.services.strapi_graphql import StrapiGraphql
 logger = LLPackerLogger(os.path.basename(__file__))
 module_dir= os.path.dirname(__file__)
 data_path = lambda x: os.path.join(module_dir, "folders", x)
@@ -38,14 +38,26 @@ transcriber = aai.Transcriber()
 routes = FastAPI(root_path="/api")
 
 @routes.get("/health", tags=["Health Check"])
-async def health_check() -> JSONResponse:
-    ipersona_reaction = IpersonaSessionTinderUserJobMatchSchema(run_stage='dev')
-    reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=198, job_profile_id=1855, nopp=True, dataframe=False)
+async def health_check():
+    # ipersona_reaction = IpersonaSessionTinderUserJobMatchSchema(run_stage='dev')
+    # reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=198, job_profile_id=1855, nopp=True, dataframe=False)
 
-    data = IpersonaSessionOverallObserverSchema(run_stage='dev')
-    data = data.filter_by_with_user_and_job_id(user_profile_id=198, job_profile_id=1855, nopp=True, dataframe=False)
-    return data
-    return reaction_id
+    # data = IpersonaSessionOverallObserverSchema(run_stage='dev')
+    # data = data.filter_by_with_user_and_job_id(user_profile_id=198, job_profile_id=1855, nopp=True, dataframe=False)
+    # return data
+    # return reaction_id
+    
+    schema = StrapiGraphql(
+        # url=config.strapi.url,
+        # token=config.strapi.token,
+        # headers={
+        #     "Authorization": f"Bearer {config.strapi.token}",
+        #     "Content-Type": "application/json"          
+        # }
+    )
+    table = "iPersonaSession"
+    res = schema.get_user_infos()
+    return res
 
 @routes.post("/audio_upload", tags=["Audio Endpoints"])
 async def speech_to_text(file: UploadFile = File(...)) -> dict:
