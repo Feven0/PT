@@ -358,7 +358,7 @@ const InterviewChat = () => {
     }
 
     useEffect(() =>{
-        GetTemplates()
+        // GetTemplates()
         GetChallenges()
     },[])
 

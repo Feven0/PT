@@ -15,7 +15,11 @@ export branch_name=${branch_name:-HEAD}
 if [ $branch_name == "prod" ]; then
     branch_name="prod"
     echo "******Running Production Frog Backend Environment******"
-    export STRAPI_STAGE="prod"   
+    export STRAPI_STAGE="prod"  
+elif [ $branch_name == "dev-prod" ]; then
+    branch_name="dev-prod"
+    echo "******Running dev-prod Development Environment******"
+    export STRAPI_STAGE="dev-prod"   
 else
     branch_name="dev"
     echo "******Running Development Environment******"
@@ -53,17 +57,17 @@ COPY . .
 
 ENV STRAPI_STAGE=${STRAPI_STAGE:-"dev"}
 
-EXPOSE ${1:-5500}
+EXPOSE ${1:-4900}
 RUN export nworkers=\$(nproc --all)
 RUN echo "nworkers=\$nworkers"
-ENTRYPOINT uvicorn ${3:-"app:app"} --host 0.0.0.0 --port ${1:-5500}
+ENTRYPOINT uvicorn ${3:-"app:app"} --host 0.0.0.0 --port ${1:-4900}
 
 EOF
 }
 
 function make_gunicorn_dockerfile(){
     #REF: https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker
-    build_arg="-e APP_MODULE=app:app -e WEB_CONCURRENCY="4" -e TIMEOUT="120" -e KEEP_ALIVE="60" -e LOG_LEVEL="info" -e PORT=${1:-5500}"
+    build_arg="-e APP_MODULE=app:app -e WEB_CONCURRENCY="4" -e TIMEOUT="120" -e KEEP_ALIVE="60" -e LOG_LEVEL="info" -e PORT=${1:-4900}"
     
 cat <<EOF > Dockerfile
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11
@@ -107,6 +111,14 @@ elif [[ $branch_name == "dev" ]]; then
     tport=4500
     make_general_dockerfile $port $pyreq
     #make_gunicorn_dockerfile $port $pyreq    
+elif [[ $branch_name == "dev-prod" ]]; then
+    pyreq="./api"
+    echo "DEV: Using Gunicorn multi workers... "
+    name="ipersona_prod"
+    port=4900
+    tport=4900
+    make_general_dockerfile $port $pyreq  
+    make_gunicorn_dockerfile $port $pyreq
 else
     echo "Using Dockerfile for General ... "
     name="${branch_name}ipersona"
