@@ -318,7 +318,7 @@ const InterviewChat = () => {
     const GetChallenges = async() => {
         const response = await Api.GetChallenges()
         console.log("await...charilie.", response?.data)
-        setChallenges(response?.data?.challenge)
+        setChallenges(response?.data?.challenges)
     }
 
     const chooseTemplate = async (id: any) => {
