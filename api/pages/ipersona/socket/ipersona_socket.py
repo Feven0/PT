@@ -1,4 +1,4 @@
-import asyncio, os
+import asyncio, os, json
 import socketio, time
 from openai import OpenAI
 import assemblyai as aai
@@ -141,13 +141,14 @@ async def audio_end_point(sid, data):
         
     logger.info("audio socket response", data["response"], data['user_session']['id'])
     try:
-        global chat_count
         chat_count = 1  
         sessionId = data['user_session']['id']
         realtime_evaluation = "null"
         accumulated_message = ""
         full_accumulated_message = ""
-        template_id = ""
+        template_id = data.get('template_id', "null")
+        challenge_id = data.get('challenge_id', "null")
+        total_questions = 0
 
          # Get session ID with error handling
         try:
@@ -171,8 +172,7 @@ async def audio_end_point(sid, data):
                         template_id = data.get('template_id')
                         if not template_id:
                             logger.warn("Template flag set but no template_id provided")
-                            await sio.emit("error", {"error": "Template ID is required"}, room=sid)
-                            return
+                            return {"error": "Template ID is required"}
                             
                         ipersona_template = IpersonaTinderTemplateSchema()
                         saved_template = ipersona_template.get_tinder_template_id(
@@ -184,14 +184,16 @@ async def audio_end_point(sid, data):
                         
                         if not saved_template:
                             logger.warn(f"No template found for template ID: {template_id}")
-                            await sio.emit("error", {"error": f"Template not found: {template_id}"}, room=sid)
-                            return
+                            return {"error": f"Template not found: {template_id}"}
                             
                         data['user_session'] = saved_template
+                        all_questions = len(data['user_session']['attributes']['attributes']['template_questions'])
+                        total_questionss = {section: len(questions) for section, questions in all_questions.items()}
+                        total_questions = sum(total_questionss.values())
+              
                     except Exception as template_error:
                         logger.error(f"Error retrieving template: {str(template_error)}")
-                        await sio.emit("error", {"error": f"Template retrieval failed: {str(template_error)}"}, room=sid)
-                        return
+                        return {"error": f"Template retrieval failed: {str(template_error)}"}
                     
             else: 
                 ipersona_user = IpersonaSessionSchema(run_stage=run_stage)
@@ -200,15 +202,24 @@ async def audio_end_point(sid, data):
                     nopp=True, 
                     dataframe=False
                 )
+              
                 data['user_session'] = session_fetched
-
+                all_questions = data['user_session']['attributes']['attributes']
+                collection = all_questions.get('generated_questions') or all_questions.get('challenge_questions')
+                print("-==================================-")
+               
+                print("-==================================-")
+         
+                question_counts = {section['sectionType']: len(section['questions']) for section in collection}
+                total_questions = sum(question_counts.values())
+                
                 if not session_fetched:
                     logger.warn(f"No session found for session ID: {sessionId}")
                     return f"No session found for session ID: {sessionId}"
+                
         except Exception as data_prep_error:
-            logger.error(f"Error in data preparation: {str(data_prep_error)}")
-            await sio.emit("error", {"error": f"Data preparation failed: {str(data_prep_error)}"}, room=sid)
-            return
+            logger.error(f"Error in data preparation in Audio Socket: {str(data_prep_error)}")
+            return {"error": f"Data preparation failed: {str(data_prep_error)}"}
         #------------------------------------------------------------------------------------#
 
         
@@ -262,10 +273,15 @@ async def audio_end_point(sid, data):
             logger.error(f"Error processing user response: {str(response_error)}")
 
                  
-        # response = await util.generate_interview_question(run_stage, data) 
-        # response = await util.generate_interview_question(run_stage, data, template_id, sessionId)
         try:
-            response = await util.generate_interview_question(run_stage, data, template_id, sessionId)
+            response = await util.generate_interview_question(
+                run_stage, 
+                data, 
+                total_questions, 
+                template_id, 
+                challenge_id, 
+                sessionId)
+            
             if not response:
                 logger.error("Failed to generate interview question: empty response")
                 await sio.emit("error", {"error": "Failed to generate next question"}, room=sid)
@@ -281,6 +297,8 @@ async def audio_end_point(sid, data):
                 {
                     "user_type": "assistant",
                     "content_type": "question",
+                    "template_id": template_id, 
+                    "challenge_id": challenge_id,
                     "content": {
                         "time_taken": "null",
                         "time_limit":  "null",
@@ -348,7 +366,12 @@ async def audio_end_point(sid, data):
 
             # Perform real-time response evaluation if applicable
             if data['response'] is not [None, ""]:
-                realtime_evaluation_response_json = util.realtime_response_evaluation(run_stage, data, sessionId)
+                type = 'job_interview_config'
+                realtime_evaluation_response_json = util.realtime_response_evaluation(
+                                run_stage, 
+                                data, 
+                                sessionId, 
+                                type)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
                 logger.success(f"Realtime evaluation is: {realtime_evaluation}")
             
@@ -362,18 +385,28 @@ async def audio_end_point(sid, data):
              
        
         # Insert the message or conclude the interview if the chat count exceeds the limit
-        if chat_count < 12:
+        if chat_count < total_questions:
             final = 'false'
-            temp_id = data.get('template_id') if data.get('template_id') is not None else "null"
-         
-            strapi.step2_insert_message(run_stage, data, temp_id, timelimit, full_accumulated_message, realtime_evaluation, final, sessionId)
+            strapi.step2_insert_message(
+                run_stage, 
+                data, 
+                timelimit, 
+                accumulated_message, 
+                realtime_evaluation, 
+                final,
+                sessionId)
         else:
             message = 'interview over'
             final = 'true'
+            temp_id = data.get('template_id') if data.get('template_id') is not None else "null"
+            challenge_id = data.get('challenge_id') if data.get('challenge_id') is not None else "null"
+            
             if response.get("status") is not None:
                 message = [{
                     "user_type": "assistant",
                     "content_type": "question",
+                    "template_id": temp_id, 
+                    "challenge_id": challenge_id,
                     "content": {
                         "time_taken": "null",
                         "time_limit": "null",
@@ -393,6 +426,7 @@ async def audio_end_point(sid, data):
         logger.error(f'Error: {str(e)}')  
         
 
+
 # handle for text to text chat
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
@@ -407,6 +441,7 @@ async def interview_endpoint(sid, data):
         None: Responses are sent via socket.io events
     """
     try:
+        print('+++*****************************************000000000000******************************************+++')
         logger.info(f"Received interview request with template_id: {data.get('template_id')}")
         
         # Validate input data
@@ -429,13 +464,14 @@ async def interview_endpoint(sid, data):
             logger.error(f"Failed to get socket session: {str(session_error)}")
             return {"error": f"Retrieval failed for session:, {sid}"}
         
-        global chat_count
         chat_count = 1  
         sessionId = None
         realtime_evaluation = "null"
         accumulated_message = ""     
-        template_id = ""
+        template_id = data.get('template_id', "null")
+        challenge_id = data.get('challenge_id', "null")
         timelimit = {"time_limit": "null"}
+        total_questions = 0
         
         # Get run stage from session
         try:
@@ -464,7 +500,6 @@ async def interview_endpoint(sid, data):
         
         #-----------------------------------------------------------------------------------#
         # Handle template-based or session-based interviews
-    
         try:
             if data.get('template'):
                 try:
@@ -486,7 +521,11 @@ async def interview_endpoint(sid, data):
                         return {"error": f"Template not found: {template_id}"}
                         
                     data['user_session'] = saved_template
-
+                    collection = data['user_session']['attributes']['attributes']['template_questions']
+                    question_counts = {section['sectionType']: len(section['questions']) for section in collection}
+                    total_questions = sum(question_counts.values())
+                    print('***************************************************===1****************************************************')
+                    print(f"Total questions derived from template: {total_questions}")
                 except Exception as template_error:
                     logger.error(f"Error retrieving template: {str(template_error)}")
                     return {"error": f"Template retrieval failed: {str(template_error)}"}
@@ -506,6 +545,13 @@ async def interview_endpoint(sid, data):
                         return {"error": f"Session not found: {sessionId}"}
                         
                     data['user_session'] = session_fetched
+                    all_questions = data['user_session']['attributes']['attributes']
+                    collection = all_questions.get('generated_questions') or all_questions.get('challenge_questions')
+                    collection = json.loads(collection) if isinstance(collection, str) else collection
+
+                    question_counts = {section['sectionType']: len(section['questions']) for section in collection}
+                    total_questions = sum(question_counts.values())
+
                 except Exception as session_fetch_error:
                     logger.error(f"Error fetching session: {str(session_fetch_error)}")
                     return {"error": f"Session retrieval failed: {str(session_fetch_error)}"}
@@ -514,8 +560,6 @@ async def interview_endpoint(sid, data):
             logger.error(f"Error in data preparation: {str(data_prep_error)}")
             return {"error": f"Data preparation failed: {str(data_prep_error)}"}
         #------------------------------------------------------------------------------------#
-
-        start_time = time.time()
        
         # Fetch session chat history
         try:
@@ -550,6 +594,7 @@ async def interview_endpoint(sid, data):
         try:
             if data.get('response'):
                 try:
+                    print("ballls and filreee------===============================")
                     strapi.step1_insert_message(
                         run_stage, 
                         data, 
@@ -565,7 +610,13 @@ async def interview_endpoint(sid, data):
             
         # Generate the next interview question
         try:
-            response = await util.generate_interview_question(run_stage, data, template_id, sessionId)
+            response = await util.generate_interview_question(
+                run_stage, 
+                data, 
+                total_questions, 
+                template_id, 
+                challenge_id, 
+                sessionId)
             if not response:
                 logger.error("Failed to generate interview question: empty response")
                 return {"error": "Failed to generate next question"}
@@ -577,7 +628,6 @@ async def interview_endpoint(sid, data):
         try:
             if response.get("interview") is not None:
                 assistant_next_question = response.get("interview", "")
-                temp_id = data.get('template_id') if data.get('template_id') is not None else "null"
                 
                 # Prepare initial message
                 try:
@@ -585,7 +635,6 @@ async def interview_endpoint(sid, data):
                         {
                             "user_type": "assistant",
                             "content_type": "question",
-                            "template_id": temp_id, 
                             "content": {
                                 "time_taken": "null",  
                                 "time_limit": "null",
@@ -630,7 +679,6 @@ async def interview_endpoint(sid, data):
                             assistant_next_question = [str(assistant_next_question)]
                             
                     for chunk in assistant_next_question:
-                        print("cominnnnnnn")
                         try:
                             accumulated_message += chunk
                             message = [{
@@ -640,10 +688,6 @@ async def interview_endpoint(sid, data):
                             }]
                             await sio.emit("interview chat", message, room=sid)
                             
-                            end_time = time.time()
-                            elapsed_time = end_time - start_time
-                            logger.info(f"Chunk emitted, time taken: {elapsed_time:.2f} seconds")
-
                         except Exception as chunk_error:
                             logger.error(f"Error processing chunk: {str(chunk_error)}")
                             # Continue with next chunk despite error
@@ -655,7 +699,12 @@ async def interview_endpoint(sid, data):
                 try:
                     if data.get('response') not in [None, "", []]:
                         try:
-                            realtime_evaluation_response_json = util.realtime_response_evaluation(run_stage, data, sessionId)
+                            type = 'job_interview_config'
+                            realtime_evaluation_response_json = util.realtime_response_evaluation(
+                                run_stage, 
+                                data, 
+                                sessionId, 
+                                type)
                             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
                         except Exception as eval_compute_error:
                             logger.error(f"Failed to compute realtime evaluation: {str(eval_compute_error)}")
@@ -684,14 +733,15 @@ async def interview_endpoint(sid, data):
                 
         # Insert the message or conclude the interview
         try:
-            if chat_count < 12:
+            print("((((((((((((((((((((((((((((((((((((((((()))))))))))))))))))))))))))))))))))))))))")
+            if chat_count < total_questions + 1:
                 final = 'false'
-                temp_id = data.get('template_id') if data.get('template_id') is not None else "null"
                 try:
+                    print("=================0::::0===================", sessionId)
+
                     strapi.step2_insert_message(
                         run_stage, 
                         data, 
-                        temp_id, 
                         timelimit, 
                         accumulated_message, 
                         realtime_evaluation, 
@@ -706,13 +756,14 @@ async def interview_endpoint(sid, data):
                     message = 'interview over'
                     await sio.emit("interview done", message, room=sid)
                     final = 'true'
+                    temp_id = data.get('template_id') if data.get('template_id') is not None else "null"
+                    challenge_id = data.get('challenge_id') if data.get('challenge_id') is not None else "null"
 
                     if response.get("status") is not None:
                         try:
                             message = [{
                                 "user_type": "assistant",
                                 "content_type": "question",
-                                "template_id": template_id, 
                                 "content": {
                                     "time_taken": "null",
                                     "time_limit": "null",                        
@@ -739,7 +790,6 @@ async def interview_endpoint(sid, data):
         error_message = f"Error processing interview chat: {str(e)}"
         logger.error(error_message, exc_info=True)
         return error_message
-
 
 def get_socketio_app(fast_app):
     app = socketio.ASGIApp(

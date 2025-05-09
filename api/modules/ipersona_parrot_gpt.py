@@ -24,6 +24,7 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
 from api.utils.request_manager import JobReactionManager
 from api.services.async_task_analyzer import AsyncTaskAnalyzer
 import api.modules.reading_fallback_prompts as fallback
+from collections import defaultdict
 
 
 logger = LLPackerLogger(os.path.basename(__file__))
@@ -79,7 +80,7 @@ def create_persona(job_desc):
 
 
 #--------------------------------------------  Generate Interview Questions --------------------------------
-async def generate_interview_question(run_stage, data: dict, template_id, sessionId):
+async def generate_interview_question(run_stage, data: dict, question_count, template_id, challenge_id, sessionId):
     """
     Generates interview questions based on user session data.
 
@@ -104,195 +105,43 @@ async def generate_interview_question(run_stage, data: dict, template_id, sessio
 
         # Choose between generated_questions and template_questions
         collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions') or user_attributes.get('challenge_questions')
-        print("-----------------------ttttttttttfffffff")
-        print(user_attributes.get('challenge_id'))
-        print(user_attributes.get('challenge_id') == 0)
+        collection = json.loads(collection) if isinstance(collection, str) else collection
 
-        # if(user_attributes.get('challenge_id') != 0):
-        #     print("-----------------------ttttttttttfffffff")
-        #     response = choose_interview_question_challenge(run_stage, collection, data, sessionId)
-        #     return response
-        # else:
+        if(challenge_id != 'null'):
+            print('0-0-0-0-0-0-0-0-0------0-0-0--0-0--0-0-0-0-0-0-0-0-0-0')
+            print(question_count)
+            print('0-0-0-0-0-0-0-0-0------0-0-0--0-0--0-0-0-0-0-0-0-0-0-0')
+
+            response = await choose_interview_question_challenge_new_structure(
+                run_stage, 
+                collection, 
+                question_count, 
+                data, 
+                template_id, 
+                challenge_id, 
+                sessionId)
+            return response
+        
         if not collection:
             raise ValueError("No questions available in generated_questions or template_questions.")
         
-        # Call the async function to choose an interview question
-        response = await choose_interview_question(run_stage, collection, data, template_id, sessionId)
+        response = await choose_interview_question_new_structure(
+            run_stage, 
+            collection, 
+            question_count, 
+            data, 
+            template_id, 
+            challenge_id, 
+            sessionId)
         
         return response
     
     except Exception as e:
         logger.error(f"Persona Creation Error: {str(e)}")
         return {'error': str(e)}
-
     
     
 #-------------------------------------------- Choose Question from Generated ----------------------------------
-async def choose_interview_question(run_stage, collection: dict, data: dict, template_id, sessionId):
-    """
-    Selects an interview question based on the current question counter.
-
-    This asynchronous function determines the appropriate section of interview questions 
-    (Background, Technical, Behavioral, or Ability) based on the `question_counter` value 
-    in the provided data. It then calls a helper function to retrieve a question from 
-    the selected section.
-
-    Parameters:
-    ----------
-    collection : dict
-        A dictionary containing different sections of interview questions, 
-        organized by type.
-
-    data : dict
-        A dictionary containing session information, including the current 
-        question counter.
-
-    Returns:
-    -------
-    dict
-        A JSON object containing the selected interview question, or an error message 
-        if an exception occurs during processing.
-    """
-    try: 
-        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
-        session_chathistory = ipersona_message.filter_by_session_id(
-            sessionId=sessionId, 
-            nopp=True, 
-            dataframe=False,
-            sort='asc')
-  
-        chat = session_chathistory['count']
-  
-        global chat_count
-        chat_count = 1
-        
-        if chat != 0:  
-            chat = session_chathistory['total']
-            assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
-            chat_count += assistant_count 
-            logger.info(f"Number of assistant entries: {chat_count}")
-        else:
-            logger.error("Chat is empty.")
-        
-        section = None
-        question_type = None
-        question_count =12
-        if chat_count < 2: 
-            section = collection["Introduction"]
-            question_type = "Introduction"
-            count = None
-            response = await helper_func(
-                run_stage, 
-                chat_count, 
-                count, 
-                question_type, 
-                section, data, 
-                sessionId,
-                template_id,
-                question_count)
-
-            return response
-        
-        elif chat_count < 5: 
-            section = collection["Background"]
-            question_type = "Background"
-            count = None
-            if chat_count == 3: 
-                count = chat_count
-            response = await helper_func(
-                run_stage, 
-                chat_count, 
-                count, 
-                question_type, 
-                section, 
-                data, 
-                sessionId,
-                template_id,
-                question_count)
-
-            return response
-        
-        elif chat_count < 7: 
-            section = collection["Technical"]
-            question_type = "Technical"
-            count = None
-            if chat_count == 5: 
-                count = chat_count
-            response = await helper_func(
-                run_stage, 
-                chat_count, 
-                count, 
-                question_type, 
-                section, 
-                data, 
-                sessionId,
-                template_id,
-                question_count)
-            
-            return response
-            
-        elif chat_count < 9: 
-            section = collection["Behavioral"]
-            question_type = "Behavioral"
-            count = None
-            if chat_count == 7: 
-                count = chat_count
-            response = await helper_func(
-                run_stage, 
-                chat_count, 
-                count, 
-                question_type, 
-                section, 
-                data, 
-                sessionId,
-                template_id,
-                question_count)
-            
-            return response
-        
-        elif chat_count < 11: 
-            section = collection["Ability"]
-            question_type = "Ability"
-            count = None
-            if chat_count == 9: 
-                count = chat_count
-            response = await helper_func(
-                run_stage, 
-                chat_count, 
-                count,
-                question_type, 
-                section, 
-                data, 
-                sessionId,
-                template_id,
-                question_count)
-            
-            return response
-        
-        elif chat_count < 13:
-            section = collection["Closing"]
-            question_type = "Closing"
-            count = None
-            if chat_count == 11: 
-                count = chat_count
-            response = await helper_func(
-                run_stage, 
-                chat_count, 
-                count, 
-                question_type, 
-                section, 
-                data, 
-                sessionId,
-                template_id,
-                question_count)
-            
-            return response
-
-    except Exception as e:
-        logger.error(f"Choosing question process failed: ${str(e)}")
-        return {'error': str(e)}
-
-#-------------------------------------------- Choose Question from the new structure Generated ----------------------------------
 async def choose_interview_question_new_structure(
         run_stage, 
         collection: list,  # Changed from dict to list 
@@ -303,6 +152,7 @@ async def choose_interview_question_new_structure(
         sessionId):
     try: 
         # Fetch session chat history
+        type = 'job_interview_config'
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
             sessionId=sessionId, 
@@ -339,21 +189,35 @@ async def choose_interview_question_new_structure(
             }
             current_boundary += count
         
+        print('boundaries=================================================================================')
+        print(section_boundaries)
+        print('boundaries=================================================================================')
+        
         # Dynamically determine the current section
         current_section = None
         final_flag = False
         for section in collection:
             section_type = section['sectionType']
             boundaries = section_boundaries[section_type]
-
+            
+            print('telegramapp====================================================')
+            print(chat_count)
+            print(boundaries['end'])
+            print('telegramapp====================================================')
+            
             if chat_count < boundaries['end']:
                 current_section = section
                 break
             else:
                 final_flag = True
+                print('final_flag====================================================')
         
         # If a section is found, process the interview question
         if current_section:
+            print('whathapp====================================================')
+            print(current_section['sectionType'])
+            print('whathapp====================================================')
+            
             question_type = current_section['sectionType']
             
             # Determine if this is a specific chat count moment (optional)
@@ -373,12 +237,15 @@ async def choose_interview_question_new_structure(
                 data, 
                 sessionId,
                 template_id,
-                challenge_id)
+                challenge_id,
+                type)
 
             return response
         
         # If no section is found (all questions exhausted)
         if final_flag:
+            print('out of section picking====================================================')
+            print("else part ******************************************* question_count", question_count)
             interview_question_json = None
             realtime_evaluation = None
             status = None
@@ -390,14 +257,14 @@ async def choose_interview_question_new_structure(
             # ipersona_metric = IpersonaSmgCretrionMetricSchema()
             # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=167, nopp=True, dataframe=False)
             # data_content = data_content.get('attributes', {}).get('content', {})
+            # tag = 'parrot_closing_question_realtime_evaluation'
+            # content = fetch_config_template(type, tag)
+            # data_content = content.get('content', '')
             # closing_content = data_content.replace("{closing_question}", str(last_assistant_response))
             # closing_content = data_content.replace("{candidate_response}" , str(data['response']))
-            
-            prompt_text = file_reader(prompt_path('ipersona/closing_question_realtime_evaluation.txt'))
-            closing_content = prompt_text \
-                        .replace("{closing_question}", str(last_assistant_response)) \
-                        .replace("{candidate_response}" , str(data['response']))
-      
+            candidate_response = data['response']
+            closing_content = read_prompt_closing_question_realtime_evaluation(type, last_assistant_response, candidate_response)
+
             # Get realtime evaluation
             realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(closing_content)
 
@@ -409,10 +276,12 @@ async def choose_interview_question_new_structure(
                 status = "final"
                 final = 'true'
                 strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId)
-                           
+                print('my daaaaaaaaaaaaaaaaaaaaaaaaa=====================================')
+                print(realtime_evaluation)
+            
             rstage = ''
             status = "Completed"
-            await overall_interview_evaluations(rstage, data, status, sessionId)
+            await overall_interview_evaluations(rstage, data, status, sessionId, type)
             logger.info("Calculate the overall and save to database done.")            
                 
             response = {
@@ -420,6 +289,7 @@ async def choose_interview_question_new_structure(
                 "status": status,
                 "realtime": realtime_evaluation
             }
+
             return response
 
     except Exception as e:
@@ -436,6 +306,7 @@ async def choose_interview_question_challenge_new_structure(
     sessionId):
     try: 
         # Fetch session chat history
+        type = 'challenge_interview_config'
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
             sessionId=sessionId, 
@@ -505,7 +376,8 @@ async def choose_interview_question_challenge_new_structure(
                 data, 
                 sessionId,
                 template_id,
-                challenge_id)
+                challenge_id,
+                type)
 
             return response
         
@@ -516,7 +388,7 @@ async def choose_interview_question_challenge_new_structure(
             status = None
             
             # Realtime evaluation response
-            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId)
+            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId, type)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
            
             logger.info(f"Realtime evaluation is: {realtime_evaluation}")
@@ -527,7 +399,7 @@ async def choose_interview_question_challenge_new_structure(
 
             rstage = ''
             status = "Completed"
-            await overall_interview_evaluations(rstage, data, status, sessionId)
+            await overall_interview_evaluations(rstage, data, status, sessionId, type)
             logger.info("Calculate the overall and save to database done.")            
                 
             response = {
@@ -541,8 +413,9 @@ async def choose_interview_question_challenge_new_structure(
     except Exception as e:
         logger.error(f"Choosing question process failed: {str(e)}")
         return {'error': str(e)}
-
-async def helper_func_(
+    
+#----------------------------------------- Helper Functions for Choosing Question ---------------------------------
+async def helper_func(
     run_stage, 
     question_count,
     chat_count, 
@@ -552,7 +425,8 @@ async def helper_func_(
     data: dict, 
     sessionId,
     template_id,
-    challenge_id):
+    challenge_id,
+    type):
     """
     Processes interview questions and evaluations based on candidate responses.
 
@@ -583,6 +457,16 @@ async def helper_func_(
         message instead.
     """
     try:
+        print('=----------======-------------------------=-=--==------------------===-=-=')
+        print(run_stage, 
+        chat_count, 
+        count, 
+        question_type,
+        sessionId,
+        template_id,
+        question_count)
+        print('=----------======-------------------------=-=--==------------------===-=-=')
+
         interview_question_json = None
         realtime_evaluation = None
         status = None
@@ -590,20 +474,31 @@ async def helper_func_(
         if chat_count < question_count + 2:
             if data['response']:
                 if count is not None:
-                    interview_question_json = await fetch_interview_question(section, question_type, data, question_count) 
+                    print("count is not none *******************************************")
+                    interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type) 
                 else:
-                    response = await check_if_followup(data['response'])
-           
+                    print("count is *******************************************", count)
+                    response = await check_if_followup(data['response'], type)
+                    print("response is *******************************************", response)
                     if not response:
-                        interview_question_json = await fetch_interview_question(section, question_type, data, question_count)
+                        print("response is not none *******************************************")
+                        interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type)
+                        print("interview_question_json is *******************************************")
+                        print(section)
+                        print("interview_question_json is *******************************************") 
                     else:
-                        interview_question_json = await generate_followup(data)
+                        print("response is none *******************************************")
+                        interview_question_json = await generate_followup(data, type)
+                        print(interview_question_json)
+                        print("interview_question_json is *******************************************")
                        
             else:
-                interview_question_json = await fetch_interview_question(section, question_type, data, question_count) 
+                print("data is none *******************************************")
+                interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type) 
    
         else:  
-            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId)
+            print("Final else part ******************************************* question_count", question_count)
+            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId, type)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
             logger.info(f"Realtime evaluation is: {realtime_evaluation}")
             if realtime_evaluation != "null":
@@ -612,91 +507,7 @@ async def helper_func_(
                 strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId)
             rstage=''
             status = "Completed"
-            await overall_interview_evaluations(rstage, data, status, sessionId)
-            logger.info("Calculate the overall and save to database done.")            
-                
-        response = {
-            "interview": interview_question_json,
-            "status": status,
-            "realtime": realtime_evaluation
-        } 
-        return response
-    
-    except Exception as e:
-        logger.error(f"Choosing question helper process failed: ${str(e)}")
-        return {'error': str(e)}
-    
-#----------------------------------------- Helper Functions for Choosing Question ---------------------------------
-async def helper_func(
-    run_stage, 
-    chat_count, 
-    count: int, 
-    question_type: str, 
-    section: list, 
-    data: dict, 
-    sessionId,
-    template_id,
-    question_count):
-    """
-    Processes interview questions and evaluations based on candidate responses.
-
-    This asynchronous function evaluates candidate responses and fetches 
-    appropriate interview questions from the specified section. It also handles 
-    real-time and overall evaluations based on the current question counter.
-
-    Parameters:
-    ----------
-    count : int
-        The current question count, indicating which question is being processed.
-
-    question_type : str
-        The type of question being asked (e.g., Background, Technical).
-
-    section : list
-        A list of questions from which to fetch the current interview question.
-
-    data : dict
-        A dictionary containing session information, including candidate responses 
-        and the current question counter.
-
-    Returns:
-    -------
-    dict
-        A JSON object containing the interview question, real-time evaluations, 
-        overall evaluations, and metrics. If an error occurs, it returns an error 
-        message instead.
-    """
-    try:
-        interview_question_json = None
-        realtime_evaluation = None
-        status = None
-                
-        if chat_count < question_count:
-            if data['response']:
-                if count is not None:
-                    interview_question_json = await fetch_interview_question(section, question_type, data) 
-                else:
-                    response = await check_if_followup(data['response'])
-         
-                    if not response:
-                        interview_question_json = await fetch_interview_question(section, question_type, data) 
-                    else:
-                        interview_question_json = await generate_followup(data)
-                       
-            else:
-                interview_question_json = await fetch_interview_question(section, question_type, data) 
-   
-        else:  
-            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId)
-            realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
-            logger.info(f"Realtime evaluation is: {realtime_evaluation}")
-            if realtime_evaluation != "null":
-                status = "final"
-                final = 'true'
-                strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId, template_id,)
-            rstage=''
-            status = "Completed"
-            await overall_interview_evaluations(rstage, data, status, sessionId)
+            await overall_interview_evaluations(rstage, data, status, sessionId, type)
             logger.info("Calculate the overall and save to database done.")            
                 
         response = {
@@ -711,61 +522,8 @@ async def helper_func(
         logger.error(f"Choosing question helper process failed: ${str(e)}")
         return {'error': str(e)}
    
-async def helper_func_challenge(
-    run_stage, 
-    chat_count, 
-    count: int, 
-    question_type: str, 
-    section: list, 
-    data: dict, 
-    sessionId,
-    template_id):
-    try:
-        interview_question_json = None
-        realtime_evaluation = None
-        status = None
-                
-        if chat_count < count:
-            if data['response']:
-                if count is not None:
-                    interview_question_json = await fetch_interview_question(section, question_type, data) 
-                else:
-                    response = await check_if_followup(data['response'])
-         
-                    if not response:
-                        interview_question_json = await fetch_interview_question(section, question_type, data) 
-                    else:
-                        interview_question_json = await generate_followup(data)
-                       
-            else:
-                interview_question_json = await fetch_interview_question(section, question_type, data) 
-   
-        else:  
-            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId)
-            realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
-            logger.info(f"Realtime evaluation is: {realtime_evaluation}")
-            if realtime_evaluation != "null":
-                status = "final"
-                final = 'true'
-                strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId, template_id,)
-            rstage=''
-            status = "Completed"
-            await overall_interview_evaluations(rstage, data, status, sessionId)
-            logger.info("Calculate the overall and save to database done.")            
-                
-        response = {
-            "interview": interview_question_json,
-            "status": status,
-            "realtime": realtime_evaluation
-        }
-        
-        return response
-    
-    except Exception as e:
-        logger.error(f"Choosing question helper process failed: ${str(e)}")
-        return {'error': str(e)}
 #----------------------------------------- picking the right Question ----------------------------------------- 
-async def fetch_interview_question(section: list, question_type: str, data: dict):
+async def fetch_interview_question(section: list, question_type: str, data: dict, question_count, type):
     """
     Fetches an interview question based on the provided section and candidate response.
 
@@ -788,19 +546,16 @@ async def fetch_interview_question(section: list, question_type: str, data: dict
         if an exception occurs during processing.
     """
     try:
-        if chat_count == 12:
-            message = file_reader(prompt_path('ipersona/closing_question.txt'))
+        if chat_count == question_count + 2:
+            message = read_prompt_interview_closing(type)
         else:
-            message = file_reader(prompt_path('ipersona/pick_question.txt'))
-       
-        context = str(message)
-        questions = []
-        msg = context\
-            .replace("{collection}", str(section))\
-            .replace("{type}", str(question_type))\
-            .replace("{candidate_response}", data['response'])        
-
-        # content = data['user_session']['attributes']['attributes']['persona'] + msg
+            message = read_prompt_pick_interview_question(type)
+            
+        message = message.replace("{collection}", str(section))
+        message = message.replace("{type}", str(question_type))
+        message = message.replace("{candidate_response}", data['response'])
+        msg = message
+        
         persona = data['user_session']['attributes']['attributes'].get('persona', '')
         content = persona + msg
         response = gpt.openai_gpt_assistant_with_streaming(content)
@@ -813,10 +568,8 @@ async def fetch_interview_question(section: list, question_type: str, data: dict
 #-------------------------------- Interview question time limit generation ---------------------------- 
 def interview_question_time_limit(question: str):
     try:
-        message = file_reader(prompt_path('ipersona/time_limit_generator.txt'))
-        context = str(message)
-        msg = context\
-            .replace("{question}", question)     
+        type = 'job_interview_config'
+        msg = read_prompt_time_limit_generator(type, question)
 
         response = gpt.openai_gpt_assistant_without_streaming(msg)
         response = extract_json(response, quite=False)
@@ -825,9 +578,8 @@ def interview_question_time_limit(question: str):
         logger.error(f"generating time limit process failed: ${str(e)}")
         return {'error': str(e)}
     
-    
 #---------------------------------------- Follow up Question Checker -------------------------------
-async def check_if_followup(candidate_response: str) -> bool:
+async def check_if_followup(candidate_response: str, type) -> bool:
     """
     Checks if a follow-up question is needed based on the candidate's response.
 
@@ -847,14 +599,9 @@ async def check_if_followup(candidate_response: str) -> bool:
         or an error message if an exception occurs during processing.
     """
     try:
-        message = file_reader(prompt_path('ipersona/follow_up_check.txt'))
+        msg = read_prompt_followup_checker(type, candidate_response)
 
-        context = str(message)
-        msg = context.replace("{candidate_response}", candidate_response) 
-             
-        # response = await hr_agent.generate_question(msg)
         response = gpt.openai_gpt_assistant_without_streaming(msg)
-
         response_json = extract_json(response, quite=False)
 
         return response_json["follow-up"]
@@ -862,10 +609,9 @@ async def check_if_followup(candidate_response: str) -> bool:
     except Exception as e:
         logger.error(f"Checking follow up process failed: ${str(e)}")
         return {'error': str(e)}
-    
-    
+     
 #-------------------------------------------- Generate Follow up Question -----------------------------------
-async def generate_followup(data) -> dict:
+async def generate_followup(data, type) -> dict:
     """
     Generates a follow-up question based on the candidate's response.
 
@@ -886,46 +632,21 @@ async def generate_followup(data) -> dict:
         or an error message if an exception occurs during processing.
     """
     try:
-        message = file_reader(prompt_path('ipersona/follow_up.txt'))
-        context = str(message)
-        msg = context.replace("{candidate_response}", data['response'])
-        # response = await hr_agent.generate_question(msg)
-        
-        # content = data['user_session']['attributes']['attributes']['persona'] + msg
+        candidate_response = data['response']
+        msg = read_prompt_followup_question_generator(type, candidate_response)
+
         persona = data['user_session']['attributes']['attributes'].get('persona', '')
         content = persona + msg
         response = gpt.openai_gpt_assistant_with_streaming(content)
-        
-        # response_json = extract_json(response, quite=False)
-        # response_json['interview_question']['end_message'] = "Please take your time to provide a detailed response"
-        
+
         return response
     
     except Exception as e:
         logger.error(f"Generating follow up failed: ${str(e)}")
         return {'error': str(e)}
 
-
 #---------------------------------------- Realtime Chat Evaluation Function -------------------------------
-def realtime_response_evaluation(run_stage, data: dict, sessionId) -> dict:
-    """
-    Evaluates the candidate's response in real-time based on the previous question.
-
-    This asynchronous function generates an evaluation prompt using the previous 
-    question and candidate response. It then calls the HR agent to assess the 
-    candidate's response in real-time.
-
-    Parameters:
-    ----------
-    data : dict
-        A dictionary containing the previous question and the candidate's response.
-
-    Returns:
-    -------
-    dict
-        A JSON object containing the results of the real-time evaluation, 
-        or an error message if an exception occurs during processing.
-    """
+def fetch_the_last_question(run_stage, data: dict, sessionId) -> dict:
     try:
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
@@ -947,39 +668,50 @@ def realtime_response_evaluation(run_stage, data: dict, sessionId) -> dict:
             logger.info("Last assistant response For Realtime Evaluation")
         else:
             logger.warn("No assistant response found in the chat history.")
-            
-        if chat_count == 12:
-            closing_evaluation_prompt = file_reader(prompt_path('ipersona/closing_question_realtime_evaluation.txt'))
-            closing_content = closing_evaluation_prompt\
-                .replace("{closing_question}", str(last_assistant_response))\
-                .replace("{candidate_response}" , str(data['response']))
-                        
-            realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(closing_content)
 
-            realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False) 
-            return realtime_evaluation_response
+        return last_assistant_response   
+
+    except Exception as e:
+        logger.error(f"Real time evaluation process failed: ${str(e)}")
+        return {'error': str(e)} 
+    
+def realtime_response_evaluation(run_stage, data: dict, sessionId, type) -> dict:
+    """
+    Evaluates the candidate's response in real-time based on the previous question.
+
+    This asynchronous function generates an evaluation prompt using the previous 
+    question and candidate response. It then calls the HR agent to assess the 
+    candidate's response in real-time.
+
+    Parameters:
+    ----------
+    data : dict
+        A dictionary containing the previous question and the candidate's response.
+
+    Returns:
+    -------
+    dict
+        A JSON object containing the results of the real-time evaluation, 
+        or an error message if an exception occurs during processing.
+    """
+    try:
         
-        else:            
-            evaluation_prompt = file_reader(prompt_path('ipersona/realtime_evaluation.txt'))            
-            evaluation_context = str(evaluation_prompt)
-            evaluation_msg = evaluation_context\
-                .replace("{question}", last_assistant_response)\
-                .replace("{candidate_response}", data['response'])
-            
-            # content = data['user_session']['attributes']['attributes']['persona'] + evaluation_msg
-            persona = data['user_session']['attributes']['attributes'].get('persona', '')
-            content = persona + evaluation_msg
-            realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
-            realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False)            
-            return realtime_evaluation_response
-        
+        last_assistant_response = fetch_the_last_question(run_stage, data, sessionId)  
+        msg = read_prompt_realtime_evaluation(type, data, last_assistant_response)
+   
+        persona = data['user_session']['attributes']['attributes'].get('persona', '')
+        content = persona + msg
+        realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
+        realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False)            
+        return realtime_evaluation_response
+    
     except Exception as e:
         logger.error(f"Real time evaluation process failed: ${str(e)}")
         return {'error': str(e)} 
     
     
 #----------------------------------------- Overall Interview Evaluation -------------------------------
-async def overall_interview_evaluations(run_stage, data: dict, status, sessionId) -> dict:
+async def overall_interview_evaluations(run_stage, data: dict, status, sessionId, type) -> dict:
     """
     Evaluates the overall performance of a candidate in an interview.
 
@@ -1003,7 +735,6 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         or an error message if an exception occurs during processing.
     """
     try:
-        print("ammended lawsuitiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         all_chat_history = ipersona_message.filter_by_session_id(
             sessionId=sessionId, 
@@ -1011,30 +742,40 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
             dataframe=False,
             sort='asc')
         history = all_chat_history['total']
-        overall_evaluation_prompt = file_reader(prompt_path('ipersona/overall_evaluation.txt'))
-        overall_metrics_prompt = file_reader(prompt_path("ipersona/interview_metrics_rubrics.txt"))
-        overall_evaluation_context = str(overall_evaluation_prompt)
-        overall_metrics_context = str(overall_metrics_prompt)
         history_str = '\n'.join(str(item) for item in history)
 
-        overall_evaluation_msg = overall_evaluation_context\
-            .replace("{history}", history_str)  
-                
-        overall_metrics_msg = overall_metrics_context\
-            .replace("{history}", history_str)  
-                
-     
-        # content = data['user_session']['attributes']['attributes']['persona'] + overall_evaluation_msg
+        # ipersona_metric = IpersonaSmgCretrionMetricSchema()
+        # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=163, nopp=True, dataframe=False)
+        # message = data_content.get('attributes', {}).get('content', {})
+        
+        # tag = 'parrot_overall_evaluation'
+        # content = fetch_config_template(type, tag)
+        # message = content.get('content', '')
+        # message = message.replace("{history}", history_str)  
+        # overall_evaluation_msg = message
+      
+        overall_evaluation_msg = read_prompt_overall_evaluation(type, history_str)
+        print("opennnnnn=========================================eeeeeeedddddd")
+        print(overall_evaluation_msg)
+        print("opennnnnn=========================================eeeeeeedddddd")
+
+        # data_content_metrics = ipersona_metric.get_smgCriterionMetric_by_id(metricId=173, nopp=True, dataframe=False)
+        # message = data_content_metrics.get('attributes', {}).get('content', {})
+        
+        # tag = 'parrot_interview_evaluation_metrics'
+        # content = fetch_config_template(type, tag)
+        # message = content.get('content', '')
+        # message = message.replace("{history}", history_str)  
+        # overall_metrics_msg = message
+        overall_metrics_msg = read_prompt_interview_evaluation_metrics(type, history_str)
+        
         persona = data['user_session']['attributes']['attributes'].get('persona', '')
         content = persona + overall_evaluation_msg
         
         overall_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
-        print("***********************************************************")
-        print(overall_evaluation_response)
-        print("***********************************************************")        
+       
         overall_evaluation_response_json = extract_json(overall_evaluation_response, quite=False)
    
-        # content = data['user_session']['attributes']['attributes']['persona'] + overall_metrics_msg
         persona = data['user_session']['attributes']['attributes'].get('persona', '')
         content = persona + overall_metrics_msg
 
@@ -1076,16 +817,11 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
             "i_persona_session_id": sessionId, 
             "status": status,
         }
-        updated_session = ipersona_session.update_session(
-            params=session_data, 
-            nopp=True, 
-            dataframe=False, 
-            return_object=True)
+        updated_session = ipersona_session.update_session(params=session_data, nopp=True, dataframe=False, return_object=True)
      
         if updated_session:
             logger.info("session status updated to closed")
             
-            #------------------------------------------------------------------------------------#
     
         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
 
@@ -1108,11 +844,8 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         session_chatobserver = extract_observers_metrics(session)
         
         if status == 'Completed':  
-            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")       
             await calculate_overall_progress(run_stage, data, session_chatobserver) 
-      
-        #################################################################################################
-      
+            
         response = {
             "overall_interview_metrics": overall_interview_metrics_json,
             "overall_evaluation_response": overall_evaluation_response_json
@@ -1122,11 +855,17 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         
     except Exception as e:
         logger.error(f"Overall evaluation process failed: ${str(e)}")
-
         return {'error': str(e)}    
                   
-
-async def overall_interview_evaluations_external(run_stage, data: dict, status, sessionId, all_user_id,  tinder_user_profile_id, job_profile_id) -> dict:
+async def overall_interview_evaluations_external(
+        run_stage, 
+        data: dict, 
+        status, 
+        sessionId, 
+        all_user_id, 
+        tinder_user_profile_id, 
+        job_profile_id,
+        type) -> dict:
     """
     Evaluates the overall performance of a candidate in an interview.
 
@@ -1150,21 +889,28 @@ async def overall_interview_evaluations_external(run_stage, data: dict, status, 
         or an error message if an exception occurs during processing.
     """
     try:
-       
-        overall_evaluation_prompt = file_reader(prompt_path('ipersona/overall_evaluation.txt'))
-        overall_metrics_prompt = file_reader(prompt_path("ipersona/interview_metrics_rubrics.txt"))
-        overall_evaluation_context = str(overall_evaluation_prompt)
-        overall_metrics_context = str(overall_metrics_prompt)
         history_str = '\n'.join(str(item) for item in data)
 
-        overall_evaluation_msg = overall_evaluation_context\
-            .replace("{history}", history_str)  
-                
-        overall_metrics_msg = overall_metrics_context\
-            .replace("{history}", history_str)  
-                
-     
-        # content = data['user_session']['attributes']['attributes']['persona'] + overall_evaluation_msg
+        # ipersona_metric = IpersonaSmgCretrionMetricSchema()
+        # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=163, nopp=True, dataframe=False)
+        # message = data_content.get('attributes', {}).get('content', {})
+        # tag = 'parrot_overall_evaluation'
+        # content = fetch_config_template(type, tag)
+        # message = content.get('content', '')
+        # message = message.replace("{history}", history_str)  
+       
+        overall_evaluation_msg = read_prompt_overall_evaluation(type, history_str)
+
+
+        # data_content_metrics = ipersona_metric.get_smgCriterionMetric_by_id(metricId=173, nopp=True, dataframe=False)
+        # message = data_content_metrics.get('attributes', {}).get('content', {})
+        # tag = 'parrot_interview_evaluation_metrics'
+        # content = fetch_config_template(type, tag)
+        # message = content.get('content', '')
+        # message = message.replace("{history}", history_str) 
+         
+        overall_metrics_msg = read_prompt_interview_evaluation_metrics(type, history_str)
+
         persona = ''
         content = persona + overall_evaluation_msg
         
@@ -1172,7 +918,6 @@ async def overall_interview_evaluations_external(run_stage, data: dict, status, 
 
         overall_evaluation_response_json = extract_json(overall_evaluation_response, quite=False)
         
-        # content = data['user_session']['attributes']['attributes']['persona'] + overall_metrics_msg
         persona = ''
         content = persona + overall_metrics_msg
 
@@ -1217,8 +962,6 @@ async def overall_interview_evaluations_external(run_stage, data: dict, status, 
      
         if updated_session:
             logger.info("session status updated to closed")
-
-          #------------------------------------------------------------------------------------#
                       
         session = ipersona_session.filter_by_with_user_job_id(
             user_profile_id=tinder_user_profile_id,
@@ -1230,15 +973,8 @@ async def overall_interview_evaluations_external(run_stage, data: dict, status, 
         session_chatobserver = extract_observers_metrics(session)
 
         if status == 'External':  
-            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")       
-            await calculate_overall_progress_external(
-                run_stage, 
-                all_user_id,  
-                tinder_user_profile_id, 
-                job_profile_id, 
-                session_chatobserver) 
+            await calculate_overall_progress_external(run_stage, all_user_id,  tinder_user_profile_id, job_profile_id, session_chatobserver) 
       
-        #################################################################################################
       
         response = {
             "overall_interview_metrics": overall_interview_metrics_json,
@@ -1249,10 +985,8 @@ async def overall_interview_evaluations_external(run_stage, data: dict, status, 
         
     except Exception as e:
         logger.error(f"Overall evaluation process failed: ${str(e)}")
-
         return {'error': str(e)}    
                   
-
 #---------------------------------------- Interview Question Clarification ---------------------------------
 async def clarify_question(question: str) -> dict:
     """
@@ -1330,15 +1064,6 @@ def identify_class(all_class: list, jd: str) -> dict:
         logger.error(f"Persona class identification failed: ${str(e)}")
         return {'error': str(e)}
     
-
-#-------------------------------------------- Helper function for Time Function -------------------------------------
-# def time_to_seconds(time_str):
-#     """Convert time in 'HH:MM' format to seconds."""
-#     if time_str == "00:00":
-#         return 0
-#     h, m = map(int, time_str.split(':'))
-#     return h * 3600 + m * 60
-
 def time_to_seconds(time_str):
     """Convert time in 'HH:MM:SS' or 'MM:SS' format to seconds."""
     try:
@@ -1591,7 +1316,6 @@ def percentage_term(percent: float) -> dict:
 
         return {'error': str(e)}
     
-
 #----------------------------------------- Entire Data Progress Calculator -----------------------------------------   
 async def calculate_overall_progress(run_stage, userdata, data: list):
     try:
@@ -1739,8 +1463,7 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
     
     except Exception as e:
         logger.error(f"Process failed: ${str(e)}")
-        return f'Error: {str(e)}'  
-    
+        return f'Error: {str(e)}'    
 
 async def calculate_overall_progress_external(
         run_stage, 
@@ -1886,7 +1609,6 @@ async def calculate_overall_progress_external(
         logger.error(f"Process failed: ${str(e)}")
         return f'Error: {str(e)}'  
     
-
 #-------------- Entire User Session Progress Over All Types of Jobs ---------------
 def all_session_jobs_average_metrics(data):
     try:
@@ -2042,7 +1764,6 @@ def add_engagement_columns(
         logger.error(f'Error adding columns to leap table: {e}')
         output = [] 
 
-
 def add_template_columns(
     params, 
     cursor, 
@@ -2190,120 +1911,7 @@ def summarize_interviews(
         logger.error(f"Error processing files: {e}")
         error_msg = str(e)
         return error_msg, error_msg
-    
-# def summarize_interviews(
-#     run_stage,
-#     user_profile_id, 
-#     filter,
-#     cursor,
-#     since, 
-#     limit,
-#     information_level,
-#     return_skip):  
-#     try:  
-#         # Fetch a particular user sessions
-#         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-
-#         query_filter = filter
-#         kwargs = {}
-#         if query_filter:
-#             kwargs.update(query_filter)
-            
-#         data, cursors = ipersona_session.filter_by_tinder_user_profile_id(
-#             user_profile_id=user_profile_id, 
-#             cursor=cursor, 
-#             since=since, 
-#             limit=limit, 
-#             nopp=True, 
-#             dataframe=False,
-#             **kwargs)
         
-#         summary_response = []
-#         if len(data) != 0:
-#             data = extracted_needed_metrics(data)
-#             if len(data) == 0:
-#                 logger.info("The given trainee has no observer data")
-#                 return []
-
-#             job_summary = defaultdict(list)
-
-#             for record in data:
-#                 job_profile_id = record['job_profile_id']
-#                 job_summary[job_profile_id].append(record)
-
-#                 summary_response = []
-#                 complete_sessions_count = 0
-#                 incomplete_sessions_count = 0
-        
-#             # return job_summary
-#             for job_profile_id, records in job_summary.items():
-            
-#                 for session in records:
-#                     complete_status = session.get('complete_status', {})
-                
-#                     if complete_status:
-#                         complete_sessions_count += 1
-#                     else:
-#                         incomplete_sessions_count += 1
-                                
-#                 total_score = sum(
-#                     record.get('overall_performance_score', 0) for record in records if record.get('overall_performance_score') is not None
-#                 )
-                
-#                 if total_score >= 0:
-#                     average_score = round(total_score / complete_sessions_count, 2) if complete_sessions_count > 0 else "N/A"
-#                 else:
-#                     average_score = 'Not Available'
-                
-#                 ipersona_job = IpersonaJobSchema(run_stage=run_stage)
-#                 job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
-                
-#                 if job_title_data and len(job_title_data) > 0:
-#                     job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
-#                 else:
-#                     job_title = 'Unknown Job Title'
-
-#                 tinder_user_profile_id = user_profile_id
-#                 tinder_job_profile_id = job_profile_id
-
-#                 ipersona_match = IpersonaSessionTinderUserJobMatchSchema(run_stage=run_stage)
-#                 job_match_data = ipersona_match.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
-                
-#                 ipersona_reaction = IpersonaSessionTinderUserReactionSchema(run_stage=run_stage)
-#                 reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
-
-#                 if job_match_data and len(job_match_data) > 0:
-#                     match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
-#                     job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
-#                 else:
-#                     match_score = 'Unknown'
-#                     job_match = 'Unknown'
-                            
-#                 total_session_count = complete_sessions_count + incomplete_sessions_count
-
-#                 summary_response.append({
-#                     "job_profile_id": job_profile_id,
-#                     "reaction_id": reaction_id,
-#                     "job_title": job_title,
-#                     "job_match_score": match_score,
-#                     "job_match": job_match,
-#                     'complete_interviews_count': complete_sessions_count,
-#                     'incomplete_interviews_count': incomplete_sessions_count,
-#                     'total_interviews_count': total_session_count,
-#                     "score": average_score
-#                 })
-#             cursors['total'] = len(summary_response)   
-        
-#             return summary_response, cursors
-#         else:
-#             cursors['total'] = len(summary_response)  
-#             return data, cursors
-        
-#     except Exception as e:
-#         logger.error(f"Error processing files: {e}")
-#         error_msg = str(e)
-#         return error_msg, error_msg
-    
 def extracted_needed_metrics(data):
     try:
         extracted_observers = []  
@@ -2379,7 +1987,6 @@ def extracted_needed_metrics(data):
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
-
 
 def summarize_interviews_engagement(
     run_stage,
@@ -2473,33 +2080,7 @@ def summarize_interviews_engagement(
         logger.error(f"Error processing files: {e}")
         error_msg = str(e)
         return error_msg, error_msg
-     
-# def extracted_needed_metrics(data):
-#     try:
-#         extracted_observers = []
-        
-#         for session in data:
-#             observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
-#             # Extract necessary data if observer data exists
-#             if observer_data:
-#                 observer_attributes = observer_data.get('attributes', {}).get('attributes', {}).get('interview_evaluation_metrics', {})
-#                 session['overall_performance_score'] = observer_attributes.get('overall_performance_score', None)
-#             else:
-#                 # Handle case where observer data does not exist
-#                 session['not_found'] = True
-#                 session['overall_performance_score'] = None
-
-#             # Always assign job_profile_id and createdAt, even if observer data is missing
-#             session['createdAt'] = session['attributes'].get('createdAt')
-#             session['job_profile_id'] = session['attributes']['tinder_job_profile']['data']['id']
-#             session['userprofileId'] = session['attributes']['tinder_user_profile']['data']['id']
-#             extracted_observers.append(session)
-        
-#         return extracted_observers
-#     except Exception as e:
-#         logger.error(f"Error processing files: {e}")
-#         return {'error': str(e)}
-
+ 
 def extract_observers_metrics(data):
     try:
         extracted_observers = []
@@ -2666,7 +2247,6 @@ def calculate_session_metrics(sessions):
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
 
-
 def summarize_allusers_data(run_stage, data):
     try:
         # Extract required metrics from the raw data
@@ -2748,7 +2328,6 @@ def summarize_allusers_data(run_stage, data):
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
-
 
 def summarize_alljobs_data(run_stage, data):
     try:
@@ -2887,112 +2466,6 @@ def summarize_eacholdjob_data(run_stage, data):
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
-
-from collections import defaultdict
-
-# def summarize_eachjob_data(run_stage, data):
-#     try:
-#         data = extracted_needed_metrics(data)  
-#         job_summary = defaultdict(list)
-
-#         # Group records by job_profile_id
-#         for record in data:
-#             job_profile_id = record['job_profile_id']
-#             job_summary[job_profile_id].append(record)
-        
-#         jobs_detailed_data = {}
-#         processed_users = {}  
-
-#         for job_profile_id, records in job_summary.items():
-#             job_trainees = []  
-#             seen_trainees = set() 
-#             for record in records:
-#                 user_profile_id = record.get('user_profile_id')
-
-#                 # Only process if the trainee hasn't already been added for this job
-#                 if user_profile_id not in seen_trainees:
-#                     complete_sessions_count = 0
-#                     incomplete_sessions_count = 0
-#                     total_interviews_count = 0
-#                     total_score = 0
-#                     score_count = 0
-#                     trainee_name = ''
-
-#                     # Fetch trainee info if not already processed globally
-#                     if user_profile_id not in processed_users:
-#                         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-#                         all_user_data = ipersona_user.get_trainee_by_id(user_profile_id=user_profile_id, nopp=True, dataframe=False, return_object=True)
-#                         all_user_id = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])[0].get('id')
-
-#                         # Fetch additional data about the trainee
-#                         ipersona_alluser = IpersonaAllUserSchema(run_stage=run_stage)
-#                         ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
-#                         trainee_name = ipersona_alluser_data.get('name', 'Unknown')
-
-#                         # Store trainee_name to avoid fetching again for the same user
-#                         processed_users[user_profile_id] = trainee_name
-#                     else:
-#                         trainee_name = processed_users[user_profile_id]
-
-#                     # Calculate session counts and score for the current job and user
-#                     for session in records:
-#                         if session.get('user_profile_id') == user_profile_id:
-#                             total_interviews_count += 1
-#                             if session.get('complete_status') is True:
-#                                 complete_sessions_count += 1
-#                             else:
-#                                 incomplete_sessions_count += 1
-#                             # Accumulate performance score if available
-#                             score = session.get('overall_performance_score')
-                            
-#                             if score is not None:
-#                                 total_score += score
-#                                 score_count += 1
-
-#                     # Calculate average score for the trainee
-#                     if score_count > 0:
-#                         average_score = round(total_score / score_count, 2)
-#                     else:
-#                         average_score = "N/A"
-
-#                     # Add the trainee details to the list for this job
-#                     job_trainees.append({
-#                         'trainee_name': trainee_name,
-#                         'total_interview_count': total_interviews_count,
-#                         'complete_sessions_count': complete_sessions_count,
-#                         'incomplete_sessions_count': incomplete_sessions_count,
-#                         'average_score': average_score,  # Include average score
-#                         'user_profile_id': user_profile_id
-#                     })
-
-#                     # Mark this user_profile_id as processed for this job
-#                     seen_trainees.add(user_profile_id)
-
-#             # Fetch job-related data (title, company, location, URL)
-#             ipersona_job = IpersonaJobSchema(run_stage=run_stage)
-#             job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
-
-#             # Gather job info (title, company, location, URL)
-#             job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title') if job_title_data else 'Unknown Job Title'
-#             company_name = job_title_data[0]['attributes']['attributes'].get('company_name', '') if job_title_data else ''
-#             location = job_title_data[0]['attributes']['attributes'].get('location', '') if job_title_data else ''
-#             url = job_title_data[0]['attributes']['attributes'].get('url', '') if job_title_data else ''
-
-#             # Store the job data with unique trainees
-#             jobs_detailed_data[job_profile_id] = {
-#                 'job_title': job_title,
-#                 'company_name': company_name,
-#                 'location': location,
-#                 'url': url,
-#                 'trainees': job_trainees  # Attach list of unique trainees under the job
-#             }
-        
-#         return jobs_detailed_data
-    
-#     except Exception as e:
-#         logger.error(f"Error processing files: {e}")
-#         return {'error': str(e)}
-
 
 def summarize_eachjob_data(run_stage, data):
     try:
@@ -3571,7 +3044,7 @@ def create_session(
             status = "Incomplete"
             
             response = gpt.openai_gpt_assistant_without_streaming(message)
-            
+
             if not response:
                 logger.error("Failed to generate questions: Empty AI response")
                 return {
@@ -3584,12 +3057,8 @@ def create_session(
             
 
             # Step 4: Add question numbers
-            question_number = 1
-            for category, questions in challenge_generated_questions.items():
-                for question in questions:
-                    question["question_number"] = str(question_number)
-                    question_number += 1
-
+            challenge_generated_questions = add_question_number(challenge_generated_questions)
+            
         if type.challenge: 
             # Step 5: Save session data
             session_data = {
@@ -3606,10 +3075,8 @@ def create_session(
                     "challenge": True
 
                 },
-                "tinder_user_profile": user_profile_id,
-                "tinder_job_profile": job_profile_id,
-                "tinder_template": template_id,
-                "challenge_document": challenge_id
+                "user_profile_id": user_profile_id,
+                "job_profile_id": job_profile_id
             }
         else:
             session_data = {
@@ -3619,10 +3086,8 @@ def create_session(
                         "template_id": template_id
                     },
                     "metadata": metadata,
-                    "tinder_user_profile": user_profile_id,
-                    "tinder_job_profile": job_profile_id,
-                    "tinder_template": template_id,
-                    "challenge_document": challenge_id
+                    "user_profile_id": user_profile_id,
+                    "job_profile_id": job_profile_id
                 }
                 
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
@@ -3650,13 +3115,17 @@ async def analysis_challenge(challenge_id):
     try:
         ipersona_challenge = AsyncTaskAnalyzer()
         content = ipersona_challenge.get_task_document(challenge_id)
-        content = ipersona_challenge.clean_content(content)
-        result = await ipersona_challenge.analyze_sections(content)
-        return result
+        if content:
+            content = ipersona_challenge.clean_content(content)
+            result = await ipersona_challenge.analyze_sections(content)
+            return result
+        else:
+            return False
     
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}  
+    
 #------------------------------------------- Extraction Function --------------------------------------------
 def extract_trainee_neccessary_values(data):
     try:
@@ -3756,35 +3225,6 @@ def extract_job_neccessary_values(data):
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
 
-def fetch_the_last_question(run_stage, data: dict, sessionId) -> dict:
-    try:
-        ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
-        session_chathistory = ipersona_message.filter_by_session_id(
-            sessionId=sessionId, 
-            nopp=True, 
-            dataframe=False,
-            sort='asc')
-        
-        history = session_chathistory['total']
-        
-        last_assistant_response = None
-        for entry in reversed(history):
-            message = entry            
-            if message["user_type"] == "assistant":
-                last_assistant_response = message["content"].get("full_response")  
-                break  
-
-        if last_assistant_response:
-            logger.info("Last assistant response For Realtime Evaluation")
-        else:
-            logger.warn("No assistant response found in the chat history.")
-
-        return last_assistant_response   
-
-    except Exception as e:
-        logger.error(f"Real time evaluation process failed: ${str(e)}")
-        return {'error': str(e)} 
-
 # --------------------------------------------- Helper Functions -------------------------------------------- #
 def fetch_the_structure(type):
     try:
@@ -3799,20 +3239,19 @@ def fetch_the_structure(type):
                         dataframe=False,
                         # **kwargs
                     )
-        
-        if not templates:
-            return False
-        else:
+        if templates:
             data = templates[0].get('attributes', {}).get('attributes', {})
             if data:
                 section_count = count_section_questions(data)
-                json_format = interview_questions_generator_json_with_timelimt(data)
+                json_format = interview_questions_generator_json(data)
                 return {
                     "section_count": section_count,
                     "json_format": json_format
                 }
             else:
                 return False
+        else:
+            return False
         
     except Exception as e:
         logger.error(f"Error processing files: {e}")
@@ -3872,45 +3311,6 @@ def interview_questions_generator_json(structure_data):
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
 
-def interview_questions_generator_json_with_timelimt(structure_data):
-    """
-    Generate a JSON template for interview questions based on the given structure.
-    
-    :param structure_data: A dictionary containing the interview section structure
-    :return: A list of dictionaries representing interview question sections
-    """
-    try:
-        structure = structure_data.get('structure', [])
-        
-        interview_questions = []
-        
-        for section in structure:
-            section_type = section.get('sectionType', '')
-            num_questions = section.get('numberofquestions', 0)
-            
-            questions = []
-            for i in range(num_questions):
-                questions.append({
-                    "question": "here you need to put the interview question",
-                    "time_limit": "here you the time limit need to answer the question in this format (minutes: second) 00:00",
-                    "ideal_answer": "Here you put an ideal great answer for the question"
-                })
-            
-            questions.append(f"// add more questions based on the provided count only for {section_type.lower()} interview questions, not more or less the count provided in the structure")
-            
-            section_dict = {
-                "sectionType": section_type,
-                "questions": questions
-            }
-            
-            interview_questions.append(section_dict)
-        
-        return interview_questions
-
-    except Exception as e:
-        logger.error(f"Error processing files: {e}")
-        return {'error': str(e)}
-    
 def transform_job_profiles_to_count(templates):
     """
     Transform the `tinder_job_profiles` to include only the count of profiles 
@@ -3954,6 +3354,25 @@ def get_job_data_template_for_multiple_ids(job_profile_ids, run_stage):
             jobs_data[f"job_{job_profile_id}"] = extracted_data
 
     return jobs_data
+
+async def analyze_multiple_challenges(challenge_ids):
+    challenges_data = {}
+
+    for challenge_id in challenge_ids:
+        try:
+            ipersona_challenge = AsyncTaskAnalyzer()
+            content = ipersona_challenge.get_task_document(challenge_id)
+            content = ipersona_challenge.clean_content(content)
+            result = await ipersona_challenge.analyze_sections(content)
+
+            logger.info(f"Challenge analysis completed for challenge_id: {challenge_id}")
+            challenges_data[f"challenge_{challenge_id}"] = result
+
+        except Exception as e:
+            logger.error(f"Error processing challenge_id {challenge_id}: {e}")
+            challenges_data[f"challenge_{challenge_id}"] = {"error": str(e)}
+
+    return challenges_data
 
 def get_job_data(job_profile_id, run_stage):
     # Step 2: Fetch job profile data
@@ -3999,10 +3418,6 @@ def get_user_data(all_user_id, run_stage):
     return tinder_user_profile_data, tinder_user_profile_id
 
 async def read_prompt_data_for_challenge_default(challenge_id, type, tag):
-    # ipersona_metric = IpersonaSmgCretrionMetricSchema()
-    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=165, nopp=True, dataframe=False)
-    # message = data_content.get('attributes', {}).get('content', {})
-
     contents = await analysis_challenge(challenge_id)
     if contents:
         content = fetch_config_template(type, tag)
@@ -4060,10 +3475,7 @@ async def read_prompt_data_for_challenge(
         challenge_id, 
         type, 
         tag):
-    # ipersona_metric = IpersonaSmgCretrionMetricSchema()
-    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=164, nopp=True, dataframe=False)
-    # message = data_content.get('attributes', {}).get('content', {})
-    
+
     contents = await analysis_challenge(challenge_id)
     if contents:
         content = fetch_config_template(type, tag)
@@ -4084,23 +3496,7 @@ async def read_prompt_data_for_challenge(
     else:
         return 'Challenge content not found, or challenge ID is invalid'
 
-# def read_prompt_data_for_template(tinder_job_data, type, tag):
-#     ipersona_metric = IpersonaSmgCretrionMetricSchema()
-#     data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=174, nopp=True, dataframe=False)
-#     message = data_content.get('attributes', {}).get('content', {})
-#     created_persona = create_persona(str(tinder_job_data))
-#     content = fetch_config_template(type, tag)
-#     message = content.get('content', '')
-#     message = message.replace("{hr_persona}", created_persona) 
-#     message = message.replace("{job_description}", str(tinder_job_data)) 
-#     generated_persona = message
-#     return generated_persona
-
 def read_prompt_persona(tinder_job_data, tinder_user_profile_data, type, tag):
-    # ipersona_metric = IpersonaSmgCretrionMetricSchema()
-    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=174, nopp=True, dataframe=False)
-    # message = data_content.get('attributes', {}).get('content', {})
-
     content = fetch_config_template(type, tag)
     if content:
         message = content.get('content', '')
@@ -4116,8 +3512,6 @@ def read_prompt_persona(tinder_job_data, tinder_user_profile_data, type, tag):
         return generated_persona
 
 def read_prompt_data_for_default(type, tag):
-    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=160, nopp=True, dataframe=False)
-    # message = data_content.get('attributes', {}).get('content', {})
     content = fetch_config_template(type, tag)
     if content:
         message = content.get('content', '')
@@ -4135,8 +3529,6 @@ def read_prompt_data_for_default(type, tag):
         return msg
 
 def read_generate_question_prompt(json_format, context, section_count, tag, type):
-    # ipersona_metric = IpersonaSmgCretrionMetricSchema()
-    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=162, nopp=True, dataframe=False)
     content = fetch_config_template(type, tag)
     if content:
         message = content.get('content', '')
@@ -4146,7 +3538,7 @@ def read_generate_question_prompt(json_format, context, section_count, tag, type
         return message
     else:
         # Fallback to default question generation
-        message = fallback.read_prompt_data_for_default()
+        message = fallback.read_generate_question_prompt(json_format, context, section_count)
         return message
 
 def read_prompt_interview_closing(type):
@@ -4286,12 +3678,6 @@ def read_prompt_interview_evaluation_metrics(type, history_str):
         return message
 
 def read_external_audio_analysis(transcript, type, tag):
-    # ipersona_metric = IpersonaSmgCretrionMetricSchema()
-    # realtime_prompt = ipersona_metric.get_smgCriterionMetric_by_id(metricId=161, nopp=True, dataframe=False)
-    # realtime_prompt = realtime_prompt.get('attributes', {}).get('content', {})
-
-    # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=177, nopp=True, dataframe=False)
-    # message = data_content.get('attributes', {}).get('content', {})
     content = fetch_config_template(type, tag)
     realtime_prompt = read_realtime_evaluation()
     if content:
@@ -4314,7 +3700,7 @@ def add_question_number(generated_question_json):
             for question in section_dict['questions']:
                 # Ensure the question is a dictionary before adding the question_number
                 if isinstance(question, dict):
-                    question["question_number"] = int(question_number)  # Add question number
+                    question["question_number"] = str(question_number)  # Add question number
                     question_number += 1
                 else:
                     logger.warn(f"Unexpected question format: {question}")  # Debug unexpected format
@@ -4364,22 +3750,22 @@ def filter_smg_criterion_metrics_by_tag(data, tag):
     
     return {} 
 
-async def analyze_multiple_challenges(challenge_ids):
-    challenges_data = {}
-
-    for challenge_id in challenge_ids:
-        try:
-            ipersona_challenge = AsyncTaskAnalyzer()
-            content = ipersona_challenge.get_task_document(challenge_id)
-            content = ipersona_challenge.clean_content(content)
-            result = await ipersona_challenge.analyze_sections(content)
-
-            logger.info(f"Challenge analysis completed for challenge_id: {challenge_id}")
-            challenges_data[f"challenge_{challenge_id}"] = result
-
-        except Exception as e:
-            logger.error(f"Error processing challenge_id {challenge_id}: {e}")
-            challenges_data[f"challenge_{challenge_id}"] = {"error": str(e)}
-
-    return challenges_data
-
+def attach_session_id_to_a_template(template_id, session_id):
+    try:
+        job_profile_ids = [] 
+        prompt_ids = []
+        challenge_ids = []
+        ipersona_template =  IpersonaTinderTemplateSchema()
+        attach_template = ipersona_template.add_job_profiles_to_template(
+            template_id, 
+            job_profile_ids, 
+            prompt_ids, 
+            challenge_ids,
+            session_id)
+        
+        logger.info(f"Session attached to a template with session ID: {session_id}")
+        return attach_template
+    
+    except Exception as e:  
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}

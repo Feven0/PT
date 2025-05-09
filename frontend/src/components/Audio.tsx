@@ -201,6 +201,7 @@ const Audio = () => {
     const fetchSession = async() =>{
         const latest = JSON.parse(localStorage.getItem("userSession") || 'null');        
         console.log("session", latest)
+        console.log("everyonetooo", `${import.meta.env.VITE_REACT_APP_BACKEND_URL}`)
 
         const data = {
             sessionId: latest?.id

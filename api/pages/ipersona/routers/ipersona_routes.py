@@ -161,7 +161,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         
     Returns
     -------
-    Union[List, Dict]
+    Dict[str, Any]
         Session data with generated questions removed or error response
         
     Raises
@@ -189,64 +189,13 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         logger.info(f"Starting user session creation for user ID: {all_user_id}, job ID: {job_profile_id}")
 
         # Step 1: Fetch trainee profile data
-        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(
-            all_user_id=all_user_id, nopp=True, dataframe=False
-        )
-    
-        if not trainee_profile_data:
-            logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
-            return JSONResponse(
-                status_code=404,
-                content={"error": "No trainee user profiles found for the given all_user_id"}
-            )
-
-        tinder_user_profile_id = trainee_profile_data.get('id')
-        if not tinder_user_profile_id:
-            return JSONResponse(
-                status_code=500,
-                content={"error": "Invalid trainee profile: missing ID"}
-            )
-        
-        # ipersona_session = IpersonaSessionSchema(run_stage=request.run_stage)
-        # user_data = ipersona_session.filter_by_with_user_job_id(
-        #     user_profile_id=tinder_user_profile_id,
-        #     job_profile_id=request.job_profile_id,
-        #     nopp=True, 
-        #     dataframe=False
-        # )
-
-        # if not user_data:
-        #     logger.warn(f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
-        #     return JSONResponse(
-        #         status_code=404, 
-        #         content={"message": f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}"}
-        #     )
-        # elif len(user_data) < 10:
-        #     return 'you have reached 10 you limit of session for these particular job'
-
-            
-        tinder_user_profile_data = util.extract_trainee_neccessary_values(trainee_profile_data)
-        logger.info(f"User profile data extracted for user ID: {tinder_user_profile_id}")
-
+        tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
         # Step 2: Fetch job profile data
-        ipersona_job = IpersonaJobSchema(run_stage=run_stage)
-        tinder_job_data = ipersona_job.filter_by_job_id(
-            job_profile_id=job_profile_id, nopp=True, dataframe=False
-        )
-
-        if not tinder_job_data:
-            logger.warn(f"No job data found for job_profile_id: {request.job_profile_id}")
-            return JSONResponse(
-                status_code=404,
-                content={"error": "No job data found for the job_profile_id"}
-            )
-
-        tinder_job_data = util.extract_job_neccessary_values(tinder_job_data)
-        logger.info(f"Job data extracted for job_profile_id: {request.job_profile_id}")
+        tinder_job_data = util.get_job_data(job_profile_id, run_stage)
         
         if template:
             message=''
+           
             saved_session =  util.create_session(
                 run_stage, 
                 request, 
@@ -256,15 +205,42 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
                 template_id, 
                 challenge_id,
                 message)
+            
+            saved_session = {
+                'id': saved_session.get('id'),
+                "status": saved_session.get('attributes', {}).get('status', {}),
+                "template_id": saved_session.get('attributes', {}).get('attributes', {}).get('template_id', {}),
+                "challenge_id": saved_session.get('attributes', {}).get('attributes', {}).get('challenge_id', {})
+            }
+ 
+            session_id = [saved_session.get('id')]
+            attaching_session = util.attach_session_id_to_a_template(template_id, session_id)
+
             return saved_session
         
         elif challenge:
-            prompt_text = util.file_reader(prompt_path('generate_challenge_question.txt'))
-            content = await util.analysis_challenge()
-            challenge_prompt = prompt_text \
-                .replace("{challenge_document}", str(content)) \
-                .replace("{count}", str(11)) 
-            
+            type = 'challenge_interview_config'
+            response_obj = util.fetch_the_structure(type)
+
+            if response_obj is False:
+                # if there no challenge structure found, fallback to default prompt    REMOVE THE JSON_DUMP FROM CHALLENGE
+                tag ='parrot_challenge_question_generation_default'
+                challenge_prompt = await util.read_prompt_data_for_challenge_default(
+                    challenge_id, 
+                    type, 
+                    tag)
+                
+            else: 
+                tag = 'parrot_challenge_question_generation' 
+                section_count = response_obj.get('section_count', {})
+                json_format = response_obj.get('json_format', {})
+                challenge_prompt = await util.read_prompt_data_for_challenge(
+                    json_format, 
+                    section_count,
+                    challenge_id, 
+                    type, 
+                    tag)
+        
             saved_session =  util.create_session(
                 run_stage, 
                 request, 
@@ -274,30 +250,56 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
                 template_id, 
                 challenge_id,
                 challenge_prompt)
+            
+            saved_session = {
+                'id': saved_session.get('id'),
+                "status": saved_session.get('attributes', {}).get('status', {}),
+                "template_id": saved_session.get('attributes', {}).get('attributes', {}).get('template_id', {}),
+                "challenge_id": saved_session.get('attributes', {}).get('attributes', {}).get('challenge_id', {})
+            }
             return saved_session
+        
         else:
             # Step 3: Create persona and generate questions
-            created_persona = util.create_persona(str(tinder_job_data))
-            # Load and format prompt templates
-            prompt_text = util.file_reader(prompt_path('persona.txt'))
-            generated_persona = prompt_text \
-                .replace("{hr_persona}", created_persona) \
-                .replace("{job_description}", str(tinder_job_data)) \
-                .replace("{profile}", str(tinder_user_profile_data))
+            type='job_interview_config'
+            
+            response_obj = util.fetch_the_structure(type)
 
-            question_template = util.file_reader(prompt_path('generate_question.txt'))
-            msg = question_template \
-                .replace("{introduction_count}", str(1)) \
-                .replace("{background_count}", str(2)) \
-                .replace("{technical_count}", str(2)) \
-                .replace("{behavioral_count}", str(2)) \
-                .replace("{ability_count}", str(2))\
-                .replace("{closing_count}", str(1))
+            if response_obj is False:
+                tag ='parrot_question_generator_default'
+                persona_tag = 'parrot_persona'
+                generated_persona = util.read_prompt_persona(
+                    tinder_job_data, 
+                    tinder_user_profile_data, 
+                    type, 
+                    persona_tag)
+                msg = util.read_prompt_data_for_default(
+                    type, 
+                    tag)
+            else:
+                section_count = response_obj.get('section_count', {})
+                json_format = response_obj.get('json_format', {})
+
+                tag = 'parrot_generate_question'
+                persona_tag = 'parrot_persona'
+                generated_persona = util.read_prompt_persona(
+                    tinder_job_data, 
+                    tinder_user_profile_data, 
+                    type, 
+                    persona_tag)
+                # print(generated_persona)
+                context = ''
+                msg = util.read_generate_question_prompt(
+                    json_format, 
+                    section_count, 
+                    context, 
+                    tag, 
+                    type)
 
             # Generate interview questions
             content = generated_persona + msg
             response = gpt.openai_gpt_assistant_without_streaming(content)
-            
+
             if not response:
                 logger.error("Failed to generate questions: Empty AI response")
                 return JSONResponse(
@@ -307,16 +309,10 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
                 
             generated_question_json = util.extract_json(response, quite=False)
             logger.info("Persona and questions generated successfully")
-            
 
             # Step 4: Add question numbers
-            question_number = 1
-            for category, questions in generated_question_json.items():
-                for question in questions:
-                    question["question_number"] = int(question_number)
-                    question_number += 1
+            generated_question_json = util.add_question_number(generated_question_json)
 
-            
             # Step 5: Save session data
             session_data = {
                 "slug": str(f"all_user_id: {request.all_user_id}"),
@@ -331,12 +327,10 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
                     "external": False,
                     "challenge": False
                 },
-                "tinder_user_profile": tinder_user_profile_id,
-                "tinder_job_profile": request.job_profile_id,
-                "tinder_template": template_id,
-                "challenge_document": challenge_id
+                "user_profile_id": tinder_user_profile_id,
+                "job_profile_id": request.job_profile_id
             }
-            
+           
             ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
             saved_session = ipersona_session.save_session(
                 params=session_data, return_object=True, nopp=True, dataframe=False
@@ -353,7 +347,10 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             
             # Remove large questions data before returning
             saved_session = {
-                'id': saved_session.get('id')
+                'id': saved_session.get('id'),
+                "status": saved_session.get('attributes', {}).get('status', {}),
+                "template_id": saved_session.get('attributes', {}).get('attributes', {}).get('template_id', {}),
+                "challenge_id": saved_session.get('attributes', {}).get('attributes', {}).get('challenge_id', {})
             }
             return saved_session
             # saved_session = util.remove_key(saved_session, 'generated_questions')
@@ -365,7 +362,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             status_code=500,
             content={"error": f"Error processing user session: {str(e)}"}
         )
-        
+         
 @routes.post("/clarify", tags=["Session Endpoints"])
 async def clarify_question(request: pemodel.ClarificationRequestRecieved) -> dict:
     """
