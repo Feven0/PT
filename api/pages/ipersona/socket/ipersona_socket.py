@@ -188,9 +188,9 @@ async def audio_end_point(sid, data):
                             
                         data['user_session'] = saved_template
                         all_questions = len(data['user_session']['attributes']['attributes']['template_questions'])
-                        total_questionss = {section: len(questions) for section, questions in all_questions.items()}
-                        total_questions = sum(total_questionss.values())
-              
+                    
+                        question_counts = {section['sectionType']: len(section['questions']) for section in collection}
+                        total_questions = sum(question_counts.values())
                     except Exception as template_error:
                         logger.error(f"Error retrieving template: {str(template_error)}")
                         return {"error": f"Template retrieval failed: {str(template_error)}"}
@@ -206,10 +206,7 @@ async def audio_end_point(sid, data):
                 data['user_session'] = session_fetched
                 all_questions = data['user_session']['attributes']['attributes']
                 collection = all_questions.get('generated_questions') or all_questions.get('challenge_questions')
-                print("-==================================-")
-               
-                print("-==================================-")
-         
+           
                 question_counts = {section['sectionType']: len(section['questions']) for section in collection}
                 total_questions = sum(question_counts.values())
                 
@@ -286,30 +283,29 @@ async def audio_end_point(sid, data):
                 logger.error("Failed to generate interview question: empty response")
                 await sio.emit("error", {"error": "Failed to generate next question"}, room=sid)
                 return
+            
         except Exception as generate_error:
             logger.error(f"Error generating interview question: {str(generate_error)}")
             await sio.emit("error", {"error": f"Question generation failed: {str(generate_error)}"}, room=sid)
             return
              
         if response.get("interview") is not None:
+
             assistant_next_question = "" if response.get("interview") is None else response["interview"]       
             message = [
-                {
-                    "user_type": "assistant",
-                    "content_type": "question",
-                    "template_id": template_id, 
-                    "challenge_id": challenge_id,
-                    "content": {
-                        "time_taken": "null",
-                        "time_limit":  "null",
-                        "chunk_response": accumulated_message,
-                        "full_response": "",
-                        "audio_data": "",
-                        "final": "false",
-                        "realtime_evaluation": "null"
-                    }
-                }
-            ]
+                        {
+                            "user_type": "assistant",
+                            "content_type": "question",
+                            "content": {
+                                "time_taken": "null",  
+                                "time_limit": "null",
+                                "chunk_response": accumulated_message,
+                                "full_response": "",
+                                "final": "false",
+                                "realtime_evaluation": "null"
+                            }
+                        }
+                    ]
             
             await sio.emit("audio chat sentence", message, room=sid)  
             
@@ -398,25 +394,19 @@ async def audio_end_point(sid, data):
         else:
             message = 'interview over'
             final = 'true'
-            temp_id = data.get('template_id') if data.get('template_id') is not None else "null"
-            challenge_id = data.get('challenge_id') if data.get('challenge_id') is not None else "null"
-            
             if response.get("status") is not None:
                 message = [{
-                    "user_type": "assistant",
-                    "content_type": "question",
-                    "template_id": temp_id, 
-                    "challenge_id": challenge_id,
-                    "content": {
-                        "time_taken": "null",
-                        "time_limit": "null",
-                        "chunk_response": "",
-                        "full_response": accumulated_message,
-                        "audio_data": "",
-                        "final": "true",
-                        "realtime_evaluation": response.get("realtime")
-                    }
-                }]
+                        "user_type": "assistant",
+                        "content_type": "question",
+                        "content": {
+                            "time_taken": "null",
+                            "time_limit": "null",                        
+                            "chunk_response": '',
+                            "full_response": accumulated_message,
+                            "final": "true",
+                            "realtime_evaluation": response.get("realtime", "null")
+                        }
+                    }]
             await sio.emit("last_audio_realtime_evaluation", message, room=sid)          
 
             await sio.emit("interview done", message, room=sid)

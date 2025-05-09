@@ -16,6 +16,7 @@ const Audio = () => {
         loading, 
         audiointerview, 
         audioHistory, 
+        startchat,
         seconds, 
         minutes, 
         setLoading, 
@@ -223,6 +224,7 @@ const Audio = () => {
         <>            
             {/* {!open && ( */}
                 <Row gutter={16} style={{marginLeft: '6rem'}}>
+                {(startchat) && (
                     <Col span={12}>
                         <Card title="Audio Interview" bordered={true}>
                             <div 
@@ -298,7 +300,7 @@ const Audio = () => {
                             </div>
                         </Card>
                     </Col>
-
+                )}
                     {audioHistory?.length !== 0 && (
                         <Col span={10}>
                             <Card title="Real-Time Feedback" bordered={true}>

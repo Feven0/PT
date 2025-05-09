@@ -13,9 +13,32 @@ const AllProgress = () => {
         const data = {
           all_user_id: 1959
         }
+        const data_status = {
+            "run_stage": "dev-prod",
+            "all_user_id": 1959,
+            "cursor": {
+                      "page": 1, 
+                      "pageSize": 20,
+                      "page_count": 1,
+                      "page_size": 20,
+                      "query": {},
+                      "total": 58
+                  },
+            "filter": {},
+            "limit": 7,
+            "since": 7,
+            "information_level": "minimal",
+            "return_skip": false
+          }
         const response = await Api.UserAllSessionMetrics(data)
-        const responsestatus = await Api.UserStatus(data)
-        setStatus(responsestatus.data)
+        const responsestatus = await Api.UserStatus(data_status)
+        console.log("engagement", responsestatus?.data)
+        const stat = responsestatus?.data?.jobs;
+        let data_stat = [];
+        if (stat) {
+          data_stat = stat[0]?.data
+        }
+        setStatus(data_stat)
         setAllProgress(response.data)
       }
   

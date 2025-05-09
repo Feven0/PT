@@ -24,36 +24,98 @@ const Dashboard = () => {
 
   const fetchOverview = async (limit: any, since: any) => {
     setLoading(true);
-    const data = { limit, since };
+    const data = {
+      "run_stage": "dev-prod",
+      "cursor": {
+                "page": 1, 
+                "pageSize": 20,
+                "page_count": 1,
+                "page_size": 20,
+                "query": {},
+                "total": 58
+            },
+      "filter": {},
+      "limit": limit,
+      "since": since,
+      "information_level": "minimal",
+      "return_skip": false
+    };
     const response = await Api.AdminOverview(data);
-    setOverview(response.data);
+    console.log("overview-response",response?.data)
+    setOverview(response?.data?.data);
     setLoading(false);
   };
 
   const fetchUsers = async (limit: any, since: any) => {
     setLoadingUser(true);
-    const data = { limit, since };
+    const data = {
+      "run_stage": "dev-prod",
+      "cursor": {
+                "page": 1, 
+                "pageSize": 20,
+                "page_count": 1,
+                "page_size": 20,
+                "query": {},
+                "total": 58
+            },
+      "filter": {},
+      "limit": limit,
+      "since": since,
+      "information_level": "minimal",
+      "return_skip": false
+    };
     const response = await Api.AdminUsers(data);
-    setUsers(response?.data?.top10 || []);
-    setAllUsers(response?.data?.alldata || []);
+    setUsers(response?.data?.data?.top10 || []);
+    setAllUsers(response?.data?.data?.alldata || []);
     setLoadingUser(false);
   };
 
   const fetchJobs = async (limit: any, since: any) => {
     setLoadingJob(true);
-    const data = { limit, since };
+    const data = {
+      "run_stage": "dev-prod",
+      "cursor": {
+                "page": 1, 
+                "pageSize": 20,
+                "page_count": 1,
+                "page_size": 20,
+                "query": {},
+                "total": 58
+            },
+      "filter": {},
+      "limit": limit,
+      "since": since,
+      "information_level": "minimal",
+      "return_skip": false
+    };
     const response = await Api.AdminJobs(data);
-    setJobs(response?.data?.top10 || []);
-    console.log("job-response",response?.data?.top10 || [])
+    setJobs(response?.data?.data?.top10 || []);
+    console.log("job-response",response?.data?.data?.top10 || [])
 
     setLoadingJob(false);
   };
 
   const fetchPerformances = async (limit: any, since: any) => {
     setLoadingPer(true);
-    const data = { limit, since };
+    const data = {
+      "run_stage": "dev-prod",
+      "cursor": {
+                "page": 1, 
+                "pageSize": 20,
+                "page_count": 1,
+                "page_size": 20,
+                "query": {},
+                "total": 58
+            },
+      "filter": {},
+      "limit": limit,
+      "since": since,
+      "information_level": "minimal",
+      "return_skip": false
+    };
     const response = await Api.AdminUserMetrics(data);
-    setPerformance(response?.data || []);
+    console.log("performance-response",response?.data)
+    setPerformance(response?.data?.data || []);
     setLoadingPer(false);
   };
 
