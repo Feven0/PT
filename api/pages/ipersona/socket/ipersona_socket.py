@@ -431,7 +431,6 @@ async def interview_endpoint(sid, data):
         None: Responses are sent via socket.io events
     """
     try:
-        print('+++*****************************************000000000000******************************************+++')
         logger.info(f"Received interview request with template_id: {data.get('template_id')}")
         
         # Validate input data
@@ -490,6 +489,10 @@ async def interview_endpoint(sid, data):
         
         #-----------------------------------------------------------------------------------#
         # Handle template-based or session-based interviews
+        print("::::::::::::::9090909090:::::::::::::::::::::::::")
+        print(data.get('template'))
+        print("::::::::::::::9090909090:::::::::::::::::::::::::")
+
         try:
             if data.get('template'):
                 try:
@@ -543,7 +546,7 @@ async def interview_endpoint(sid, data):
                     total_questions = sum(question_counts.values())
 
                 except Exception as session_fetch_error:
-                    logger.error(f"Error fetching session: {str(session_fetch_error)}")
+                    logger.error(f"Error generated session: {str(session_fetch_error)}")
                     return {"error": f"Session retrieval failed: {str(session_fetch_error)}"}
                 
         except Exception as data_prep_error:
@@ -553,6 +556,7 @@ async def interview_endpoint(sid, data):
        
         # Fetch session chat history
         try:
+            print("auuuuuuuuuuuyttttttttttt000000-----------============")
             ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
             session_chathistory = ipersona_message.filter_by_session_id(
                 sessionId=sessionId, 

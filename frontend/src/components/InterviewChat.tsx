@@ -17,6 +17,7 @@ const InterviewChat = () => {
     const { 
         handleInterview, 
         handleTemplateInterview,
+        handleChallengeInterview,
         seconds, 
         minutes, 
         reset, 
@@ -56,16 +57,23 @@ const InterviewChat = () => {
     };
 
     const ExecuteInterview = () => {
-        const temp_id = interview?.length !== 0 && interview[0]?.template_id != 'null' ? interview[0].template_id : null;
-
-        if (temp_id != null) {
-            console.log("template")
+        const temp_id = template_id || latest?.template_id;
+        const challenge_id = challeng_id || latest?.challenge_id;
+        
+        if (typeof temp_id === "number") {
+            console.log("template");
             ExecutiveTemplate(temp_id);
-        } else {
-            console.log("not template")
+        } 
+        else if (typeof challenge_id === "number") {
+            console.log("challenge");
+            ExecutiveChallenge(challenge_id);
+        } 
+        else {
+            console.log("not template");
             ExecuteGenerateInterview();
         }
-    }  
+    };
+    
 
     const ExecuteGenerateInterview = () => {
         console.log('ExecuteGenerateInterview')
@@ -99,6 +107,21 @@ const InterviewChat = () => {
         setInput('');
         setChat(true); 
     }
+
+    const ExecutiveChallenge = async (id: any) => {
+        timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        const user_session = latest;    
+        handleChallengeInterview({ 
+            input, 
+            user_session: user_session,
+            challenge_id: id,
+            timerValue,
+            job_profile_id: 46,
+            all_user_id: 1959
+        });
+        setInput('');
+        setChat(true); 
+    }
     
     const handler = () => {
         ExecuteInterview();
@@ -121,7 +144,6 @@ const InterviewChat = () => {
         const response = await Api.sessionCreate(data);
         localStorage.setItem("userSession", JSON.stringify(response?.data))
         if(response?.data){  
-            console.log('sockettt runningmmmmmmmm')
             timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             handleInterview({ 
                 input, 
@@ -153,6 +175,8 @@ const InterviewChat = () => {
             setInput(newInput);
         }
     };
+    const [template_id, setTemplateId] = useState<any>(null);
+    const [challeng_id, setChallengId] = useState<any>(null);
 
     const fetchChatHistory = async (session: any) => {
         const sessionId = session?.id
@@ -162,20 +186,21 @@ const InterviewChat = () => {
             const data = {
                 sessionId: sessionId
             }
-            const response = await Api.fetchChatHistory(data)
-            const fetched_session = await Api.fetchSingleSession(data)
-            localStorage.setItem("userSession", JSON.stringify(fetched_session?.data))
-
+            // const response = await Api.fetchChatHistory(data)
+            const response = await Api.fetchSingleSession(data)
+            localStorage.setItem("userSession", JSON.stringify(response?.data))
+            setTemplateId(response?.data?.template_id) 
+            setChallengId(response?.data?.challenge_id)
             // console.log("fetching data...", response?.data)
-            // console.log("fetching data observers...", fetched_session?.data)
+            console.log("fetching data observers...", response?.data?.template_id)
 
-        setChatInterview(response?.data?.total)
+        setChatInterview(response?.data?.chat)
         setLoadingSessionId(null);
-        if(fetched_session?.data?.attributes?.status == 'Completed'){
+        if(response?.data?.status == 'Completed'){
             setChat(false)
             reset() 
         }
-        else if(fetched_session?.data?.attributes?.status == 'Incomplete') {
+        else if(response?.data?.status == 'Incomplete') {
            setChat(true) 
         }        
     }
@@ -266,7 +291,24 @@ const InterviewChat = () => {
 
     const GetTemplates = async() => {
         const data = {
+            run_stage: 'dev',
             job_profile_id: 46,
+            challenge_id: 0,
+            prompt_id: 0,
+            type: '',
+            cursor: {
+                "page": 1, 
+                "pageSize": 20,
+                "page_count": 1,
+                "page_size": 20,
+                "query": {},
+                "total": 58
+            },
+            filter: {},
+            limit: 10,
+            since: 7,
+            information_level: 'minimal',
+            return_skip: false
         };
         const response = await Api.GetTemplates(data)
         console.log("await....", response?.data)
@@ -280,6 +322,7 @@ const InterviewChat = () => {
     }
 
     const chooseTemplate = async (id: any) => {
+        setLoad(true)
         const data = {
             job_profile_id: 46,
             all_user_id: 1959,
@@ -306,9 +349,11 @@ const InterviewChat = () => {
         setChatInterview([])
         setShowModal(false);
         setChat(true); 
+        setLoad(false)
     }
 
     const chooseChallenge = async(id: any) => {
+        setLoad(true)
         const data = {
             job_profile_id: 46,
             all_user_id: 1959,
@@ -317,16 +362,16 @@ const InterviewChat = () => {
             external: false,
             challenge: true,
             template_id: 0, 
-            challenge_id: 0
+            challenge_id: id
         };
         const response = await Api.sessionCreate(data);
         localStorage.setItem("userSession", JSON.stringify(response?.data))
         if(response?.data){  
             timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            handleInterview({ 
+            handleChallengeInterview({ 
                 input, 
                 user_session: response?.data,
-                template_id: null,
+                challenge_id: id,
                 timerValue,
                 job_profile_id: 46,
                 all_user_id: 1959
@@ -335,7 +380,7 @@ const InterviewChat = () => {
         setChatInterview([])
         setShowModal(false);
         setChat(true); 
-
+        setLoad(false)
     }
 
     const openTemplateModal = () => {
@@ -358,7 +403,7 @@ const InterviewChat = () => {
     }
 
     useEffect(() =>{
-        // GetTemplates()
+        GetTemplates()
         GetChallenges()
     },[])
 
@@ -392,13 +437,14 @@ const InterviewChat = () => {
                             footer={null}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-around', gap:'30px'}}>
+                            {loadin && <LoadingSpinner style={{ marginLeft: '5px' }} />}
+
                                 <Card
                                     hoverable
                                     style={{ width: 240, textAlign: 'center' }}
                                     onClick={startSession}
                                 >
                                     <h3>New Session</h3>
-                                    {loadin && <LoadingSpinner style={{ marginLeft: '5px' }} />}
                                 </Card>
                                 <Card
                                     hoverable
@@ -414,7 +460,6 @@ const InterviewChat = () => {
                                     onClick={openChallengeModal}
                                 >
                                     <h3>Challenge Document</h3>
-
                                 </Card>
                             </div>
                         </Modal>
@@ -426,18 +471,21 @@ const InterviewChat = () => {
                             onCancel={() => setShowTemplateModal(false)}
                             footer={null}
                         >
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
-                            {templates?.map((template: any) => (
-                                <Card
-                                key={template?.id}
-                                hoverable
-                                onClick={() => handleTemplateSelection(template.id)}
-                                >
-                                <h4>{template?.attributes?.name}</h4>
-                                <p>Type: {template?.attributes?.type}</p>
-                                </Card>
-                            ))}
+                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+                                {templates?.template?.map((template: any) =>
+                                    template?.data?.map((dataItem: any) => (
+                                        <Card
+                                            key={dataItem?.id}
+                                            hoverable
+                                            onClick={() => handleTemplateSelection(dataItem.id)}
+                                        >
+                                            <h4>{dataItem?.name}</h4>
+                                            <p>Type: {dataItem?.type}</p>
+                                        </Card>
+                                    ))
+                                )}
                             </div>
+
                         </Modal>
 
                         {/* Modal for choosing a template */}

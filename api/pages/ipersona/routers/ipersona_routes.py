@@ -2000,7 +2000,7 @@ async def fetch_user_all_observer(request: pemodel.SessionIdRequestRecieved)-> U
         )
 
 @routes.post("/fetch_single_session", tags=["Session Endpoints"])
-async def fetch_single_session(request: pemodel.SessionIdRequestRecieved) -> Union[List, Dict]:
+async def fetch_single_session(request: pemodel.SessionIdRequestRecieved):
     """
     Fetch data for a single session by its ID.
 
@@ -2015,7 +2015,7 @@ async def fetch_single_session(request: pemodel.SessionIdRequestRecieved) -> Uni
 
     Returns
     -------
-    Union[Union[List, Dict], JSONResponse]
+    Union[Dict[str, Any], JSONResponse]
         Session data or an error response
     """
     run_stage = request.run_stage
@@ -2025,7 +2025,7 @@ async def fetch_single_session(request: pemodel.SessionIdRequestRecieved) -> Uni
 
         # Step 1: Fetch session data by session ID from the database
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-        session_fetched = ipersona_session.get_session_by_id(
+        session_fetched = ipersona_session.get_by_id(
             sessionId=request.sessionId, 
             nopp=True, 
             dataframe=False
@@ -2041,7 +2041,7 @@ async def fetch_single_session(request: pemodel.SessionIdRequestRecieved) -> Uni
         logger.info(f"Successfully fetched session data for session ID: {request.sessionId}")
         
         # Remove generated_questions field from response
-        session_fetched = util.remove_key(session_fetched, 'generated_questions')
+        # session_fetched = util.remove_key(session_fetched, 'generated_questions')
         
         return session_fetched
 
@@ -2051,8 +2051,6 @@ async def fetch_single_session(request: pemodel.SessionIdRequestRecieved) -> Uni
             status_code=500, 
             content={"error": f"Error fetching session: {str(e)}"}
         )
-
-
 
 #----------------------------------- Question Template Processing APIS -----------------------------------#
 @routes.post("/save_tinder_template", tags=["Template Endpoints"])

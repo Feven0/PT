@@ -121,6 +121,21 @@ class IpersonaSessionSchema(LeapBaseClass):
         data = self.get_session_data(data)   
         return data
     
+    def get_by_id(self, sessionId, **kwargs):
+        data_json = self.exists(scol='id', sval=sessionId, op='eq', stype="ID", **kwargs)  
+        data = self.get_session_data(data_json)  
+
+        data_msg = data.get('attributes', {}).get('i_persona_messages', {}).get('data', {}) if data else None 
+        data_msg = self.get_session_msg_data(data_msg)
+        response = {
+            "id": data.get('id', {}),
+            "status": data.get('attributes', {}).get('status', {}),
+            "template_id": data.get('attributes', {}).get('attributes', {}).get('template_id', {}),
+            "challenge_id": data.get('attributes', {}).get('attributes', {}).get('challenge_id', {}),
+            "chat": data_msg
+        }
+        return response
+    
     def filter_by_observer_id(self, vid, **kwargs):
         try:
             if not vid:
@@ -144,39 +159,6 @@ class IpersonaSessionSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error fetching data for Observer ID {vid}: {str(e)}")
             return {'error': f"Error fetching data for Observer ID {vid}: {str(e)}"}
-
-    # def filter_by_tinder_user_profile_id(self, user_profile_id, cursor={}, **kwargs):
-    #     try:
-    #         if not user_profile_id:
-    #             logger.error("User Profile ID is missing!")
-    #             return None
-            
-            # Step 1: Get the initial filtered data by 'since' and 'limit'
-            # filtered_data, cursors = self.get_all_sessions(
-            #     cursor=cursor, 
-            #     since=since, 
-            #     limit=limit, 
-            #     nopp=True, 
-            #     dataframe=False)
-
-            # if not filtered_data:
-            #     logger.error("No data returned after filtering by 'since' and 'limit'")
-            #     data = []
-            #     return data, cursors
-            # else:
-            #     # Step 2: Apply additional filtering by 'user_profile_id'
-            #     data = [session for session in filtered_data if session.get('attributes').get('tinder_user_profile').get('data').get('id') == str(user_profile_id)]
-                
-            #     if not data:
-            #         logger.info(f"No sessions found for user_profile_id: {user_profile_id}")
-            #         data = []
-            #         return data, cursors
-          
-            # return data, cursors
-        
-        # except Exception as e:
-        #     logger.error(f"Error filtering by tinder_user_profile_id: {e}")
-        #     return None
     
     def filter_by_tinder_user_profile_id(self, user_profile_id, cursor={}, since=None, limit=None, **kwargs):
         try:
@@ -419,6 +401,36 @@ class IpersonaSessionSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error extracting session data from session JSON: {str(e)}")
             return {'error': f"Error extracting session data from session JSON: {str(e)}"}
+
+    def get_session_msg_data(self, all_sessions_msg):
+            try:
+                # all_sessions_msg = []
+            
+                if isinstance(all_sessions_msg, list) and len( all_sessions_msg) > 0:
+                    # for entry in session_json:
+                    #     if 'data' in entry:
+                    #         all_sessions_msg = entry.get('data')                         
+
+                    extracted_messages = []
+                    for message in all_sessions_msg:
+                        message_attributes = message.get('attributes', {}).get('attributes', {})
+                        if message_attributes:
+                            message_data = message_attributes.get('message', {})
+                            extracted_messages.append({
+                                "content": message_data.get('content', ""),
+                                "user_type": message_data.get('user_type', ""),
+                                # "template_id": message_data.get('template_id', ""),
+                                "content_type": message_data.get('content_type', "")
+                            })
+
+                    return extracted_messages
+
+                logger.warn("No session message data found in session JSON.")
+                return None
+
+            except Exception as e:
+                logger.error(f"Error extracting session message data: {str(e)}")
+                return {'error': f"Error extracting session message data: {str(e)}"}
 
 class IpersonaTraineeSchema(LeapBaseClass):
     '''
