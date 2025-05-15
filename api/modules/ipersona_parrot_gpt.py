@@ -108,10 +108,6 @@ async def generate_interview_question(run_stage, data: dict, question_count, tem
         collection = json.loads(collection) if isinstance(collection, str) else collection
 
         if(challenge_id != 'null'):
-            print('0-0-0-0-0-0-0-0-0------0-0-0--0-0--0-0-0-0-0-0-0-0-0-0')
-            print(question_count)
-            print('0-0-0-0-0-0-0-0-0------0-0-0--0-0--0-0-0-0-0-0-0-0-0-0')
-
             response = await choose_interview_question_challenge_new_structure(
                 run_stage, 
                 collection, 
@@ -125,9 +121,6 @@ async def generate_interview_question(run_stage, data: dict, question_count, tem
         if not collection:
             raise ValueError("No questions available in generated_questions or template_questions.")
         
-        print("-==================================--==================================-")
-        print(collection)
-        print("-==================================--==================================-")
         response = await choose_interview_question_new_structure(
             run_stage, 
             collection, 

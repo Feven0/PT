@@ -489,9 +489,6 @@ async def interview_endpoint(sid, data):
         
         #-----------------------------------------------------------------------------------#
         # Handle template-based or session-based interviews
-        print("::::::::::::::9090909090:::::::::::::::::::::::::")
-        print(data.get('template'))
-        print("::::::::::::::9090909090:::::::::::::::::::::::::")
 
         try:
             if data.get('template'):
@@ -621,6 +618,7 @@ async def interview_endpoint(sid, data):
         # Process and emit the assistant's response
         try:
             if response.get("interview") is not None:
+                print("socket working================================First questions fired=======================")
                 assistant_next_question = response.get("interview", "")
                 
                 # Prepare initial message
@@ -673,6 +671,10 @@ async def interview_endpoint(sid, data):
                             assistant_next_question = [str(assistant_next_question)]
                             
                     for chunk in assistant_next_question:
+                        print("************************ CHUNK RESPONSE *************************")
+                        print(chunk)
+                        print("************************ CHUNK RESPONSE *************************")
+
                         try:
                             accumulated_message += chunk
                             message = [{
@@ -685,9 +687,17 @@ async def interview_endpoint(sid, data):
                         except Exception as chunk_error:
                             logger.error(f"Error processing chunk: {str(chunk_error)}")
                             # Continue with next chunk despite error
+
+                    print("************************ First  QUESTION *************************")
+                    print(accumulated_message)
+                    print("************************ First  QUESTION *************************")
+
                 except Exception as chunks_error:
                     logger.error(f"Error processing message chunks: {str(chunks_error)}")
                     # Continue despite chunks processing failure
+                    print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FAILED TO SEND THE QUETIONS")
+                    print(chunks_error)
+                    print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FAILED TO SEND THE QUETIONS")
 
                 # Perform real-time response evaluation if applicable
                 try:

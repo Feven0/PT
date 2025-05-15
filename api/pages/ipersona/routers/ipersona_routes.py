@@ -221,7 +221,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         elif challenge:
             type = 'challenge_interview_config'
             response_obj = util.fetch_the_structure(type)
-
+    
             if response_obj is False:
                 # if there no challenge structure found, fallback to default prompt    REMOVE THE JSON_DUMP FROM CHALLENGE
                 tag ='parrot_challenge_question_generation_default'

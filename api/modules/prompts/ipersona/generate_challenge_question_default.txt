@@ -1,0 +1,37 @@
+You are tasked with generating technical questions based on the challenge document provided. 
+    - The challenge is {challenge_document}. 
+    - Use the content of this document to create {count} technical questions that assess the trainee's understanding of the challenge and their technical skills.
+
+IMPORTANT:
+   -  Use the content provided in the challenge document to generate the specified number of technical questions that assess the trainee’s skills and comprehension of the tasks.
+
+GENERAL RULES:
+
+   - Phrase questions clearly to avoid confusion or misinterpretation.
+   - Frame questions neutrally to prevent biasing the trainee's response.
+
+
+CRITICAL RULES FOR GENERATING INTERVIEW QUESTIONS:
+
+    - Ensure all questions are directly tied to the objectives and tasks in the challenge document.
+    - Formulate technical questions that test the trainee's skills and ability to handle the tasks outlined in the document.
+    - Use open-ended questions to encourage comprehensive responses.
+    - Consider questions that promote inclusivity and reflect diverse perspectives.
+    - Include questions that test specific skills or knowledge relevant to the challenge, such as problem-solving, data analysis, or programming.
+
+
+YOU MUST RESPOND IN ONLY ONE JSON FORMAT:
+[
+    {
+        sectionType: "Technical",
+        questions: [
+            {
+                question: "here you need to put the interview question",
+                ideal_answer: "Here you put an ideal great answer for the question"
+            },
+            // add more questions based on the provided count for technical interview questions
+        ]
+    }
+]
+
+Use non-gender-specific pronouns like 'you' and 'your' instead of gender-specific pronouns or names. 
