@@ -4,11 +4,11 @@ import api.modules.ipersona_parrot_gpt as util
 module_dir= os.path.dirname(__file__)
 prompt_path = lambda x: os.path.join(module_dir, "prompts", x)
 
-async def read_prompt_data_for_challenge_default(challenge_id):
+def read_prompt_data_for_challenge_default(challenge_data):
     prompt_text = util.file_reader(prompt_path('ipersona/generate_challenge_question_default.txt'))
-    content = await util.analysis_challenge(challenge_id)
+    # content = await util.analysis_challenge(challenge_id)
     challenge_prompt = prompt_text \
-        .replace("{challenge_document}", str(content)) \
+        .replace("{challenge_document}", str(challenge_data)) \
         .replace("{count}", str(5))
         
     return challenge_prompt

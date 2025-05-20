@@ -2213,7 +2213,6 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
             # Load and format prompt templates
             response_obj = util.fetch_the_structure(type)
          
-
             if response_obj is False:
                 # if there no challenge structure found, fallback to default prompt    REMOVE THE JSON_DUMP FROM CHALLENGE
                 tag ='parrot_challenge_question_generation_default'
@@ -2234,6 +2233,7 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
                     tinder_challenge_data, 
                     type, 
                     tag)
+                
 
         # Generate interview questions
         response = gpt.openai_gpt_assistant_without_streaming(content)
