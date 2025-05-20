@@ -3158,8 +3158,7 @@ def create_session(
                 "slug": str(f"all_user_id: {all_user_id}"),
                 "status": "Incomplete",
                 "attributes": {
-                    "challenge_questions": challenge_generated_questions,
-                    "challenge_id": challenge_id
+                    "challenge_questions": challenge_generated_questions
                 },
                 "metadata": {
                     "template": False,
@@ -3168,8 +3167,10 @@ def create_session(
                     "challenge": True
 
                 },
-                "user_profile_id": user_profile_id,
-                "job_profile_id": job_profile_id
+                "tinder_user_profile_id": user_profile_id,
+                "tinder_job_profile_id": job_profile_id,
+                "tinder_template": template_id,
+                "challenge_document": challenge_id
             }
         else:
             session_data = {
@@ -3179,10 +3180,13 @@ def create_session(
                         "template_id": template_id
                     },
                     "metadata": metadata,
-                    "user_profile_id": user_profile_id,
-                    "job_profile_id": job_profile_id
+                    "tinder_user_profile_id": user_profile_id,
+                    "tinder_job_profile_id": job_profile_id,
+                    "tinder_template": template_id,
+                    "challenge_document": challenge_id
                 }
-                
+          
+
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         saved_session = ipersona_session.save_session(
             params=session_data, return_object=True, nopp=True, dataframe=False
@@ -3203,6 +3207,16 @@ def create_session(
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}  
+
+
+def safe_get_id(data, *keys):
+    """Safely traverse nested dicts and return the final 'id' if available, else None."""
+    for key in keys:
+        if not isinstance(data, dict):
+            return None
+        data = data.get(key)
+    return data.get('id') if isinstance(data, dict) else None
+
 
 async def analysis_challenge(challenge_id):
     try:
@@ -3510,8 +3524,7 @@ def get_user_data(all_user_id, run_stage):
     logger.info(f"User profile data extracted for user ID: {tinder_user_profile_id}")
     return tinder_user_profile_data, tinder_user_profile_id
 
-async def read_prompt_data_for_challenge_default(challenge_id, type, tag):
-    contents = await analysis_challenge(challenge_id)
+def read_prompt_data_for_challenge_default(contents, type, tag):
     if contents:
         content = fetch_config_template(type, tag)
         if content:
@@ -3523,7 +3536,7 @@ async def read_prompt_data_for_challenge_default(challenge_id, type, tag):
             return challenge_prompt
         else:   
             # Fallback to default challenge generation
-            challenge_prompt = await fallback.read_prompt_data_for_challenge_default(challenge_id)
+            challenge_prompt = fallback.read_prompt_data_for_challenge_default(contents)
             return challenge_prompt
     else:
         return 'Challenge content not found, or challenge ID is invalid'
@@ -3565,11 +3578,11 @@ def read_prompt_data_for_multiple_challenge(
 async def read_prompt_data_for_challenge(
         json_format, 
         count, 
-        challenge_id, 
+        contents, 
         type, 
         tag):
 
-    contents = await analysis_challenge(challenge_id)
+    # contents = await analysis_challenge(challenge_id)
     if contents:
         content = fetch_config_template(type, tag)
         if content:
@@ -3582,8 +3595,10 @@ async def read_prompt_data_for_challenge(
             return challenge_prompt
         else:
             # Fallback to default challenge generation
-            challenge_prompt = await fallback.read_prompt_data_for_challenge(
-                json_format, count, challenge_id
+            # challenge_data = await analysis_challenge(challenge_id)
+
+            challenge_prompt = fallback.read_prompt_data_for_challenge(
+                json_format, count, contents
             )
             return challenge_prompt
     else:

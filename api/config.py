@@ -539,7 +539,9 @@ class fastapi:
         "https://leap.gettenacious.com",
         "https://dev-leap.gettenacious.com",
         "https://frog.gettenacious.com",
-        "https://dev-frog.gettenacious.com"
+        "https://dev-frog.gettenacious.com",
+        "http://localhost:5173",
+        "http://localhost:5174"
     ]
     root_origins = ['10academy.org',
                     'gettenacious.com',

@@ -148,26 +148,19 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
 async def user_session_files(request: pemodel.UserSessionRequestRecieved):
     """
     Process user session data and generate interview questions.
-    
-    Creates a persona from job descriptions, generates interview questions,
-    and stores session data in the database.
-    
+
     Parameters
     ----------
     request : pemodel.UserSessionRequestRecieved
         Object containing:
-        - all_user_id: User identifier
-        - job_profile_id: Job profile identifier
-        
+        - all_user_id
+        - job_profile_id
+        - template, challenge, etc.
+
     Returns
     -------
     Dict[str, Any]
-        Session data with generated questions removed or error response
-        
-    Raises
-    ------
-    Exception
-        If any error occurs during processing
+        Session data (ID, status, template_id, challenge_id)
     """
     run_stage = request.run_stage
     template = request.template
@@ -178,125 +171,91 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
     template_id = request.template_id
     challenge_id = request.challenge_id
 
-    if not request or not request.all_user_id or not request.job_profile_id:
-        logger.error("Invalid request: Missing required parameters")
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Missing required parameters: all_user_id or job_profile_id"}
-        )
-        
     try:
         logger.info(f"Starting user session creation for user ID: {all_user_id}, job ID: {job_profile_id}")
 
-        # Step 1: Fetch trainee profile data
+        # Step 1: Fetch user profile data
         tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
+
         # Step 2: Fetch job profile data
         tinder_job_data = util.get_job_data(job_profile_id, run_stage)
-        
+
         if template:
-            message=''
-           
-            saved_session =  util.create_session(
-                run_stage, 
-                request, 
-                all_user_id, 
-                tinder_user_profile_id, 
-                job_profile_id,
-                template_id, 
-                challenge_id,
-                message)
-            
+            message = ''
+            saved_session = util.create_session(
+                run_stage, request, all_user_id,
+                tinder_user_profile_id, job_profile_id,
+                template_id, challenge_id, message
+            )
+
             saved_session = {
                 'id': saved_session.get('id'),
-                "status": saved_session.get('attributes', {}).get('status', {}),
-                "template_id": saved_session.get('attributes', {}).get('attributes', {}).get('template_id', {}),
-                "challenge_id": saved_session.get('attributes', {}).get('attributes', {}).get('challenge_id', {})
+                "status": saved_session.get('attributes', {}).get('status'),
+                "template_id": util.safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
+                "challenge_id": util.safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
             }
- 
+
             session_id = [saved_session.get('id')]
-            attaching_session = util.attach_session_id_to_a_template(template_id, session_id)
+            util.attach_session_id_to_a_template(template_id, session_id)
 
             return saved_session
-        
+
         elif challenge:
             type = 'challenge_interview_config'
             response_obj = util.fetch_the_structure(type)
-    
+            challenge_data = await util.analysis_challenge(challenge_id)
+
             if response_obj is False:
-                # if there no challenge structure found, fallback to default prompt    REMOVE THE JSON_DUMP FROM CHALLENGE
-                tag ='parrot_challenge_question_generation_default'
-                challenge_prompt = await util.read_prompt_data_for_challenge_default(
-                    challenge_id, 
-                    type, 
-                    tag)
-                
-            else: 
-                tag = 'parrot_challenge_question_generation' 
+                tag = 'parrot_challenge_question_generation_default'
+                challenge_prompt = util.read_prompt_data_for_challenge_default(
+                    challenge_data, type, tag
+                )
+            else:
+                tag = 'parrot_challenge_question_generation'
                 section_count = response_obj.get('section_count', {})
                 json_format = response_obj.get('json_format', {})
-                challenge_prompt = await util.read_prompt_data_for_challenge(
-                    json_format, 
-                    section_count,
-                    challenge_id, 
-                    type, 
-                    tag)
-        
-            saved_session =  util.create_session(
-                run_stage, 
-                request, 
-                all_user_id, 
-                tinder_user_profile_id, 
-                job_profile_id,
-                template_id, 
-                challenge_id,
-                challenge_prompt)
-            
+                challenge_prompt = util.read_prompt_data_for_challenge(
+                    json_format, section_count, challenge_data, type, tag
+                )
+
+            saved_session = util.create_session(
+                run_stage, request, all_user_id,
+                tinder_user_profile_id, job_profile_id,
+                template_id, challenge_id, challenge_prompt
+            )
+
             saved_session = {
                 'id': saved_session.get('id'),
-                "status": saved_session.get('attributes', {}).get('status', {}),
-                "template_id": saved_session.get('attributes', {}).get('attributes', {}).get('template_id', {}),
-                "challenge_id": saved_session.get('attributes', {}).get('attributes', {}).get('challenge_id', {})
+                "status": saved_session.get('attributes', {}).get('status'),
+                "template_id": util.safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
+                "challenge_id": util.safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
             }
+
             return saved_session
-        
+
         else:
-            # Step 3: Create persona and generate questions
-            type='job_interview_config'
-            
+            type = 'job_interview_config'
             response_obj = util.fetch_the_structure(type)
 
             if response_obj is False:
-                tag ='parrot_question_generator_default'
+                tag = 'parrot_question_generator_default'
                 persona_tag = 'parrot_persona'
                 generated_persona = util.read_prompt_persona(
-                    tinder_job_data, 
-                    tinder_user_profile_data, 
-                    type, 
-                    persona_tag)
-                msg = util.read_prompt_data_for_default(
-                    type, 
-                    tag)
+                    tinder_job_data, tinder_user_profile_data, type, persona_tag
+                )
+                msg = util.read_prompt_data_for_default(type, tag)
             else:
                 section_count = response_obj.get('section_count', {})
                 json_format = response_obj.get('json_format', {})
-
                 tag = 'parrot_generate_question'
                 persona_tag = 'parrot_persona'
                 generated_persona = util.read_prompt_persona(
-                    tinder_job_data, 
-                    tinder_user_profile_data, 
-                    type, 
-                    persona_tag)
-                # print(generated_persona)
-                context = ''
+                    tinder_job_data, tinder_user_profile_data, type, persona_tag
+                )
                 msg = util.read_generate_question_prompt(
-                    json_format, 
-                    section_count, 
-                    context, 
-                    tag, 
-                    type)
+                    json_format, section_count, context='', tag=tag, type=type
+                )
 
-            # Generate interview questions
             content = generated_persona + msg
             response = gpt.openai_gpt_assistant_without_streaming(content)
 
@@ -306,16 +265,13 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
                     status_code=500,
                     content={"error": "Failed to generate interview questions"}
                 )
-                
+
             generated_question_json = util.extract_json(response, quite=False)
+            generated_question_json = util.add_question_number(generated_question_json)
             logger.info("Persona and questions generated successfully")
 
-            # Step 4: Add question numbers
-            generated_question_json = util.add_question_number(generated_question_json)
-
-            # Step 5: Save session data
             session_data = {
-                "slug": str(f"all_user_id: {request.all_user_id}"),
+                "slug": f"all_user_id: {all_user_id}",
                 "status": "Incomplete",
                 "attributes": {
                     "persona": generated_persona,
@@ -327,10 +283,12 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
                     "external": False,
                     "challenge": False
                 },
-                "user_profile_id": tinder_user_profile_id,
-                "job_profile_id": request.job_profile_id
+                "tinder_template_user_profile_id": tinder_user_profile_id,
+                "tinder_template_job_profile_id": job_profile_id,
+                "tinder_template": template_id,
+                "challenge_document": challenge_id
             }
-           
+
             ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
             saved_session = ipersona_session.save_session(
                 params=session_data, return_object=True, nopp=True, dataframe=False
@@ -342,19 +300,17 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
                     status_code=500,
                     content={"error": "Failed to save session data"}
                 )
-                
+
             logger.info(f"Session created successfully with ID: {saved_session.get('id', 'unknown')}")
-            
-            # Remove large questions data before returning
+
             saved_session = {
                 'id': saved_session.get('id'),
-                "status": saved_session.get('attributes', {}).get('status', {}),
-                "template_id": saved_session.get('attributes', {}).get('attributes', {}).get('template_id', {}),
-                "challenge_id": saved_session.get('attributes', {}).get('attributes', {}).get('challenge_id', {})
+                "status": saved_session.get('attributes', {}).get('status'),
+                "template_id": util.safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
+                "challenge_id": util.safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
             }
+
             return saved_session
-            # saved_session = util.remove_key(saved_session, 'generated_questions')
-            # return saved_session
 
     except Exception as e:
         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
@@ -362,7 +318,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             status_code=500,
             content={"error": f"Error processing user session: {str(e)}"}
         )
-         
+       
 @routes.post("/clarify", tags=["Session Endpoints"])
 async def clarify_question(request: pemodel.ClarificationRequestRecieved) -> dict:
     """

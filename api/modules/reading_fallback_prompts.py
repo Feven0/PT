@@ -13,11 +13,11 @@ def read_prompt_data_for_challenge_default(challenge_data):
         
     return challenge_prompt
 
-async def read_prompt_data_for_challenge(json_format, count, challenge_id):
+def read_prompt_data_for_challenge(json_format, count, challenge_data):
     prompt_text = util.file_reader(prompt_path('ipersona/generate_challenge_question.txt'))
-    content = await util.analysis_challenge(challenge_id)
+    # content = await util.analysis_challenge(challenge_id)
     challenge_prompt = prompt_text \
-        .replace("{challenge_document}", str(content)) \
+        .replace("{challenge_document}", str(challenge_data)) \
         .replace("{count}", str(count)) \
         .replace("{json}", str(json_format))
         
