@@ -1798,15 +1798,12 @@ def summarize_interviews(
     since, 
     limit,
     information_level,
-    return_skip):  
-    try:  
-        # Fetch a particular user sessions
+    return_skip
+):  
+    try:
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-    
-        query_filter = filter
-        kwargs = {}
-        if query_filter:
-            kwargs.update(query_filter)
+        query_filter = filter or {}
+        kwargs = {**query_filter}
 
         data, cursors = ipersona_session.filter_by_tinder_user_profile_id(
             user_profile_id=user_profile_id, 
@@ -1815,99 +1812,199 @@ def summarize_interviews(
             limit=limit, 
             nopp=True, 
             dataframe=False,
-            **kwargs)
-        
-        if len(data) != 0:
-            data = extracted_needed_metrics(data)
+            **kwargs
+        )
 
-            if len(data) == 0:
-                logger.info("The given trainee has no observer data")
-                return []
-
-            job_summary = defaultdict(list)
-
-            for record in data:
-                job_profile_id = record['job_profile_id']
-                job_summary[job_profile_id].append(record)
-
-                summary_response = []
-                complete_sessions_count = 0
-                incomplete_sessions_count = 0
-        
-            # return job_summary
-            for job_profile_id, records in job_summary.items():
-            
-                for session in records:
-                    complete_status = session.get('complete_status', {})
-                
-                    if complete_status:
-                        complete_sessions_count += 1
-                    else:
-                        incomplete_sessions_count += 1
-                                
-                total_score = sum(
-                    record.get('overall_performance_score', 0) for record in records if record.get('overall_performance_score') is not None
-                )
-                
-                if total_score >= 0:
-                    average_score = round(total_score / complete_sessions_count, 2) if complete_sessions_count > 0 else "N/A"
-                else:
-                    average_score = 'Not Available'
-                
-                ipersona_job = IpersonaJobSchema(run_stage=run_stage)
-                job_title_data = ipersona_job.filter_by_job_id(job_profile_id=job_profile_id, nopp=True, dataframe=False)
-                
-                if job_title_data and len(job_title_data) > 0:
-                    job_title = job_title_data[0]['attributes']['attributes'].get('title', 'Unknown Job Title')
-                else:
-                    job_title = 'Unknown Job Title'
-
-                tinder_user_profile_id = user_profile_id
-                tinder_job_profile_id = job_profile_id
-
-                ipersona_match = IpersonaSessionTinderUserJobMatchSchema(run_stage=run_stage)
-                job_match_data = ipersona_match.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
-                print("??????????????????????????============??????????//?????????????????????")
-                print(job_match_data)
-                print("??????????????????????????============??????????//?????????????????????")
-                
-                ipersona_reaction = IpersonaSessionTinderUserReactionSchema(run_stage=run_stage)
-                reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=tinder_job_profile_id, nopp=True, dataframe=False)
-
-                if job_match_data and len(job_match_data) > 0:
-                    match_score = job_match_data[0]['attributes'].get('match_score', 'Unknown')
-                    job_match = job_match_data[0]['attributes'].get('match_level', 'Unknown')
-                else:
-                    match_score = 'Unknown'
-                    job_match = 'Unknown'
-                            
-                total_session_count = complete_sessions_count + incomplete_sessions_count
-
-                summary_response.append({
-                    "job_profile_id": job_profile_id,
-                    "reaction_id": reaction_id,
-                    "job_title": job_title,
-                    "job_match_score": match_score,
-                    "job_match": job_match,
-                    'complete_interviews_count': complete_sessions_count,
-                    'incomplete_interviews_count': incomplete_sessions_count,
-                    'total_interviews_count': total_session_count,
-                    "score": average_score
-                })
-            cursor['total'] = len(summary_response)   
-            output = add_engagement_columns(summary_response, cursor, kind='jobs', **kwargs)    
-        
+        if not data:
+            output = add_engagement_columns([], cursor, kind='jobs', **kwargs)
             return output, cursors
-        else:
-            data = []
-            output = add_engagement_columns(data, cursor, kind='jobs', **kwargs)    
-            return output, cursors
-        
+
+        data = extracted_needed_metrics(data)
+        if not data:
+            logger.info("The given trainee has no observer data after metric extraction.")
+            return add_engagement_columns([], cursor, kind='jobs', **kwargs), cursors
+
+        # Step 1: Filter for valid job_profile_id
+        valid_records = [d for d in data if d.get("job_profile_id") not in (None, 0)]
+
+        if not valid_records:
+            logger.info("No valid job_profile_id found.")
+            return add_engagement_columns([], cursor, kind='jobs', **kwargs), cursors
+
+        # Step 2: Group by job_profile_id
+        job_summary = defaultdict(list)
+        for record in valid_records:
+            job_summary[record["job_profile_id"]].append(record)
+
+        summary_response = []
+
+        # Step 3: Loop through valid job_profile_id groups
+        for job_profile_id, records in job_summary.items():
+            complete_count = sum(1 for r in records if r.get("complete_status"))
+            incomplete_count = len(records) - complete_count
+
+            total_score = sum(
+                r.get("overall_performance_score", 0)
+                for r in records if r.get("overall_performance_score") is not None
+            )
+            average_score = (
+                round(total_score / complete_count, 2)
+                if complete_count > 0 else "N/A"
+            )
+
+            # Fetch job title
+            ipersona_job = IpersonaJobSchema(run_stage=run_stage)
+            job_title_data = ipersona_job.filter_by_job_id(
+                job_profile_id=job_profile_id, nopp=True, dataframe=False
+            )
+
+            job_title = (
+                job_title_data[0]["attributes"]["attributes"].get("title", "Unknown Job Title")
+                if job_title_data else "Unknown Job Title"
+            )
+
+            # Fetch match and reaction data
+            ipersona_match = IpersonaSessionTinderUserJobMatchSchema(run_stage=run_stage)
+            job_match_data = ipersona_match.filter_by_with_user_and_job_id(
+                user_profile_id=user_profile_id, job_profile_id=job_profile_id,
+                nopp=True, dataframe=False
+            )
+
+            ipersona_reaction = IpersonaSessionTinderUserReactionSchema(run_stage=run_stage)
+            reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(
+                user_profile_id=user_profile_id, job_profile_id=job_profile_id,
+                nopp=True, dataframe=False
+            )
+
+            match_score = (
+                job_match_data[0]["attributes"].get("match_score", "Unknown")
+                if job_match_data else "Unknown"
+            )
+            job_match = (
+                job_match_data[0]["attributes"].get("match_level", "Unknown")
+                if job_match_data else "Unknown"
+            )
+
+            summary_response.append({
+                "job_profile_id": job_profile_id,
+                "reaction_id": reaction_id,
+                "job_title": job_title,
+                "job_match_score": match_score,
+                "job_match": job_match,
+                "complete_interviews_count": complete_count,
+                "incomplete_interviews_count": incomplete_count,
+                "total_interviews_count": complete_count + incomplete_count,
+                "score": average_score,
+            })
+
+        cursor["total"] = len(summary_response)
+        output = add_engagement_columns(summary_response, cursor, kind="jobs", **kwargs)
+        return output, cursors
+
     except Exception as e:
         logger.error(f"Error processing files: {e}")
-        error_msg = str(e)
-        return error_msg, error_msg
-        
+        return str(e), str(e)
+
+def summarize_challenge_interviews(
+    run_stage,
+    user_profile_id, 
+    filter,
+    cursor,
+    since, 
+    limit,
+    information_level,
+    return_skip
+):
+    try:
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        query_filter = filter or {}
+        kwargs = {**query_filter}
+
+        data, cursors = ipersona_session.filter_by_tinder_user_profile_id(
+            user_profile_id=user_profile_id, 
+            cursor=cursor, 
+            since=since, 
+            limit=limit, 
+            nopp=True, 
+            dataframe=False,
+            **kwargs
+        )
+
+        if not data:
+            logger.info("No session data found.")
+            return add_engagement_columns([], cursor, kind='challenge', **kwargs), cursors
+
+        # Step 1: Extract metrics
+        data = extracted_needed_metrics(data)
+
+        if not data:
+            logger.info("No data found after metric extraction.")
+            return add_engagement_columns([], cursor, kind='challenge', **kwargs), cursors
+
+        # Step 2: Filter for valid challenge_id only
+        valid_records = [d for d in data if d.get("challenge_id") not in (None, 0)]
+
+        if not valid_records:
+            logger.info("No valid challenge_id found.")
+            return add_engagement_columns([], cursor, kind='challenge', **kwargs), cursors
+
+        # Step 3: Group by challenge_id
+        challenge_summary = defaultdict(list)
+        for record in valid_records:
+            challenge_summary[record["challenge_id"]].append(record)
+
+        summary_response = []
+
+        # Step 4: Process each valid challenge group
+        for challenge_id, records in challenge_summary.items():
+            complete_count = sum(1 for r in records if r.get("complete_status"))
+            incomplete_count = len(records) - complete_count
+
+            total_score = sum(
+                r.get("overall_performance_score", 0) for r in records if r.get("overall_performance_score") is not None
+            )
+
+            average_score = (
+                round(total_score / complete_count, 2)
+                if complete_count > 0 else "N/A"
+            )
+
+            try:
+                ipersona_job = IpersonaChallengeDocumentSchema(run_stage=run_stage)
+                challenge_data = ipersona_job.get_challenge_by_id(
+                    challengeId=challenge_id,
+                    nopp=True,
+                    dataframe=False
+                )
+
+                if not challenge_data or not isinstance(challenge_data, dict):
+                    logger.warning(f"Challenge data not found or invalid for challenge_id {challenge_id}")
+                    continue
+
+                challenge_title = challenge_data.get("attributes", {}).get("Title", "")
+
+            except Exception as e:
+                logger.error(f"Failed to fetch challenge data for challenge_id {challenge_id}: {e}")
+                continue
+
+            summary_response.append({
+                "challenge_id": challenge_id,
+                "challenge_title": challenge_title,
+                "complete_interviews_count": complete_count,
+                "incomplete_interviews_count": incomplete_count,
+                "total_interviews_count": complete_count + incomplete_count,
+                "score": average_score
+            })
+
+        cursor["total"] = len(summary_response)
+        output = add_engagement_columns(summary_response, cursor, kind='challenge', **kwargs)
+
+        return output, cursors
+
+    except Exception as e:
+        logger.error(f"Error processing challenge interviews: {e}")
+        return str(e), str(e)
+     
 def extracted_needed_metrics(data):
     try:
         extracted_observers = []  

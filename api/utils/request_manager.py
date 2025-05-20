@@ -556,6 +556,44 @@ class JobReactionManager(JobManagerBase):
         for x in keep_columns:
             self.keep_columns.append(x)
 
+
+        # Table column views for different devices
+        desktop_view = ['challenge_title', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        tablet_view = ['challenge_title', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        mobile_view = ['challenge_title', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        sorting = ['challenge_title', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count']
+        link_icon = []
+        # download_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+
+        # Columns configuration for the session jobs
+        self.challenge_columns = {
+            'challenge_id': {'label': 'Challenge ID', 'ctype': 'string', 'options': []},
+            'challenge_title': {'label': 'Job Title', 'ctype': 'string', 'options': []},
+            'complete_interviews_count': {'label': 'Complete Interview Count', 'ctype': 'number', 'options': []},
+            'incomplete_interviews_count': {'label': 'Incomplete Interview Count', 'ctype': 'number', 'options': []},
+            'total_interviews_count': {'label': 'Total Interview Coun    t', 'ctype': 'number', 'options': []},
+            'score': {'label': 'Score', 'ctype': 'string', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]}
+        }
+        
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.challenge_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.challenge_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.challenge_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.challenge_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.challenge_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.challenge_columns[x]['icon'] = self.uiuxbt.create_expand_icon("challenge_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+
         # Initialize the table
         self.table = self.uiuxbt.table
 
@@ -653,6 +691,8 @@ class JobReactionManager(JobManagerBase):
                 colmap = self.admin_allusers_performance_columns
             elif kind == 'admin_each_job':
                 colmap = self.admin_each_job_columns 
+            elif kind == 'challenge':
+                colmap = self.challenge_columns 
 
             for c, cval in colmap.items():
                 cval['name'] = c

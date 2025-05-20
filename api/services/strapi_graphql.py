@@ -169,9 +169,6 @@ class StrapiGraphql():
             kwargs = {'query': query, 'variables': variables}
            
             
-        print(f"[DEBUG] StrapiGraphql Select_from_table URL: {self.apiroot}")
-        print(f"[DEBUG] StrapiGraphql Select_from_table Headers: {headers}")
-        print(f"[DEBUG] StrapiGraphql Select_from_table Payload: {kwargs}")
         try:
             request = requests.post(self.apiroot, 
                                     headers=headers,

@@ -800,6 +800,53 @@ class IpersonaJobSchema(LeapBaseClass):
             logger.error(f"Error filtering jobs by job_profile_id {job_profile_id}: {e}")
             return None
 
+    def get_extracted_data(self, job_json):
+        """
+        Extracts relevant job or job data from a JSON response.
+
+        Parameters:
+        ----------
+        job_json : dict
+            The JSON data containing job or job information.
+
+        Returns:
+        -------
+        list or None
+            A list of extracted job or job data or None if no data is found.
+        """
+        try:
+            if isinstance(job_json, list) and len(job_json) > 0:
+                for entry in job_json:
+                    if 'data' in entry:
+                        job_data = entry.get('data')
+                        return job_data
+                        
+            # if isinstance(job_json, list) and len(job_json) > 0:
+            #     first_item = job_json[0]
+            #     if 'data' in first_item:
+            #         if 'tinderJobProfiles' in first_item['data']:
+            #             job_data = first_item['data']['tinderJobProfiles']['data']
+            #             if not job_data:
+            #                 logger.warn("No job data found in the extracted data.")
+            #                 return None
+            #             return job_data
+                    
+            #         elif 'tinderUserProfiles' in first_item['data']:
+            #             job_data = first_item['data']['tinderUserProfiles']['data']
+            #             if not job_data:
+            #                 logger.warn("No job data found in the extracted data.")
+            #                 return None
+            #             return job_data
+
+            logger.warn("Invalid job_json format or missing data.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting data: {e}")
+            return None
+      
+        # Initialize logging
+    
     def filter_by_template_id(self, template_id, cursor={}, since=None, limit=None, **kwargs):
         try:
             if not cursor:
@@ -838,46 +885,6 @@ class IpersonaJobSchema(LeapBaseClass):
             logger.error(f"Error filtering jobs by template_id {template_id}: {e}")
             return None
     
-    # def filter_by_templates_id(self, template_id, cursor={}, since=None, limit=None, **kwargs):
-    #     try:
-    #         if not template_id:
-    #             logger.warn("Invalid or missing template_id")
-    #             return None
-
-    #         # Step 1: Build the filter for 'template_id'
-    #         session_filter = f"""
-    #             filters: {{
-    #                 tinder_templates : {{ id: {{ eq: {template_id} }} }}
-    #         """
-
-    #         # Step 2: Add 'since' filter if provided
-    #         if since:
-    #             since_date = (datetime.utcnow() - timedelta(days=since)).isoformat() + 'Z'
-    #             session_filter += f', createdAt: {{ gte: "{since_date}" }}'
-
-    #         session_filter += " }"
-    #         print('=------------------------------------------------------------------')
-    #         print(session_filter)
-    #         # Step 3: Fetch data with the filter
-    #         data_json, cursors = self.get_all_objects(filter=session_filter, cursor=cursor, **kwargs)
-    #         print('=------------------------------------------------------------------')
-    #         print(data_json)
-    #         return data_json, cursors
-    #         # Step 4: Extract session data
-    #         # data = self.get_sessions_data(data_json)
-    #         # data = self.get_extracted_data(data_json)
-    #         # data = self.job_extracted_data(data)
-
-    #         # Step 5: Apply 'limit' if provided
-    #         if limit and data:
-    #             data = data[:limit]
-
-    #         return data, cursor
-
-    #     except Exception as e:
-    #         logger.error(f"Error filtering jobs by template_id {template_id}: {e}")
-    #         return None
-
     def job_extracted_data(self, data):
         """
         Extracts relevant job data from a JSON response.
@@ -948,53 +955,6 @@ class IpersonaJobSchema(LeapBaseClass):
             logger.error(f"Error fetching all jobs' info: {e}")
             return None
 
-    def get_extracted_data(self, job_json):
-        """
-        Extracts relevant job or job data from a JSON response.
-
-        Parameters:
-        ----------
-        job_json : dict
-            The JSON data containing job or job information.
-
-        Returns:
-        -------
-        list or None
-            A list of extracted job or job data or None if no data is found.
-        """
-        try:
-            if isinstance(job_json, list) and len(job_json) > 0:
-                for entry in job_json:
-                    if 'data' in entry:
-                        job_data = entry.get('data')
-                        return job_data
-                        
-            # if isinstance(job_json, list) and len(job_json) > 0:
-            #     first_item = job_json[0]
-            #     if 'data' in first_item:
-            #         if 'tinderJobProfiles' in first_item['data']:
-            #             job_data = first_item['data']['tinderJobProfiles']['data']
-            #             if not job_data:
-            #                 logger.warn("No job data found in the extracted data.")
-            #                 return None
-            #             return job_data
-                    
-            #         elif 'tinderUserProfiles' in first_item['data']:
-            #             job_data = first_item['data']['tinderUserProfiles']['data']
-            #             if not job_data:
-            #                 logger.warn("No job data found in the extracted data.")
-            #                 return None
-            #             return job_data
-
-            logger.warn("Invalid job_json format or missing data.")
-            return None
-
-        except Exception as e:
-            logger.error(f"Error extracting data: {e}")
-            return None
-      
-        # Initialize logging
-    
 
     def get_trainee_job_profile(self, limit, since, cursor, filter_data, job_profile_id):
         # Default page size and pagination
@@ -3560,7 +3520,96 @@ class IpersonaChallengeDocumentSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error extracting challenge data: {e}")
             return None
-        
+
+    def filter_by_job_id(self, job_profile_id, **kwargs):
+        """
+        Fetches job data filtered by job profile ID.
+
+        Parameters:
+        ----------
+        job_profile_id : int or str
+            The job profile ID to filter jobs by.
+        kwargs : dict
+            Additional filtering arguments.
+
+        Returns:
+        -------
+        list or None
+            Filtered job data or None if an error occurs.
+        """
+        try:
+            if not job_profile_id:
+                logger.warn("Invalid or missing job_profile_id")
+                return None
+
+            job_filter = f"""
+                filters: {{
+                    id : {{ eq: {job_profile_id} }} 
+                }}
+            """
+            data_json = self.get_all_objects(filter=job_filter, **kwargs)
+            if not data_json:
+                logger.warn(f"No job data found for job_profile_id: {job_profile_id}")
+                return None
+            
+            data = self.get_extracted_data(data_json)
+            if not data:
+                logger.warn(f"No extracted data for job_profile_id: {job_profile_id}")
+                return None
+
+            return data
+
+        except Exception as e:
+            logger.error(f"Error filtering jobs by job_profile_id {job_profile_id}: {e}")
+            return None
+
+    def get_extracted_data(self, job_json):
+        """
+        Extracts relevant job or job data from a JSON response.
+
+        Parameters:
+        ----------
+        job_json : dict
+            The JSON data containing job or job information.
+
+        Returns:
+        -------
+        list or None
+            A list of extracted job or job data or None if no data is found.
+        """
+        try:
+            if isinstance(job_json, list) and len(job_json) > 0:
+                for entry in job_json:
+                    if 'data' in entry:
+                        job_data = entry.get('data')
+                        return job_data
+                        
+            # if isinstance(job_json, list) and len(job_json) > 0:
+            #     first_item = job_json[0]
+            #     if 'data' in first_item:
+            #         if 'tinderJobProfiles' in first_item['data']:
+            #             job_data = first_item['data']['tinderJobProfiles']['data']
+            #             if not job_data:
+            #                 logger.warn("No job data found in the extracted data.")
+            #                 return None
+            #             return job_data
+                    
+            #         elif 'tinderUserProfiles' in first_item['data']:
+            #             job_data = first_item['data']['tinderUserProfiles']['data']
+            #             if not job_data:
+            #                 logger.warn("No job data found in the extracted data.")
+            #                 return None
+            #             return job_data
+
+            logger.warn("Invalid job_json format or missing data.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting data: {e}")
+            return None
+      
+        # Initialize logging
+     
 class IpersonaSmgCretrionMetricSchema(LeapBaseClass):
     def __init__(self, run_stage='', **kwargs) -> None:
         self.kwargs = copy.deepcopy(kwargs)

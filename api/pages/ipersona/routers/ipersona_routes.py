@@ -769,249 +769,115 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             "status": 500, 
             "message": str(e)
         }
-        
-# @routes.post("/engagement_jobs_status_new")
-# def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved) :
-#     """
-#     Calculate interview engagement status for a user across all job types.
+
+@routes.post("/engagement_challenge_status", tags=["Session Endpoints"])
+def calculate_engagement_challenge_status(request: pemodel.AllUserSessionRequestRecieved):
+    """
+    Calculate interview engagement status for a user across all challenges.
     
-#     Retrieves and summarizes a user's engagement with interview sessions for
-#     different job categories.
+    Retrieves and summarizes a user's engagement with interview sessions for
+    different job categories.
     
-#     Parameters
-#     ----------
-#     request : pemodel.AllUserSessionRequestRecieved
-#         Object containing:
-#         - all_user_id: User identifier
-#         - filter: Optional query filters
-#         - return_skip: Flag to include skipped items
-#         - information_level: Detail level for results
-#         - since: Starting point for pagination
-#         - limit: Maximum number of items to return
-#         - cursor: Pagination cursor
+    Parameters
+    ----------
+    request : pemodel.AllUserSessionRequestRecieved
+        Object containing:
+        - all_user_id: User identifier
+        - filter: Optional query filters
+        - return_skip: Flag to include skipped items
+        - information_level: Detail level for results
+        - since: Starting point for pagination
+        - limit: Maximum number of items to return
+        - cursor: Pagination cursor
         
-#     Returns
-#     -------
-#     Union[List, Dict]
-#         Engagement summary data or error response
-#     """
-#     run_stage = request.run_stage
-#     query_filter = request.filter or {}
-#     kwargs = query_filter.copy() if query_filter else {}
+    Returns
+    -------
+    Dict[str, Any]
+        Engagement summary data or error response
+    """
+    run_stage = request.run_stage
 
-#     if not request or not request.all_user_id:
-#         logger.error("Invalid request: Missing user ID")
-#         return {
-#             "status": 400,
-#             "message": "User ID is required"
-#         }
+    if not request or not request.all_user_id:
+        logger.error("Invalid request: Missing user ID")
+        return {
+            "all_user_id": [],
+            "challenges": [],
+            "status": 400,
+            "message": "User ID is required"
+        }
         
-#     try:
-#         logger.info(f"Calculating engagement status for user ID: {request.all_user_id}")
+    try:
+        logger.info(f"Calculating engagement status for user ID: {request.all_user_id}")
         
-#         # Step 1: Fetch trainee profile data
+        # Step 1: Fetch trainee profile data
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(
+            all_user_id=request.all_user_id, 
+            nopp=True, 
+            dataframe=False
+        )
         
-#         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-#         trainee_profile_data = ipersona_user.filter_by_alluser_id(
-#             all_user_id=request.all_user_id, 
-#             nopp=True, 
-#             dataframe=False
-#         )
-    
-#         if not trainee_profile_data:
-#             logger.warn(f"No trainee profiles found for user ID: {request.all_user_id}")
-#             return {
-#                 "all_user_id": request.all_user_id,
-#                 "status": 404,
-#                 "message": "No trainee profiles found for the given user ID"
-#             }
+        if not trainee_profile_data:
+            logger.warn(f"No trainee profiles found for user ID: {request.all_user_id}")
+            return {
+                "all_user_id": request.all_user_id,
+                "challenges": [],
+                "status": 404,
+                "message": "No trainee profiles found for the given user ID"
+            }
         
-#         tinder_user_profile_id = trainee_profile_data.get('id')
-#         if not tinder_user_profile_id:
-#             logger.error(f"Invalid trainee profile for user ID: {request.all_user_id}")
-#             return {
-#                 "all_user_id": request.all_user_id,
-#                 "status": 500,
-#                 "message": "Invalid trainee profile data"
-#             }
-          
-#         # Step 2: Process request parameters with defaults
-#         query_filter = request.filter or {}
-#         return_skip = request.return_skip
-#         information_level = request.information_level
-#         since = max(request.since, 1)  # Ensure minimum value of 1
-#         limit = max(request.limit, 1)  # Ensure minimum value of 1
-#         cursor = request.cursor
-        
-#         # Step 3: Fetch and summarize interview data
-#         data, cursor = util.summarize_interviews(
-#             run_stage,                                                 
-#             tinder_user_profile_id, 
-#             filter=query_filter,
-#             cursor=cursor, 
-#             since=since, 
-#             limit=limit,
-#             information_level=information_level,
-#             return_skip=return_skip            
-#         )
-#         logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
+        tinder_user_profile_id = trainee_profile_data.get('id')
 
-        
-#         # Step 4: Prepare response
-#         if len(data) != 0:
-#             output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)    
-#             return {
-#                 "engagement": output,
-#                 "cursor": cursor,
-#                 "status": 200,
-#                 "message": ""
-#             }
-#         else: 
-#             data = []
-#             output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)   
-#             return {
-#                 "engagement": output,
-#                 "cursor": cursor,
-#                 "status": 200,
-#                 "message": ""
-#             }
+        if not tinder_user_profile_id:
+            logger.error(f"Invalid trainee profile for user ID: {request.all_user_id}")
+            return {
+                "all_user_id": request.all_user_id,
+                "challenges": [],
+                "status": 500,
+                "message": "Invalid trainee profile data"
+            }
+            
+        # Step 2: Process request parameters with defaults
+        query_filter = request.filter or {}
+        return_skip = request.return_skip
+        information_level = request.information_level
+        since = max(request.since, 1)  # Ensure minimum value of 1
+        limit = max(request.limit, 1)  # Ensure minimum value of 1
+        cursor = request.cursor
 
-#     except Exception as e:
-#         logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
-#         return {
-#             "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
-#             "status": 500, 
-#             "message": str(e)
-#         }
+        # Step 3: Fetch and summarize interview data
+        data, cursor = util.summarize_challenge_interviews(
+            run_stage,                                                 
+            tinder_user_profile_id, 
+            filter=query_filter,
+            cursor=cursor, 
+            since=since, 
+            limit=limit,
+            information_level=information_level,
+            return_skip=return_skip            
+        )
 
-# @routes.post("/engagement_jobs_status")
-# def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecieved) :
-#     """
-#     Calculate interview engagement status for a user across all job types.
-    
-#     Retrieves and summarizes a user's engagement with interview sessions for
-#     different job categories.
-    
-#     Parameters
-#     ----------
-#     request : pemodel.AllUserSessionRequestRecieved
-#         Object containing:
-#         - all_user_id: User identifier
-#         - filter: Optional query filters
-#         - return_skip: Flag to include skipped items
-#         - information_level: Detail level for results
-#         - since: Starting point for pagination
-#         - limit: Maximum number of items to return
-#         - cursor: Pagination cursor
-        
-#     Returns
-#     -------
-#     Union[List, Dict]
-#         Engagement summary data or error response
-#     """
-#     run_stage = request.run_stage
-#     query_filter = request.filter or {}
-#     kwargs = query_filter.copy() if query_filter else {}
-
-#     if not request or not request.all_user_id:
-#         logger.error("Invalid request: Missing user ID")
-#         return {
-#             "status": 400,
-#             "message": "User ID is required"
-#         }
-        
-#     try:
-#         logger.info(f"Calculating engagement status for user ID: {request.all_user_id}")
-        
-#         # Step 1: Fetch trainee profile data
-        
-#         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-#         trainee_profile_data = ipersona_user.filter_by_alluser_id(
-#             all_user_id=request.all_user_id, 
-#             nopp=True, 
-#             dataframe=False
-#         )
-    
-#         if not trainee_profile_data:
-#             logger.warn(f"No trainee profiles found for user ID: {request.all_user_id}")
-#             return {
-#                 "all_user_id": request.all_user_id,
-#                 "status": 404,
-#                 "message": "No trainee profiles found for the given user ID"
-#             }
-        
-#         tinder_user_profile_id = trainee_profile_data.get('id')
-#         if not tinder_user_profile_id:
-#             logger.error(f"Invalid trainee profile for user ID: {request.all_user_id}")
-#             return {
-#                 "all_user_id": request.all_user_id,
-#                 "status": 500,
-#                 "message": "Invalid trainee profile data"
-#             }
-          
-#         # Step 2: Process request parameters with defaults
-#         query_filter = request.filter or {}
-#         return_skip = request.return_skip
-#         information_level = request.information_level
-#         since = max(request.since, 1)  # Ensure minimum value of 1
-#         limit = max(request.limit, 1)  # Ensure minimum value of 1
-#         cursor = request.cursor
-
-#         ipersona_job = IpersonaTraineeSessionSchema(run_stage=run_stage, limit=limit, since=since)
-#         data, cursor = ipersona_job.filter_by_user_id(
-#             tinder_user_profile_id,
-#             start=since,  
-#             limit=limit,  
-#             nopp=True, 
-#             dataframe=False,
-#             **kwargs  # Additional kwargs if needed
-#         )
-        
-#         data = [
-#                 session_data
-#                 for session in data
-#                 for session_data in session.get('attributes', {}).get('i_persona_sessions', {}).get('data', [])
-#             ]
-#         # return data
-#         # Step 3: Fetch and summarize interview data
-#         data, cursor = util.summarize_interviews_engagement(
-#             run_stage,   
-#             tinder_user_profile_id,  
-#             cursor,                       
-#             data          
-#         )
-
-#         logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
+        logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
 
         
-#         # Step 4: Prepare response
-#         if len(data) != 0:
-#             output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)    
+        # Step 4: Prepare response
+        # if data:
+        return {
+            "all_user_id": request.all_user_id,
+            "challenges": data, 
+            "status": 200, 
+            "message": ""
+        }
 
-#             return {
-#                 "engagement": output,
-#                 "cursor": cursor,
-#                 "status": 200,
-#                 "message": ""
-#             }
-#         else: 
-#             data = []
-#             output = util.add_engagement_columns(data, cursor, kind='jobs', **kwargs)   
-#             return {
-#                 "engagement": output,
-#                 "cursor": cursor,
-#                 "status": 200,
-#                 "message": ""
-#             }
-
-#     except Exception as e:
-#         logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
-#         return {
-#             "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
-#             "status": 500, 
-#             "message": str(e)
-#         }
-        
+    except Exception as e:
+        logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
+        return {
+            "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
+            "challenges": [],  
+            "status": 500, 
+            "message": str(e)
+        }
+             
 @routes.post("/admin_overview_status", tags=["Admin Endpoints"])
 async def calculate_admin_overview_status(request: pemodel.AdminDataFiltering) -> Union[List, Dict]:
     """
@@ -1444,138 +1310,7 @@ async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFilterin
             "status": 500, 
             "message": f"Error processing data: {str(e)}"
         }
-    
-# @routes.post("/admin_each_job_overview_data")
-# async def calculate_admin_eachjob_(request: pemodel.AdminDataEachJobFiltering) -> Union[List, Dict]:
-#     """
-#     Calculate administrative data for all jobs by processing session data.
-
-#     Fetches all session data based on provided filters, calculates metrics,
-#     and returns summarized results for all jobs.
-
-#     Parameters
-#     ----------
-#     request : pemodel.AdminDataFiltering
-#         Object containing:
-#         - filter: Optional query filters
-#         - return_skip: Flag to include skipped items
-#         - information_level: Detail level for results
-#         - since: Starting point for pagination
-#         - limit: Maximum number of items to return
-#         - cursor: Pagination cursor
-
-#     Returns
-#     -------
-#     Union[List, Dict]
-#         Jobs data summary or error response with the format:
-#         {
-#             "data": list,
-#             "cursor": list,
-#             "status": int,
-#             "message": str
-#         }
-#     """
-#     run_stage = request.run_stage
-
-#     try:
-#         logger.info("Starting admin all jobs data calculation")
-        
-#         # Process request parameters
-#         job_profile_id = request.job_profile_id
-#         query_filter = request.filter or {}
-#         since = max(request.since or 1, 1)  
-#         limit = max(request.limit or 1, 1)  
-#         # cursor = request.cursor
-        
-#         # Prepare query parameters
-#         kwargs = query_filter.copy() if query_filter else {}
-                
-#         # -------------- fetch the data with the query -------------- #
-#         ipersona_job = IpersonaJobSessionSchema(run_stage=run_stage, limit=limit, since=since)
-#         data, cursor = ipersona_job.filter_by_job_id(
-#             job_profile_id,
-#             start=since,  
-#             limit=limit,  
-#             nopp=True, 
-#             dataframe=False,
-#             **kwargs  # Additional kwargs if needed
-#         )
-
-#         data = [
-#                 session_data
-#                 for session in data
-#                 for session_data in session.get('attributes', {}).get('i_persona_sessions', {}).get('data', [])
-#             ]
-        
-#         # data = util.extracted_needed_metrics(data) 
-#         #return len(data)
-#         #return data
-#         # -------------- fetch the data with the query -------------- #
-        
-#         if not data:
-#             logger.warn("No session data found for admin all jobs view")
-#             data = []
-#             job_title = ''
-#             company_name = ''
-#             location = ''
-#             url = ''
-#             output = util.add_columns(
-#                         data, 
-#                         cursor, 
-#                         job_profile_id, 
-#                         job_title,
-#                         company_name,
-#                         location,
-#                         url,
-#                         kind='admin_each_job', 
-#                         **kwargs
-#                     )
-#             return {
-#                 "trainees": output,
-#                 "cursor": cursor,
-#                 "status": 200,
-#                 "message": ""
-#             }
-
-#         logger.info(f"Processing all jobs metrics for {len(data)} sessions")
-        
-#         # Step 2: Summarize all jobs data
-#         result, total = util.summarize_eachjob_data(run_stage, data)
-#         # cursor['total'] = total
-
-#         if result:
-#             data = result['trainees']
-#             job_title = result['job_title']
-#             company_name = result['company_name']
-#             location = result['location']
-#             url = result['url']
-#             output = util.add_columns(
-#                         data, 
-#                         cursor, 
-#                         job_profile_id, 
-#                         job_title,
-#                         company_name,
-#                         location,
-#                         url,
-#                         kind='admin_each_job', 
-#                         **kwargs
-#                     )
-            
-#             return {
-#                 "trainees": output,
-#                 "cursor": cursor,
-#                 "status": 200,
-#                 "message": ""
-#             }
-#             logger.info("Admin all jobs data calculated successfully")
-
-#     except Exception as e:
-#         logger.error(f"Error processing admin each jobs data: {str(e)}", exc_info=True)
-#         return {
-#             "status": 500, 
-#             "message": f"Error processing data: {str(e)}"
-#         }
-      
+          
 @routes.post("/admin_allusers_performance_data", tags=["Admin Endpoints"])
 async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFiltering) :
     """
