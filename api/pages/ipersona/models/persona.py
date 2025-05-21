@@ -37,6 +37,8 @@ class UserSessionRequestRecieved(MyBaseModel):
 class AlUserSessionRequestRecieved(MyBaseModel):
     all_user_id: int
     job_profile_id: int
+    template_id: int
+    challenge_id: int
 
 class AllUserIdRecieved(MyBaseModel):
     all_user_id: int

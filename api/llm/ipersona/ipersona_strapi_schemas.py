@@ -245,7 +245,6 @@ class IpersonaSessionSchema(LeapBaseClass):
                     tinder_job_profile : {{ id: {{ eq: {job_profile_id} }} }}
                 }}
             """
-
             data_json = self.get_all_objects(filter=session_filter, **kwargs)
 
             data = self.get_sessions_data(data_json)
@@ -259,6 +258,60 @@ class IpersonaSessionSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}")
             return {'error': f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}"}
+    
+    def filter_by_with_user_template_id(self, user_profile_id, template_id, **kwargs):
+        try:
+            if not user_profile_id or not template_id:
+                logger.error("User Profile ID or Template ID is missing!")
+                return None
+            
+            session_filter = f"""
+                filters: {{
+                    tinder_user_profile : {{ id: {{ eq: {user_profile_id} }} }},
+                    tinder_template : {{ id: {{ eq: {template_id} }} }}
+                }}
+            """
+
+            data_json = self.get_all_objects(filter=session_filter, **kwargs)
+
+            data = self.get_sessions_data(data_json)
+
+            if data is None:
+                logger.warn(f"No session data found for User Profile ID {user_profile_id} and Template ID {template_id}.")
+                return None
+            
+            return data
+
+        except Exception as e:
+            logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Template ID {template_id}: {str(e)}")
+            return {'error': f"Error fetching session data for User Profile ID {user_profile_id} and Template ID {template_id}: {str(e)}"}
+    
+    def filter_by_with_user_challenge_id(self, user_profile_id, challenge_id, **kwargs):
+        try:
+            if not user_profile_id or not challenge_id:
+                logger.error("User Profile ID or Challenge ID is missing!")
+                return None
+            
+            session_filter = f"""
+                filters: {{
+                    tinder_user_profile : {{ id: {{ eq: {user_profile_id} }} }},
+                    challenge_document : {{ id: {{ eq: {challenge_id} }} }}
+                }}
+            """
+
+            data_json = self.get_all_objects(filter=session_filter, **kwargs)
+
+            data = self.get_sessions_data(data_json)
+
+            if data is None:
+                logger.warn(f"No session data found for User Profile ID {user_profile_id} and Challenge ID {challenge_id}.")
+                return None
+            
+            return data
+
+        except Exception as e:
+            logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Challenge ID {challenge_id}: {str(e)}")
+            return {'error': f"Error fetching session data for User Profile ID {user_profile_id} and Challenge ID {challenge_id}: {str(e)}"}
     
     def get_all_sessions(self, cursor={}, **kwargs):
         try:

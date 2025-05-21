@@ -1542,6 +1542,9 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> U
         Session data for the user and job, or an error response
     """  
     run_stage = request.run_stage
+    job_profile_id = request.job_profile_id
+    template_id = request.template_id
+    challenge_id = request.challenge_id
  
     try:
         logger.info(f"Fetching session data for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
@@ -1567,23 +1570,62 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> U
         tinder_user_profile_id = trainee_profile_data['id']
          
         # Step 3: Fetch session data by user and job ID
-        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-        user_data = ipersona_session.filter_by_with_user_job_id(
-            user_profile_id=tinder_user_profile_id,
-            job_profile_id=request.job_profile_id,
-            nopp=True, 
-            dataframe=False
-        )
-
-        if not user_data:
-            logger.warn(f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
-            return JSONResponse(
-                status_code=200, 
-                content={"message": f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}"}
+        if job_profile_id:
+            ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+            user_data = ipersona_session.filter_by_with_user_job_id(
+                user_profile_id=tinder_user_profile_id,
+                job_profile_id=request.job_profile_id,
+                nopp=True, 
+                dataframe=False
             )
 
-        logger.info(f"Session data successfully retrieved for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
-        return user_data
+            if not user_data:
+                logger.warn(f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
+                return JSONResponse(
+                    status_code=200, 
+                    content={"message": f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}"}
+                )
+
+            logger.info(f"Session data successfully retrieved for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
+            return user_data
+        
+        elif template_id:
+            ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+            user_data = ipersona_session.filter_by_with_user_template_id(
+                user_profile_id=tinder_user_profile_id,
+                template_id=request.template_id,
+                nopp=True, 
+                dataframe=False
+            )
+
+            if not user_data:
+                logger.warn(f"No session data found for user ID: {request.all_user_id} and template ID: {request.template_id}")
+                return JSONResponse(
+                    status_code=200, 
+                    content={"message": f"No session data found for user ID: {request.all_user_id} and template ID: {request.template_id}"}
+                )
+
+            logger.info(f"Session data successfully retrieved for user ID: {request.all_user_id} and template ID: {request.template_id}")
+            return user_data
+        
+        elif challenge_id:
+            ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+            user_data = ipersona_session.filter_by_with_user_challenge_id(
+                user_profile_id=tinder_user_profile_id,
+                challenge_id=request.challenge_id,
+                nopp=True, 
+                dataframe=False
+            )
+
+            if not user_data:
+                logger.warn(f"No session data found for user ID: {request.all_user_id} and challenge ID: {request.challenge_id}")
+                return JSONResponse(
+                    status_code=200, 
+                    content={"message": f"No session data found for user ID: {request.all_user_id} and challenge ID: {request.challenge_id}"}
+                )
+
+            logger.info(f"Session data successfully retrieved for user ID: {request.all_user_id} and challenge ID: {request.challenge_id}")
+            return user_data
 
     except Exception as e:
         logger.error(f"Error processing session data for user ID: {request.all_user_id} - {str(e)}", exc_info=True)
