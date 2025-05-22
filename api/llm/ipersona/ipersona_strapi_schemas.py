@@ -233,32 +233,52 @@ class IpersonaSessionSchema(LeapBaseClass):
             logger.error(f"Error filtering by template_id: {e}")
             return None
         
-    def filter_by_with_user_job_id(self, user_profile_id, job_profile_id, **kwargs):
+    def filter_by_with_user_job_id(self, 
+                               user_profile_id, 
+                               job_profile_id, 
+                               cursor={}, 
+                               since=None, 
+                               limit=None,
+                               **kwargs):
         try:
             if not user_profile_id or not job_profile_id:
                 logger.error("User Profile ID or Job Profile ID is missing!")
                 return None
-            
+
+            # Begin filters block
             session_filter = f"""
                 filters: {{
-                    tinder_user_profile : {{ id: {{ eq: {user_profile_id} }} }},
-                    tinder_job_profile : {{ id: {{ eq: {job_profile_id} }} }}
-                }}
+                    tinder_user_profile: {{ id: {{ eq: {user_profile_id} }} }},
+                    tinder_job_profile: {{ id: {{ eq: {job_profile_id} }} }}
             """
-            data_json = self.get_all_objects(filter=session_filter, **kwargs)
 
+            # Add createdAt inside filters if provided
+            if since:
+                since_date = (datetime.utcnow() - timedelta(days=since)).isoformat() + 'Z'
+                session_filter += f', createdAt: {{ gte: "{since_date}" }}'
+
+            # Close filters block
+            session_filter += " }"
+
+            # Run query
+            data_json, curs = self.get_all_objects(filter=session_filter, cursor=cursor, **kwargs)
+            
             data = self.get_sessions_data(data_json)
 
             if data is None:
-                logger.warn(f"No session data found for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}.")
+                logger.warning(f"No session data found for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}.")
                 return None
-            
+
+            # Apply limit if needed
+            if limit:
+                data = data[:limit]
+
             return data
 
         except Exception as e:
             logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}")
-            return {'error': f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}"}
-    
+            return {'error': f"Error fetching session data: {str(e)}"}
+
     def filter_by_with_user_template_id(self, user_profile_id, template_id, **kwargs):
         try:
             if not user_profile_id or not template_id:
@@ -604,6 +624,7 @@ class IpersonaTraineeSchema(LeapBaseClass):
                 }}
             """
             data_json = self.get_all_objects(filter=session_filter, **kwargs)
+
             if not data_json:
                 logger.warn(f"No trainee profile data found for all_user_id: {all_user_id}")
                 return None
@@ -1586,6 +1607,11 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
                                 id
                             }
                         } 
+                        i_persona_observers {
+                            data {
+                                id
+                            }
+                        }
                         %s
                     }
                 }
@@ -1598,7 +1624,9 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
             "id": "ID",
             "attributes": "JSON",            
             "tinder_user_profile": "ID",
-            "tinder_job_profile": "ID"        }
+            "tinder_job_profile": "ID",
+            "i_persona_observers": "ID"       
+         }
 
         self.id_names_map = {  }
          
@@ -1631,7 +1659,6 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
             logger.error(f"Error filtering by tinder user profile ID {user_profile_id}: {str(e)}")
             return {'error': f"Error processing request: {str(e)}"}
 
-    
     def filter_by_with_user_and_job_id(self, user_profile_id, job_profile_id, **kwargs):
         try:
             session_overall_observer_filter = f"""
@@ -1661,7 +1688,7 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
     def save_Session_Overall_Observer(self, params, **kwargs):
         try:
             session_json = self.save_or_update_object(params, **kwargs)
-
+            # return session_json
             session = self.get_extracted_from_user_job_data(session_json)
             if not session:
                 logger.warn(f"No session data extracted for params: {params}")
@@ -1670,19 +1697,10 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
             logger.info(f"Session data saved and extracted successfully for params: {params}")
             return session
 
-        except KeyError as e:
-            logger.error(f"Key error during save or update: {str(e)}")
-            return {"error": f"Key error: {str(e)}"}
-
-        except TypeError as e:
-            logger.error(f"Type error in session data extraction: {str(e)}")
-            return {"error": f"Type error: {str(e)}"}
-
         except Exception as e:
             logger.error(f"Unexpected error during save_Session_Overall_Observer: {str(e)}")
             return {"error": f"An unexpected error occurred: {str(e)}"}
 
-    
     def update_session(self, params, **kwargs):
         try:
             if self.id_name() not in params:
@@ -1701,15 +1719,9 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
             logger.error(f"Error updating session: {str(e)}")
             return {'error': f"Error updating session: {str(e)}"}
 
-
     def get_extracted_data(self, session_json):
         try:
             if isinstance(session_json, list) and len(session_json) > 0:  
-                # first_item = session_json[0]
-
-                # if 'data' in first_item and 'createIPersonaSessionOverallObserver' in first_item['data']:
-                #     session = first_item['data']['createIPersonaSessionOverallObserver']['data']
-                
                 if isinstance(session_json, list) and len(session_json) > 0:
                     for entry in session_json:
                         if 'data' in entry:
@@ -1731,7 +1743,6 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
             logger.error(f"Error extracting data from session JSON: {str(e)}")
             return {'error': f"Error extracting data from session JSON: {str(e)}"}
 
-    
     def get_extracted_from_user_job_data(self, session_json):
         try:
             all_sessions = []
@@ -1744,29 +1755,29 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
                 logger.warn("session_json list is empty")
                 return {"error": "No session data provided."}
 
-            # first_item = session_json[0]
-            # if 'data' not in first_item:
-            #     logger.error("First item in session_json is missing the 'data' key")
-            #     return {"error": "Invalid session data: missing 'data' key."}
-
-            # if 'iPersonaSessionOverallObservers' not in first_item['data']:
-            #     logger.error("First item 'data' does not contain 'iPersonaSessionOverallObservers'")
-            #     return {"error": "Invalid session data: missing 'iPersonaSessionOverallObservers' key."}
-
-            # observer_data = first_item['data']['iPersonaSessionOverallObservers'].get('data', [])
             if isinstance(session_json, list) and len(session_json) > 0:
                 for entry in session_json:
                     if 'data' in entry:
                         observer_data = entry.get('data')
-                        
+
             if len(observer_data) == 0:
                 logger.warn("Trainee does not have session overall observer data")
                 return {"error": "No observer data found."}
 
-            for session in observer_data:
-                attributes = session.get('attributes', {}).get('attributes', {})
-                session_id = session.get('id', '')
+            if isinstance(observer_data, dict):
+                # Single observer data
+                attributes = observer_data.get('attributes', {}).get('attributes', {})
+                session_id = observer_data.get('id', '')
                 all_sessions.append(attributes)
+
+            elif isinstance(observer_data, list):
+                # List of observer data
+                for session in observer_data:
+                    attributes = session.get('attributes', {}).get('attributes', {})
+                    session_id = session.get('id', '')
+                    all_sessions.append(attributes)
+            else:
+                logger.warn("observer_data is neither dict nor list")
 
             if len(all_sessions) == 0:
                 logger.warn("No valid session attributes were extracted")
@@ -1779,25 +1790,14 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
             logger.info(f"Successfully extracted {len(all_sessions)} overall observer sessions for user job data")
             return result
 
-        except (KeyError, TypeError, AttributeError) as e:
-            logger.error(f"Error extracting user job data: {str(e)}")
-            return {"error": f"Data extraction error: {str(e)}"}
-
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             return {"error": f"An unexpected error occurred: {str(e)}"}
-
-        
+    
     def get_extracted_from_user_data(self, data_json):
         try:
             all_datas = []
 
-            # if isinstance(data_json, list) and len(data_json) > 0:  
-            #     first_item = data_json[0]
-
-            #     if 'data' in first_item and 'iPersonaSessionOverallObservers' in first_item['data']:
-            #         data = first_item['data']['iPersonaSessionOverallObservers']['data']
-                    
             if isinstance(data_json, list) and len(data_json) > 0:
                 for entry in data_json:
                     if 'data' in entry:

@@ -227,15 +227,21 @@ const InterviewChat = () => {
 
     const fetchSession = async() =>{
         const data = {
-            job_profile_id: 46,
-            all_user_id: 1959,
-            template: false,
-            generate: false,
-            external: false,
-            challenge: false,
-            template_id: 0, 
-            challenge_id: 0
-        }
+            "run_stage": "dev",
+            "all_user_id": 1959,
+            "job_profile_id": 46,
+            "template_id": 0,
+            "challenge_id": 0,
+            "cursor": {
+                        "page": 1, 
+                        "pageSize": 20,
+                        "page_count": 1,
+                        "page_size": 20,
+                        "query": {},
+                        "total": 58
+                    }
+            }
+        
         const response = await Api.fetchSession(data)
         console.log("sessions", response?.data)
         setSession(response?.data)

@@ -47,17 +47,69 @@ async def health_check():
     # return data
     # return reaction_id
     
-    schema = StrapiGraphql(
-        # url=config.strapi.url,
-        # token=config.strapi.token,
-        # headers={
-        #     "Authorization": f"Bearer {config.strapi.token}",
-        #     "Content-Type": "application/json"          
-        # }
-    )
-    table = "iPersonaSession"
-    res = schema.get_user_infos()
-    return res
+    # schema = StrapiGraphql(
+    #     # url=config.strapi.url,
+    #     # token=config.strapi.token,
+    #     # headers={
+    #     #     "Authorization": f"Bearer {config.strapi.token}",
+    #     #     "Content-Type": "application/json"          
+    #     # }
+    # )
+    # table = "iPersonaSession"
+    # res = schema.get_user_infos()
+    # return res
+    try:
+        ipersona_session = IpersonaSessionSchema(run_stage='dev')        
+        cursors = {
+                "page": 1, 
+                "pageSize": 100,
+                "page_count": 1,
+                "page_size": 100,
+                "query": {},
+                "total": 100
+            }  
+        session = ipersona_session.filter_by_with_user_job_id(
+            user_profile_id=197,
+            job_profile_id=46, 
+            # template_id = 55,
+            cursor=cursors,
+            since=3,
+            limit=100,
+            nopp=True, 
+            dataframe=False
+            ) 
+        session_chatobserver = util.extract_observers_metrics(session)
+        return len(session_chatobserver)
+    except Exception as e:
+        logger.error(f"Error in health check: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Health check failed: {str(e)}"}
+        )
+
+    # ipersona_overall = IpersonaSessionOverallObserverSchema(run_stage="dev")
+ 
+    # message_data = {
+    #     "attributes": {
+    #         "overall_confidence": "confidence_overtime",
+    #         "overall_clarity": "clarity_overtime",
+    #         "overall_engagement": "engagement_overtime",
+    #         "overall_time_management": "overall_time_managements",
+    #         "overall_competency": "overall_competencies",
+    #         "overall_performance": "overall_performance_scores"
+    #     },
+    #     "i_persona_observers": [147, 148],
+    #     # "tinder_user_profile": tinder_user_profile_id,
+    #     # "tinder_job_profile": userdata['job_profile_id']
+    # }
+    
+    # response = ipersona_overall.save_Session_Overall_Observer(
+    #     params=message_data, 
+    #     nopp=True, 
+    #     dataframe=False)
+    
+    # logger.success(f"new entry make on session overall observer")
+    # return response
 
 @routes.post("/audio_upload", tags=["Audio Endpoints"])
 async def speech_to_text(file: UploadFile = File(...)) -> dict:
@@ -283,8 +335,8 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
                     "external": False,
                     "challenge": False
                 },
-                "tinder_template_user_profile_id": tinder_user_profile_id,
-                "tinder_template_job_profile_id": job_profile_id,
+                "tinder_user_profile_id": tinder_user_profile_id,
+                "tinder_job_profile_id": job_profile_id,
                 "tinder_template": template_id,
                 "challenge_document": challenge_id
             }
@@ -511,11 +563,14 @@ async def calculate_overall_progress(request: pemodel.OverallRequestRecieved):
         ipersona_overall = IpersonaSessionOverallObserverSchema(run_stage=run_stage)
         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
 
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=request.all_user_id, nopp=True, dataframe=False)
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(
+            all_user_id=request.all_user_id, 
+            nopp=True,
+            dataframe=False)
+    
         if not trainee_profile_data:
             logger.warn(f"No trainee profiles found for user_id: {request.all_user_id}")
             return JSONResponse(status_code=200, content={"message": "No trainee profiles found by the given all_user_id"})
-
 
         tinder_user_profile_id = trainee_profile_data.get('id', None)
         if not tinder_user_profile_id:
@@ -587,12 +642,13 @@ async def calculate_allstat_progress(request: pemodel.AllUserIdRecieved):
             nopp=True,
             dataframe=False
             )
-        
+
         if not session_chatobserver or not isinstance(session_chatobserver, list) or len(session_chatobserver) == 0:
             logger.warn(f"No session data found for user_profile_id: {tinder_user_profile_id}")
             return JSONResponse(status_code=200, content={"message": "Session data empty"})
 
         result = util.all_session_jobs_average_metrics(session_chatobserver)
+
         if not result or not isinstance(result, dict):
             logger.warn(f"Failed to calculate metrics for user_profile_id: {tinder_user_profile_id}")
             return JSONResponse(status_code=500, content={"error": "Error calculating progress metrics."})
@@ -1545,7 +1601,8 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> U
     job_profile_id = request.job_profile_id
     template_id = request.template_id
     challenge_id = request.challenge_id
- 
+    cursors = request.cursor
+
     try:
         logger.info(f"Fetching session data for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
 
@@ -1575,6 +1632,9 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> U
             user_data = ipersona_session.filter_by_with_user_job_id(
                 user_profile_id=tinder_user_profile_id,
                 job_profile_id=request.job_profile_id,
+                cursor=cursors,
+                since=30,
+                limit=100,
                 nopp=True, 
                 dataframe=False
             )

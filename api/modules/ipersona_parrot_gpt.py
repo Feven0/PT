@@ -813,7 +813,11 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
             "i_persona_session_id": sessionId, 
             "status": status,
         }
-        updated_session = ipersona_session.update_session(params=session_data, nopp=True, dataframe=False, return_object=True)
+        updated_session = ipersona_session.update_session(
+            params=session_data, 
+            nopp=True, 
+            dataframe=False, 
+            return_object=True)
      
         if updated_session:
             logger.info("session status updated to closed")
@@ -826,17 +830,32 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
             nopp=True, 
             dataframe=False
             )
+        
         if not trainee_profile_data:
-                logger.warn("No trainee user profiles found.")
-                return []
+            logger.warn("No trainee user profiles found.")
+            return []
+        
         tinder_user_profile_id = trainee_profile_data['id'] 
-                      
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage) 
+        cursor = {
+                "page": 1, 
+                "pageSize": 100,
+                "page_count": 1,
+                "page_size": 100,
+                "query": {},
+                "total": 100
+            }  
+                 
         session = ipersona_session.filter_by_with_user_job_id(
             user_profile_id=tinder_user_profile_id,
             job_profile_id=data['job_profile_id'], 
+            cursor=cursor,
+            since=30,
+            limit=100,
             nopp=True, 
             dataframe=False
             ) 
+        
         session_chatobserver = extract_observers_metrics(session)
         
         if status == 'Completed':  
@@ -969,7 +988,12 @@ async def overall_interview_evaluations_external(
         session_chatobserver = extract_observers_metrics(session)
 
         if status == 'External':  
-            await calculate_overall_progress_external(run_stage, all_user_id,  tinder_user_profile_id, job_profile_id, session_chatobserver) 
+            await calculate_overall_progress_external(
+                run_stage, 
+                all_user_id, 
+                tinder_user_profile_id, 
+                job_profile_id, 
+                session_chatobserver) 
       
       
         response = {
@@ -1322,7 +1346,7 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
         overall_time_managements = []
         overall_competencies = []
         overall_performance_scores = []
-        session_ids = []         
+        obs_ids = []         
 
         for entry in data:
             if isinstance(entry, dict):  
@@ -1336,7 +1360,7 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 obs_id = entry.get("obs_id")  
                 
                 if obs_id:
-                    session_ids.append(int(obs_id))  
+                    obs_ids.append(int(obs_id))  
                 
                 obj_time = {
                     "time": created_time,
@@ -1419,6 +1443,7 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 overall_data = {
                     "i_persona_session_overall_observer_id": session_chatobserver['id'], 
                     "attributes": attributes,
+                    "i_persona_observers": obs_ids
                 }
                 response = ipersona_overall.update_session(
                     params=overall_data, 
@@ -1434,10 +1459,15 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
             ipersona_overall = IpersonaSessionOverallObserverSchema(run_stage=run_stage)
             ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
 
-            trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=userdata['all_user_id'], nopp=True, dataframe=False)
+            trainee_profile_data = ipersona_user.filter_by_alluser_id(
+                all_user_id=userdata['all_user_id'], 
+                nopp=True, 
+                dataframe=False)
+            
             if not trainee_profile_data:
                     logger.warn("No trainee user profiles found.")
                     return []
+            
             tinder_user_profile_id = trainee_profile_data['id']    
             message_data = {
                 "attributes": {
@@ -1448,12 +1478,16 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                     "overall_competency": overall_competencies,
                     "overall_performance": overall_performance_scores
                 },
-                "sessionIds": session_ids,
-                "tinder_user_profile": tinder_user_profile_id,
-                "tinder_job_profile": userdata['job_profile_id']
+                "i_persona_observers": obs_ids,
+                # "tinder_user_profile": tinder_user_profile_id,
+                # "tinder_job_profile": userdata['job_profile_id']
             }
             
-            response = ipersona_overall.save_Session_Overall_Observer(params=message_data, nopp=True, dataframe=False)
+            response = ipersona_overall.save_Session_Overall_Observer(
+                params=message_data, 
+                nopp=True, 
+                dataframe=False)
+            
             logger.success(f"new entry make on session overall observer")
             return response
     
@@ -1611,12 +1645,31 @@ def all_session_jobs_average_metrics(data):
         if not isinstance(data, list) or len(data) == 0:
             raise ValueError("Data is empty or not in the expected list format")
 
-        data = data[0]
+        # Aggregate all values across all sessions
+        all_confidence = []
+        all_clarity = []
+        all_engagement = []
+        all_time_management = []
 
-        avg_confidence = calculate_average(data.get('overall_confidence', []))
-        avg_clarity = calculate_average(data.get('overall_clarity', []))
-        avg_engagment = calculate_average(data.get('overall_engagement', []))
-        avg_time_management = calculate_average_time_management(data.get('overall_time_management', []))
+        for session in data:
+            # Some values may be strings or missing, skip if not a list
+            conf = session.get('overall_confidence', [])
+            if isinstance(conf, list):
+                all_confidence.extend(conf)
+            clar = session.get('overall_clarity', [])
+            if isinstance(clar, list):
+                all_clarity.extend(clar)
+            eng = session.get('overall_engagement', [])
+            if isinstance(eng, list):
+                all_engagement.extend(eng)
+            tm = session.get('overall_time_management', [])
+            if isinstance(tm, list):
+                all_time_management.extend(tm)
+
+        avg_confidence = calculate_average(all_confidence)
+        avg_clarity = calculate_average(all_clarity)
+        avg_engagment = calculate_average(all_engagement)
+        avg_time_management = calculate_average_time_management(all_time_management)
 
         overall_data = {
             "avg_confidence": avg_confidence,

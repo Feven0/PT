@@ -39,6 +39,7 @@ class AlUserSessionRequestRecieved(MyBaseModel):
     job_profile_id: int
     template_id: int
     challenge_id: int
+    cursor: Optional[Dict] = {}
 
 class AllUserIdRecieved(MyBaseModel):
     all_user_id: int
