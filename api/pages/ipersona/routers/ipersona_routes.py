@@ -1578,7 +1578,7 @@ async def calculate_admin_interview_by_template(request: pemodel.AdminInterviewB
 
 # ----------------------------------- Fetching session Data ---------------------#
 @routes.post("/fetch_user_session", tags=["Session Endpoints"])
-async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> Union[List, Dict]:
+async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) :
     """
     Fetch session data for a specific user and job.
 
@@ -1601,7 +1601,8 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> U
     job_profile_id = request.job_profile_id
     template_id = request.template_id
     challenge_id = request.challenge_id
-    cursors = request.cursor
+    since = request.since
+    # limit = request.limit
 
     try:
         logger.info(f"Fetching session data for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
@@ -1629,31 +1630,40 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> U
         # Step 3: Fetch session data by user and job ID
         if job_profile_id:
             ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-            user_data = ipersona_session.filter_by_with_user_job_id(
-                user_profile_id=tinder_user_profile_id,
-                job_profile_id=request.job_profile_id,
-                cursor=cursors,
-                since=30,
-                limit=100,
-                nopp=True, 
-                dataframe=False
-            )
-
-            if not user_data:
-                logger.warn(f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
-                return JSONResponse(
-                    status_code=200, 
-                    content={"message": f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}"}
+            try:
+                user_data = ipersona_session.filter_by_with_user_job_id_by_filtering(
+                    user_profile_id=tinder_user_profile_id,
+                    job_profile_id=request.job_profile_id,
+                    # cursor={},
+                    since=since,
+                    # limit=10,
+                    nopp=True, 
+                    dataframe=False
                 )
 
-            logger.info(f"Session data successfully retrieved for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
-            return user_data
+                if not user_data:
+                    logger.warn(f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
+                    return JSONResponse(
+                        status_code=200, 
+                        content={"message": f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}"}
+                    )
+
+                logger.info(f"Session data successfully retrieved for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
+                return user_data
+            
+            except Exception as e:
+                logger.error(f"Error fetching session data for user ID: {request.all_user_id} and job ID: {request.job_profile_id} - {str(e)}", exc_info=True)
+                return JSONResponse(
+                    status_code=500, 
+                    content={"error": f"Error fetching user session: {str(e)}"}
+                )
         
         elif template_id:
             ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-            user_data = ipersona_session.filter_by_with_user_template_id(
+            user_data = ipersona_session.filter_by_with_user_template_id_by_filtering(
                 user_profile_id=tinder_user_profile_id,
                 template_id=request.template_id,
+                since=since,
                 nopp=True, 
                 dataframe=False
             )
@@ -1670,9 +1680,10 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) -> U
         
         elif challenge_id:
             ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-            user_data = ipersona_session.filter_by_with_user_challenge_id(
+            user_data = ipersona_session.filter_by_with_user_challenge_id_by_filtering(
                 user_profile_id=tinder_user_profile_id,
                 challenge_id=request.challenge_id,
+                since=since,
                 nopp=True, 
                 dataframe=False
             )

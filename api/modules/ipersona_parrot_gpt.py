@@ -837,21 +837,28 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         
         tinder_user_profile_id = trainee_profile_data['id'] 
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage) 
-        cursor = {
-                "page": 1, 
-                "pageSize": 100,
-                "page_count": 1,
-                "page_size": 100,
-                "query": {},
-                "total": 100
-            }  
+        
+        # cursor = {
+        #         "page": 1, 
+        #         "pageSize": 100,
+        #         "page_count": 1,
+        #         "page_size": 100,
+        #         "query": {},
+        #         "total": 100
+        #     }  
                  
+        # session = ipersona_session.filter_by_with_user_job_id(
+        #     user_profile_id=tinder_user_profile_id,
+        #     job_profile_id=data['job_profile_id'], 
+        #     since=30,
+        #     limit=100,
+        #     nopp=True, 
+        #     dataframe=False
+        #     ) 
+
         session = ipersona_session.filter_by_with_user_job_id(
             user_profile_id=tinder_user_profile_id,
             job_profile_id=data['job_profile_id'], 
-            cursor=cursor,
-            since=30,
-            limit=100,
             nopp=True, 
             dataframe=False
             ) 

@@ -232,8 +232,35 @@ class IpersonaSessionSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error filtering by template_id: {e}")
             return None
-        
-    def filter_by_with_user_job_id(self, 
+    
+    def filter_by_with_user_job_id(self, user_profile_id, job_profile_id, **kwargs):
+        try:
+            if not user_profile_id or not job_profile_id:
+                logger.error("User Profile ID or Job Profile ID is missing!")
+                return None
+            
+            session_filter = f"""
+                filters: {{
+                    tinder_user_profile : {{ id: {{ eq: {user_profile_id} }} }},
+                    tinder_job_profile : {{ id: {{ eq: {job_profile_id} }} }}
+                }}
+            """
+
+            data_json = self.get_all_objects(filter=session_filter, **kwargs)
+
+            data = self.get_sessions_data(data_json)
+
+            if data is None:
+                logger.warn(f"No session data found for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}.")
+                return None
+            
+            return data
+
+        except Exception as e:
+            logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}")
+            return {'error': f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}"}
+    
+    def filter_by_with_user_job_id_by_filtering(self, 
                                user_profile_id, 
                                job_profile_id, 
                                cursor={}, 
@@ -261,7 +288,7 @@ class IpersonaSessionSchema(LeapBaseClass):
             session_filter += " }"
 
             # Run query
-            data_json, curs = self.get_all_objects(filter=session_filter, cursor=cursor, **kwargs)
+            data_json = self.get_all_objects(filter=session_filter, **kwargs)
             
             data = self.get_sessions_data(data_json)
 
@@ -270,8 +297,8 @@ class IpersonaSessionSchema(LeapBaseClass):
                 return None
 
             # Apply limit if needed
-            if limit:
-                data = data[:limit]
+            # if limit:
+            #     data = data[:limit]
 
             return data
 
@@ -306,6 +333,52 @@ class IpersonaSessionSchema(LeapBaseClass):
             logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Template ID {template_id}: {str(e)}")
             return {'error': f"Error fetching session data for User Profile ID {user_profile_id} and Template ID {template_id}: {str(e)}"}
     
+    def filter_by_with_user_template_id_by_filtering(self, 
+                               user_profile_id, 
+                               template_id, 
+                               cursor={}, 
+                               since=None, 
+                               limit=None,
+                               **kwargs):
+        try:
+            if not user_profile_id or not template_id:
+                logger.error("User Profile ID or Template ID is missing!")
+                return None
+
+            # Begin filters block
+            session_filter = f"""
+                filters: {{
+                    tinder_user_profile: {{ id: {{ eq: {user_profile_id} }} }},
+                    tinder_template : {{ id: {{ eq: {template_id} }} }}
+            """
+
+            # Add createdAt inside filters if provided
+            if since:
+                since_date = (datetime.utcnow() - timedelta(days=since)).isoformat() + 'Z'
+                session_filter += f', createdAt: {{ gte: "{since_date}" }}'
+
+            # Close filters block
+            session_filter += " }"
+
+            # Run query
+            data_json = self.get_all_objects(filter=session_filter, **kwargs)
+            
+            data = self.get_sessions_data(data_json)
+
+            if data is None:
+                logger.warning(f"No session data found for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}.")
+                return None
+
+            # Apply limit if needed
+            # if limit:
+            #     data = data[:limit]
+
+            return data
+
+        except Exception as e:
+            logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}")
+            return {'error': f"Error fetching session data: {str(e)}"}
+
     def filter_by_with_user_challenge_id(self, user_profile_id, challenge_id, **kwargs):
         try:
             if not user_profile_id or not challenge_id:
@@ -333,6 +406,52 @@ class IpersonaSessionSchema(LeapBaseClass):
             logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Challenge ID {challenge_id}: {str(e)}")
             return {'error': f"Error fetching session data for User Profile ID {user_profile_id} and Challenge ID {challenge_id}: {str(e)}"}
     
+    def filter_by_with_user_challenge_id_by_filtering(self, 
+                               user_profile_id, 
+                               challenge_id, 
+                               cursor={}, 
+                               since=None, 
+                               limit=None,
+                               **kwargs):
+        try:
+            if not user_profile_id or not challenge_id:
+                logger.error("User Profile ID or Challenge ID is missing!")
+                return None
+
+            # Begin filters block
+            session_filter = f"""
+                filters: {{
+                    tinder_user_profile: {{ id: {{ eq: {user_profile_id} }} }},
+                    challenge_document : {{ id: {{ eq: {challenge_id} }} }}
+            """
+
+            # Add createdAt inside filters if provided
+            if since:
+                since_date = (datetime.utcnow() - timedelta(days=since)).isoformat() + 'Z'
+                session_filter += f', createdAt: {{ gte: "{since_date}" }}'
+
+            # Close filters block
+            session_filter += " }"
+
+            # Run query
+            data_json = self.get_all_objects(filter=session_filter, **kwargs)
+            
+            data = self.get_sessions_data(data_json)
+
+            if data is None:
+                logger.warning(f"No session data found for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}.")
+                return None
+
+            # Apply limit if needed
+            # if limit:
+            #     data = data[:limit]
+
+            return data
+
+        except Exception as e:
+            logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}")
+            return {'error': f"Error fetching session data: {str(e)}"}
+
     def get_all_sessions(self, cursor={}, **kwargs):
         try:
             if not cursor:
