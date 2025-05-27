@@ -43,7 +43,12 @@ const InterviewChat = () => {
     const [questions, setQuestions] = useState<any>([]); 
     const handleClose = () => setShowCancelModal(false);
     const handleShow = () => setShowCancelModal(true);
+    
+    const [template_id, setTemplateId] = useState<number>(0);
+    const [challenge_id, setChallengId] = useState<number>(0);
+    const [job_profile_id, setJobProfileId] = useState<number>(46); // Keep as-is if 46 is default
 
+   
     const buttonStyle = {
         color: '#ffffff',
         fontWeight: 'bolder',
@@ -57,24 +62,37 @@ const InterviewChat = () => {
     };
 
     const ExecuteInterview = () => {
-        const temp_id = template_id || latest?.template_id;
-        const challenge_id = challeng_id || latest?.challenge_id;
-        
-        if (typeof temp_id === "number") {
-            console.log("template");
-            ExecutiveTemplate(temp_id);
+        const temp_id = template_id || latest?.template_id || 0;
+        const cha_id = challenge_id || latest?.challenge_id || 0;
+        const job_id = job_profile_id || latest?.job_profile_id || 0;
+
+        const isTempValid = temp_id > 0;
+        const isChallengeValid = cha_id > 0;
+        const isJobProfileValid = job_id > 0;
+
+        if (isTempValid && isChallengeValid) {
+            console.log("🎯 Executing Template with Challenge");
+            ExecutiveTemplate(temp_id, job_id, cha_id);
         } 
-        else if (typeof challenge_id === "number") {
-            console.log("challenge");
-            ExecutiveChallenge(challenge_id);
+        else if (isTempValid && isJobProfileValid) {
+            console.log("📄 Executing Template with Job Profile");
+            ExecutiveTemplate(temp_id, job_id, cha_id);
+        }
+        else if (!isTempValid && isChallengeValid) {
+            console.log("🔥 Executing Challenge");
+            ExecutiveChallenge(cha_id);
+        } 
+        else if (!isTempValid && !isChallengeValid && isJobProfileValid) {
+            console.log("🛠️ Generating Interview with Job Profile");
+            ExecuteGenerateInterview();
         } 
         else {
-            console.log("not template");
-            ExecuteGenerateInterview();
+            console.warn("⚠️ Invalid configuration: No valid identifiers provided");
         }
     };
-    
 
+
+    
     const ExecuteGenerateInterview = () => {
         console.log('ExecuteGenerateInterview')
         timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
@@ -85,6 +103,7 @@ const InterviewChat = () => {
             user_session,
             template_id: null,
             timerValue,
+            challenge_id: 0,
             job_profile_id: 46,
             all_user_id: 1959
         });    
@@ -93,15 +112,17 @@ const InterviewChat = () => {
         setChat(true); 
     };
 
-    const ExecutiveTemplate = async (id: any) => {
+    const ExecutiveTemplate = async (temp_id: any, job_id: any, cha_id: any) => {
         timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         const user_session = latest;    
+        console.log("*)9-0TYIGHVYONHUPIONUMKJNUONUIH", user_session)
         handleTemplateInterview({ 
             input, 
             user_session: user_session,
-            template_id: id,
+            template_id: temp_id,
+            challenge_id: cha_id,
+            job_profile_id: job_id,
             timerValue,
-            job_profile_id: 46,
             all_user_id: 1959
         });
         setInput('');
@@ -116,7 +137,7 @@ const InterviewChat = () => {
             user_session: user_session,
             challenge_id: id,
             timerValue,
-            job_profile_id: 46,
+            job_profile_id: 0,
             all_user_id: 1959
         });
         setInput('');
@@ -175,8 +196,7 @@ const InterviewChat = () => {
             setInput(newInput);
         }
     };
-    const [template_id, setTemplateId] = useState<any>(null);
-    const [challeng_id, setChallengId] = useState<any>(null);
+
 
     const fetchChatHistory = async (session: any) => {
         const sessionId = session?.id
@@ -336,7 +356,7 @@ const InterviewChat = () => {
             generate: false,
             external: false,
             challenge: false,
-            template_id: id, 
+            template_id: 55, 
             challenge_id: 0
         };
         const response = await Api.sessionCreate(data);
@@ -346,9 +366,10 @@ const InterviewChat = () => {
             handleTemplateInterview({ 
                 input, 
                 user_session: response?.data,
-                template_id: id,
+                template_id: template_id,
+                challenge_id: challenge_id,
+                job_profile_id: job_profile_id,
                 timerValue,
-                job_profile_id: 46,
                 all_user_id: 1959
             });
         }
@@ -361,7 +382,7 @@ const InterviewChat = () => {
     const chooseChallenge = async(id: any) => {
         setLoad(true)
         const data = {
-            job_profile_id: 46,
+            job_profile_id: 0,
             all_user_id: 1959,
             template: false,
             generate: false,
@@ -379,7 +400,7 @@ const InterviewChat = () => {
                 user_session: response?.data,
                 challenge_id: id,
                 timerValue,
-                job_profile_id: 46,
+                job_profile_id: 0,
                 all_user_id: 1959
             });
         }

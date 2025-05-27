@@ -102,12 +102,18 @@ async def generate_interview_question(run_stage, data: dict, question_count, tem
     try:
         # Retrieve either generated_questions or template_questions
         user_attributes = data['user_session']['attributes']['attributes']
+        # print("coww0w0w0w0w0w0w0w0w0w0w0w0w0w0w0w0")
+        # print(data['job_profile_id'])      
+        # print("coww0w0w0w0w0w0w0w0w0w0w0w0w0w0w0w0")
 
         # Choose between generated_questions and template_questions
         collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions') or user_attributes.get('challenge_questions')
         collection = json.loads(collection) if isinstance(collection, str) else collection
-
-        if(challenge_id != 'null'):
+        print("collection is here ==========================================")
+        print(challenge_id)
+        print("collection is here ==========================================")
+        if(challenge_id != 0):
+            print("challenge_id is not null ===========================BLANTMEN=========")
             response = await choose_interview_question_challenge_new_structure(
                 run_stage, 
                 collection, 
@@ -148,6 +154,7 @@ async def choose_interview_question_new_structure(
         sessionId):
     try: 
         # Fetch session chat history
+        print('choose_interview_question_new_structure=================BEYONCE============================')
         type = 'job_interview_config'
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
@@ -259,7 +266,16 @@ async def choose_interview_question_new_structure(
             # closing_content = data_content.replace("{closing_question}", str(last_assistant_response))
             # closing_content = data_content.replace("{candidate_response}" , str(data['response']))
             candidate_response = data['response']
-            closing_content = read_prompt_closing_question_realtime_evaluation(type, last_assistant_response, candidate_response)
+
+            if data.get("template_id") and data.get("challenge_id"):
+                print("whyare you doing thesesss====================================================")
+                closing_content = realtime_response_evaluation(run_stage, data, sessionId, type)
+            else: 
+                print("whyare you doing thes NOTTTTe====================================================")
+                closing_content = read_prompt_closing_question_realtime_evaluation(
+                    type, 
+                    last_assistant_response, 
+                    candidate_response)
 
             # Get realtime evaluation
             realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(closing_content)
@@ -453,6 +469,10 @@ async def helper_func(
         message instead.
     """
     try:
+        print("coww0w0w0w0w0w0w0w0w0w0w0w0w0w0w0w0")
+        print(data['job_profile_id'])      
+        print("coww0w0w0w0w0w0w0w0w0w0w0w0w0w0w0w0")
+
         print('=----------======-------------------------=-=--==------------------===-=-=')
         print(run_stage, 
         chat_count, 
@@ -751,9 +771,6 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         # overall_evaluation_msg = message
       
         overall_evaluation_msg = read_prompt_overall_evaluation(type, history_str)
-        print("opennnnnn=========================================eeeeeeedddddd")
-        print(overall_evaluation_msg)
-        print("opennnnnn=========================================eeeeeeedddddd")
 
         # data_content_metrics = ipersona_metric.get_smgCriterionMetric_by_id(metricId=173, nopp=True, dataframe=False)
         # message = data_content_metrics.get('attributes', {}).get('content', {})
@@ -835,38 +852,21 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
             logger.warn("No trainee user profiles found.")
             return []
         
-        tinder_user_profile_id = trainee_profile_data['id'] 
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage) 
-        
-        # cursor = {
-        #         "page": 1, 
-        #         "pageSize": 100,
-        #         "page_count": 1,
-        #         "page_size": 100,
-        #         "query": {},
-        #         "total": 100
-        #     }  
-                 
-        # session = ipersona_session.filter_by_with_user_job_id(
-        #     user_profile_id=tinder_user_profile_id,
-        #     job_profile_id=data['job_profile_id'], 
-        #     since=30,
-        #     limit=100,
-        #     nopp=True, 
-        #     dataframe=False
-        #     ) 
 
-        session = ipersona_session.filter_by_with_user_job_id(
-            user_profile_id=tinder_user_profile_id,
-            job_profile_id=data['job_profile_id'], 
+   
+        session = ipersona_session.get_session_by_id(
+            sessionId=sessionId, 
             nopp=True, 
-            dataframe=False
-            ) 
-        
+            dataframe=False)
+
         session_chatobserver = extract_observers_metrics(session)
         
         if status == 'Completed':  
-            await calculate_overall_progress(run_stage, data, session_chatobserver) 
+            await calculate_overall_progress(
+                run_stage, 
+                data, 
+                session_chatobserver) 
             
         response = {
             "overall_interview_metrics": overall_interview_metrics_json,
@@ -1353,8 +1353,14 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
         overall_time_managements = []
         overall_competencies = []
         overall_performance_scores = []
-        obs_ids = []         
-
+        obs_ids = []      
+        challenge_id = userdata.get('challenge_id', 0)
+        job_profile_id = userdata.get('job_profile_id', 0)
+        all_user_id = userdata.get('all_user_id', 0)
+        print("f((((((((((((((((((((((((((((((((}))))))))))))))))))))))))))))))))")
+        print(job_profile_id)
+        print(challenge_id)
+        print("((((((((((((((((((((((((((((((((())))))))))))))))))))))))))))))))))))))))))))")
         for entry in data:
             if isinstance(entry, dict):  
                 iso_time = entry.get("createdAt", "")
@@ -1416,18 +1422,27 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
         ipersona_overall = IpersonaSessionOverallObserverSchema(run_stage=run_stage)
         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
 
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id=userdata['all_user_id'], nopp=True, dataframe=False)
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id = all_user_id, nopp=True, dataframe=False)
         if not trainee_profile_data:
                 logger.warn("No trainee user profiles found.")
                 return []
+        
         tinder_user_profile_id = trainee_profile_data['id']    
+        session_chatobserver = None
+
+        if job_profile_id: 
+            session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(
+                user_profile_id = tinder_user_profile_id, 
+                job_profile_id = job_profile_id, 
+                nopp=True, 
+                dataframe=False)
             
-        session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(
-            user_profile_id=tinder_user_profile_id, 
-            job_profile_id=userdata['job_profile_id'], 
-            nopp=True, 
-            dataframe=False)
-       
+        elif challenge_id:
+            session_chatobserver = ipersona_overall.filter_by_with_user_and_challenge_id(
+                user_profile_id = tinder_user_profile_id, 
+                challenge_id = challenge_id, 
+                nopp=True, 
+                dataframe=False)
         
         if not session_chatobserver.get("error"): 
             logger.info(f"Session job overall observer data exists, so updating the data")          
@@ -1438,7 +1453,7 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 
             if len(session_chatobserver_sessions) > 0:
                 logger.info(f"Updating session job overall observer data")
-                attributes = {
+                new_overall_data = {
                     "overall_confidence": confidence_overtime,
                     "overall_clarity": clarity_overtime,
                     "overall_engagement": engagement_overtime,
@@ -1446,14 +1461,45 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                     "overall_competency": overall_competencies,
                     "overall_performance": overall_performance_scores
                 }
+                existing_overall_data = session_chatobserver_sessions[0]
+                update_overall_data = append_new_session_metrics(existing_overall_data, new_overall_data)
+                print("new_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                print(new_overall_data)
+                print("existing_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                # attributes = {
+                #     "overall_confidence": confidence_overtime,
+                #     "overall_clarity": clarity_overtime,
+                #     "overall_engagement": engagement_overtime,
+                #     "overall_time_management": overall_time_managements,
+                #     "overall_competency": overall_competencies,
+                #     "overall_performance": overall_performance_scores
+                # }
                             
-                overall_data = {
+                message_data = {
                     "i_persona_session_overall_observer_id": session_chatobserver['id'], 
-                    "attributes": attributes,
+                    "attributes": update_overall_data,
                     "i_persona_observers": obs_ids
                 }
+                if job_profile_id:
+                    print("job_profile_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                    print(job_profile_id)
+                    message_data["tinder_user_profile"] = tinder_user_profile_id
+                    message_data["tinder_job_profile"] = job_profile_id
+                elif challenge_id:
+                    print("challenge_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                    print(challenge_id)
+                    print("update_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                    print(update_overall_data)
+                    print("tinder_user_profile_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                    message_data["tinder_user_profile"] = tinder_user_profile_id
+                    message_data["challenge_document"] = challenge_id
+
+                print("_0+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++0_")
+                print(message_data)
+                print("_0+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++0_")
+
                 response = ipersona_overall.update_session(
-                    params=overall_data, 
+                    params=message_data, 
                     nopp=True, 
                     dataframe=False, 
                     return_object=True)
@@ -1467,7 +1513,7 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
             ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
 
             trainee_profile_data = ipersona_user.filter_by_alluser_id(
-                all_user_id=userdata['all_user_id'], 
+                all_user_id=all_user_id, 
                 nopp=True, 
                 dataframe=False)
             
@@ -1485,11 +1531,20 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                     "overall_competency": overall_competencies,
                     "overall_performance": overall_performance_scores
                 },
-                "i_persona_observers": obs_ids,
-                # "tinder_user_profile": tinder_user_profile_id,
-                # "tinder_job_profile": userdata['job_profile_id']
+                "i_persona_observers": obs_ids
             }
-            
+
+            # Add the correct attribute based on which ID is present
+            if job_profile_id:
+                message_data["tinder_user_profile"] = tinder_user_profile_id
+                message_data["tinder_job_profile"] = job_profile_id
+            elif challenge_id:
+                message_data["tinder_user_profile"] = tinder_user_profile_id
+                message_data["challenge_document"] = challenge_id
+
+            print("_+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_")
+            print(message_data)
+            print("_+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_")
             response = ipersona_overall.save_Session_Overall_Observer(
                 params=message_data, 
                 nopp=True, 
@@ -1501,6 +1556,30 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
     except Exception as e:
         logger.error(f"Process failed: ${str(e)}")
         return f'Error: {str(e)}'    
+
+def append_new_session_metrics(existing_data: dict, new_session_metrics: dict) -> dict:
+    """
+    Appends new session metrics to the existing observer data for each metric key.
+    Modifies and returns the existing_data dict.
+    """
+    metric_keys = [
+        "overall_clarity",
+        "overall_competency",
+        "overall_confidence",
+        "overall_engagement",
+        "overall_performance",
+        "overall_time_management"
+    ]
+    for key in metric_keys:
+        existing_list = existing_data.get(key, [])
+        new_list = new_session_metrics.get(key, [])
+        # Ensure both are lists
+        if not isinstance(existing_list, list):
+            existing_list = []
+        if not isinstance(new_list, list):
+            new_list = []
+        existing_data[key] = existing_list + new_list
+    return existing_data
 
 async def calculate_overall_progress_external(
         run_stage, 
@@ -2234,37 +2313,53 @@ def summarize_interviews_engagement(
         error_msg = str(e)
         return error_msg, error_msg
  
-def extract_observers_metrics(data):
+def extract_observers_metrics(session_chatobserver):
     try:
+        if isinstance(session_chatobserver, dict):
+            session_list = [session_chatobserver]
+        elif isinstance(session_chatobserver, list):
+            session_list = session_chatobserver
+        else:
+            session_list = []
+
         extracted_observers = []
-        for message in data:
-            if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
-                message_data = message['attributes']['i_persona_observer']['data']
-                message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
-                message_attributes['createdAt'] = message['attributes']['createdAt']
-                message_attributes['obs_id'] = message['attributes']['i_persona_observer']['data']['id']
-                extracted_observers.append(message_attributes)
+
+        for session in session_list:
+            observer_data = (
+                session.get("attributes", {})
+                .get("i_persona_observer", {})
+                .get("data", {})
+            )
+
+            if observer_data:
+                attributes = observer_data.get("attributes", {})
+                evaluation_metrics = attributes.get("attributes", {}).get("interview_evaluation_metrics", {})
+
+                if evaluation_metrics:
+                    evaluation_metrics["createdAt"] = session.get("attributes", {}).get("createdAt")
+                    evaluation_metrics["obs_id"] = observer_data.get("id")
+                    extracted_observers.append(evaluation_metrics)
 
         return extracted_observers
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
  
-def extract_observers_metrics(data):
-    try:
-        extracted_observers = []
-        for message in data:
-            if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
-                message_data = message['attributes']['i_persona_observer']['data']
-                message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
-                message_attributes['createdAt'] = message['attributes']['createdAt']
-                message_attributes['obs_id'] = message['attributes']['i_persona_observer']['data']['id']
-                extracted_observers.append(message_attributes)
+# def extract_observers_metrics(data):
+#     try:
+#         extracted_observers = []
+#         for message in data:
+#             if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
+#                 message_data = message['attributes']['i_persona_observer']['data']
+#                 message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
+#                 message_attributes['createdAt'] = message['attributes']['createdAt']
+#                 message_attributes['obs_id'] = message['attributes']['i_persona_observer']['data']['id']
+#                 extracted_observers.append(message_attributes)
 
-        return extracted_observers
-    except Exception as e:
-        logger.error(f"Error processing files: {e}")
-        return {'error': str(e)}
+#         return extracted_observers
+#     except Exception as e:
+#         logger.error(f"Error processing files: {e}")
+#         return {'error': str(e)}
 
 def calculate_session_metrics(sessions):
     try:

@@ -59,27 +59,194 @@ async def health_check():
     # res = schema.get_user_infos()
     # return res
     try:
-        ipersona_session = IpersonaSessionSchema(run_stage='dev')        
-        cursors = {
-                "page": 1, 
-                "pageSize": 100,
-                "page_count": 1,
-                "page_size": 100,
-                "query": {},
-                "total": 100
-            }  
-        session = ipersona_session.filter_by_with_user_job_id(
-            user_profile_id=197,
-            job_profile_id=46, 
-            # template_id = 55,
-            cursor=cursors,
-            since=3,
-            limit=100,
+        ipersona_session = IpersonaSessionSchema(run_stage="dev") 
+        sessionId=1620
+        # session_chatobserver = ipersona_session.get_session_by_id(sessionId=sessionId, nopp=True, dataframe=False)
+        # session_chatobserver = ipersona_session.filter_by_with_user_job_id(
+        #         user_profile_id=197,
+        #         job_profile_id=46, 
+        #         nopp=True, 
+        #         dataframe=False
+        #         ) 
+        ipersona_template = IpersonaTinderTemplateSchema()
+        session_chatobserver = ipersona_template.get_tinder_template_id(
+            templateId=55, 
+            return_object=True, 
             nopp=True, 
             dataframe=False
-            ) 
-        session_chatobserver = util.extract_observers_metrics(session)
-        return len(session_chatobserver)
+        )
+    
+#         run_stage = 'dev'
+#         userdata = {
+#             "all_user_id": 197,
+#             "job_profile_id": 46,
+#             "challenge_id": None,
+#             "tinder_user_profile_id": 197,
+#             "tinder_job_profile_id": 46
+#         }
+#         new_session_metrics = {
+#             "overall_clarity": [
+#                 {
+#                 "time": "08 Jan 2025 09:43 AM",
+#                 "level": "poor",
+#                 "value": 1
+#                 }
+#             ],
+#             "overall_competency": [
+#                 {
+#                 "time": "08 Jan 2025 09:43 AM",
+#                 "competency": [
+#                     {
+#                     "name": "Programming Languages",
+#                     "sfia_level": "2"
+#                     },
+#                     {
+#                     "name": "Web Development",
+#                     "sfia_level": "2"
+#                     },
+#                     {
+#                     "name": "Problem Solving",
+#                     "sfia_level": "2"
+#                     }
+#                 ]
+#                 }
+#             ],
+#             "overall_confidence": [
+#                 {
+#                 "time": "08 Jan 2025 09:43 AM",
+#                 "level": "poor",
+#                 "value": 1
+#                 }
+#             ],
+#             "overall_engagement": [
+#                 {
+#                 "time": "08 Jan 2025 09:43 AM",
+#                 "level": "poor",
+#                 "value": 1
+#                 }
+#             ],
+#             "overall_performance": [
+#                 {
+#                 "time": "08 Jan 2025 09:43 AM",
+#                 "score": 57
+#                 }
+#             ],
+#             "overall_time_management": [
+#                 {
+#                 "time": "08 Jan 2025 09:43 AM",
+#                 "time_management": {
+#                     "fail": 0,
+#                     "pass": 11,
+#                     "total_time_taken_by_candidate": "00:10:26"
+#                 }
+#                 }
+#             ]
+#             }
+#         existing_data = {
+#   "overall_clarity": [
+#     {
+#       "time": "12 Feb 2025 07:02 AM",
+#       "level": "poor",
+#       "value": 1
+#     },
+#     {
+#       "time": "12 Feb 2025 06:49 AM",
+#       "level": "good",
+#       "value": 2
+#     }
+#   ],
+#   "overall_competency": [
+#     {
+#       "time": "12 Feb 2025 07:02 AM",
+#       "competency": [
+#         {
+#           "name": "Software Engineering",
+#           "sfia_level": "3"
+#         },
+#         {
+#           "name": "AI Technologies",
+#           "sfia_level": "3"
+#         },
+#         {
+#           "name": "Professional Communication",
+#           "sfia_level": "2"
+#         }
+#       ]
+#     },
+#     {
+#       "time": "12 Feb 2025 06:49 AM",
+#       "competency": [
+#         {
+#           "name": "Software Engineering",
+#           "sfia_level": "4"
+#         },
+#         {
+#           "name": "AI Technologies",
+#           "sfia_level": "4"
+#         },
+#         {
+#           "name": "Professional Communication",
+#           "sfia_level": "3"
+#         }
+#       ]
+#     }
+#   ],
+#   "overall_confidence": [
+#     {
+#       "time": "12 Feb 2025 07:02 AM",
+#       "level": "poor",
+#       "value": 1
+#     },
+#     {
+#       "time": "12 Feb 2025 06:49 AM",
+#       "level": "good",
+#       "value": 2
+#     }
+#   ],
+#   "overall_engagement": [
+#     {
+#       "time": "12 Feb 2025 07:02 AM",
+#       "level": "poor",
+#       "value": 1
+#     },
+#     {
+#       "time": "12 Feb 2025 06:49 AM",
+#       "level": "good",
+#       "value": 2
+#     }
+#   ],
+#   "overall_performance": [
+#     {
+#       "time": "12 Feb 2025 07:02 AM",
+#       "score": 45
+#     },
+#     {
+#       "time": "12 Feb 2025 06:49 AM",
+#       "score": 92
+#     }
+#   ],
+#   "overall_time_management": [
+#     {
+#       "time": "12 Feb 2025 07:02 AM",
+#       "time_management": {
+#         "fail": 1,
+#         "pass": 10,
+#         "total_time_taken_by_candidate": "00:08:07"
+#       }
+#     },
+#     {
+#       "time": "12 Feb 2025 06:49 AM",
+#       "time_management": {
+#         "fail": 1,
+#         "pass": 10,
+#         "total_time_taken_by_candidate": "00:08:10"
+#       }
+#     }
+#   ]
+# }
+#         # session_chatobserver = util.update_or_create_observer(run_stage, userdata, new_session_metrics)
+#         session_chatobserver = util.append_new_session_metrics(existing_data, new_session_metrics)
+        return session_chatobserver
     except Exception as e:
         logger.error(f"Error in health check: {str(e)}")
         return JSONResponse(
@@ -549,46 +716,55 @@ async def calculate_overall_progress(request: pemodel.OverallRequestRecieved):
 
     Parameters:
     ----------
-    request : pemodel.UserSessionRequestRecieved
-        The request object containing user and job profile data.
+    request : pemodel.OverallRequestRecieved
 
     Returns:
     -------
     JSONResponse or dict
-        A dictionary containing the overall progress metrics, or an error message if an exception occurs.
     """
     run_stage = request.run_stage
+    job_profile_id = request.job_profile_id
+    challenge_id = request.challenge_id
+    all_user_id = request.all_user_id
 
     try:
         ipersona_overall = IpersonaSessionOverallObserverSchema(run_stage=run_stage)
         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
 
         trainee_profile_data = ipersona_user.filter_by_alluser_id(
-            all_user_id=request.all_user_id, 
+            all_user_id=all_user_id, 
             nopp=True,
             dataframe=False)
-    
+
         if not trainee_profile_data:
-            logger.warn(f"No trainee profiles found for user_id: {request.all_user_id}")
+            logger.warn(f"No trainee profiles found for user_id: {all_user_id}")
             return JSONResponse(status_code=200, content={"message": "No trainee profiles found by the given all_user_id"})
 
-        tinder_user_profile_id = trainee_profile_data.get('id', None)
+        tinder_user_profile_id = trainee_profile_data.get('id')
         if not tinder_user_profile_id:
-            logger.error(f"Trainee profile missing 'id' for user_id: {request.all_user_id}")
+            logger.error(f"Trainee profile missing 'id' for user_id: {all_user_id}")
             return JSONResponse(status_code=500, content={"error": "Trainee profile is invalid."})
 
-        session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(
-            user_profile_id=tinder_user_profile_id,
-            job_profile_id=request.job_profile_id,
-            nopp=True,
-            dataframe=False
-        )
+        session_chatobserver = None
 
-        if "all_sessions" not in session_chatobserver or not session_chatobserver["all_sessions"]:
-            logger.warn(f"No session data found for user_profile_id: {tinder_user_profile_id}, job_profile_id: {request.job_profile_id}")
+        if job_profile_id:
+            session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(
+                user_profile_id=tinder_user_profile_id,
+                job_profile_id=job_profile_id,
+                nopp=True,
+                dataframe=False)
+        elif challenge_id:
+            session_chatobserver = ipersona_overall.filter_by_with_user_and_challenge_id(
+                user_profile_id=tinder_user_profile_id,
+                challenge_id=challenge_id,
+                nopp=True,
+                dataframe=False)
+
+        if not session_chatobserver or "all_sessions" not in session_chatobserver or not session_chatobserver["all_sessions"]:
+            logger.warn(f"No session data found for user_profile_id: {tinder_user_profile_id}")
             return JSONResponse(status_code=200, content={"message": "No session overall observer data found."})
 
-        logger.info(f"Successfully fetched overall session data for user_profile_id: {tinder_user_profile_id}, job_profile_id: {request.job_profile_id}")
+        logger.info(f"Successfully fetched session data for user_profile_id: {tinder_user_profile_id}")
         return session_chatobserver["all_sessions"][0]
 
     except Exception as e:

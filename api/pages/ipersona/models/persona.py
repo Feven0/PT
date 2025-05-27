@@ -21,8 +21,9 @@ class SessionJobRequestRecieved(MyBaseModel):
     jbId: str
 
 class OverallRequestRecieved(MyBaseModel):
-    job_profile_id: int
     all_user_id: int
+    job_profile_id: int
+    challenge_id: int
 
 class UserSessionRequestRecieved(MyBaseModel):
     job_profile_id: int

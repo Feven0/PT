@@ -119,6 +119,7 @@ class IpersonaSessionSchema(LeapBaseClass):
     def get_session_by_id(self, sessionId, **kwargs):
         data = self.exists(scol='id', sval=sessionId, op='eq', stype="ID", **kwargs)  
         data = self.get_session_data(data)   
+        
         return data
     
     def get_by_id(self, sessionId, **kwargs):
@@ -1731,6 +1732,11 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
                                 id
                             }
                         }
+                        challenge_document {
+                            data {
+                                id
+                            }
+                        }
                         %s
                     }
                 }
@@ -1744,7 +1750,8 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
             "attributes": "JSON",            
             "tinder_user_profile": "ID",
             "tinder_job_profile": "ID",
-            "i_persona_observers": "ID"       
+            "i_persona_observers": "ID",
+            "challenge_document": "ID"    
          }
 
         self.id_names_map = {  }
@@ -1802,6 +1809,32 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
 
         except Exception as e:
             logger.error(f"Error filtering by user profile ID {user_profile_id} and job profile ID {job_profile_id}: {str(e)}")
+            return {'error': f"Error processing request: {str(e)}"}
+
+    def filter_by_with_user_and_challenge_id(self, user_profile_id, challenge_id, **kwargs):
+        try:
+            session_overall_observer_filter = f"""
+                filters: {{
+                    tinder_user_profile : {{ id: {{ eq: {user_profile_id} }} }},
+                    challenge_document : {{ id: {{ eq: {challenge_id} }} }}
+                }}
+            """
+            data_json = self.get_all_objects(filter=session_overall_observer_filter, **kwargs)
+        
+            if not data_json:
+                logger.warn(f"No data returned for user profile ID: {user_profile_id} and job profile ID: {challenge_id}")
+                return None
+
+            data = self.get_extracted_from_user_job_data(data_json)
+            
+            if not data:
+                logger.warn(f"No extracted data found for user profile ID: {user_profile_id} and job profile ID: {challenge_id}")
+                return None
+            
+            return data
+
+        except Exception as e:
+            logger.error(f"Error filtering by user profile ID {user_profile_id} and job profile ID {challenge_id}: {str(e)}")
             return {'error': f"Error processing request: {str(e)}"}
 
     def save_Session_Overall_Observer(self, params, **kwargs):

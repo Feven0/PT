@@ -431,7 +431,7 @@ async def interview_endpoint(sid, data):
         None: Responses are sent via socket.io events
     """
     try:
-        logger.info(f"Received interview request with template_id: {data.get('template_id')}")
+        logger.info(f"Received interview request with template_id-=-: {data.get('challenge_id')}, job: {data.get('job_profile_id', None)}")
         
         # Validate input data
         if not isinstance(data, dict):
@@ -492,6 +492,7 @@ async def interview_endpoint(sid, data):
 
         try:
             if data.get('template'):
+                print("Template flag is set, processing template-based interview")
                 try:
                     template_id = data.get('template_id')
                     if not template_id:
