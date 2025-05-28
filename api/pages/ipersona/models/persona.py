@@ -82,6 +82,15 @@ class AdminJobDataTempFiltering(MyBaseModel):
     return_skip: Optional[bool] = False
     job_profile_id: int
 
+class AdminChallengeDataTempFiltering(MyBaseModel):
+    cursor: Optional[Dict] = {}
+    filter: Optional[Dict] = {}
+    limit: Optional[int] = default_limit
+    since: Optional[int] = default_days_since
+    information_level: Optional[str] = "minimal"
+    return_skip: Optional[bool] = False
+    challenge_id: int
+
 class AdminDataFiltering(MyBaseModel):
     cursor: Optional[Dict] = {}
     filter: Optional[Dict] = {}

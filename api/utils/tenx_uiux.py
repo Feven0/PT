@@ -224,6 +224,60 @@ class BaseTable():
         
         return self.table["data"]
     
+    def add_rows_for_challenge(self, 
+                dataIn, 
+                cursor, 
+                challenge_id,
+                challenge_title,
+                **kwargs):
+        data = copy.deepcopy(dataIn)
+        #self.table['cursor'] = cursor  
+        self.table['challenge_id'] = challenge_id
+        self.table['challenge_title'] = challenge_title
+
+        # Check if data is a dictionary
+        if isinstance(data, dict):
+            # Add the entire dictionary (including nested lists) directly to the table's data
+            self.table["data"].append(data)
+            return self.table["data"]
+
+        # If data is already a list, process each item
+        if not isinstance(data, list):
+            logger.warn("Data passed is not a list or dict")
+            return self.table["data"]
+        
+        if not len(data) > 0:
+            logger.warn("Empty data passed")
+            return self.table["data"]
+        
+        if not isinstance(data[0], dict):
+            logger.warn(f"Invalid data type for row: expects dict or list of dict. Passed {type(data[0])}")
+            return self.table["data"]
+            
+        if len(self.table["columns"]) == 0:
+            logger.warn("No columns defined for the table")
+            return self.table["data"]
+        
+        # If it's a list of dictionaries, handle it as usual
+        rows = self.table["data"]
+        
+        for item in data:
+            row = {}
+            # Add expandable content if it exists
+            for x in ["expandableContent", "subdata"]:
+                if x in item.keys():
+                    row["expandableContent"] = item[x]
+                    self.make_expandable(True)
+                    break
+            
+            for col in self.table["columns"]:
+                name = col["name"]
+                row[name] = item.get(name, "")
+            
+            self.table["data"].append(row)
+        
+        return self.table["data"]
+    
     def add_rows_for_engagment(self, 
                 dataIn, 
                 cursor,

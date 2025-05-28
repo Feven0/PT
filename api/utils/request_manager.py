@@ -369,6 +369,43 @@ class JobReactionManager(JobManagerBase):
             self.keep_columns.append(x)
 
         
+        # Colums configuration for the admin each job info
+        desktop_view = ['user_profile_id', 'trainee_name', 'total_interview_count', 'complete_sessions_count', 'incomplete_sessions_count', 'average_score', 'expand']
+        tablet_view = ['user_profile_id', 'trainee_name', 'total_interview_count', 'complete_sessions_count', 'incomplete_sessions_count', 'average_score', 'expand']
+        mobile_view = ['user_profile_id', 'trainee_name', 'total_interview_count', 'complete_sessions_count', 'incomplete_sessions_count', 'average_score', 'expand']
+        sorting = ['user_profile_id', 'trainee_name', 'total_interview_count', 'complete_sessions_count', 'incomplete_sessions_count', 'average_score', 'expand']
+        link_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+        
+        self.admin_each_challenge_columns = {
+            "trainee_name": {'label': 'Trainee Name', 'ctype': 'string', 'options': []},
+            'total_interview_count': {'label': 'Total Interview Count', 'ctype': 'number', 'options': []},
+            'complete_sessions_count': {'label': 'Complete Sessions Count', 'ctype': 'number', 'options': []},
+            'incomplete_sessions_count': {'label': 'Incomplete Sessions Count', 'ctype': 'number', 'options': []},
+            # "individual_scores": {'label': 'Individual Scores', 'ctype': 'list', 'options': []},
+            "average_score": {'label': 'Average Score', 'ctype': 'string', 'options': []},
+            "user_profile_id": {'label': 'User Profile ID', 'ctype': 'string', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]},
+
+        }
+        
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.admin_each_challenge_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.admin_each_challenge_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.admin_each_challenge_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.admin_each_challenge_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.admin_each_challenge_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.admin_each_challenge_columns[x]['icon'] = self.uiuxbt.create_expand_icon("user_profile_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+
 
         # Colums configuration for the admin each job info
         desktop_view = ['id', 'name', 'type', 'tag', 'description', 'tinder_job_profiles', 'expand']
@@ -645,6 +682,7 @@ class JobReactionManager(JobManagerBase):
             colmap = self.admin_allusers_performance_columns
         elif kind == 'admin_each_job':
             colmap = self.admin_each_job_columns 
+    
 
         for c, cval in colmap.items():
             cval['name'] = c
@@ -668,6 +706,52 @@ class JobReactionManager(JobManagerBase):
 
         return self.uiuxbt.table
 
+    def prepare_table_challenge(self, 
+                    params, 
+                    cursor, 
+                    challenge_id, 
+                    challenge_title,
+                    kind, 
+                    **kwargs):
+        """Prepare a table for displaying reaction data."""
+        rows = []
+        pkey = None
+        self.cursor = cursor
+        if kind == 'jobs':
+            pkey = 'attributes'
+            colmap = self.jobs_columns
+        elif kind == 'admin_overview':
+            colmap = self.admin_overview_columns
+        elif kind == 'admin_alluser':
+            colmap = self.admin_alluser_columns
+        elif kind == 'admin_jobs':
+            colmap = self.admin_jobs_columns
+        elif kind == 'admin_allusers_performance':
+            colmap = self.admin_allusers_performance_columns
+        elif kind == 'admin_each_job':
+            colmap = self.admin_each_job_columns 
+        elif kind == 'admin_each_challenge':
+            colmap = self.admin_each_challenge_columns 
+
+        for c, cval in colmap.items():
+            cval['name'] = c
+            _ = self.uiuxbt.add_column(**cval)
+
+        strifnone = lambda x: x if x else ''
+
+        # Remove empty columns and add rows to the table
+        if rows:
+            rows = self._remove_empty_columns(params, colmap)
+            _ = self.uiuxbt.add_rows_for_challenge(rows)
+        else:
+            _ = self.uiuxbt.add_rows_for_challenge(
+                params, 
+                cursor,
+                challenge_id, 
+                challenge_title
+               )
+
+        return self.uiuxbt.table
 
     def prepare_engagement_table(self, 
                         params, 

@@ -1351,6 +1351,82 @@ async def calculate_admin_alljobs_data(request: pemodel.AdminDataFiltering) -> U
             "message": f"Error processing data: {str(e)}"
         }
 
+@routes.post("/admin_allchallenges_data", tags=["Admin Endpoints"])
+async def calculate_admin_allchallenges_data(request: pemodel.AdminDataFiltering) -> Union[List, Dict]:
+    """
+    Calculate administrative data for all challenges by processing session data.
+
+    Fetches all session data based on provided filters, calculates metrics,
+    and returns summarized results for all challenges.
+
+    Parameters
+    ----------
+    request : pemodel.AdminDataFiltering
+        Object containing:
+        - filter: Optional query filters
+        - return_skip: Flag to include skipped items
+        - information_level: Detail level for results
+        - since: Starting point for pagination
+        - limit: Maximum number of items to return
+        - cursor: Pagination cursor
+
+    Returns
+    -------
+    Union[List, Dict]
+        Challenges data summary or error response with the format:
+        {
+            "data": list,
+            "cursor": list,
+            "status": int,
+            "message": str
+        }
+    """
+    run_stage = request.run_stage
+
+    try:
+        logger.info("Starting admin all challenges data calculation")
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        data = ipersona_session.get_alladmin_sessions(
+            # cursor=cursor, 
+            since=request.since, 
+            limit=request.limit, 
+            nopp=True, 
+            dataframe=False,
+            # **kwargs
+        )
+
+        if not data:
+            logger.warn("No session data found for admin all challenges view")
+            return {
+                "data": [],  
+                "cursor": [],
+                "status": 404, 
+                "message": "No data found with the given parameters"
+            }
+
+        logger.info(f"Processing all jobs metrics for {len(data)} sessions")
+        
+        # Step 2: Summarize all jobs data
+        result = util.summarize_allchallenges_data(run_stage, data)
+        # result = util.add_columns(result, kind='admin_jobs', **kwargs)
+        
+        logger.info("Admin all challenge data calculated successfully")
+        return {
+            "data": result, 
+            # "cursor": cursor,                  
+            "status": 200, 
+            "message": ""
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing admin all jobs data: {str(e)}", exc_info=True)
+        return {
+            "data": [],  
+            "cursor": [],
+            "status": 500, 
+            "message": f"Error processing data: {str(e)}"
+        }
+    
 @routes.post("/admin_each_job_overview_data", tags=["Admin Endpoints"]) #-> Dict[str, Any]
 async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFiltering) :
     """
@@ -1412,9 +1488,13 @@ async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFilterin
         # Step 2: Apply additional filtering by 'job_profile_id'
         data = [
             session for session in data
-            if session.get('attributes', {}).get('tinder_job_profile', {}).get('data', {}).get('id') == str(job_profile_id)
-        ]        
-               
+            if (
+                session.get('attributes', {}).get('tinder_job_profile')
+                and session['attributes']['tinder_job_profile'].get('data')
+                and session['attributes']['tinder_job_profile']['data'].get('id') == str(job_profile_id)
+            )
+        ]
+
         # data = ipersona_session.get_alladmin_sessions(
         #     # cursor=cursor, 
         #     since=request.since, 
@@ -1498,7 +1578,130 @@ async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFilterin
             "status": 500, 
             "message": f"Error processing data: {str(e)}"
         }
-          
+
+@routes.post("/admin_each_challenge_overview_data", tags=["Admin Endpoints"]) #-> Dict[str, Any]
+async def calculate_admin_each_challenge_data(request: pemodel.AdminChallengeDataTempFiltering) :
+    """
+    Calculate administrative data for all challenges by processing session data.
+
+    Fetches all session data based on provided filters, calculates metrics,
+    and returns summarized results for all challenges.
+
+    Parameters
+    ----------
+    request : pemodel.AdminDataFiltering
+        Object containing:
+        - filter: Optional query filters
+        - return_skip: Flag to include skipped items
+        - information_level: Detail level for results
+        - since: Starting point for pagination
+        - limit: Maximum number of items to return
+        - cursor: Pagination cursor
+
+    Returns
+    -------
+    Dict[str, Any]
+        Jobs data summary or error response with the format:
+        {
+            "data": list,
+            "cursor": list,
+            "status": int,
+            "message": str
+        }
+    """
+    run_stage = request.run_stage
+
+    try:
+        logger.info("Starting admin all jobs data calculation")
+        
+        # Process request parameters
+        challenge_id = request.challenge_id
+        query_filter = request.filter or {}
+        since = max(request.since or 1, 1)  # Ensure minimum value of 1
+        limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
+        cursor = request.cursor
+        
+        # Prepare query parameters
+        kwargs = query_filter.copy() if query_filter else {}
+        
+        # -------------- fetch the data with the leap_base.py -------------- #
+
+        # Step 1: Fetch all session data
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        data, cursor = ipersona_session.get_all_sessions(
+            cursor=cursor, 
+            since=since, 
+            limit=limit, 
+            nopp=True, 
+            dataframe=False,
+            **kwargs
+        )        
+
+        # Step 2: Apply additional filtering by 'job_profile_id'
+        data = [
+            session for session in data
+            if (
+                session.get('attributes', {}).get('challenge_document')
+                and session['attributes']['challenge_document'].get('data')
+                and session['attributes']['challenge_document']['data'].get('id') == str(challenge_id)
+            )
+        ]     
+
+        if not data:
+            logger.warn("No session data found for admin all jobs view")
+            data = []
+            challenge_title= ''
+            output = util.add_challenge_columns(
+                        data, 
+                        cursor, 
+                        challenge_id, 
+                        challenge_title,
+                        kind='admin_each_challenge', 
+                        **kwargs
+                    )
+            cursor['total'] = 0
+            return {
+                "trainees": output,
+                "cursor": cursor,
+                "status": 200,
+                "message": ""
+            }
+
+        logger.info(f"Processing all jobs metrics for {len(data)} sessions")
+        logger.info(f"Processing all jobs metrics for {len(data)} sessions")
+        
+        # Step 2: Summarize all jobs data
+        result, total = util.summarize_eachchallenge_data(run_stage, data)
+        cursor['total'] = total
+
+        if result:
+            data = result['trainees']
+            challenge_title = result['challenge_title']
+            
+            result = util.add_challenge_columns(
+                        data, 
+                        cursor, 
+                        challenge_id, 
+                        challenge_title,
+                        kind='admin_each_challenge', 
+                        **kwargs
+                    )
+            
+            logger.info("Admin all jobs data calculated successfully")
+            return {
+                "trainees": result, 
+                "cursor": cursor,                  
+                "status": 200, 
+                "message": ""
+            }
+
+    except Exception as e:
+        logger.error(f"Error processing admin all jobs data: {str(e)}", exc_info=True)
+        return {
+            "status": 500, 
+            "message": f"Error processing data: {str(e)}"
+        }
+         
 @routes.post("/admin_allusers_performance_data", tags=["Admin Endpoints"])
 async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFiltering) :
     """
@@ -1599,15 +1802,14 @@ async def calculate_admin_job_by_template_id(request: pemodel.AdminJobByTemplate
         run_stage = request.run_stage
         template_id = request.template_id
         query_filter = request.filter or {}
-        since = max(request.since or 1, 1)  # Ensure minimum value of 1
-        limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
+        since = max(request.since or 1, 1)
+        limit = max(request.limit or 1, 1)
         cursor = request.cursor
-        # Prepare query parameters
         kwargs = query_filter.copy() if query_filter else {}
         logger.info(f"Starting admin job by template ID calculation for template ID: {template_id}")
         
         ipersona_job = IpersonaJobSchema(run_stage=run_stage)
-        data, cursors = ipersona_job.filter_by_template_id(
+        result_tuple = ipersona_job.filter_by_template_id(
             template_id=template_id, 
             cursor=cursor, 
             since=since, 
@@ -1617,19 +1819,37 @@ async def calculate_admin_job_by_template_id(request: pemodel.AdminJobByTemplate
             **kwargs
         )
 
-        # Step 4: Prepare response
-        result = util.add_template_columns(
-                    data, 
-                    cursor, 
-                    kind='job_by_template', 
-                    **kwargs
-                )
-        return {
+        # Improved error handling for None or invalid return
+        if not result_tuple or not isinstance(result_tuple, (tuple, list)) or len(result_tuple) != 2:
+            logger.warn(f"No jobs found or invalid template_id: {template_id}")
+            data = []
+            result = util.add_template_columns(
+                data, 
+                cursor, 
+                kind='job_by_template', 
+                **kwargs
+            )
+            return {
                 "jobs": result, 
-                "cursor": cursor,                  
+                "cursor": [],                  
                 "status": 200, 
-                "message": ""
+                "message": f"No jobs found for the given template_id: {template_id}."
             }
+
+        data, cursors = result_tuple
+
+        result = util.add_template_columns(
+            data, 
+            cursor, 
+            kind='job_by_template', 
+            **kwargs
+        )
+        return {
+            "jobs": result, 
+            "cursor": cursor,                  
+            "status": 200, 
+            "message": ""
+        }
    
     except Exception as e:
         logger.error(f"Error processing admin job by template ID: {str(e)}", exc_info=True)
@@ -1648,13 +1868,12 @@ async def calculate_admin_challenge_by_template_id(request: pemodel.AdminJobByTe
         query_filter = request.filter or {}
         since = max(request.since or 1, 1)  # Ensure minimum value of 1
         limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
-        # cursor = request.cursor
-        # Prepare query parameters
+        cursor = request.cursor
         kwargs = query_filter.copy() if query_filter else {}
         logger.info(f"Starting admin challenge by template ID calculation for template ID: {template_id}")
         
         ipersona_challenge = IpersonaChallengeDocumentSchema(run_stage=run_stage, limit=limit, since=since)
-        data, cursor = ipersona_challenge.filter_by_template_id(
+        result_tuple = ipersona_challenge.filter_by_template_id(
             template_id=template_id, 
             since=request.since, 
             limit=request.limit, 
@@ -1663,18 +1882,38 @@ async def calculate_admin_challenge_by_template_id(request: pemodel.AdminJobByTe
             **kwargs
         )
 
-        result = util.add_template_columns(
-                    data, 
-                    cursor, 
-                    kind='challenge_by_template', 
-                    **kwargs
-                )
-        return {
+        # Improved error handling for None or invalid return
+        if not result_tuple or not isinstance(result_tuple, (tuple, list)) or len(result_tuple) != 2:
+            logger.warn(f"No challenges found or invalid template_id: {template_id}")
+
+            data = []
+            result = util.add_template_columns(
+                data, 
+                cursor, 
+                kind='challenge_by_template', 
+                **kwargs
+            )
+            return {
                 "challenges": result, 
-                "cursor": cursor,                  
+                "cursor": [],                  
                 "status": 200, 
-                "message": ""
+                "message": f"No challenges found for the given template_id: {template_id}."
             }
+        
+        data, cursor = result_tuple
+
+        result = util.add_template_columns(
+            data, 
+            cursor, 
+            kind='challenge_by_template', 
+            **kwargs
+        )
+        return {
+            "challenges": result, 
+            "cursor": cursor,                  
+            "status": 200, 
+            "message": ""
+        }
     
     except Exception as e:
         logger.error(f"Error processing admin challenge by template ID: {str(e)}", exc_info=True)
@@ -1684,7 +1923,7 @@ async def calculate_admin_challenge_by_template_id(request: pemodel.AdminJobByTe
             "status": 500, 
             "message": f"Error processing data: {str(e)}"
         }
-
+    
 @routes.post("/admin_interview_by_template", tags=["Admin Endpoints"])
 async def calculate_admin_interview_by_template(request: pemodel.AdminInterviewByTemplateIdFiltering) -> Union[List, Dict]:
     try:
@@ -1695,63 +1934,60 @@ async def calculate_admin_interview_by_template(request: pemodel.AdminInterviewB
         since = max(request.since or 1, 1)  # Ensure minimum value of 1
         limit = max(request.limit or 1, 1)  # Ensure minimum value of 1
         cursor = request.cursor
-        # Prepare query parameters
         kwargs = query_filter.copy() if query_filter else {}
-        logger.info(f"Starting admin challenge by template ID calculation for template ID: {template_id}")
+        logger.info(f"Starting admin interview by template ID calculation for template ID: {template_id}")
         
-        # Step 1: Fetch all session data
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-        # data, cursor = ipersona_session.get_all_sessions(
-        #     cursor=cursor, 
-        #     since=since, 
-        #     limit=limit, 
-        #     nopp=True, 
-        #     dataframe=False,
-        #     **kwargs
-        # ) 
-        # # Step 2: Apply additional filtering by 'template_id'
-        # filtered_data = [
-        #     session for session in data
-        #     if session.get("attributes", {}).get("tinder_template", {}).get("data") 
-        #     and session["attributes"]["tinder_template"]["data"].get("id") == str(template_id)
-        # ]
-        filtered_data, cursor = ipersona_session.filter_by_template_id(
+        result_tuple = ipersona_session.filter_by_template_id(
             template_id=template_id, 
             cursor=cursor, 
             since=since, 
             limit=limit, 
             nopp=True, 
             dataframe=False,
-            **kwargs)
+            **kwargs
+        )
+
+        # Improved error handling for None or invalid return
+        if not result_tuple or not isinstance(result_tuple, (tuple, list)) or len(result_tuple) != 2:
+            logger.warn(f"No interviews found or invalid template_id: {template_id}")
+            return {
+                "interviews": [],
+                "cursor": [],
+                "status": 404,
+                "message": f"No interviews found for the given template_id: {template_id}."
+            }
+
+        filtered_data, cursor = result_tuple
 
         data, cursor = util.summarize_interview_by_template_data(
             run_stage, 
             filtered_data, 
             cursor,
-            filter_by_status)
+            filter_by_status
+        )
 
         result = util.add_template_columns(
-                    data, 
-                    cursor, 
-                    kind='interview_by_template', 
-                    **kwargs
-                )
+            data, 
+            cursor, 
+            kind='interview_by_template', 
+            **kwargs
+        )
         return {
-                "interviews": result, 
-                "cursor": cursor,                  
-                "status": 200, 
-                "message": ""
-            }
+            "interviews": result, 
+            "cursor": cursor,                  
+            "status": 200, 
+            "message": ""
+        }
     
     except Exception as e:
-        logger.error(f"Error processing admin challenge by template ID: {str(e)}", exc_info=True)
+        logger.error(f"Error processing admin interview by template ID: {str(e)}", exc_info=True)
         return {
             "interviews": [],  
             "cursor": [],
             "status": 500, 
             "message": f"Error processing data: {str(e)}"
         }
-
 # ----------------------------------- Fetching session Data ---------------------#
 @routes.post("/fetch_user_session", tags=["Session Endpoints"])
 async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) :
