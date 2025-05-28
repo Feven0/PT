@@ -112,7 +112,6 @@ const useMiddleSocket = () => {
       });
   
       setLoading(true);
-      console.log("HTIEREJHHILTEIREOTIHEWTEWOJFSDTPEAIUTIEUCEMIAPIETIEJMCOAJSDPIHF")
       await socket?.emit('interview chat', { 
         response: data.input, 
         user_session: data.user_session,
@@ -221,6 +220,67 @@ const useMiddleSocket = () => {
     });
   };
 
+  const handleTemplateAudioInterview = async (data: any) => {
+      const chat = [{
+        user_type: "candidate",
+        content_type: "answer",
+        content: {
+          response: data.input,
+          time_taken: data.timerValue,
+          realtime_evaluation: "null"
+        }
+      }];
+  
+      setAudioHistory((prevMessages: any) => {
+        if (!Array.isArray(prevMessages)) {
+          return [...chat];
+        }
+        return [...prevMessages, ...chat];
+      });
+  
+      setLoading(true);
+      await socket?.emit('audio chat sentence', { 
+        response: data.input, 
+        user_session: data.user_session,
+        template_id: data.template_id,
+        time_taken: data.timerValue,
+        job_profile_id: data.job_profile_id,
+        challenge_id: data.challenge_id,
+        all_user_id: data.all_user_id,
+        template: true
+      });
+    };
+
+    const handleChallengeAudioInterview = async (data: any) => {
+      const chat = [{
+        user_type: "candidate",
+        content_type: "answer",
+        content: {
+          response: data.input,
+          time_taken: data.timerValue,
+          realtime_evaluation: "null"
+        }
+      }];
+  
+      setAudioHistory((prevMessages: any) => {
+        if (!Array.isArray(prevMessages)) {
+          return [...chat];
+        }
+        return [...prevMessages, ...chat];
+      });
+  
+      setLoading(true);
+      await socket?.emit('audio chat sentence', { 
+        response: data.input, 
+        user_session: data.user_session,
+        challenge_id: 26,
+        time_taken: data.timerValue,
+        job_profile_id: 0,
+        all_user_id: data.all_user_id,
+        challenge: true
+      });
+    };
+
   
 
   return {
@@ -247,6 +307,8 @@ const useMiddleSocket = () => {
     handleInterview,
     handleTemplateInterview, 
     handleChallengeInterview,
+    handleTemplateAudioInterview,
+    handleChallengeAudioInterview,
     interview,
     setChatInterview,
     loading,

@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: tenx_ipersona API
+  title: Parrot API Doc
   version: 1.0.0
   description: |
     REST API for tenx_ipersona. This spec is auto-generated for Theneo import and includes all endpoints for session management, audio processing, admin, and template features. Every endpoint includes detailed example payloads for both request and response.

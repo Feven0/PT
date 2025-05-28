@@ -68,13 +68,27 @@ async def health_check():
         #         nopp=True, 
         #         dataframe=False
         #         ) 
-        ipersona_template = IpersonaTinderTemplateSchema()
-        session_chatobserver = ipersona_template.get_tinder_template_id(
-            templateId=55, 
-            return_object=True, 
+        # ipersona_template = IpersonaTinderTemplateSchema()
+        # session_chatobserver = ipersona_template.get_tinder_template_id(
+        #     templateId=55, 
+        #     return_object=True, 
+        #     nopp=True, 
+        #     dataframe=False
+        # )
+        ipersona_message = IpersonaSessionMessageSchema(run_stage="dev")
+
+        session_chathistory = ipersona_message.filter_by_session_id(
+            sessionId=1715, 
             nopp=True, 
-            dataframe=False
-        )
+            dataframe=False,
+            sort='asc')
+        chat_count = 0
+        chat = session_chathistory['total']
+        assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
+        chat_count += assistant_count 
+        return chat_count
+        # Determine chat count
+        session_chatobserver = session_chathistory['count']
     
 #         run_stage = 'dev'
 #         userdata = {

@@ -247,8 +247,6 @@ async def choose_interview_question_new_structure(
         
         # If no section is found (all questions exhausted)
         if final_flag:
-            print('out of section picking====================================================')
-            print("else part ******************************************* question_count", question_count)
             interview_question_json = None
             realtime_evaluation = None
             status = None
@@ -342,7 +340,10 @@ async def choose_interview_question_challenge_new_structure(
         # Dynamically calculate section question counts
         question_counts = {section['sectionType']: len(section['questions']) for section in collection}
         total_questions = sum(question_counts.values())
-        
+        print("question_counts is here ==========================================")
+        print(question_counts)
+        print(total_questions)
+        print("question_counts is here ==========================================")
         # Create a cumulative section boundaries
         section_boundaries = {}
         current_boundary = 1  # Start from 1
@@ -358,14 +359,31 @@ async def choose_interview_question_challenge_new_structure(
         # Dynamically determine the current section
         current_section = None
         final_flag = False
+        # for section in collection:
+        #     section_type = section['sectionType']
+        #     boundaries = section_boundaries[section_type]
+        #     if chat_count < boundaries['end']:
+        #         current_section = section
+        #         break
+        #     else:
+        #         final_flag = True
+        
         for section in collection:
             section_type = section['sectionType']
             boundaries = section_boundaries[section_type]
+            
+            print('telegramapp====================================================')
+            print(chat_count)
+            print(boundaries['end'])
+            print('telegramapp====================================================')
+            
             if chat_count < boundaries['end']:
                 current_section = section
                 break
             else:
                 final_flag = True
+                print('final_flag====================================================')
+        
         
         # If a section is found, process the interview question
         if current_section:
@@ -376,7 +394,13 @@ async def choose_interview_question_challenge_new_structure(
             section_start = section_boundaries[question_type]['start']
             if chat_count == section_start:
                 count = chat_count
-            
+            print("CURRENT SECTION IS HERE ==========================================")
+            print(current_section)
+            print("CURRENT SECTION IS HERE ==========================================")
+
+            print("USER RESONPSEN=====================================================")
+            print(data['response'])
+            print("USER RESONPSEN=====================================================")
             # Call helper function to fetch or generate question
             response = await helper_func(
                 run_stage, 
@@ -395,6 +419,7 @@ async def choose_interview_question_challenge_new_structure(
         
         # If no section is found (all questions exhausted)
         if final_flag:
+            print('out of section picking====================================================')
             interview_question_json = None
             realtime_evaluation = None
             status = None
@@ -486,16 +511,18 @@ async def helper_func(
         interview_question_json = None
         realtime_evaluation = None
         status = None
-                
+        print("QUESTION COUNT *******************************************", question_count)  
+
+        print("CHAT COUNT *******************************************", chat_count)
         if chat_count < question_count + 2:
             if data['response']:
                 if count is not None:
                     print("count is not none *******************************************")
                     interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type) 
                 else:
-                    print("count is *******************************************", count)
+                    print("count is on followup *******************************************", count)
                     response = await check_if_followup(data['response'], type)
-                    print("response is *******************************************", response)
+                    print("response is followup *******************************************", response)
                     if not response:
                         print("response is not none *******************************************")
                         interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type)
@@ -503,7 +530,7 @@ async def helper_func(
                         print(section)
                         print("interview_question_json is *******************************************") 
                     else:
-                        print("response is none *******************************************")
+                        print("response is true, generating followup *******************************************")
                         interview_question_json = await generate_followup(data, type)
                         print(interview_question_json)
                         print("interview_question_json is *******************************************")

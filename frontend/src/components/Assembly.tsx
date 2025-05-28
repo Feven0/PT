@@ -16,7 +16,9 @@ const Assembly: React.FC<Data> = ({ sendDataToParent }) => {
     const latest = JSON.parse(localStorage.getItem("userSession") || 'null');        
     const [isEditing, setIsEditing] = useState<boolean>(false); 
     const [editText, setEditText] = useState<string>(transcript.join(' ')); 
-    console.log(isEditing)
+    console.log(isEditing
+      
+    )
     function handleClick(audio: any) {
       sendDataToParent(audio);
     }

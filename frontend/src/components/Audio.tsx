@@ -13,6 +13,8 @@ import Api from '../Services/Services';
 const Audio = () => {
     const { 
         handleAudioSentence,
+        handleTemplateAudioInterview,
+        handleChallengeAudioInterview,
         loading, 
         audiointerview, 
         audioHistory, 
@@ -33,6 +35,134 @@ const Audio = () => {
 
     console.log("audio-interview", audiointerview)
     console.log("audio-history", audioHistory)
+    
+    const chooseTemplate = async (id: any) => {
+        const data = {
+            job_profile_id: 46,
+            all_user_id: 1959,
+            template: true,
+            generate: false,
+            external: false,
+            challenge: false,
+            template_id: 50, 
+            challenge_id: 0
+        };
+        const response = await Api.sessionCreate(data);
+        console.log("response", response?.data)
+        localStorage.setItem("userSession", JSON.stringify(response?.data))
+        if(response?.data){  
+            timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            handleTemplateAudioInterview({ 
+                input, 
+                user_session: response?.data,
+                template_id: 50,
+                challenge_id: 0,
+                job_profile_id: 46,
+                timerValue,
+                all_user_id: 1959
+            });
+        }
+        setInput('');
+
+    }
+
+    const chooseChallenge = async(id: any) => {
+        const data = {
+            job_profile_id: 0,
+            all_user_id: 1959,
+            template: false,
+            generate: false,
+            external: false,
+            challenge: true,
+            template_id: 0, 
+            challenge_id: 26
+        };
+
+        const response = await Api.sessionCreate(data);
+        localStorage.setItem("userSession", JSON.stringify(response?.data))
+        if(response?.data){  
+            timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            handleChallengeAudioInterview({ 
+                input, 
+                user_session: response?.data,
+                challenge_id: 26,
+                timerValue,
+                job_profile_id: 0,
+                all_user_id: 1959
+            });
+        }
+        setInput('');
+    }
+
+        
+    const [template_id, setTemplateId] = useState<number>(50);
+    const [challenge_id, setChallengId] = useState<number>(0);
+    const [job_profile_id, setJobProfileId] = useState<number>(46); 
+
+    const ExecuteInterview = (audioTranscript: any) => {
+        setAudioInterview([])
+
+        const temp_id = template_id || latest?.template_id || 0;
+        const cha_id = challenge_id || latest?.challenge_id || 0;
+        const job_id = job_profile_id || latest?.job_profile_id || 0;
+
+        const isTempValid = temp_id > 0;
+        const isChallengeValid = cha_id > 0;
+        const isJobProfileValid = job_id > 0;
+
+        if (isTempValid && isChallengeValid) {
+            console.log("🎯 Executing Template with Challenge");
+            ExecutiveTemplate(temp_id, job_id, cha_id, audioTranscript);
+        } 
+        else if (isTempValid && isJobProfileValid) {
+            console.log("📄 Executing Template with Job Profile");
+            ExecutiveTemplate(temp_id, job_id, cha_id, audioTranscript);
+        }
+        else if (!isTempValid && isChallengeValid) {
+            console.log("🔥 Executing Challenge");
+            ExecutiveChallenge(cha_id, audioTranscript);
+        } 
+        else if (!isTempValid && !isChallengeValid && isJobProfileValid) {
+            console.log("🛠️ Generating Interview with Job Profile");
+            ExecuteAudioInterview(audioTranscript);
+        } 
+        else {
+            console.warn("⚠️ Invalid configuration: No valid identifiers provided");
+        }
+    };
+
+    const ExecutiveTemplate = async (temp_id: any, job_id: any, cha_id: any, audioTranscript:any) => {
+        setAudioInterview([])
+        timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        const user_session = latest;    
+        console.log("*)9-0TYIGHVYONHUPIONUMKJNUONUIH", user_session)
+        handleTemplateAudioInterview({ 
+            input: audioTranscript, 
+            user_session: user_session,
+            template_id: temp_id,
+            challenge_id: cha_id,
+            job_profile_id: job_id,
+            timerValue,
+            all_user_id: 1959
+        });
+        setInput('');
+    }
+
+    const ExecutiveChallenge = async (id: any, audioTranscript:any) => {
+        setAudioInterview([])
+        timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        const user_session = latest;   
+        console.log("USER RESPONSE ************** USER RESPONSE", input) 
+        handleChallengeAudioInterview({ 
+            input: audioTranscript, 
+            user_session: user_session,
+            challenge_id: 26,
+            timerValue,
+            job_profile_id: 0,
+            all_user_id: 1959
+        });
+        setInput('');
+    }
 
     const handleDataFromAudio = (audioTranscript: any) => {
         setInput(audioTranscript);
@@ -72,7 +202,7 @@ const Audio = () => {
         
     }
 
-    const ExecuteInterview = (audioTranscript: any) => {
+    const ExecuteAudioInterview = (audioTranscript: any) => {
         setAudioInterview([])
         timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         const user_session = latest;
@@ -80,8 +210,8 @@ const Audio = () => {
             input: audioTranscript, 
             user_session,
             timerValue,
-            job_profile_id: 232,
-            all_user_id: 1920
+            job_profile_id: 46,
+            all_user_id: 1959
         });
         setInput('');
     };
@@ -96,20 +226,24 @@ const Audio = () => {
           wavesurferRef.current.play();
         }
       };
+    
+    const waveformContainerRef = useRef<HTMLDivElement | null>(null);
+    
+    useEffect(() => {
+        if (!waveformContainerRef.current) return;
 
-      useEffect(() => {
-            wavesurferRef.current = WaveSurfer.create({
-                container: '#waveform',
-                waveColor: '#080808',
-                progressColor: '#f50202',
-                height: 38
-            });        
+        wavesurferRef.current = WaveSurfer.create({
+            container: waveformContainerRef.current,
+            waveColor: '#080808',
+            progressColor: '#f50202',
+            height: 38
+        });
 
-            wavesurferRef.current.on('finish', () => {
-                if (audioQueue.current.length > 0 && !isPlayingRef.current) {
-                    playNextAudio(); 
-                }
-            });
+        wavesurferRef.current.on('finish', () => {
+            if (audioQueue.current.length > 0 && !isPlayingRef.current) {
+                playNextAudio();
+            }
+        });
 
         return () => {
             if (wavesurferRef.current) {
@@ -117,7 +251,7 @@ const Audio = () => {
                 wavesurferRef.current = null;
             }
         };
-    }, []);
+    }, [startchat]);
 
 
       const playNextAudio = async () => {
@@ -224,9 +358,13 @@ const Audio = () => {
         <>            
             {/* {!open && ( */}
                 <Row gutter={16} style={{marginLeft: '6rem'}}>
-                {(startchat) && (
+                {/* {(!startchat) && ( */}
                     <Col span={12}>
                         <Card title="Audio Interview" bordered={true}>
+                            <div>
+                                <Button onClick={chooseTemplate}>Template</Button>
+                                <Button onClick={chooseChallenge}>Challenge</Button>
+                            </div>
                             <div 
                                 className='timer-container'
                                 style={{ 
@@ -278,7 +416,7 @@ const Audio = () => {
                                 {/* {isOn && ( */}
                                 {loading && <LoadingSpinner style={{ marginLeft: '5px' }} />}
 
-                                    <div 
+                                    {/* <div 
                                         id="waveform" 
                                         style={{ 
                                             width: '50%', 
@@ -289,7 +427,18 @@ const Audio = () => {
                                         className='waveform'
                                         onClick={handleWaveformClick}
                                     >                        
-                                    </div>   
+                                    </div>    */}
+                                    <div
+                                        ref={waveformContainerRef}
+                                        style={{
+                                            width: '50%',
+                                            height: '20px',
+                                            marginTop: '0px',
+                                            marginBottom: '10px'
+                                        }}
+                                        className='waveform'
+                                        onClick={handleWaveformClick}
+                                    />
                                 {/* )}  */}
                             </div>
                             
@@ -300,7 +449,7 @@ const Audio = () => {
                             </div>
                         </Card>
                     </Col>
-                )}
+                 {/* )} */}
                     {audioHistory?.length !== 0 && (
                         <Col span={10}>
                             <Card title="Real-Time Feedback" bordered={true}>
@@ -332,7 +481,7 @@ const Audio = () => {
                                 </Collapse>                      
                             </Card>
 
-                            {sessions !== undefined && (
+                            {/* {sessions !== undefined && (
                                 <div>
                                     {sessions?.attributes?.i_persona_observer?.data !== null && (
                                         <span>
@@ -348,7 +497,7 @@ const Audio = () => {
                                         </span>
                                     )}
                                 </div>
-                            )}
+                            )} */}
                         </Col>
                     )}
                 </Row>

@@ -187,10 +187,10 @@ async def audio_end_point(sid, data):
                             return {"error": f"Template not found: {template_id}"}
                             
                         data['user_session'] = saved_template
-                        all_questions = len(data['user_session']['attributes']['attributes']['template_questions'])
-                    
+                        collection = data['user_session']['attributes']['attributes']['template_questions']
                         question_counts = {section['sectionType']: len(section['questions']) for section in collection}
                         total_questions = sum(question_counts.values())
+                    
                     except Exception as template_error:
                         logger.error(f"Error retrieving template: {str(template_error)}")
                         return {"error": f"Template retrieval failed: {str(template_error)}"}
@@ -381,35 +381,42 @@ async def audio_end_point(sid, data):
              
        
         # Insert the message or conclude the interview if the chat count exceeds the limit
-        if chat_count < total_questions:
+        if chat_count < total_questions + 1:
+            print("Full MESSAGE -=====")
+            print(full_accumulated_message)
+            print("Full MESSAGE -=====")
             final = 'false'
             strapi.step2_insert_message(
                 run_stage, 
                 data, 
                 timelimit, 
-                accumulated_message, 
+                full_accumulated_message, 
                 realtime_evaluation, 
                 final,
                 sessionId)
         else:
             message = 'interview over'
+            await sio.emit("interview done", message, room=sid)
+
             final = 'true'
             if response.get("status") is not None:
-                message = [{
-                        "user_type": "assistant",
-                        "content_type": "question",
-                        "content": {
-                            "time_taken": "null",
-                            "time_limit": "null",                        
-                            "chunk_response": '',
-                            "full_response": accumulated_message,
-                            "final": "true",
-                            "realtime_evaluation": response.get("realtime", "null")
-                        }
-                    }]
-            await sio.emit("last_audio_realtime_evaluation", message, room=sid)          
+                try:
+                    message = [{
+                            "user_type": "assistant",
+                            "content_type": "question",
+                            "content": {
+                                "time_taken": "null",
+                                "time_limit": "null",                        
+                                "chunk_response": '',
+                                "full_response": accumulated_message,
+                                "final": "true",
+                                "realtime_evaluation": response.get("realtime", "null")
+                            }
+                        }]
+                    await sio.emit("last_audio_realtime_evaluation", message, room=sid)   
 
-            await sio.emit("interview done", message, room=sid)
+                except Exception as final_emit_error:
+                            logger.error(f"Failed to emit final evaluation: {str(final_emit_error)}")
             # strapi.step3_insert_message(data, realtime_evaluation, final)
    
     except Exception as e:
