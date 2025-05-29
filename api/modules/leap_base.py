@@ -203,7 +203,8 @@ class LeapBaseClass:
                     self.enum_map.update(new_enum_map)
                     self.id_names_map.update(new_name_map)
                 else:
-                    logger.error("Can not find `%s` in self.data: ")
+                    # logger.error("Can not find `%s` in self.data: ")
+                    pass
             except Exception as e:
                 logger.error(f"Error updating self.data: {e}")              
         else:

@@ -14,21 +14,27 @@ const useWebSocket = (url: string) => {
 
 
   useEffect(() => {
-    // const newSocket = io(url);
-    const newSocket = io(url, {
-      query: {
-        run_stage: 'dev'
-      }
-    });
+    const newSocket = io(url);
+
+    // const newSocket = io(url, {
+    //   query: {
+    //     run_stage: 'dev'
+    //   }
+    // });
+    // const newSocket = io(url, {
+    //   transports: ['websocket']
+    // });
+
     setSocket(newSocket);
 
-    newSocket.on('initial connect', () => {
+    newSocket.on('initial connect', (message: any) => {
       console.log('Connected to WebSocket server');
+      console.log(message)
     });
 
-    newSocket.emit('initial connect', { 
-      run_stage: 'prod'  // Pass your run_stage value here
-    });
+    // newSocket.emit('initial connect', { 
+    //   run_stage: 'dev'  // Pass your run_stage value here
+    // });
 
         // ================================= text To text Sockets =============================//
 

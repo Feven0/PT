@@ -75,7 +75,7 @@ def create_persona(job_desc):
         return persona
 
     except Exception as e:
-            logger.error(f"Persona Creation Error: {str(e)}")
+            # logger.error(f"Persona Creation Error: {str(e)}")
             return f'Error: {str(e)}'             
 
 
@@ -109,11 +109,10 @@ async def generate_interview_question(run_stage, data: dict, question_count, tem
         # Choose between generated_questions and template_questions
         collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions') or user_attributes.get('challenge_questions')
         collection = json.loads(collection) if isinstance(collection, str) else collection
-        print("collection is here ==========================================")
-        print(challenge_id)
-        print("collection is here ==========================================")
+        # print("collection is here ==========================================")
+        # print(challenge_id)
+        # print("collection is here ==========================================")
         if(challenge_id != 0):
-            print("challenge_id is not null ===========================BLANTMEN=========")
             response = await choose_interview_question_challenge_new_structure(
                 run_stage, 
                 collection, 
@@ -154,7 +153,6 @@ async def choose_interview_question_new_structure(
         sessionId):
     try: 
         # Fetch session chat history
-        print('choose_interview_question_new_structure=================BEYONCE============================')
         type = 'job_interview_config'
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
@@ -192,10 +190,6 @@ async def choose_interview_question_new_structure(
             }
             current_boundary += count
         
-        print('boundaries=================================================================================')
-        print(section_boundaries)
-        print('boundaries=================================================================================')
-        
         # Dynamically determine the current section
         current_section = None
         final_flag = False
@@ -203,17 +197,17 @@ async def choose_interview_question_new_structure(
             section_type = section['sectionType']
             boundaries = section_boundaries[section_type]
             
-            print('telegramapp====================================================')
-            print(chat_count)
-            print(boundaries['end'])
-            print('telegramapp====================================================')
+            # print('telegramapp====================================================')
+            # print(chat_count)
+            # print(boundaries['end'])
+            # print('telegramapp====================================================')
             
             if chat_count < boundaries['end']:
                 current_section = section
                 break
             else:
                 final_flag = True
-                print('final_flag====================================================')
+                # print('final_flag====================================================')
         
         # If a section is found, process the interview question
         if current_section:
@@ -286,8 +280,8 @@ async def choose_interview_question_new_structure(
                 status = "final"
                 final = 'true'
                 strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId)
-                print('my daaaaaaaaaaaaaaaaaaaaaaaaa=====================================')
-                print(realtime_evaluation)
+                # print('my daaaaaaaaaaaaaaaaaaaaaaaaa=====================================')
+                # print(realtime_evaluation)
             
             rstage = ''
             status = "Completed"
@@ -340,10 +334,10 @@ async def choose_interview_question_challenge_new_structure(
         # Dynamically calculate section question counts
         question_counts = {section['sectionType']: len(section['questions']) for section in collection}
         total_questions = sum(question_counts.values())
-        print("question_counts is here ==========================================")
-        print(question_counts)
-        print(total_questions)
-        print("question_counts is here ==========================================")
+        # print("question_counts is here ==========================================")
+        # print(question_counts)
+        # print(total_questions)
+        # print("question_counts is here ==========================================")
         # Create a cumulative section boundaries
         section_boundaries = {}
         current_boundary = 1  # Start from 1
@@ -372,17 +366,17 @@ async def choose_interview_question_challenge_new_structure(
             section_type = section['sectionType']
             boundaries = section_boundaries[section_type]
             
-            print('telegramapp====================================================')
-            print(chat_count)
-            print(boundaries['end'])
-            print('telegramapp====================================================')
+            # print('telegramapp====================================================')
+            # print(chat_count)
+            # print(boundaries['end'])
+            # print('telegramapp====================================================')
             
             if chat_count < boundaries['end']:
                 current_section = section
                 break
             else:
                 final_flag = True
-                print('final_flag====================================================')
+                # print('final_flag====================================================')
         
         
         # If a section is found, process the interview question
@@ -394,13 +388,13 @@ async def choose_interview_question_challenge_new_structure(
             section_start = section_boundaries[question_type]['start']
             if chat_count == section_start:
                 count = chat_count
-            print("CURRENT SECTION IS HERE ==========================================")
-            print(current_section)
-            print("CURRENT SECTION IS HERE ==========================================")
+            # print("CURRENT SECTION IS HERE ==========================================")
+            # print(current_section)
+            # print("CURRENT SECTION IS HERE ==========================================")
 
-            print("USER RESONPSEN=====================================================")
-            print(data['response'])
-            print("USER RESONPSEN=====================================================")
+            # print("USER RESONPSEN=====================================================")
+            # print(data['response'])
+            # print("USER RESONPSEN=====================================================")
             # Call helper function to fetch or generate question
             response = await helper_func(
                 run_stage, 
@@ -419,7 +413,6 @@ async def choose_interview_question_challenge_new_structure(
         
         # If no section is found (all questions exhausted)
         if final_flag:
-            print('out of section picking====================================================')
             interview_question_json = None
             realtime_evaluation = None
             status = None
@@ -493,54 +486,39 @@ async def helper_func(
         overall evaluations, and metrics. If an error occurs, it returns an error 
         message instead.
     """
-    try:
-        print("coww0w0w0w0w0w0w0w0w0w0w0w0w0w0w0w0")
-        print(data['job_profile_id'])      
-        print("coww0w0w0w0w0w0w0w0w0w0w0w0w0w0w0w0")
-
-        print('=----------======-------------------------=-=--==------------------===-=-=')
-        print(run_stage, 
-        chat_count, 
-        count, 
-        question_type,
-        sessionId,
-        template_id,
-        question_count)
-        print('=----------======-------------------------=-=--==------------------===-=-=')
-
+    try: 
         interview_question_json = None
         realtime_evaluation = None
         status = None
-        print("QUESTION COUNT *******************************************", question_count)  
-
-        print("CHAT COUNT *******************************************", chat_count)
+        # print("QUESTION COUNT *******************************************", question_count)  
+        # print("CHAT COUNT *******************************************", chat_count)
         if chat_count < question_count + 2:
             if data['response']:
                 if count is not None:
-                    print("count is not none *******************************************")
+                    # print("count is not none *******************************************")
                     interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type) 
                 else:
-                    print("count is on followup *******************************************", count)
+                    # print("count is on followup *******************************************", count)
                     response = await check_if_followup(data['response'], type)
-                    print("response is followup *******************************************", response)
+                    # print("response is followup *******************************************", response)
                     if not response:
-                        print("response is not none *******************************************")
+                        # print("response is not none *******************************************")
                         interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type)
-                        print("interview_question_json is *******************************************")
-                        print(section)
-                        print("interview_question_json is *******************************************") 
+                        # print("interview_question_json is *******************************************")
+                        # print(section)
+                        # print("interview_question_json is *******************************************") 
                     else:
-                        print("response is true, generating followup *******************************************")
+                        # print("response is true, generating followup *******************************************")
                         interview_question_json = await generate_followup(data, type)
-                        print(interview_question_json)
-                        print("interview_question_json is *******************************************")
+                        # print(interview_question_json)
+                        # print("interview_question_json is *******************************************")
                        
             else:
-                print("data is none *******************************************")
+                # print("data is none *******************************************")
                 interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type) 
    
         else:  
-            print("Final else part ******************************************* question_count", question_count)
+            # print("Final else part ******************************************* question_count", question_count)
             realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId, type)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
             logger.info(f"Realtime evaluation is: {realtime_evaluation}")
@@ -1384,10 +1362,7 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
         challenge_id = userdata.get('challenge_id', 0)
         job_profile_id = userdata.get('job_profile_id', 0)
         all_user_id = userdata.get('all_user_id', 0)
-        print("f((((((((((((((((((((((((((((((((}))))))))))))))))))))))))))))))))")
-        print(job_profile_id)
-        print(challenge_id)
-        print("((((((((((((((((((((((((((((((((())))))))))))))))))))))))))))))))))))))))))))")
+
         for entry in data:
             if isinstance(entry, dict):  
                 iso_time = entry.get("createdAt", "")
@@ -1490,9 +1465,9 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 }
                 existing_overall_data = session_chatobserver_sessions[0]
                 update_overall_data = append_new_session_metrics(existing_overall_data, new_overall_data)
-                print("new_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                print(new_overall_data)
-                print("existing_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                # print("new_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                # print(new_overall_data)
+                # print("existing_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
                 # attributes = {
                 #     "overall_confidence": confidence_overtime,
                 #     "overall_clarity": clarity_overtime,
@@ -1508,22 +1483,22 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                     "i_persona_observers": obs_ids
                 }
                 if job_profile_id:
-                    print("job_profile_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                    print(job_profile_id)
+                    # print("job_profile_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                    # print(job_profile_id)
                     message_data["tinder_user_profile"] = tinder_user_profile_id
                     message_data["tinder_job_profile"] = job_profile_id
                 elif challenge_id:
-                    print("challenge_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                    print(challenge_id)
-                    print("update_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                    print(update_overall_data)
-                    print("tinder_user_profile_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                    # print("challenge_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                    # print(challenge_id)
+                    # print("update_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                    # print(update_overall_data)
+                    # print("tinder_user_profile_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
                     message_data["tinder_user_profile"] = tinder_user_profile_id
                     message_data["challenge_document"] = challenge_id
 
-                print("_0+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++0_")
-                print(message_data)
-                print("_0+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++0_")
+                # print("_0+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++0_")
+                # print(message_data)
+                # print("_0+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++0_")
 
                 response = ipersona_overall.update_session(
                     params=message_data, 
@@ -1569,9 +1544,9 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 message_data["tinder_user_profile"] = tinder_user_profile_id
                 message_data["challenge_document"] = challenge_id
 
-            print("_+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_")
-            print(message_data)
-            print("_+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_")
+            # print("_+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_")
+            # print(message_data)
+            # print("_+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_")
             response = ipersona_overall.save_Session_Overall_Observer(
                 params=message_data, 
                 nopp=True, 

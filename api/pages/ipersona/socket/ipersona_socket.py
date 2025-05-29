@@ -33,9 +33,9 @@ sio = socketio.AsyncServer(cors_allowed_origins="*",
                            engineio_logger=False)
 socket_app = socketio.ASGIApp(sio)
 
-@sio.event
-async def connect(sid, environ):
-    print(f"####### Socket Connected with SID: {sid} #######")
+# @sio.event
+# async def connect(sid, environ):
+#     print(f"####### Socket Connected with SID: {sid} #######")
     
     # query_string = environ.get('QUERY_STRING', '')
     # print(f"Query string: {query_string}")
@@ -56,10 +56,17 @@ async def connect(sid, environ):
     # except Exception as e:
     #     print(f"Session error: {e}")
     
+@sio.on("initial connect")
+async def connect(sid):
+    print("####### Socket Connected #######")
+    await sio.emit(
+        "initial connect",
+        {"message": "socket connection started"}, 
+        room=sid)
+    
 @sio.on("disconnect")
 async def disconnect(sid):
     logger.info(f"Client disconnected with SID: {sid}")
-    print("work testing")
  
 # assembly streaming
 @sio.on("audio transcribe")
@@ -132,7 +139,9 @@ async def synthesize_text(text):
 async def audio_end_point(sid, data):
     # session = await sio.get_session(sid)        
         
-    run_stage = session.get('run_stage', None)  
+    run_stage = 'dev' 
+
+    # session.get('run_stage', None)  
 
     if run_stage is None:
         print(f"Run stage not found in session for sid: {sid}")
@@ -248,10 +257,6 @@ async def audio_end_point(sid, data):
         except Exception as history_error:
             logger.error(f"Error retrieving chat history: {str(history_error)}")
 
-
-        # # Insert the user's response if provided
-        # if data['response']:
-        #     strapi.step1_insert_message(run_stage, data)
 
         # Insert the user's response if provided
         try:
@@ -423,7 +428,6 @@ async def audio_end_point(sid, data):
         logger.error(f'Error: {str(e)}')  
         
 
-
 # handle for text to text chat
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
@@ -454,11 +458,11 @@ async def interview_endpoint(sid, data):
             return
         
         # Initialize variables
-        try:
-            session = await sio.get_session(sid)
-        except Exception as session_error:
-            logger.error(f"Failed to get socket session: {str(session_error)}")
-            return {"error": f"Retrieval failed for session:, {sid}"}
+        # try:
+        #     session = await sio.get_session(sid)
+        # except Exception as session_error:
+        #     logger.error(f"Failed to get socket session: {str(session_error)}")
+        #     return {"error": f"Retrieval failed for session:, {sid}"}
         
         chat_count = 1  
         sessionId = None
@@ -471,7 +475,8 @@ async def interview_endpoint(sid, data):
         
         # Get run stage from session
         try:
-            run_stage = session.get('run_stage', None)  
+            run_stage = 'dev' 
+            # session.get('run_stage', None)  
             if run_stage is None:
                 logger.warn(f"Run stage not found in session for sid: {sid}, using default")
                 run_stage = 'dev'  # Default to production if not specified
@@ -522,8 +527,6 @@ async def interview_endpoint(sid, data):
                     collection = data['user_session']['attributes']['attributes']['template_questions']
                     question_counts = {section['sectionType']: len(section['questions']) for section in collection}
                     total_questions = sum(question_counts.values())
-                    print('***************************************************===1****************************************************')
-                    print(f"Total questions derived from template: {total_questions}")
                 except Exception as template_error:
                     logger.error(f"Error retrieving template: {str(template_error)}")
                     return {"error": f"Template retrieval failed: {str(template_error)}"}
@@ -561,7 +564,6 @@ async def interview_endpoint(sid, data):
        
         # Fetch session chat history
         try:
-            print("auuuuuuuuuuuyttttttttttt000000-----------============")
             ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
             session_chathistory = ipersona_message.filter_by_session_id(
                 sessionId=sessionId, 
@@ -593,7 +595,6 @@ async def interview_endpoint(sid, data):
         try:
             if data.get('response'):
                 try:
-                    print("ballls and filreee------===============================")
                     strapi.step1_insert_message(
                         run_stage, 
                         data, 
@@ -626,7 +627,6 @@ async def interview_endpoint(sid, data):
         # Process and emit the assistant's response
         try:
             if response.get("interview") is not None:
-                print("socket working================================First questions fired=======================")
                 assistant_next_question = response.get("interview", "")
                 
                 # Prepare initial message
@@ -679,10 +679,6 @@ async def interview_endpoint(sid, data):
                             assistant_next_question = [str(assistant_next_question)]
                             
                     for chunk in assistant_next_question:
-                        print("************************ CHUNK RESPONSE *************************")
-                        print(chunk)
-                        print("************************ CHUNK RESPONSE *************************")
-
                         try:
                             accumulated_message += chunk
                             message = [{
@@ -695,18 +691,11 @@ async def interview_endpoint(sid, data):
                         except Exception as chunk_error:
                             logger.error(f"Error processing chunk: {str(chunk_error)}")
                             # Continue with next chunk despite error
-
-                    print("************************ First  QUESTION *************************")
-                    print(accumulated_message)
-                    print("************************ First  QUESTION *************************")
-
+                    logger.success("All chunks processed successfully", accumulated_message)
                 except Exception as chunks_error:
                     logger.error(f"Error processing message chunks: {str(chunks_error)}")
                     # Continue despite chunks processing failure
-                    print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FAILED TO SEND THE QUETIONS")
-                    print(chunks_error)
-                    print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FAILED TO SEND THE QUETIONS")
-
+            
                 # Perform real-time response evaluation if applicable
                 try:
                     if data.get('response') not in [None, "", []]:
@@ -745,12 +734,9 @@ async def interview_endpoint(sid, data):
                 
         # Insert the message or conclude the interview
         try:
-            print("((((((((((((((((((((((((((((((((((((((((()))))))))))))))))))))))))))))))))))))))))")
             if chat_count < total_questions + 1:
                 final = 'false'
                 try:
-                    print("=================0::::0===================", sessionId)
-
                     strapi.step2_insert_message(
                         run_stage, 
                         data, 
@@ -808,6 +794,7 @@ def get_socketio_app(fast_app):
         socketio_server=sio,
         other_asgi_app=fast_app,
         socketio_path='/socket.io/'
+        # transports=["websocket"]
     )
     return app
 
