@@ -37,24 +37,24 @@ socket_app = socketio.ASGIApp(sio)
 async def connect(sid, environ):
     print(f"####### Socket Connected with SID: {sid} #######")
     
-    query_string = environ.get('QUERY_STRING', '')
-    print(f"Query string: {query_string}")
+    # query_string = environ.get('QUERY_STRING', '')
+    # print(f"Query string: {query_string}")
     
-    asgi_scope = environ.get('asgi.scope', {})
-    scope_query = asgi_scope.get('query_string', b'').decode('utf-8')
-    print(f"ASGI scope query string: {scope_query}")
+    # asgi_scope = environ.get('asgi.scope', {})
+    # scope_query = asgi_scope.get('query_string', b'').decode('utf-8')
+    # print(f"ASGI scope query string: {scope_query}")
     
-    parsed_query = urllib.parse.parse_qs(query_string)
-    run_stage = parsed_query.get('run_stage', [''])[0]
-    print(f"Parsed run_stage: {run_stage}")
+    # parsed_query = urllib.parse.parse_qs(query_string)
+    # run_stage = parsed_query.get('run_stage', [''])[0]
+    # print(f"Parsed run_stage: {run_stage}")
         
-    # Also try the session method
-    try:
-        await sio.save_session(sid, {'run_stage': run_stage})
-        session = await sio.get_session(sid)
-        print(f"Session after save: {session}")
-    except Exception as e:
-        print(f"Session error: {e}")
+    # # Also try the session method
+    # try:
+    #     await sio.save_session(sid, {'run_stage': run_stage})
+    #     session = await sio.get_session(sid)
+    #     print(f"Session after save: {session}")
+    # except Exception as e:
+    #     print(f"Session error: {e}")
     
 @sio.on("disconnect")
 async def disconnect(sid):
@@ -130,7 +130,7 @@ async def synthesize_text(text):
 # TODO: integrate with audio chat function
 @sio.on("audio chat sentence")
 async def audio_end_point(sid, data):
-    session = await sio.get_session(sid)        
+    # session = await sio.get_session(sid)        
         
     run_stage = session.get('run_stage', None)  
 
