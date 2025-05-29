@@ -138,7 +138,6 @@ async def synthesize_text(text):
 @sio.on("audio chat sentence")
 async def audio_end_point(sid, data):
     # session = await sio.get_session(sid)        
-        
     run_stage = 'dev' 
 
     # session.get('run_stage', None)  
