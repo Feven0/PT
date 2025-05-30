@@ -2,7 +2,7 @@ import os,sys, copy
 import requests
 import json
 import pandas as pd
-
+import httpx
 
 from api import config
 from api.services.secret import get_auth, lambda_friendly_path
@@ -55,198 +55,134 @@ class StrapiGraphql():
         if self.user_token:
             self.user_headers = {"Authorization": f"Bearer {self.user_token}"}
             
+        # Initialize httpx client
+        self.client = httpx.AsyncClient()
 
       
-    
+    async def __aenter__(self):
+        return self
+        
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.client.aclose()
     
     def get_token(self):
        
         return get_auth(ssmkey=self.ssmkey, fconfig=lambda_friendly_path(f'.env/Strapi_token.json'))
       
-    def fetch_data(self,table, token=None):
-       
-        r = requests.get(f"{self.apiroot.replace('graphql','api')}/{table}",
+    async def afetch_data(self, table, token=None):
+        async with httpx.AsyncClient() as client:
+            r = await client.get(f"{self.apiroot.replace('graphql','api')}/{table}",
                          headers = {
-
                         "Authorization": f"Bearer {self.token}", 
-
                         "Content-Type": "application/json"})
-        return r.json()
+            return r.json()
         
-    def insert_data (self,data,table, token=None):
-      
-        try:
-            r = requests.post(
-
-                f"{self.apiroot.replace('graphql','api')}/{table}", 
-
-                data = json.dumps({"data":data}),
-                # self.token['token']
-                headers = {
-
-                "Authorization": f"Bearer {self.token}", 
-
-                "Content-Type": "application/json"}
-
-            ).json()
-        except Exception as e:
-            print(e)
-            raise
-            
-        return r
+    async def ainsert_data(self, data, table, token=None):
+        async with httpx.AsyncClient() as client:
+            try:
+                r = await client.post(
+                    f"{self.apiroot.replace('graphql','api')}/{table}", 
+                    data = json.dumps({"data":data}),
+                    headers = {
+                    "Authorization": f"Bearer {self.token}", 
+                    "Content-Type": "application/json"}
+                )
+                return r.json()
+            except Exception as e:
+                print(e)
+                raise
     
-    def update_data (self, id, data, table, headers=None):
-        
+    async def aupdate_data(self, id, data, table, headers=None):
         if not headers:
             headers = self.headers
             
         headers["Content-Type"] = "application/json"
       
-        try:
-            r = requests.put(f"{self.apiroot.replace('graphql','api')}/{table}/{id}", 
+        async with httpx.AsyncClient() as client:
+            try:
+                r = await client.put(f"{self.apiroot.replace('graphql','api')}/{table}/{id}", 
                              data = json.dumps({"data":data}),
-                             headers = headers).json()
-        except Exception as e:
-            print(e)
-            raise
+                             headers = headers)
+                return r.json()
+            except Exception as e:
+                print(e)
+                raise
             
-        return r
-           
-    def insert_table (self, query, variables, headers=None):
-        """
-
-        Args:
-            query (String): You can write mutation graphql query to insert 
-            variables (stirng ): Values of each attributes needs to be inserted 
-
-        Raises:
-            Exception: _description_
-
-        Returns:
-            result_json (Json): Response for your request 
-        """
-        # use CreateTablename() Mutation query 
-        
+    async def ainsert_table(self, query, variables, headers=None):
         if not headers:
             headers = self.headers
             
-        request = requests.post(self.apiroot, 
+        async with httpx.AsyncClient() as client:
+            request = await client.post(self.apiroot, 
                                 json={'query': query, 'variables': variables}, 
                                 headers=headers)
-        
-        if request.status_code == 200:
-            r =  request.json()
-            result_json= json.dumps(r, indent=2)
             
-        else:
-            raise Exception("Query failed to run by returning code of {}. {}".format(
-                    request.status_code, query))
-        
-        return result_json
+            if request.status_code == 200:
+                r = request.json()
+                result_json = json.dumps(r, indent=2)
+            else:
+                raise Exception("Query failed to run by returning code of {}. {}".format(
+                        request.status_code, query))
+            
+            return result_json
     
-    def Select_from_table (self, query, variables, headers=None):
-        
-        """
-
-        Args:
-            query (String): You can write query graphql query to select from table
-            variables (stirng ): values if you have specific filter 
-
-        Raises:
-            Exception: _description_
-
-        Returns:
-            result_json (Json): Response for your request 
-        """
-        
+    async def aselect_from_table(self, query, variables, headers=None):
         if not headers:
             headers = self.headers
             
-        # Use query to select from table  
         if variables in [None, {}, ""]:
             kwargs = {'query': query}
         else:
             kwargs = {'query': query, 'variables': variables}
            
-            
-        try:
-            request = requests.post(self.apiroot, 
-                                    headers=headers,
-                                    json=kwargs)   
-            if request.status_code == 200:  
-                r =  request.json()
-            else:              
-                # try:
-                #     print('***************Being Eror Message***************') 
-                #     print(json.dumps(request.json(), indent=4))
-                #     print('***************End Eror Message***************')
-                # except:
-                #     pass
-                raise Exception("Query failed to run by returning code of {}. {}".format(
-                        request.status_code, query))
+        async with httpx.AsyncClient() as client:
+            try:
+                request = await client.post(self.apiroot, 
+                                        headers=headers,
+                                        json=kwargs)   
+                if request.status_code == 200:  
+                    r = request.json()
+                else:              
+                    raise Exception("Query failed to run by returning code of {}. {}".format(
+                            request.status_code, query))
                                
-        except Exception as err:                
-            print(err)
-            raise
+            except Exception as err:                
+                print(err)
+                raise
             
-        return r
+            return r
         
-    def update_table (self, query, variables, headers=None):
-        """
-
-        Args:
-            query (String): You can write mutation graphql query to update 
-            variables (stirng ): Values of each attributes needs to be updated
-
-        Raises:
-            Exception: _description_
-
-        Returns:
-            result_json (Json): Response for your request 
-        """
-        # use updateTablename() Mutation query 
+    async def aupdate_table(self, query, variables, headers=None):
         if not headers:
             headers = self.headers
             
-        request = requests.post(self.apiroot, 
-                                json={'query': query, 
-                                      'variables': variables}, 
-                                      headers=headers)
-        if request.status_code == 200:
-            r =  request.json()
-            result_json= json.dumps(r, indent=2)
+        async with httpx.AsyncClient() as client:
+            request = await client.post(self.apiroot, 
+                                    json={'query': query, 
+                                          'variables': variables}, 
+                                          headers=headers)
+            if request.status_code == 200:
+                r = request.json()
+                result_json = json.dumps(r, indent=2)
+            else:
+                raise Exception("Query failed to run by returning code of {}. {}".format(
+                        request.status_code, query))
             
-        else:
-            raise Exception("Query failed to run by returning code of {}. {}".format(
-                    request.status_code, query))
-        
-        return result_json
+            return result_json
     
-    def delete_from_table (self, query, variables):
-        """
-
-        Args:
-            query (String): You can write mutation graphql query to delete 
-            variables (stirng ): Values of each attributes needs to be deleted
-
-        Raises:
-            Exception: _description_
-
-        Returns:
-            result_json (Json): Response for your request 
-        """
-        # use deleteTablename() Mutation query 
-        
-        request = requests.post(self.apiroot, json={'query': query, 'variables': variables}, headers=self.headers)
-        if request.status_code == 200:
-            r =  request.json()
-            result_json= json.dumps(r, indent=2)
+    async def adelete_from_table(self, query, variables):
+        async with httpx.AsyncClient() as client:
+            request = await client.post(self.apiroot, 
+                                    json={'query': query, 'variables': variables}, 
+                                    headers=self.headers)
+            if request.status_code == 200:
+                r = request.json()
+                result_json = json.dumps(r, indent=2)
+            else:
+                raise Exception("Query failed to run by returning code of {}. {}".format(
+                        request.status_code, query))
             
-        else:
-            raise Exception("Query failed to run by returning code of {}. {}".format(
-                    request.status_code, query))
-        
-        return result_json
+            return result_json
     
     def make_scol_optype_dict(self, col, var, func=None):
         if not func:
@@ -447,6 +383,456 @@ class StrapiGraphql():
               
         #print('***====output xx===***',xx)  
         return xx
+            
+    async def aexecute_query(self, query, variables={}, dataframe=False, raw=True, nopp=False, **kwargs):
+        if 'table_name' in kwargs.keys():
+            table = kwargs.get('table_name')
+        else:
+            table = query.split('{')[1].split('(')[0].strip()
+            
+        headers = self.headers
+        if table == 'me':
+            headers = self.user_headers
+            if not headers:
+                logger.warn('No user token passed to query me Table! Returning empty Response')
+                return None, {}
+            
+        response = await self.aselect_from_table(
+                            query=query, 
+                            variables=variables,
+                            headers=headers)
+
+        if 'errors' in response.keys():
+            logger.error('>>>>>>>>>>ERROR START:')
+            print(json.dumps(query, indent=4))
+            print(json.dumps(variables, indent=4))
+            print('headers:', headers)
+            print(json.dumps(response, indent=4))
+            logger.error('>>>>>>>>>>ERROR END:')
+            return None, {}
+                
+        if response is None:
+            logger.error('Got None After EXECUTE_QUERY!')
+            return None, {}
+        
+        if not isinstance(response, dict):
+            logger.error('Expected response to be a dictionary!')
+            return None, {}
+        
+        if 'data' not in response.keys():
+            logger.error('Expected key=data in response!')
+            return None, {}
+        
+        if table == 'me':
+            return response.get('data', {}).get('me', {}), {}
+            
+        try:
+            newtable = [x for x in response['data'].keys() if x in table or table in x][0]            
+            if newtable != table and table != 'me':
+                logger.good('***=======*** Autofix table name from %s to %s'%(table, newtable))
+                table = newtable
+        except:
+            return None, {}
+            
+        
+        meta = {}
+        try:
+            if 'meta' in response['data'][table].keys():
+                meta = response['data'][table].pop('meta', {})
+        except:
+            pass
+        
+        if nopp:
+            try:
+                res = response['data'][table]
+            except Exception as e:
+                logger.error(f"Get_From_Query: Unable to parse response for table={table}! {e}")
+                return response, meta
+            
+            return res, meta
+        
+        if raw:            
+            try:                
+                res = response['data'][table]
+                if 'data' in res.keys():
+                    res = res['data']
+                
+                if isinstance(res, dict):
+                    res = [res]
+               
+                if not res:
+                    return [], meta 
+            except Exception as e:
+                logger.error(f"Get_From_Query: Unable to parse response for table={table}! {e}")
+                print('Query:', query)
+                print('Variables:', variables)                
+                print('response', response)
+                
+            try:
+                rlist = []
+                for ra in res:
+                    rr = {}                   
+                    if 'id' in ra.keys():
+                        rr['id'] = ra['id']
+                        
+                    for name, xa in ra.get('attributes', {}).items():           
+                        if isinstance(xa, dict):
+                            if 'data' in xa.keys():         
+                                d = copy.deepcopy(xa)   
+                                try:            
+                                    dxa = self.unrap_dict_wprefix(d, prefix=name, yy={})
+                                except Exception as e:
+                                    logger.error(f"Get_From_Query: Unable to flatten response for table={table}! {e}")
+                                    raise
+                                rr.update(dxa)
+                            else:
+                                rr[name] = xa
+                        else:
+                            rr[name] = xa
+                    rlist.append(rr)                    
+                return rlist, meta
+            except Exception as e:
+                logger.error(f"Get_From_Query: Unable to flatten response for table={table}! {e}")     
+                print('Res:', res)           
+                print(e)
+                return res, meta
+                    
+        try:
+            dlist = []
+            if table:            
+                xa = copy.deepcopy(response['data'][table]['data'])
+                if isinstance(xa, dict):
+                    d = self.unrap_dict_wprefix(xa, yy={})
+                    dlist.append(copy.deepcopy(d))
+                elif isinstance(xa, list):
+                    if len(xa) > 0 and isinstance(xa[0], dict):                    
+                        for x in xa:
+                            d = self.unrap_dict_wprefix(x, yy={})                        
+                            dlist.append(copy.deepcopy(d))
+                else:
+                    dlist.append(xa)                            
+            else:
+                dlist = response    
+
+            if dataframe:
+                dfresponse = pd.DataFrame.from_records(dlist).dropna(axis=1, how='all')
+            else:
+                dfresponse = dlist                                               
+                                            
+            return dfresponse, meta    
+        except:
+            logger.warn(f"Get_From_Query: Unable to parse response!")
+            return response, meta
+        
+    async def aget_from_query(self, *args, **kwargs):
+        return await self.aexecute_query(*args, **kwargs)
+        
+    async def acreate_cv_analysis(self, id, analysis, analysed=True, remark={}):
+        query = '''
+            mutation AddAnalysis($id:ID!, $analysis:JSON, $remark:JSON, $analysed:Boolean){
+                updatePapSuitabilityFeedback(id:$id,data:{
+                AnalysisResponse:$analysis,
+                remark:$remark,
+                analysed:$analysed
+                }){
+                data{
+                id
+                attributes{
+                    AnalysisResponse
+                    remark
+                    analysed                    
+                }
+                }
+            }
+            }        
+        '''   
+        variables = {"id": id, "analysis": analysis, 
+                     "analysed": analysed, "remark": remark}
+        try:
+            res = await self.aexecute_query(query, variables) 
+            try:
+                res = res[0][0]                                          
+            except:
+                logger.warn("Unable to parse response for CV analysis!")            
+        except Exception as e:
+            logger.error(f"Create_CV_Analysis: Unable to Create CV analysis! {e}")
+            res = {}
+            
+        return res
+        
+    async def aget_cv_analysis(self, id):
+        query = '''
+            query getPapSuitabilityFeedback($id:ID!){
+                papSuitabilityFeedback(id:$id){
+                data{
+                id
+                attributes{
+                    AnalysisResponse
+                    analysed
+                    remark
+                }
+                }
+            }
+            }        
+        '''   
+        variables = {"id": id}
+        try:
+            res = await self.aexecute_query(query, variables)          
+            res = res[0][0]
+        except Exception as e:
+            logger.error(f"Get_CV_Analysis: Unable to get CV analysis! {e}")
+            res = {}
+            
+        return res
+                
+    async def aget_user_info(self, nopp=True):
+        query = '''
+            query {
+                me {
+                    username,
+                    email,
+                    role {
+                        name
+                    }
+                }
+                }        
+        '''   
+        try:
+            response, meta = await self.aexecute_query(query, table_name='me')  
+        except Exception as e:
+            print(e)
+            return {}
+        
+        if not response:
+            return {}
+            
+        try:          
+            try:
+                response = response[0]
+            except:
+                pass
+                  
+            if not isinstance(response, dict):
+                response = {'role':{'name':''},
+                            'username':'', 
+                            'email':''} 
+            else:
+                response['role'] = response.pop('role', {}).get('name', "")
+                
+        except Exception as e:
+            logger.error(f"{e}")
+            response = {}
+        
+        return response
+
+    async def aget_user_infos(self):
+        variables = {"email": "mahlet@10academy.org", "password":"12341234"}
+        query = """ query getTraineeId{
+                    trainees(pagination:{start:0,limit:200} filters:{batch:{Batch:{eq:5}}}){
+                        data{
+                        id
+                        attributes{
+                            trainee_id
+                            email
+                            
+                        }
+                        }
+                    }
+                    }
+            """
+        response = await self.aselect_from_table(query, variables=variables)
+        return response
+                 
+    #-------------------------------------------#
+    #----------Syncronous Methods-----------------#
+    #-------------------------------------------#
+      
+    def fetch_data(self,table, token=None):
+       
+        r = requests.get(f"{self.apiroot.replace('graphql','api')}/{table}",
+                         headers = {
+
+                        "Authorization": f"Bearer {self.token}", 
+
+                        "Content-Type": "application/json"})
+        return r.json()
+        
+    def insert_data (self,data,table, token=None):
+      
+        try:
+            r = requests.post(
+
+                f"{self.apiroot.replace('graphql','api')}/{table}", 
+
+                data = json.dumps({"data":data}),
+                # self.token['token']
+                headers = {
+
+                "Authorization": f"Bearer {self.token}", 
+
+                "Content-Type": "application/json"}
+
+            ).json()
+        except Exception as e:
+            print(e)
+            raise
+            
+        return r
+    
+    def update_data (self, id, data, table, headers=None):
+        
+        if not headers:
+            headers = self.headers
+            
+        headers["Content-Type"] = "application/json"
+      
+        try:
+            r = requests.put(f"{self.apiroot.replace('graphql','api')}/{table}/{id}", 
+                             data = json.dumps({"data":data}),
+                             headers = headers).json()
+        except Exception as e:
+            print(e)
+            raise
+            
+        return r
+           
+    def insert_table (self, query, variables, headers=None):
+        """
+
+        Args:
+            query (String): You can write mutation graphql query to insert 
+            variables (stirng ): Values of each attributes needs to be inserted 
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            result_json (Json): Response for your request 
+        """
+        # use CreateTablename() Mutation query 
+        
+        if not headers:
+            headers = self.headers
+            
+        request = requests.post(self.apiroot, 
+                                json={'query': query, 'variables': variables}, 
+                                headers=headers)
+        
+        if request.status_code == 200:
+            r =  request.json()
+            result_json= json.dumps(r, indent=2)
+            
+        else:
+            raise Exception("Query failed to run by returning code of {}. {}".format(
+                    request.status_code, query))
+        
+        return result_json
+    
+    def Select_from_table (self, query, variables, headers=None):
+        
+        """
+
+        Args:
+            query (String): You can write query graphql query to select from table
+            variables (stirng ): values if you have specific filter 
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            result_json (Json): Response for your request 
+        """
+        
+        if not headers:
+            headers = self.headers
+            
+        # Use query to select from table  
+        if variables in [None, {}, ""]:
+            kwargs = {'query': query}
+        else:
+            kwargs = {'query': query, 'variables': variables}
+           
+            
+        try:
+            request = requests.post(self.apiroot, 
+                                    headers=headers,
+                                    json=kwargs)   
+            if request.status_code == 200:  
+                r =  request.json()
+            else:              
+                # try:
+                #     print('***************Being Eror Message***************') 
+                #     print(json.dumps(request.json(), indent=4))
+                #     print('***************End Eror Message***************')
+                # except:
+                #     pass
+                raise Exception("Query failed to run by returning code of {}. {}".format(
+                        request.status_code, query))
+                               
+        except Exception as err:                
+            print(err)
+            raise
+            
+        return r
+        
+    def update_table (self, query, variables, headers=None):
+        """
+
+        Args:
+            query (String): You can write mutation graphql query to update 
+            variables (stirng ): Values of each attributes needs to be updated
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            result_json (Json): Response for your request 
+        """
+        # use updateTablename() Mutation query 
+        if not headers:
+            headers = self.headers
+            
+        request = requests.post(self.apiroot, 
+                                json={'query': query, 
+                                      'variables': variables}, 
+                                      headers=headers)
+        if request.status_code == 200:
+            r =  request.json()
+            result_json= json.dumps(r, indent=2)
+            
+        else:
+            raise Exception("Query failed to run by returning code of {}. {}".format(
+                    request.status_code, query))
+        
+        return result_json
+    
+    def delete_from_table (self, query, variables):
+        """
+
+        Args:
+            query (String): You can write mutation graphql query to delete 
+            variables (stirng ): Values of each attributes needs to be deleted
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            result_json (Json): Response for your request 
+        """
+        # use deleteTablename() Mutation query 
+        
+        request = requests.post(self.apiroot, json={'query': query, 'variables': variables}, headers=self.headers)
+        if request.status_code == 200:
+            r =  request.json()
+            result_json= json.dumps(r, indent=2)
+            
+        else:
+            raise Exception("Query failed to run by returning code of {}. {}".format(
+                    request.status_code, query))
+        
+        return result_json
+      
+          
             
     def execute_query(self, query, variables={}, dataframe=False, raw=True, nopp=False, **kwargs):
         if 'table_name' in kwargs.keys():
@@ -720,26 +1106,3 @@ class StrapiGraphql():
         # print(self.Select_from_table(query, variables=variables))
         response = self.Select_from_table(query, variables=variables)
         return response
-                 
-if __name__ == "__main__":
-    obj = StrapiGraphql()
-    
-#     query = """mutation createUser($username:String!,$email:String!) { register(input: { username: $username, email: $email, password: $email } ) { user { id username email }  } }"""
-# variables = {"username": "Nebiyu", "email":"neba.samuel17@gmail.com"}
-    variables =  None
-    # query = """ query getTraineeId{
-    #                 trainees(pagination:{start:0,limit:200} filters:{batch:{Batch:{eq:5}}}){
-    #                     data{
-    #                     id
-    #                     attributes{
-    #                         trainee_id
-    #                         email
-                            
-    #                     }
-    #                     }
-    #                 }
-    #                 } """
-    # print(obj.Select_from_table(query, variables=variables))
-    # variables = {"email": "mahlet@10academy.org", "password":"12341234"}
-    # print(obj.get_token())
-    print(obj.headers)
