@@ -607,10 +607,10 @@ class JobReactionManager(JobManagerBase):
         # Columns configuration for the session jobs
         self.challenge_columns = {
             'challenge_id': {'label': 'Challenge ID', 'ctype': 'string', 'options': []},
-            'challenge_title': {'label': 'Job Title', 'ctype': 'string', 'options': []},
+            'challenge_title': {'label': 'Challenge Title', 'ctype': 'string', 'options': []},
             'complete_interviews_count': {'label': 'Complete Interview Count', 'ctype': 'number', 'options': []},
             'incomplete_interviews_count': {'label': 'Incomplete Interview Count', 'ctype': 'number', 'options': []},
-            'total_interviews_count': {'label': 'Total Interview Coun    t', 'ctype': 'number', 'options': []},
+            'total_interviews_count': {'label': 'Total Interview Count', 'ctype': 'number', 'options': []},
             'score': {'label': 'Score', 'ctype': 'string', 'options': []},
             'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]}
         }
