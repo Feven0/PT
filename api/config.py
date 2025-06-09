@@ -70,6 +70,9 @@ def get_strapi_params(stage):
     elif stage.lower().startswith('tenacious'):
         root='tenaciouscms'
         ssmkey="TENACIOUS_PROD_STRAPI_TOKEN"
+    elif stage.lower().startswith('demo'):
+        root='democms'
+        ssmkey="DEMO_PROD_STRAPI_TOKEN"
     else:  #stage.lower().startswith('dev')
         root='dev-cms'
         ssmkey="TENX_DEV_STRAPI_TOKEN"  
@@ -650,6 +653,9 @@ def get_strapi_params(stage):
     elif stage.lower().startswith('tenacious'):
         root='tenaciouscms'
         ssmkey="TENACIOUS_PROD_STRAPI_TOKEN"
+    elif stage.lower().startswith('demo'):
+        root='democms'
+        ssmkey="DEMO_PROD_STRAPI_TOKEN"
     else:  #stage.lower().startswith('dev')
         root='dev-cms'
         ssmkey="TENX_DEV_STRAPI_TOKEN"  
