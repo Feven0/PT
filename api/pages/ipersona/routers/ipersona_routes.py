@@ -2041,6 +2041,7 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) :
             dataframe=False
         )
 
+        return trainee_profile_data
         if not trainee_profile_data:
             logger.warn(f"No trainee user profiles found for user ID: {request.all_user_id}")
             return JSONResponse(
