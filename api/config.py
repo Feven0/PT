@@ -708,9 +708,10 @@ class templates:
 
 @dataclass
 class settings:
-    PROJECT_NAME: str = "10 Academy Interviwer Persona Backend"
-    PROJECT_DESCRIPTION = "Tenx AI Chatbot for Interviewer Persona"
+    PROJECT_NAME: str = "Parrot Backend"
+    PROJECT_DESCRIPTION = "Parrot is an AI-driven tool that helps job seekers assess job fit, engage in mock interviews, and receive personalized feedback"
     PROJECT_VERSION: str = "1.0.0"
+    REDOC_ENABLED = f"/api/redoc"
     #
     USE_SQLITE_DB: str = "False"
     #

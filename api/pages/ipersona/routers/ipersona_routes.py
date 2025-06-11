@@ -24,9 +24,10 @@ import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_gpt as gpt
 import api.pages.ipersona.models.persona as pemodel
 from api.utils.logger import LLPackerLogger
-from api.services.strapi_ipersona import IpersonaManager
 import api.llm.ipersona.ipersona_strapi as strapi
-from api.services.strapi_graphql import StrapiGraphql
+settings = config.settings
+
+
 logger = LLPackerLogger(os.path.basename(__file__))
 module_dir= os.path.dirname(__file__)
 data_path = lambda x: os.path.join(module_dir, "folders", x)
@@ -35,7 +36,14 @@ prompt_path = lambda x: os.path.join(module_dir, "data/prompts", x)
 aai.settings.api_key = config.assemblyai.api_key
 transcriber = aai.Transcriber()
 
-routes = FastAPI(root_path="/api")
+routes = FastAPI(
+    root_path="/api",
+    title=settings.PROJECT_NAME,
+    description=settings.PROJECT_DESCRIPTION,
+    version=settings.PROJECT_VERSION,
+    redoc=settings.REDOC_ENABLED,
+    debug=False
+    )
 
 @routes.get("/health", tags=["Health Check"])
 async def health_check():
