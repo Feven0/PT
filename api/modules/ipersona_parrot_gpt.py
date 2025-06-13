@@ -25,7 +25,7 @@ from api.utils.request_manager import JobReactionManager
 from api.services.async_task_analyzer import AsyncTaskAnalyzer
 import api.modules.reading_fallback_prompts as fallback
 from collections import defaultdict
-
+from fastapi.responses import JSONResponse
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
@@ -329,7 +329,8 @@ async def choose_interview_question_challenge_new_structure(
             chat_count += assistant_count 
             logger.info(f"Number of assistant entries: {chat_count}")
         else:
-            logger.error("Chat is empty.")
+            logger.info("Chat is empty.")
+
         
         # Dynamically calculate section question counts
         question_counts = {section['sectionType']: len(section['questions']) for section in collection}
@@ -730,7 +731,109 @@ def realtime_response_evaluation(run_stage, data: dict, sessionId, type) -> dict
         logger.error(f"Real time evaluation process failed: ${str(e)}")
         return {'error': str(e)} 
     
-    
+#---------------------------------------- Overall EXTERNAL AUDIO Evaluation -------------------------------
+def process_audio_and_save_external(
+        audio_processing_status,
+        audio_path,
+        job_profile_id, 
+        challenge_id,
+        all_user_id, 
+        template, 
+        generate, 
+        external, 
+        challenge):
+    try:
+        audio_processing_status[job_profile_id] = {"status": "processing", "message": ""}
+        transcriber = aai.Transcriber()
+        transcript = transcriber.transcribe(audio_path)
+        if transcript.status == aai.TranscriptStatus.error:
+            error_msg = getattr(transcript, 'error', 'Unknown transcription error')
+            logger.error(f"Transcription error: {error_msg}")
+            audio_processing_status[job_profile_id] = {"status": "failed", "message": error_msg}
+            return
+        logger.info("Transcription completed successfully (async route)")
+        logger.debug(f"Transcription text: {transcript.text}")
+        external_audio_prompt = file_reader(prompt_path('external_audio_analysis.txt'))
+        realtime_prompt = file_reader(prompt_path('realtime_evaluation.txt'))
+        external_aud_prompt = external_audio_prompt.replace("{transcription}", str(transcript.text)).replace("{realtime}", str(realtime_prompt))
+        # external_aud_prompt = "Hello"
+        data = gpt.openai_gpt_assistant_without_streaming(external_aud_prompt)
+        response = extract_json(data, quite=False)
+        run_stage = 'dev'
+        transcribe_chat = response if isinstance(response, list) else [response]
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(
+            all_user_id=all_user_id, nopp=True, dataframe=False
+        )
+        if not trainee_profile_data:
+            logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
+            audio_processing_status[job_profile_id] = {"status": "failed", "message": "No trainee user profiles found"}
+            return
+        tinder_user_profile_id = trainee_profile_data.get('id')
+        if not tinder_user_profile_id:
+            audio_processing_status[job_profile_id] = {"status": "failed", "message": "Invalid trainee profile: missing ID"}
+            return
+        
+        template_id = 0
+        message = ''
+        type = {
+            "template": template,
+            "generate": generate,
+            "external": external,
+            "challenge": challenge
+        }
+        saved_session = create_session(
+            run_stage,
+            type,  
+            all_user_id,
+            tinder_user_profile_id,
+            job_profile_id,
+            template_id,
+            challenge_id,
+            message)
+        
+        if saved_session:
+            sessionId = saved_session['id']
+            saved = strapi.save_messages_to_db(transcribe_chat, sessionId)
+            status = 'External'
+            type = 'job_interview_config'
+            def run_overall():
+                try:
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    overall = loop.run_until_complete(
+                        overall_interview_evaluations_external(
+                            run_stage, 
+                            transcribe_chat, 
+                            status, 
+                            sessionId, 
+                            all_user_id, 
+                            tinder_user_profile_id, 
+                            job_profile_id,
+                            type
+                        )
+                    )
+                    
+                    audio_processing_status[job_profile_id] = {
+                        "status": "done", 
+                        "message": "Chat Saved Successfully", 
+                        "chat": saved, 
+                        "overall": overall
+                    }
+
+                except Exception as e:
+                    logger.error(f"Error in overall evaluation: {str(e)}", exc_info=True)
+                    audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
+            import threading
+            t = threading.Thread(target=run_overall)
+            t.start()
+        else:
+            audio_processing_status[job_profile_id] = {"status": "failed", "message": "Chat Not Saved"}
+    except Exception as e:
+        logger.error(f"Error in background audio processing: {str(e)}", exc_info=True)
+        audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
+
 #----------------------------------------- Overall Interview Evaluation -------------------------------
 async def overall_interview_evaluations(run_stage, data: dict, status, sessionId, type) -> dict:
     """
@@ -1965,6 +2068,7 @@ def add_template_columns(
         logger.error(f'Error adding columns to leap table: {e}')
         output = [] 
 
+#-------------------------------------------- user engagment jobs --------------------------------------------
 def summarize_interviews(
     run_stage,
     user_profile_id, 
@@ -2115,6 +2219,107 @@ def summarize_challenge_interviews(
         if not data:
             logger.info("No data found after metric extraction.")
             return add_engagement_columns([], cursor, kind='challenge', **kwargs), cursors
+
+        # Step 2: Filter for valid challenge_id only
+        valid_records = [d for d in data if d.get("challenge_id") not in (None, 0)]
+
+        if not valid_records:
+            logger.info("No valid challenge_id found.")
+            return add_engagement_columns([], cursor, kind='challenge', **kwargs), cursors
+
+        # Step 3: Group by challenge_id
+        challenge_summary = defaultdict(list)
+        for record in valid_records:
+            challenge_summary[record["challenge_id"]].append(record)
+
+        summary_response = []
+
+        # Step 4: Process each valid challenge group
+        for challenge_id, records in challenge_summary.items():
+            complete_count = sum(1 for r in records if r.get("complete_status"))
+            incomplete_count = len(records) - complete_count
+
+            total_score = sum(
+                r.get("overall_performance_score", 0) for r in records if r.get("overall_performance_score") is not None
+            )
+
+            average_score = (
+                round(total_score / complete_count, 2)
+                if complete_count > 0 else "N/A"
+            )
+
+            try:
+                ipersona_job = IpersonaChallengeDocumentSchema(run_stage=run_stage)
+                challenge_data = ipersona_job.get_challenge_by_id(
+                    challengeId=challenge_id,
+                    nopp=True,
+                    dataframe=False
+                )
+
+                if not challenge_data or not isinstance(challenge_data, dict):
+                    logger.warning(f"Challenge data not found or invalid for challenge_id {challenge_id}")
+                    continue
+
+                challenge_title = challenge_data.get("attributes", {}).get("Title", "")
+
+            except Exception as e:
+                logger.error(f"Failed to fetch challenge data for challenge_id {challenge_id}: {e}")
+                continue
+
+            summary_response.append({
+                "challenge_id": challenge_id,
+                "challenge_title": challenge_title,
+                "complete_interviews_count": complete_count,
+                "incomplete_interviews_count": incomplete_count,
+                "total_interviews_count": complete_count + incomplete_count,
+                "score": average_score
+            })
+
+        cursor["total"] = len(summary_response)
+        output = add_engagement_columns(summary_response, cursor, kind='challenge', **kwargs)
+
+        return output, cursors
+
+    except Exception as e:
+        logger.error(f"Error processing challenge interviews: {e}")
+        return str(e), str(e)
+
+def summarize(
+    run_stage,
+    user_profile_id, 
+    filter,
+    cursor,
+    since, 
+    limit,
+    information_level,
+    return_skip
+):
+    try:
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        query_filter = filter or {}
+        kwargs = {**query_filter}
+
+        data, cursors = ipersona_session.filter_by_tinder_user_profile_id(
+            user_profile_id=user_profile_id, 
+            cursor=cursor, 
+            since=since, 
+            limit=limit, 
+            nopp=True, 
+            dataframe=False,
+            **kwargs
+        )
+
+        if not data:
+            logger.info("No session data found.")
+            return add_engagement_columns([], cursor, kind='engagment-all', **kwargs), cursors
+
+        # Step 1: Extract metrics
+
+        data = extracted_needed_metrics(data)
+        return data, cursors
+        if not data:
+            logger.info("No data found after metric extraction.")
+            return add_engagement_columns([], cursor, kind='engagment-all', **kwargs), cursors
 
         # Step 2: Filter for valid challenge_id only
         valid_records = [d for d in data if d.get("challenge_id") not in (None, 0)]
@@ -2456,22 +2661,6 @@ def extract_observers_metrics(session_chatobserver):
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
- 
-# def extract_observers_metrics(data):
-#     try:
-#         extracted_observers = []
-#         for message in data:
-#             if message['attributes'].get('i_persona_observer') and message['attributes']['i_persona_observer'].get('data'):
-#                 message_data = message['attributes']['i_persona_observer']['data']
-#                 message_attributes = message_data['attributes']['attributes']['interview_evaluation_metrics']
-#                 message_attributes['createdAt'] = message['attributes']['createdAt']
-#                 message_attributes['obs_id'] = message['attributes']['i_persona_observer']['data']['id']
-#                 extracted_observers.append(message_attributes)
-
-#         return extracted_observers
-#     except Exception as e:
-#         logger.error(f"Error processing files: {e}")
-#         return {'error': str(e)}
 
 def calculate_session_metrics(sessions):
     try:
@@ -3117,205 +3306,6 @@ def summarize_eachchallenge_data(run_stage, data):
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
     
-# def summarize_allusers_performance_data(run_stage, data):
-#     """
-#     Summarize performance data for all users with comprehensive error handling.
-    
-#     Args:
-#         run_stage (str): Environment stage ('dev', 'prod', etc.)
-#         data (list): List of performance data records
-        
-#     Returns:
-#         list: Summarized metrics for each user or error dictionary
-#     """
-#     try:
-#         if not isinstance(data, list):
-#             logger.error("Input data is not a list")
-#             return {'error': "Invalid data format: expected a list"}
-            
-#         if not data:
-#             logger.warn("Empty data list provided")
-#             return []
-        
-#         try:
-#             data = extracted_needed_metrics(data)  # Extract necessary metrics
-
-#         except Exception as extract_error:
-#             logger.error(f"Error extracting metrics: {extract_error}")
-#             return {'error': f"Failed to extract metrics: {str(extract_error)}"}
-        
-#         user_summary = defaultdict(list)  # Dictionary to group records by user_profile_id
-#         user_metrics = []
-        
-#         # Step 1: Group records by user_profile_id
-#         for record in data:
-#             if not isinstance(record, dict):
-#                 logger.warn(f"Skipping non-dictionary record: {record}")
-#                 continue
-                
-#             user_profile_id = record.get('user_profile_id')
-#             if not user_profile_id:
-#                 logger.warn(f"Skipping record with missing user_profile_id: {record}")
-#                 continue
-                
-#             user_summary[user_profile_id].append(record)
-
-#         # Step 2: Iterate over each user and calculate the average of metrics
-#         for user_profile_id, records in user_summary.items():
-#             try:
-#                 # Fetch user details from external data sources (Strapi)
-#                 try:
-#                     ipersona_user = IpersonaTraineeSchema()
-#                     all_user_data = ipersona_user.get_trainee_by_id(
-#                         user_profile_id=user_profile_id, 
-#                         nopp=True, 
-#                         dataframe=False, 
-#                         return_object=True
-#                     )
-                    
-#                     if not all_user_data:
-#                         logger.warn(f"No trainee data found for user_profile_id: {user_profile_id}")
-#                         all_user_data = {}
-                        
-#                     all_users_data = all_user_data.get('attributes', {}).get('all_users', {}).get('data', [{}])
-#                     if not all_users_data:
-#                         logger.warn(f"No all_users data found for user_profile_id: {user_profile_id}")
-#                         continue
-                        
-#                     all_user_id = all_users_data[0].get('id')
-#                     if not all_user_id:
-#                         logger.warn(f"Missing all_user_id for user_profile_id: {user_profile_id}")
-#                         continue
-                        
-#                 except Exception as trainee_error:
-#                     logger.error(f"Error fetching trainee data for user {user_profile_id}: {trainee_error}")
-#                     continue
-                
-#                 # Get all user data
-#                 try:
-#                     ipersona_alluser = IpersonaAllUserSchema(run_stage=run_stage)
-#                     ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(
-#                         all_user_id=all_user_id, 
-#                         nopp=True, 
-#                         dataframe=False, 
-#                         return_object=True
-#                     )
-                    
-#                     if not ipersona_alluser_data:
-#                         logger.warn(f"No all user data found for all_user_id: {all_user_id}")
-#                         ipersona_alluser_data = {}
-                        
-#                 except Exception as alluser_error:
-#                     logger.error(f"Error fetching all user data for all_user_id {all_user_id}: {alluser_error}")
-#                     ipersona_alluser_data = {}
-                
-#                 # Get profile information
-#                 try:
-#                     ipersona_profile = IpersonaProfileInformationSchema(run_stage=run_stage)
-#                     ipersona_profile_data = ipersona_profile.filter_by_all_user_id(
-#                         all_user_id=all_user_id, 
-#                         nopp=True, 
-#                         dataframe=False, 
-#                         return_object=True
-#                     )
-                    
-#                     if not ipersona_profile_data:
-#                         logger.warn(f"No profile data found for all_user_id: {all_user_id}")
-#                         ipersona_profile_data = {}
-                        
-#                 except Exception as profile_error:
-#                     logger.error(f"Error fetching profile data for all_user_id {all_user_id}: {profile_error}")
-#                     ipersona_profile_data = {}
-                
-#                 # Merge user data
-#                 userdata = {**ipersona_alluser_data, **ipersona_profile_data}
-
-#                 # Step 3: Calculate metrics with error handling
-#                 try:
-#                     # Initialize sum variables
-#                     total_confidence = 0
-#                     total_clarity = 0
-#                     total_engagement = 0
-#                     valid_records = 0
-
-#                     # Step 4: Iterate over records and sum up the metrics
-#                     for item in records:
-#                         try:
-#                             confidence = item.get('confidence', '').lower() if item.get('confidence') else ''
-#                             clarity = item.get('clarity', '').lower() if item.get('clarity') else ''
-#                             engagement = item.get('engagement', '').lower() if item.get('engagement') else ''
-                            
-#                             # Map string values to numeric levels
-#                             confidence_mapping = {'poor': 1, 'good': 2, 'excellent': 3}
-#                             clarity_mapping = {'poor': 1, 'good': 2, 'excellent': 3}
-#                             engagement_mapping = {'poor': 1, 'good': 2, 'excellent': 3}
-                            
-#                             confidence_level = confidence_mapping.get(confidence, 0)
-#                             clarity_level = clarity_mapping.get(clarity, 0)
-#                             engagement_level = engagement_mapping.get(engagement, 0)
-
-#                             # Only count this record if at least one metric is valid
-#                             if any([confidence_level, clarity_level, engagement_level]):
-#                                 valid_records += 1
-                            
-#                             # Sum the metrics
-#                             total_confidence += confidence_level
-#                             total_clarity += clarity_level
-#                             total_engagement += engagement_level
-                            
-#                         except Exception as metric_error:
-#                             logger.warn(f"Error processing metrics for record: {item}, error: {metric_error}")
-#                             continue
-
-#                     # Step 5: Calculate averages and handle record_count == 0 case
-#                     avg_confidence = round(total_confidence / valid_records, 2) if valid_records else 0
-#                     avg_clarity = round(total_clarity / valid_records, 2) if valid_records else 0
-#                     avg_engagement = round(total_engagement / valid_records, 2) if valid_records else 0
-                    
-#                 except Exception as calculation_error:
-#                     logger.error(f"Error calculating metrics for user {user_profile_id}: {calculation_error}")
-#                     avg_confidence = avg_clarity = avg_engagement = 0
-
-#                 # Step 6: Prepare the summarized user data
-#                 user_data = {
-#                     "user_profile_id": user_profile_id,
-#                     "all_user_id": all_user_id,
-#                     "name": userdata.get('name', 'Unknown'),
-#                     "role": userdata.get('role', 'Unknown'),
-#                     "batch": userdata.get('Batch', 'Unknown'),
-#                     "gender": userdata.get('gender', 'Unknown'),
-#                     "nationality": userdata.get('nationality', 'Unknown'),
-#                     'metrics': {
-#                         'average_confidence_level': avg_confidence if avg_confidence != 0 else None,
-#                         'average_clarity_level': avg_clarity if avg_clarity != 0 else None,
-#                         'average_engagement_level': avg_engagement if avg_engagement != 0 else None,
-#                     }
-#                 }
-
-#                 user_metrics.append(user_data)
-                
-#             except Exception as user_error:
-#                 logger.error(f"Error processing user {user_profile_id}: {user_error}")
-#                 # Add partial user data with error information
-#                 user_metrics.append({
-#                     "user_profile_id": user_profile_id,
-#                     "error": str(user_error),
-#                     "metrics": {
-#                         'average_confidence_level': None,
-#                         'average_clarity_level': None,
-#                         'average_engagement_level': None,
-#                     }
-#                 })
-
-#         if not user_metrics:
-#             logger.warn("No valid user metrics were generated")
-            
-#         return user_metrics
-
-#     except Exception as e:
-#         logger.error(f"Critical error in summarize_allusers_performance_data: {e}")
-#         return {'error': str(e)}
-
 def summarize_allusers_performance_data(run_stage, data):
     """
     Summarize performance data for all users with comprehensive error handling.
@@ -3707,7 +3697,222 @@ def extract_json(response, quite=False):
         return {'error': str(e)}
     
 #------------------------------------------- Create Session -------------------------------------------------
+def check_if_session_exists(run_stage, user_profile_id, job_profile_id):
+    try:
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        session_data = ipersona_session.filter_by_with_user_job_id_by_filtering( 
+            user_profile_id=user_profile_id,
+            job_profile_id=job_profile_id,
+            since=None, 
+            nopp=True,
+            dataframe=False
+        )
+        
+        data = extracted_needed_metrics(session_data)
+        
+        def get_latest_incomplete_session(data):
+            for item in data:
+                if not item.get("complete_status", False):
+                    # return item
+                    return {
+                        'id': item.get('id'),
+                        "status": item.get('complete_status'),
+                        "job_profile_id": item.get('job_profile_id'),
+                        "user_profile_id": item.get('user_profile_id'),
+                        "template_id": item.get('template_id'),
+                        "challenge_id": item.get('challenge_id')
+                    }
+            return None
+        
+        return get_latest_incomplete_session(data)  
+
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+  
+async def create_session_logics(
+        request,
+        mode,
+        run_stage, 
+        template, 
+        external, 
+        challenge, 
+        job_profile_id, 
+        all_user_id, 
+        template_id, 
+        challenge_id,
+        tinder_user_profile_id,
+        tinder_job_data, 
+        tinder_user_profile_data):
+    try:
+        print('---------------------0p-----------')
+        print(mode)
+        print('----------------------0p----------')
+        if template:
+            message = ''
+            saved_session = create_session(
+                mode,
+                run_stage, 
+                request, 
+                all_user_id,
+                tinder_user_profile_id, 
+                job_profile_id,
+                template_id, 
+                challenge_id, 
+                message
+            )
+
+            saved_session = {
+                'id': saved_session.get('id'),
+                "status": saved_session.get('attributes', {}).get('status'),
+                "template_id": safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
+                "challenge_id": safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
+            }
+
+            session_id = [saved_session.get('id')]
+            attach_session_id_to_a_template(template_id, session_id)
+
+            return saved_session
+
+        elif challenge:
+            type = 'challenge_interview_config'
+            response_obj = fetch_the_structure(type)
+            challenge_data = await analysis_challenge(challenge_id)
+
+            if response_obj is False:
+                tag = 'parrot_challenge_question_generation_default'
+                challenge_prompt = read_prompt_data_for_challenge_default(
+                    challenge_data, type, tag
+                )
+            else:
+                tag = 'parrot_challenge_question_generation'
+                section_count = response_obj.get('section_count', {})
+                json_format = response_obj.get('json_format', {})
+                challenge_prompt = read_prompt_data_for_challenge(
+                    json_format, 
+                    section_count, 
+                    challenge_data, 
+                    type, 
+                    tag
+                )
+
+            saved_session = create_session(
+                mode,
+                run_stage, 
+                request, 
+                all_user_id,
+                tinder_user_profile_id, 
+                job_profile_id,
+                template_id, 
+                challenge_id, 
+                challenge_prompt
+            )
+
+            saved_session = {
+                'id': saved_session.get('id'),
+                "status": saved_session.get('attributes', {}).get('status'),
+                "template_id": safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
+                "challenge_id": safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
+            }
+
+            return saved_session
+
+        else:
+            type = 'job_interview_config'
+            response_obj = fetch_the_structure(type)
+
+            if response_obj is False:
+                tag = 'parrot_question_generator_default'
+                persona_tag = 'parrot_persona'
+                generated_persona = read_prompt_persona(
+                    tinder_job_data, 
+                    tinder_user_profile_data, 
+                    type, 
+                    persona_tag
+                )
+                msg = read_prompt_data_for_default(type, tag)
+            else:
+                section_count = response_obj.get('section_count', {})
+                json_format = response_obj.get('json_format', {})
+                tag = 'parrot_generate_question'
+                persona_tag = 'parrot_persona'
+                generated_persona = read_prompt_persona(
+                    tinder_job_data, 
+                    tinder_user_profile_data, 
+                    type,
+                    persona_tag
+                )
+                msg = read_generate_question_prompt(
+                    json_format, 
+                    section_count, 
+                    context='', 
+                    tag=tag, 
+                    type=type
+                )
+
+            content = generated_persona + msg
+            response = gpt.openai_gpt_assistant_without_streaming(content)
+
+            if not response:
+                logger.error("Failed to generate questions: Empty AI response")
+                return JSONResponse(
+                    status_code=500,
+                    content={"error": "Failed to generate interview questions"}
+                )
+
+            generated_question_json = extract_json(response, quite=False)
+            generated_question_json = add_question_number(generated_question_json)
+            logger.info("Persona and questions generated successfully")
+
+            session_data = {
+                "slug": f"all_user_id: {all_user_id}",
+                "status": "Incomplete",
+                "attributes": {
+                    "persona": generated_persona,
+                    "generated_questions": generated_question_json
+                },
+                "metadata": {
+                    "template": False,
+                    "generate": True,
+                    "external": False,
+                    "challenge": False,
+                    "mode": mode
+                },
+                "tinder_user_profile_id": tinder_user_profile_id,
+                "tinder_job_profile_id": job_profile_id,
+                "tinder_template": template_id,
+                "challenge_document": challenge_id
+            }
+
+            ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+            saved_session = ipersona_session.save_session(
+                params=session_data, return_object=True, nopp=True, dataframe=False
+            )
+
+            if not saved_session:
+                logger.error("Failed to save session")
+                return JSONResponse(
+                    status_code=500,
+                    content={"error": "Failed to save session data"}
+                )
+
+            logger.info(f"Session created successfully with ID: {saved_session.get('id', 'unknown')}")
+
+            saved_session = {
+                'id': saved_session.get('id'),
+                "status": saved_session.get('attributes', {}).get('status'),
+                "template_id": safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
+                "challenge_id": safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
+            }
+
+            return saved_session
+
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+
 def create_session(
+        mode,
         run_stage, 
         type, 
         all_user_id, 
@@ -3717,28 +3922,34 @@ def create_session(
         challenge_id,
         message):
     try:
-        if type.template:
+        print('=======--------------------------------=====')
+        print(mode)
+        print('=======--------------------------------======')
+        if type.get('template'):
             metadata =  {
                 "template": True,
                 "generate": False,
                 "external": False,
-                "challenge": False
+                "challenge": False,
+                "mode": mode
             }
             status = "Incomplete"
-        elif type.external:
+        elif type.get('external'):
             metadata =  {
                 "template": False,
                 "generate": False,
                 "external": True,
-                "challenge": False
+                "challenge": False,
+                "mode": mode
             }
             status = "External"
-        elif type.challenge:
+        elif type.get('challenge'):
             metadata =  {
                 "template": False,
                 "generate": False,
                 "external": False,
-                "challenge": True
+                "challenge": True,
+                "mode": mode
             }
             status = "Incomplete"
             
@@ -3758,7 +3969,7 @@ def create_session(
             # Step 4: Add question numbers
             challenge_generated_questions = add_question_number(challenge_generated_questions)
             
-        if type.challenge: 
+        if type.get('challenge'): 
             # Step 5: Save session data
             session_data = {
                 "slug": str(f"all_user_id: {all_user_id}"),
@@ -3770,8 +3981,8 @@ def create_session(
                     "template": False,
                     "generate": False,
                     "external": False,
-                    "challenge": True
-
+                    "challenge": True,
+                    "mode": mode
                 },
                 "tinder_user_profile_id": user_profile_id,
                 "tinder_job_profile_id": job_profile_id,

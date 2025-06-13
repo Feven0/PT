@@ -264,9 +264,7 @@ class IpersonaSessionSchema(LeapBaseClass):
     def filter_by_with_user_job_id_by_filtering(self, 
                                user_profile_id, 
                                job_profile_id, 
-                               cursor={}, 
                                since=None, 
-                               limit=None,
                                **kwargs):
         try:
             if not user_profile_id or not job_profile_id:

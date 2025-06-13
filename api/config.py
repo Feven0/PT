@@ -70,7 +70,7 @@ def get_strapi_params(stage):
     elif stage.lower().startswith('tenacious'):
         root='tenaciouscms'
         ssmkey="TENACIOUS_PROD_STRAPI_TOKEN"
-    elif stage.lower().startswith('demo'):
+    elif stage.lower().startswith('democms'):
         root='democms'
         ssmkey="DEMO_PROD_STRAPI_TOKEN"
     else:  #stage.lower().startswith('dev')
@@ -545,6 +545,8 @@ class fastapi:
         "https://dev-frog.gettenacious.com",
         "http://localhost:5173",
         "http://localhost:5174",
+        "http://localhost:5176",
+        "http://localhost:3502",
         "https://test-ipersona.10academy.org"
     ]
     root_origins = ['10academy.org',

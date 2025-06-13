@@ -27,13 +27,13 @@ const useMiddleSocket = () => {
 
 
     // In your React component
-    // useEffect(() => {
-    //   if (socket) {
-    //     socket.on('initial connect', (message: any) => {
-    //       console.log("sessionInit", message);
-    //     });
-    //   }
-    // }, [socket]);
+    useEffect(() => {
+      if (socket) {
+        socket.on('initial connect', (message: any) => {
+          console.log("sessionInit", message);
+        });
+      }
+    }, [socket]);
 
     // ------------------------------------------------------------------------------------------------
     useEffect(() => {

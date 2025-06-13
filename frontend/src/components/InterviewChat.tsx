@@ -40,6 +40,7 @@ const InterviewChat = () => {
     const charLimit = 1200; 
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [mode, setMode] = useState<any>('Audio');
     const [questions, setQuestions] = useState<any>([]); 
     const handleClose = () => setShowCancelModal(false);
     const handleShow = () => setShowCancelModal(true);
@@ -153,6 +154,10 @@ const InterviewChat = () => {
         setLoad(true)
         console.log("i wish we had these")
         const data = {
+            run_stage: 'dev',
+            mode: mode,
+            // job_profile_id: 9,
+            // all_user_id: 55,
             job_profile_id: 46,
             all_user_id: 1959,
             template: false,

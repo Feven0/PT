@@ -14,13 +14,13 @@ const useWebSocket = (url: string) => {
 
 
   useEffect(() => {
-    const newSocket = io(url);
+    // const newSocket = io(url);
 
-    // const newSocket = io(url, {
-    //   query: {
-    //     run_stage: 'dev'
-    //   }
-    // });
+    const newSocket = io(url, {
+      query: {
+        run_stage: 'dev'
+      }
+    });
     // const newSocket = io(url, {
     //   transports: ['websocket']
     // });

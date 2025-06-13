@@ -1,12 +1,11 @@
-
 import time, os
 import assemblyai as aai
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-from fastapi import FastAPI, File, UploadFile, Form, Request
+from fastapi import FastAPI, File, UploadFile, Form, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 from typing import Dict, List, Any, Union
-#
+import threading
+import uuid
+
 from api import config
 from api.llm.ipersona.ipersona_strapi_schemas import (
     IpersonaSessionSchema, 
@@ -44,6 +43,9 @@ routes = FastAPI(
     redoc=settings.REDOC_ENABLED,
     debug=False
     )
+
+# In-memory status store (for demonstration; replace with persistent store for production)
+audio_processing_status = {}
 
 @routes.get("/health", tags=["Health Check"])
 async def health_check():
@@ -108,29 +110,6 @@ async def health_check():
             content={"error": f"Health check failed: {str(e)}"}
         )
 
-    # ipersona_overall = IpersonaSessionOverallObserverSchema(run_stage="dev")
- 
-    # message_data = {
-    #     "attributes": {
-    #         "overall_confidence": "confidence_overtime",
-    #         "overall_clarity": "clarity_overtime",
-    #         "overall_engagement": "engagement_overtime",
-    #         "overall_time_management": "overall_time_managements",
-    #         "overall_competency": "overall_competencies",
-    #         "overall_performance": "overall_performance_scores"
-    #     },
-    #     "i_persona_observers": [147, 148],
-    #     # "tinder_user_profile": tinder_user_profile_id,
-    #     # "tinder_job_profile": userdata['job_profile_id']
-    # }
-    
-    # response = ipersona_overall.save_Session_Overall_Observer(
-    #     params=message_data, 
-    #     nopp=True, 
-    #     dataframe=False)
-    
-    # logger.success(f"new entry make on session overall observer")
-    # return response
 
 @routes.post("/audio_upload", tags=["Audio Endpoints"])
 async def speech_to_text(file: UploadFile = File(...)) -> dict:
@@ -236,6 +215,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         Session data (ID, status, template_id, challenge_id)
     """
     run_stage = request.run_stage
+    mode = request.mode
     template = request.template
     external = request.external
     challenge = request.challenge
@@ -249,148 +229,101 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
 
         # Step 1: Fetch user profile data
         tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
-
         # Step 2: Fetch job profile data
         tinder_job_data = util.get_job_data(job_profile_id, run_stage)
-
-        if template:
-            message = ''
-            saved_session = util.create_session(
-                run_stage, request, all_user_id,
-                tinder_user_profile_id, job_profile_id,
-                template_id, challenge_id, message
+        
+        session_incomplete = util.check_if_session_exists(
+            run_stage, 
+            tinder_user_profile_id, 
+            job_profile_id)
+        
+        
+        if session_incomplete:
+            logger.info(f"Incomplete session already exists for user ID: {all_user_id}, job ID: {job_profile_id}")
+            return JSONResponse(
+                status_code=200,
+                content={"message": "Incomplete session already exists"}
             )
-
-            saved_session = {
-                'id': saved_session.get('id'),
-                "status": saved_session.get('attributes', {}).get('status'),
-                "template_id": util.safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
-                "challenge_id": util.safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
-            }
-
-            session_id = [saved_session.get('id')]
-            util.attach_session_id_to_a_template(template_id, session_id)
-
-            return saved_session
-
-        elif challenge:
-            type = 'challenge_interview_config'
-            response_obj = util.fetch_the_structure(type)
-            challenge_data = await util.analysis_challenge(challenge_id)
-
-            if response_obj is False:
-                tag = 'parrot_challenge_question_generation_default'
-                challenge_prompt = util.read_prompt_data_for_challenge_default(
-                    challenge_data, type, tag
-                )
-            else:
-                tag = 'parrot_challenge_question_generation'
-                section_count = response_obj.get('section_count', {})
-                json_format = response_obj.get('json_format', {})
-                challenge_prompt = util.read_prompt_data_for_challenge(
-                    json_format, section_count, challenge_data, type, tag
-                )
-
-            saved_session = util.create_session(
-                run_stage, request, all_user_id,
-                tinder_user_profile_id, job_profile_id,
-                template_id, challenge_id, challenge_prompt
-            )
-
-            saved_session = {
-                'id': saved_session.get('id'),
-                "status": saved_session.get('attributes', {}).get('status'),
-                "template_id": util.safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
-                "challenge_id": util.safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
-            }
-
-            return saved_session
-
         else:
-            type = 'job_interview_config'
-            response_obj = util.fetch_the_structure(type)
-
-            if response_obj is False:
-                tag = 'parrot_question_generator_default'
-                persona_tag = 'parrot_persona'
-                generated_persona = util.read_prompt_persona(
-                    tinder_job_data, tinder_user_profile_data, type, persona_tag
-                )
-                msg = util.read_prompt_data_for_default(type, tag)
-            else:
-                section_count = response_obj.get('section_count', {})
-                json_format = response_obj.get('json_format', {})
-                tag = 'parrot_generate_question'
-                persona_tag = 'parrot_persona'
-                generated_persona = util.read_prompt_persona(
-                    tinder_job_data, tinder_user_profile_data, type, persona_tag
-                )
-                msg = util.read_generate_question_prompt(
-                    json_format, section_count, context='', tag=tag, type=type
-                )
-
-            content = generated_persona + msg
-            response = gpt.openai_gpt_assistant_without_streaming(content)
-
-            if not response:
-                logger.error("Failed to generate questions: Empty AI response")
-                return JSONResponse(
-                    status_code=500,
-                    content={"error": "Failed to generate interview questions"}
-                )
-
-            generated_question_json = util.extract_json(response, quite=False)
-            generated_question_json = util.add_question_number(generated_question_json)
-            logger.info("Persona and questions generated successfully")
-
-            session_data = {
-                "slug": f"all_user_id: {all_user_id}",
-                "status": "Incomplete",
-                "attributes": {
-                    "persona": generated_persona,
-                    "generated_questions": generated_question_json
-                },
-                "metadata": {
-                    "template": False,
-                    "generate": True,
-                    "external": False,
-                    "challenge": False
-                },
-                "tinder_user_profile_id": tinder_user_profile_id,
-                "tinder_job_profile_id": job_profile_id,
-                "tinder_template": template_id,
-                "challenge_document": challenge_id
-            }
-
-            ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-            saved_session = ipersona_session.save_session(
-                params=session_data, return_object=True, nopp=True, dataframe=False
-            )
-
-            if not saved_session:
-                logger.error("Failed to save session")
-                return JSONResponse(
-                    status_code=500,
-                    content={"error": "Failed to save session data"}
-                )
-
-            logger.info(f"Session created successfully with ID: {saved_session.get('id', 'unknown')}")
-
-            saved_session = {
-                'id': saved_session.get('id'),
-                "status": saved_session.get('attributes', {}).get('status'),
-                "template_id": util.safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
-                "challenge_id": util.safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
-            }
-
-            return saved_session
-
+            response = await util.create_session_logics(
+                request,
+                mode,
+                run_stage, 
+                template, 
+                external, 
+                challenge, 
+                job_profile_id, 
+                all_user_id, 
+                template_id, 
+                challenge_id,
+                tinder_user_profile_id,
+                tinder_job_data, 
+                tinder_user_profile_data)
+            
+            return response
     except Exception as e:
         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=500,
             content={"error": f"Error processing user session: {str(e)}"}
         )
+
+# @routes.post("/create_user_session", tags=["Session Endpoints"])
+# async def user_session_files(request: pemodel.UserSessionRequestRecieved):
+#     """
+#     Process user session data and generate interview questions.
+
+#     Parameters
+#     ----------
+#     request : pemodel.UserSessionRequestRecieved
+#         Object containing:
+#         - all_user_id
+#         - job_profile_id
+#         - template, challenge, etc.
+
+#     Returns
+#     -------
+#     Dict[str, Any]
+#         Session data (ID, status, template_id, challenge_id)
+#     """
+#     run_stage = request.run_stage
+#     template = request.template
+#     external = request.external
+#     challenge = request.challenge
+#     job_profile_id = request.job_profile_id
+#     all_user_id = request.all_user_id
+#     template_id = request.template_id
+#     challenge_id = request.challenge_id
+
+#     try:
+#         logger.info(f"Starting user session creation for user ID: {all_user_id}, job ID: {job_profile_id}")
+
+#         # Step 1: Fetch user profile data
+#         tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
+
+#         # Step 2: Fetch job profile data
+#         tinder_job_data = util.get_job_data(job_profile_id, run_stage)
+
+#         response = util.create_session_logics(
+#             request,
+#             run_stage, 
+#             template, 
+#             external, 
+#             challenge, 
+#             job_profile_id, 
+#             all_user_id, 
+#             template_id, 
+#             challenge_id,
+#             tinder_user_profile_id,
+#             tinder_job_data, 
+#             tinder_user_profile_data)
+        
+#     except Exception as e:
+#         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
+#         return JSONResponse(
+#             status_code=500,
+#             content={"error": f"Error processing user session: {str(e)}"}
+#         )
        
 @routes.post("/clarify", tags=["Session Endpoints"])
 async def clarify_question(request: pemodel.ClarificationRequestRecieved) -> dict:
@@ -919,7 +852,96 @@ def calculate_engagement_challenge_status(request: pemodel.AllUserSessionRequest
             "status": 500, 
             "message": str(e)
         }
-             
+
+@routes.post("/engagement_status", tags=["Session Endpoints"])
+def calculate_engagement_challenge_status(request: pemodel.AllUserSessionRequestRecieved):
+    run_stage = request.run_stage
+
+    if not request or not request.all_user_id:
+        logger.error("Invalid request: Missing user ID")
+        return {
+            "all_user_id": [],
+            "jobs": [],
+            "cursor": [],
+            "status": 400,
+            "message": "User ID is required"
+        }
+        
+    try:
+        logger.info(f"Calculating engagement status for user ID: {request.all_user_id}")
+        
+        # Step 1: Fetch trainee profile data
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(
+            all_user_id=request.all_user_id, 
+            nopp=True, 
+            dataframe=False
+        )
+        
+        if not trainee_profile_data:
+            logger.warn(f"No trainee profiles found for user ID: {request.all_user_id}")
+            return {
+                "all_user_id": request.all_user_id,
+                "jobs": [],
+                "cursor": [],
+                "status": 404,
+                "message": "No trainee profiles found for the given user ID"
+            }
+        
+        tinder_user_profile_id = trainee_profile_data.get('id')
+
+        if not tinder_user_profile_id:
+            logger.error(f"Invalid trainee profile for user ID: {request.all_user_id}")
+            return {
+                "all_user_id": request.all_user_id,
+                "jobs": [],
+                "cursor": [],
+                "status": 500,
+                "message": "Invalid trainee profile data"
+            }
+            
+        # Step 2: Process request parameters with defaults
+        query_filter = request.filter or {}
+        return_skip = request.return_skip
+        information_level = request.information_level
+        since = max(request.since, 1)  # Ensure minimum value of 1
+        limit = max(request.limit, 1)  # Ensure minimum value of 1
+        cursor = request.cursor
+
+        # Step 3: Fetch and summarize interview data
+        data, cursor = util.summarize(
+            run_stage,                                                 
+            tinder_user_profile_id, 
+            filter=query_filter,
+            cursor=cursor, 
+            since=since, 
+            limit=limit,
+            information_level=information_level,
+            return_skip=return_skip            
+        )
+
+        logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
+        
+        # Step 4: Prepare response
+        return {
+            "all_user_id": request.all_user_id,
+            "jobs": data, 
+            # "cursor": cursor,                  
+            "status": 200, 
+            "message": ""
+        }
+
+    except Exception as e:
+        logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
+        return {
+            "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
+            "jobs": [],  
+            "cursor": [],
+            "status": 500, 
+            "message": str(e)
+        }
+
+              
 @routes.post("/admin_overview_status", tags=["Admin Endpoints"])
 async def calculate_admin_overview_status(request: pemodel.AdminDataFiltering) -> Union[List, Dict]:
     """
@@ -1901,9 +1923,7 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) :
                 user_data = ipersona_session.filter_by_with_user_job_id_by_filtering(
                     user_profile_id=tinder_user_profile_id,
                     job_profile_id=request.job_profile_id,
-                    # cursor={},
                     since=since,
-                    # limit=10,
                     nopp=True, 
                     dataframe=False
                 )
@@ -2608,147 +2628,149 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
 
 
 #----------------------------------- External Audio Upload Processing APIS -----------------------------------#
-@routes.post("/audio_upload_external", tags=["Audio Endpoints"])
-async def speech_to_text(file: UploadFile = File(...)):
-    if not file or not file.filename:
-        logger.error("Invalid file: No file or filename provided")
-        return JSONResponse(
-            status_code=400,
-            content={
-                "transcription": "Failed",
-                "status": 400,
-                "message": "No file provided or invalid file"
-            }
-        )
+# @routes.post("/audio_upload_external", tags=["Audio Endpoints"])
+# async def speech_to_text(file: UploadFile = File(...)):
+#     if not file or not file.filename:
+#         logger.error("Invalid file: No file or filename provided")
+#         return JSONResponse(
+#             status_code=400,
+#             content={
+#                 "transcription": "Failed",
+#                 "status": 400,
+#                 "message": "No file provided or invalid file"
+#             }
+#         )
         
-    try:
-        logger.info(f"Starting audio processing for file: {file.filename}")
+#     try:
+#         logger.info(f"Starting audio processing for file: {file.filename}")
         
-        # Create directory if it doesn't exist
-        audio_dir = data_path('audio')
-        os.makedirs(audio_dir, exist_ok=True)
+#         # Create directory if it doesn't exist
+#         audio_dir = data_path('audio')
+#         os.makedirs(audio_dir, exist_ok=True)
         
-        audio_path = os.path.join(audio_dir, file.filename)
-        logger.debug(f"Saving audio file to: {audio_path}")
+#         audio_path = os.path.join(audio_dir, file.filename)
+#         logger.debug(f"Saving audio file to: {audio_path}")
         
-        # Save the uploaded file
-        contents = await file.read()
-        with open(audio_path, "wb") as f:
-            f.write(contents)
-        logger.info("Audio file saved successfully")
+#         # Save the uploaded file
+#         contents = await file.read()
+#         with open(audio_path, "wb") as f:
+#             f.write(contents)
+#         logger.info("Audio file saved successfully")
         
-        # Initialize transcriber and process file
-        transcriber = aai.Transcriber()
-        transcript = transcriber.transcribe(audio_path)
+#         # Initialize transcriber and process file
+#         transcriber = aai.Transcriber()
+#         transcript = transcriber.transcribe(audio_path)
 
-        if transcript.status == aai.TranscriptStatus.error:
-            error_msg = getattr(transcript, 'error', 'Unknown transcription error')
-            logger.error(f"Transcription error: {error_msg}")
-            return {
-                "transcription": "Failed",
-                "status": 400, 
-                "message": error_msg
-            }
+#         if transcript.status == aai.TranscriptStatus.error:
+#             error_msg = getattr(transcript, 'error', 'Unknown transcription error')
+#             logger.error(f"Transcription error: {error_msg}")
+#             return {
+#                 "transcription": "Failed",
+#                 "status": 400, 
+#                 "message": error_msg
+#             }
             
-        logger.info("Transcription completed successfully")
-        logger.debug(f"Transcription text: {transcript.text}")
+#         logger.info("Transcription completed successfully")
+#         logger.debug(f"Transcription text: {transcript.text}")
  
-        external_audio_prompt = util.file_reader(prompt_path('external_audio_analysis.txt'))
-        realtime_prompt = util.file_reader(prompt_path('realtime_evaluation.txt'))
+#         external_audio_prompt = util.file_reader(prompt_path('external_audio_analysis.txt'))
+#         realtime_prompt = util.file_reader(prompt_path('realtime_evaluation.txt'))
 
-        # realtime_prompt = realtime_prompt \
-        #         .replace("{question}", str(transcript.text)) \
-        #         .replace("{candidate_response}", str(realtime_prompt)) 
+#         # realtime_prompt = realtime_prompt \
+#         #         .replace("{question}", str(transcript.text)) \
+#         #         .replace("{candidate_response}", str(realtime_prompt)) 
       
-        external_aud_prompt = external_audio_prompt \
-                .replace("{transcription}", str(transcript.text)) \
-                .replace("{realtime}", str(realtime_prompt)) 
+#         external_aud_prompt = external_audio_prompt \
+#                 .replace("{transcription}", str(transcript.text)) \
+#                 .replace("{realtime}", str(realtime_prompt)) 
     
-        data = gpt.openai_gpt_assistant_without_streaming(external_aud_prompt)
-        response = util.extract_json(data, quite=False)
+#         data = gpt.openai_gpt_assistant_without_streaming(external_aud_prompt)
+#         response = util.extract_json(data, quite=False)
      
-        return {
-            "chat": response,
-            "status": 200,
-            "message": "Audio Successfully Transcribed"
-        }
+#         return {
+#             "chat": response,
+#             "status": 200,
+#             "message": "Audio Successfully Transcribed"
+#         }
     
-    except Exception as e:
-        logger.error(f"Error during transcription: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={
-                "transcription": "Failed",
-                "status": 500,
-                "message": f"System error: {str(e)}"
-            }
-        )
+#     except Exception as e:
+#         logger.error(f"Error during transcription: {str(e)}", exc_info=True)
+#         return JSONResponse(
+#             status_code=500,
+#             content={
+#                 "transcription": "Failed",
+#                 "status": 500,
+#                 "message": f"System error: {str(e)}"
+#             }
+#         )
     
-@routes.post("/external_data_saving", tags=["Audio Endpoints"])
-async def external_data_saving(request: pemodel.ExternalRequestRecieved):
-    try:
-        run_stage = request.run_stage
-        transcribe_chat = request.transcribe_chat
-        all_user_id = request.all_user_id
-        job_profile_id = request.job_profile_id
+# @routes.post("/external_data_saving", tags=["Audio Endpoints"])
+# async def external_data_saving(request: pemodel.ExternalRequestRecieved):
+#     try:
+#         run_stage = request.run_stage
+#         transcribe_chat = request.transcribe_chat
+#         all_user_id = request.all_user_id
+#         job_profile_id = request.job_profile_id
 
-        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(
-            all_user_id=all_user_id, nopp=True, dataframe=False
-        )
+#         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+#         trainee_profile_data = ipersona_user.filter_by_alluser_id(
+#             all_user_id=all_user_id, nopp=True, dataframe=False
+#         )
     
-        if not trainee_profile_data:
-            logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
-            return JSONResponse(
-                status_code=404,
-                content={"error": "No trainee user profiles found for the given all_user_id"}
-            )
+#         if not trainee_profile_data:
+#             logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
+#             return JSONResponse(
+#                 status_code=404,
+#                 content={"error": "No trainee user profiles found for the given all_user_id"}
+#             )
 
-        tinder_user_profile_id = trainee_profile_data.get('id')
-        if not tinder_user_profile_id:
-            return JSONResponse(
-                status_code=500,
-                content={"error": "Invalid trainee profile: missing ID"}
-            )
-        template_id = 0
-        challenge_id = 0
-        message = ''
+#         tinder_user_profile_id = trainee_profile_data.get('id')
+#         if not tinder_user_profile_id:
+#             return JSONResponse(
+#                 status_code=500,
+#                 content={"error": "Invalid trainee profile: missing ID"}
+#             )
+#         template_id = 0
+#         challenge_id = 0
+#         message = ''
 
-        saved_session =  util.create_session(
-            run_stage, 
-            request, 
-            all_user_id, 
-            tinder_user_profile_id, 
-            job_profile_id,
-            template_id, 
-            challenge_id,
-            message)
-        # saved_session = True
-        if saved_session:
-            sessionId = saved_session['id']
+#         saved_session =  util.create_session(
+#             run_stage, 
+#             request, 
+#             all_user_id, 
+#             tinder_user_profile_id, 
+#             job_profile_id,
+#             template_id, 
+#             challenge_id,
+#             message)
+#         # saved_session = True
+#         if saved_session:
+#             sessionId = saved_session['id']
       
-            saved = strapi.save_messages_to_db(transcribe_chat , sessionId)
-            status = 'External'
-            overall = await util.overall_interview_evaluations_external(run_stage, transcribe_chat, status, sessionId, all_user_id, tinder_user_profile_id, job_profile_id)
-            return {
-                "chat": saved,
-                "overall": overall,
-                "status": 200,
-                "message": "Chat Saved Successfully"
-            }
-        else:
-            return {
-                "chat": [],
-                "status": 400,
-                "message": "Chat Not Saved"
-            }
+#             saved = strapi.save_messages_to_db(transcribe_chat , sessionId)
+#             status = 'External'
+#             type = 'job_interview_config'
 
-    except Exception as e:
-        logger.error(f"Error creating user session: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Error processing user session: {str(e)}"}
-        )
+#             overall = await util.overall_interview_evaluations_external(run_stage, transcribe_chat, status, sessionId, all_user_id, tinder_user_profile_id, job_profile_id)
+#             return {
+#                 "chat": saved,
+#                 "overall": overall,
+#                 "status": 200,
+#                 "message": "Chat Saved Successfully"
+#             }
+#         else:
+#             return {
+#                 "chat": [],
+#                 "status": 400,
+#                 "message": "Chat Not Saved"
+#             }
+
+#     except Exception as e:
+#         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
+#         return JSONResponse(
+#             status_code=500,
+#             content={"error": f"Error processing user session: {str(e)}"}
+#         )
 
 
 #----------------------------------- Challenge Document Processing APIS -----------------------------------#
@@ -2791,6 +2813,174 @@ def fetch_a_challenge(request: pemodel.ChallengeRequestFiltering):
             content={"error": f"Error processing user session: {str(e)}"}
         )
  
+@routes.post("/audio_upload_external_async", tags=["Audio Endpoints"])
+async def audio_upload_external_async(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    job_profile_id: int = Form(0),
+    challenge_id: int = Form(0),
+    all_user_id: int = Form(0),
+    template: bool = Form(False),
+    generate: bool = Form(False),
+    external: bool = Form(True),
+    challenge: bool = Form(False)
+):
+    if not file or not file.filename:
+        logger.error("Invalid file: No file or filename provided")
+        return JSONResponse(
+            status_code=400,
+            content={
+                "transcription": "Failed",
+                "status": 400,
+                "message": "No file provided or invalid file"
+            }
+        )
+    try:
+        logger.info(f"Starting async audio processing for file: {file.filename}")
+        audio_dir = data_path('audio')
+        os.makedirs(audio_dir, exist_ok=True)
+        audio_path = os.path.join(audio_dir, file.filename)
+        contents = await file.read()
+        with open(audio_path, "wb") as f:
+            f.write(contents)
+        logger.info("Audio file saved successfully (async route)")
+
+        background_tasks.add_task(
+            process_audio_and_save_external,
+            audio_path,
+            job_profile_id,
+            challenge_id,
+            all_user_id,
+            template,
+            generate,
+            external,
+            challenge
+        )
+        return {
+            "status": 202,
+            "job_id": job_profile_id,
+            "message": "Audio file received and is being processed in the background."
+        }
+    except Exception as e:
+        logger.error(f"Error during async audio upload: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "transcription": "Failed",
+                "status": 500,
+                "message": f"System error: {str(e)}"
+            }
+        )
+
+def process_audio_and_save_external(
+        audio_path,
+        job_profile_id, 
+        challenge_id,
+        all_user_id, 
+        template, 
+        generate, 
+        external, 
+        challenge):
+    try:
+        audio_processing_status[job_profile_id] = {"status": "processing", "message": ""}
+        transcriber = aai.Transcriber()
+        transcript = transcriber.transcribe(audio_path)
+        if transcript.status == aai.TranscriptStatus.error:
+            error_msg = getattr(transcript, 'error', 'Unknown transcription error')
+            logger.error(f"Transcription error: {error_msg}")
+            audio_processing_status[job_profile_id] = {"status": "failed", "message": error_msg}
+            return
+        logger.info("Transcription completed successfully (async route)")
+        logger.debug(f"Transcription text: {transcript.text}")
+        external_audio_prompt = util.file_reader(prompt_path('external_audio_analysis.txt'))
+        realtime_prompt = util.file_reader(prompt_path('realtime_evaluation.txt'))
+        external_aud_prompt = external_audio_prompt.replace("{transcription}", str(transcript.text)).replace("{realtime}", str(realtime_prompt))
+        # external_aud_prompt = "Hello"
+        data = gpt.openai_gpt_assistant_without_streaming(external_aud_prompt)
+        response = util.extract_json(data, quite=False)
+        run_stage = 'dev'
+        transcribe_chat = response if isinstance(response, list) else [response]
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(
+            all_user_id=all_user_id, nopp=True, dataframe=False
+        )
+        if not trainee_profile_data:
+            logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
+            audio_processing_status[job_profile_id] = {"status": "failed", "message": "No trainee user profiles found"}
+            return
+        tinder_user_profile_id = trainee_profile_data.get('id')
+        if not tinder_user_profile_id:
+            audio_processing_status[job_profile_id] = {"status": "failed", "message": "Invalid trainee profile: missing ID"}
+            return
+        
+        template_id = 0
+        message = ''
+        type = {
+            "template": template,
+            "generate": generate,
+            "external": external,
+            "challenge": challenge
+        }
+        mode = 'external'
+        saved_session = util.create_session(
+            mode,
+            run_stage,
+            type,  
+            all_user_id,
+            tinder_user_profile_id,
+            job_profile_id,
+            template_id,
+            challenge_id,
+            message)
+        
+        if saved_session:
+            sessionId = saved_session['id']
+            saved = strapi.save_messages_to_db(transcribe_chat, sessionId)
+            status = 'External'
+            type = 'job_interview_config'
+            def run_overall():
+                try:
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    overall = loop.run_until_complete(
+                        util.overall_interview_evaluations_external(
+                            run_stage, 
+                            transcribe_chat, 
+                            status, 
+                            sessionId, 
+                            all_user_id, 
+                            tinder_user_profile_id, 
+                            job_profile_id,
+                            type
+                        )
+                    )
+                    
+                    audio_processing_status[job_profile_id] = {
+                        "status": "done", 
+                        "message": "Chat Saved Successfully", 
+                        "chat": saved, 
+                        "overall": overall
+                    }
+
+                except Exception as e:
+                    logger.error(f"Error in overall evaluation: {str(e)}", exc_info=True)
+                    audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
+            import threading
+            t = threading.Thread(target=run_overall)
+            t.start()
+        else:
+            audio_processing_status[job_profile_id] = {"status": "failed", "message": "Chat Not Saved"}
+    except Exception as e:
+        logger.error(f"Error in background audio processing: {str(e)}", exc_info=True)
+        audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
+
+@routes.get("/audio_processing_status", tags=["Audio Endpoints"])
+async def audio_processing_status_endpoint(job_id: str):
+    status = audio_processing_status.get(job_id)
+    if not status:
+        return {"status": "not_found", "message": "No processing record found for this job_id."}
+    return status
 
 
 

@@ -33,30 +33,31 @@ sio = socketio.AsyncServer(cors_allowed_origins="*",
                            engineio_logger=False)
 
 
-# socket_app = socketio.ASGIApp(sio)
+socket_app = socketio.ASGIApp(sio)
 
-# @sio.event
-# async def connect(sid, environ):
-#     print(f"####### Socket Connected with SID: {sid} #######")
+@sio.event
+async def connect(sid, environ):
+    print(f"####### Socket Connected with SID: {sid} #######")
+    await sio.emit("initial connect", {"message": "socket connection started"}, room=sid)
     
-    # query_string = environ.get('QUERY_STRING', '')
-    # print(f"Query string: {query_string}")
+    query_string = environ.get('QUERY_STRING', '')
+    print(f"Query string: {query_string}")
     
-    # asgi_scope = environ.get('asgi.scope', {})
-    # scope_query = asgi_scope.get('query_string', b'').decode('utf-8')
-    # print(f"ASGI scope query string: {scope_query}")
+    asgi_scope = environ.get('asgi.scope', {})
+    scope_query = asgi_scope.get('query_string', b'').decode('utf-8')
+    print(f"ASGI scope query string: {scope_query}")
     
-    # parsed_query = urllib.parse.parse_qs(query_string)
-    # run_stage = parsed_query.get('run_stage', [''])[0]
-    # print(f"Parsed run_stage: {run_stage}")
+    parsed_query = urllib.parse.parse_qs(query_string)
+    run_stage = parsed_query.get('run_stage', [''])[0]
+    print(f"Parsed run_stage: {run_stage}")
         
-    # # Also try the session method
-    # try:
-    #     await sio.save_session(sid, {'run_stage': run_stage})
-    #     session = await sio.get_session(sid)
-    #     print(f"Session after save: {session}")
-    # except Exception as e:
-    #     print(f"Session error: {e}")
+    # Also try the session method
+    try:
+        await sio.save_session(sid, {'run_stage': run_stage})
+        session = await sio.get_session(sid)
+        print(f"Session after save: {session}")
+    except Exception as e:
+        print(f"Session error: {e}")
     
 @sio.on("initial connect")
 async def connect(sid):
@@ -139,10 +140,9 @@ async def synthesize_text(text):
 # TODO: integrate with audio chat function
 @sio.on("audio chat sentence")
 async def audio_end_point(sid, data):
-    # session = await sio.get_session(sid)        
-    run_stage = 'dev' 
-
-    # session.get('run_stage', None)  
+    session = await sio.get_session(sid)        
+        
+    run_stage = session.get('run_stage', None)  
 
     if run_stage is None:
         print(f"Run stage not found in session for sid: {sid}")
@@ -442,6 +442,7 @@ async def interview_endpoint(sid, data):
     Returns:
         None: Responses are sent via socket.io events
     """
+    logger.info(f"Received interview request with template_id-=-: {data.get('template_id')}, job: {data.get('job_profile_id', None)}")
     try:
         logger.info(f"Received interview request with template_id-=-: {data.get('challenge_id')}, job: {data.get('job_profile_id', None)}")
         
@@ -476,16 +477,16 @@ async def interview_endpoint(sid, data):
         
         # Get run stage from session
         try:
-            run_stage = 'dev' 
-            # session.get('run_stage', None)  
+            session = await sio.get_session(sid)        
+            run_stage = session.get('run_stage', None)  
             if run_stage is None:
                 logger.warn(f"Run stage not found in session for sid: {sid}, using default")
-                run_stage = 'dev'  # Default to production if not specified
+                run_stage = 'democms'  # Default to production if not specified
             else:
                 logger.info(f"Run stage retrieved: {run_stage}")
         except Exception as stage_error:
             logger.error(f"Error retrieving run stage: {str(stage_error)}")
-            run_stage = 'dev'  # Default to production if error occurs
+            run_stage = 'democms'  # Default to production if error occurs
         
         # Get session ID with error handling
         try:
