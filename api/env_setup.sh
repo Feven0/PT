@@ -1,66 +1,132 @@
-#!/bin/bash
-
-# AWS region and secret name
-region="us-east-1"
-keyname="tenx/env/vars"
-
-# Optional AWS profile handling
-prof=""
+pexist=
 if [ -f ~/.aws/config ]; then
-    if grep -q tenac ~/.aws/config; then
-        prof="--profile tenac"  # Adjust profile name if needed
-    fi
+    pexist=$(grep tenac ~/.aws/config)
 fi
 
-# Secret retrieval function
-function get_ssm_secret() {
-    aws secretsmanager get-secret-value \
-        --secret-id "$1" \
-        --query SecretString \
-        --output text \
-        --region "$region" $prof 2>/dev/null
+
+function get_aws_profile() {
+    region=${1:-"us-east-1"}
+    if [ ! -z ${pexist} ]; then
+	prof="--profile kifiya --region $region"
+	if [ ! -z $profile_name ]; then prof="--profile $profile_name --region $region"; fi
+    else
+	prof="--region $region"
+    fi
+    echo $prof
 }
 
-# Root dir detection
+function get_ssm_secret() {
+    #echo "reading key=$1 from aws secret manager"
+    res=$(aws secretsmanager get-secret-value \
+       	      --secret-id $1  \
+	      --query SecretString \
+              --output text $prof || echo "")
+    echo $res
+}
+
+function gen_ssm_secret() {
+    #echo "generating random password from aws secret manager"
+    #--require-each-included-type \    
+    res=$(aws secretsmanager get-random-password \
+	      --exclude-punctuation \
+	      --password-length ${1:-20} $prof | jq -r '.RandomPassword')
+    echo $res
+}
+
+function save_ssm_secret() {
+    echo "saving key=$2, value=$1 to aws secret manager"
+    res=$(aws secretsmanager create-secret  \
+	      --name $2  \
+	      --secret-string $1 $prof)
+}
+
+function get_api_key(){
+    # app_key salt
+    e=${1:-"dev"}
+    key=${2:-"API_KEY"}
+    ssmappkey="${e}/csengine-api-key"
+    appkey=$(get_ssm_secret $ssmappkey)
+    if [ -z $appkey ]; then
+	echo "Generating Random APP_KEY and saving it in AWS secret manager"
+	appkey=$(gen_ssm_secret 20)
+        string="{\"$key\":\"$appkey\"}"
+	save_ssm_secret $string $ssmappkey
+    fi
+    echo ""
+    echo "{\"$key\":\"$appkey\"}"
+    echo ""
+}
+
+
 curdir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 efs_path="/mnt/efs/leap"
 
-if [ ! -d "${efs_path}" ]; then
-    rootdir=$(dirname "$curdir")
+#determine rootdir for env and cred files
+if [ ! -d ${efs_path} ]; then
+    rootdir=$(dirname $curdir)
 else
-    rootdir="${efs_path}"
+    rootdir=${efs_path}
 fi
 
-# Setup .env path
-envdir="$rootdir/.env"
-mkdir -p "$envdir"
+envdir=$rootdir/.env
+mkdir -p $envdir
+
+#fastapi vars
 envfile="$envdir/.envdev"
-
-# Load or fetch .env content
-if [ ! -f "$envfile" ]; then
-    echo "Reading $keyname from AWS Secrets Manager..."
-
-    secret_json=$(get_ssm_secret "$keyname")
-
-    if [ -z "$secret_json" ]; then
-        echo "❌ Failed to retrieve secret or secret is empty."
-        exit 1
-    fi
-
-    # Convert JSON to KEY=VALUE format using jq
-    parsed_env=$(echo "$secret_json" | jq -r 'to_entries | map("\(.key)=\(.value|tostring)") | .[]')
-
-    # Save and export
-    > "$envfile"  # clear if exists
-    while IFS= read -r line; do
-        echo "$line" >> "$envfile"
-        export "$line"
-    done <<< "$parsed_env"
-
-    echo "✅ Secret values saved and exported from $envfile"
+if [ ! -f $envfile ]; then
+    keyname='tenx/env/vars'
+    region="us-east-1"
+    prof=$(get_aws_profile $region)
+    echo "using prof=$prof .."
+    
+    echo "reading $keyname from AWS SM .."
+    res=$(get_ssm_secret $keyname)
+    
+    echo $res > temp.json
+    res=$(jq -r 'to_entries|map("\(.key)=\(.value|tostring)")|.[]' temp.json)
+    rm temp.json
+    for x in $res; do
+        echo "$x" >> $envfile
+        export $x
+    done
+    echo "secret saved to ${envfile}"
 else
-    echo "Using existing $envfile"
-    set -a
-    source "$envfile"
-    set +a
+    echo "using existing ${envfile}"
 fi
+
+
+#echo "===============cat ${envfile}============"
+#cat $envfile
+#echo "========================================="
+
+#kedro creds
+credfile="${rootdir}/conf/local/credentials.yaml"
+if [ ! -f $credfile ]; then
+
+    echo "saving kedro cred to $credfile"
+    cat <<EOF > $credfile
+db_dev_almlabler:
+    con: "${PGDB_CON_TENX_DEV}/almlabler"
+db_dev_strapidev:
+    con: "${PGDB_CON_TENX_DEV}/strapidev"
+db_prod_strapiprod:
+    con: "${PGDB_CON_TENX_PROD}/strapiprod"
+db_dev_applyprod:
+    con: "${PGDB_CON_APPLY}/applyprod"
+db_dev_applydev:
+    con: "${PGDB_CON_APPLY}/applydev"
+db_dev_applydev:
+    con: "${PGDB_CON_APPLY}/applydev"
+
+weaviate_credentials:
+    url: ${WEAVIATE_URL}
+    api_key: ${WEAVIATE_API_KEY}
+
+EOF
+    
+else
+    echo "using exiting $credfile"
+fi
+#echo "===============cat ${credfile}============"
+#cat $credfile
+#echo "========================================="
