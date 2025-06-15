@@ -2396,7 +2396,7 @@ def extracted_needed_metrics(data):
             
             # Get observer data
             observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
-            # slug = session['attributes'].get('slug', None)
+            metadata = session.get('attributes').get('metadata')            # slug = session['attributes'].get('slug', None)
       
             # Determine if the session is complete
             complete_status = observer_data is not None
@@ -2450,7 +2450,7 @@ def extracted_needed_metrics(data):
             extracted_session['user_profile_id'] = (
                 attributes.get('tinder_user_profile', {}).get('data', {}) or {}
             ).get('id')
-
+            extracted_session['mode'] = metadata.get('mode', {})
             # extracted_session['slug'] = slug
             # Append extracted session data
             extracted_observers.append(extracted_session)
@@ -3703,19 +3703,20 @@ def check_if_session_exists(run_stage, user_profile_id, job_profile_id):
         session_data = ipersona_session.filter_by_with_user_job_id_by_filtering( 
             user_profile_id=user_profile_id,
             job_profile_id=job_profile_id,
-            since=None, 
+            since=10, 
             nopp=True,
             dataframe=False
         )
-        
+
         data = extracted_needed_metrics(session_data)
-        
+
         def get_latest_incomplete_session(data):
             for item in data:
                 if not item.get("complete_status", False):
                     # return item
                     return {
-                        'id': item.get('id'),
+                        "id": item.get('id'),
+                        "mode": item.get('mode'),
                         "status": item.get('complete_status'),
                         "job_profile_id": item.get('job_profile_id'),
                         "user_profile_id": item.get('user_profile_id'),
@@ -3745,9 +3746,7 @@ async def create_session_logics(
         tinder_job_data, 
         tinder_user_profile_data):
     try:
-        print('---------------------0p-----------')
-        print(mode)
-        print('----------------------0p----------')
+
         if template:
             message = ''
             saved_session = create_session(
@@ -3765,6 +3764,9 @@ async def create_session_logics(
             saved_session = {
                 'id': saved_session.get('id'),
                 "status": saved_session.get('attributes', {}).get('status'),
+                "mode": saved_session.get('attributes', {}).get('metadata', {}).get('mode'),
+                "user_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_user_profile', 'data'),
+                "job_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_job_profile', 'data'),
                 "template_id": safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
                 "challenge_id": safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
             }
@@ -3811,6 +3813,9 @@ async def create_session_logics(
             saved_session = {
                 'id': saved_session.get('id'),
                 "status": saved_session.get('attributes', {}).get('status'),
+                "mode": saved_session.get('attributes', {}).get('metadata', {}).get('mode'),
+                "user_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_user_profile', 'data'),
+                "job_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_job_profile', 'data'),
                 "template_id": safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
                 "challenge_id": safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
             }
@@ -3901,6 +3906,9 @@ async def create_session_logics(
             saved_session = {
                 'id': saved_session.get('id'),
                 "status": saved_session.get('attributes', {}).get('status'),
+                "mode": saved_session.get('attributes', {}).get('metadata', {}).get('mode'),
+                "user_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_user_profile', 'data'),
+                "job_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_job_profile', 'data'),
                 "template_id": safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
                 "challenge_id": safe_get_id(saved_session, 'attributes', 'challenge_document', 'data')
             }
@@ -3922,9 +3930,6 @@ def create_session(
         challenge_id,
         message):
     try:
-        print('=======--------------------------------=====')
-        print(mode)
-        print('=======--------------------------------======')
         if type.get('template'):
             metadata =  {
                 "template": True,
@@ -4003,7 +4008,6 @@ def create_session(
                     "challenge_document": challenge_id
                 }
           
-
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         saved_session = ipersona_session.save_session(
             params=session_data, return_object=True, nopp=True, dataframe=False

@@ -237,13 +237,9 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             tinder_user_profile_id, 
             job_profile_id)
         
-        
         if session_incomplete:
             logger.info(f"Incomplete session already exists for user ID: {all_user_id}, job ID: {job_profile_id}")
-            return JSONResponse(
-                status_code=200,
-                content={"message": "Incomplete session already exists"}
-            )
+            return session_incomplete
         else:
             response = await util.create_session_logics(
                 request,
@@ -267,63 +263,6 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             status_code=500,
             content={"error": f"Error processing user session: {str(e)}"}
         )
-
-# @routes.post("/create_user_session", tags=["Session Endpoints"])
-# async def user_session_files(request: pemodel.UserSessionRequestRecieved):
-#     """
-#     Process user session data and generate interview questions.
-
-#     Parameters
-#     ----------
-#     request : pemodel.UserSessionRequestRecieved
-#         Object containing:
-#         - all_user_id
-#         - job_profile_id
-#         - template, challenge, etc.
-
-#     Returns
-#     -------
-#     Dict[str, Any]
-#         Session data (ID, status, template_id, challenge_id)
-#     """
-#     run_stage = request.run_stage
-#     template = request.template
-#     external = request.external
-#     challenge = request.challenge
-#     job_profile_id = request.job_profile_id
-#     all_user_id = request.all_user_id
-#     template_id = request.template_id
-#     challenge_id = request.challenge_id
-
-#     try:
-#         logger.info(f"Starting user session creation for user ID: {all_user_id}, job ID: {job_profile_id}")
-
-#         # Step 1: Fetch user profile data
-#         tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
-
-#         # Step 2: Fetch job profile data
-#         tinder_job_data = util.get_job_data(job_profile_id, run_stage)
-
-#         response = util.create_session_logics(
-#             request,
-#             run_stage, 
-#             template, 
-#             external, 
-#             challenge, 
-#             job_profile_id, 
-#             all_user_id, 
-#             template_id, 
-#             challenge_id,
-#             tinder_user_profile_id,
-#             tinder_job_data, 
-#             tinder_user_profile_data)
-        
-#     except Exception as e:
-#         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
-#         return JSONResponse(
-#             status_code=500,
-#             content={"error": f"Error processing user session: {str(e)}"}
-#         )
        
 @routes.post("/clarify", tags=["Session Endpoints"])
 async def clarify_question(request: pemodel.ClarificationRequestRecieved) -> dict:
@@ -345,7 +284,6 @@ async def clarify_question(request: pemodel.ClarificationRequestRecieved) -> dic
         A dictionary containing the clarification result or an error message 
         if an exception occurs during processing.
     """
-
     question = request.question
     start_time = time.time()
 
@@ -2966,7 +2904,6 @@ def process_audio_and_save_external(
                 except Exception as e:
                     logger.error(f"Error in overall evaluation: {str(e)}", exc_info=True)
                     audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
-            import threading
             t = threading.Thread(target=run_overall)
             t.start()
         else:
