@@ -30,7 +30,6 @@ class UpdateSessionModeRequestReceieved(MyBaseModel):
     mode: str
     
 class UserSessionRequestRecieved(MyBaseModel):
-    mode: str 
     job_profile_id: int
     all_user_id: int
     template: bool = False

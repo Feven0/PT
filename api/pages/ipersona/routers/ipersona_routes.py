@@ -148,22 +148,6 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
             }
         )
 
-@routes.post("/update_session_mode",  tags=["Session Endpoints"])
-async def update_session_mode(request: pemodel.UpdateSessionModeRequestReceieved):
-    try:
-        sessionId = request.sessionId
-        mode = request.mode
-        run_stage = request.run_stage
-        updated_mode = util.updating_session_mode(sessionId, mode, run_stage)
-        return updated_mode
-    
-    except Exception as e:
-        logger.error(f"Error in health check: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Health check failed: {str(e)}"}
-        )
-       
 @routes.post("/create_user_session", tags=["Session Endpoints"])
 async def user_session_files(request: pemodel.UserSessionRequestRecieved):
     """
@@ -183,7 +167,6 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         Session data (ID, status, template_id, challenge_id)
     """
     run_stage = request.run_stage
-    mode = request.mode
     template = request.template
     external = request.external
     challenge = request.challenge
@@ -199,34 +182,22 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
         # Step 2: Fetch job profile data
         tinder_job_data = util.get_job_data(job_profile_id, run_stage)
-        
-        session_incomplete = util.check_if_session_exists(
+    
+        response = await util.create_session_logics(
+            request,
             run_stage, 
-            tinder_user_profile_id, 
-            job_profile_id,
+            template, 
+            external, 
+            challenge, 
+            job_profile_id, 
+            all_user_id, 
+            template_id, 
             challenge_id,
-            template_id)
+            tinder_user_profile_id,
+            tinder_job_data, 
+            tinder_user_profile_data)
         
-        if session_incomplete:
-            logger.info(f"Incomplete session already exists for user ID: {all_user_id}")
-            return session_incomplete
-        else:
-            response = await util.create_session_logics(
-                request,
-                mode,
-                run_stage, 
-                template, 
-                external, 
-                challenge, 
-                job_profile_id, 
-                all_user_id, 
-                template_id, 
-                challenge_id,
-                tinder_user_profile_id,
-                tinder_job_data, 
-                tinder_user_profile_data)
-            
-            return response
+        return response
     except Exception as e:
         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
         return JSONResponse(

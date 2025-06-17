@@ -948,17 +948,17 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
             logger.info("session status updated to closed")
             
     
-        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+        # ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
 
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(
-            all_user_id=data['all_user_id'], 
-            nopp=True, 
-            dataframe=False
-            )
+        # trainee_profile_data = ipersona_user.filter_by_alluser_id(
+        #     all_user_id=data['all_user_id'], 
+        #     nopp=True, 
+        #     dataframe=False
+        #     )
         
-        if not trainee_profile_data:
-            logger.warn("No trainee user profiles found.")
-            return []
+        # if not trainee_profile_data:
+        #     logger.warn("No trainee user profiles found.")
+        #     return []
         
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage) 
 
@@ -3701,59 +3701,8 @@ def extract_json(response, quite=False):
         return {'error': str(e)}
     
 #------------------------------------------- Create Session -------------------------------------------------
-def check_if_session_exists(run_stage, user_profile_id, job_profile_id, challenge_id, template_id):
-    try:
-        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-        if job_profile_id:
-            session_data = ipersona_session.filter_by_with_user_job_id_by_filtering( 
-                user_profile_id=user_profile_id,
-                job_profile_id=job_profile_id,
-                since=10, 
-                nopp=True,
-                dataframe=False
-            )
-        elif challenge_id:
-            session_data = ipersona_session.filter_by_with_user_challenge_id( 
-                user_profile_id=user_profile_id,
-                challenge_id=challenge_id,
-                since=10, 
-                nopp=True,
-                dataframe=False
-            )
-        elif template_id:
-            session_data = ipersona_session.filter_by_with_user_template_id_by_filtering( 
-                user_profile_id=user_profile_id,
-                template_id=template_id,
-                since=10, 
-                nopp=True,
-                dataframe=False
-            )
-        data = extracted_needed_metrics(session_data)
-
-        def get_latest_incomplete_session(data):
-            for item in data:
-                if not item.get("complete_status", False):
-                    # return item
-                    return {
-                        "id": item.get('session_id'),
-                        "mode": item.get('mode'),
-                        "status": item.get('complete_status'),
-                        "job_profile_id": item.get('job_profile_id'),
-                        "user_profile_id": item.get('user_profile_id'),
-                        "template_id": item.get('template_id'),
-                        "challenge_id": item.get('challenge_id')
-                    }
-            return None
-        
-        return get_latest_incomplete_session(data)  
-
-    except Exception as e:
-        logger.error(f"Error processing files: {e}")
-        return {'error': str(e)}
-  
 async def create_session_logics(
         request,
-        mode,
         run_stage, 
         template, 
         external, 
@@ -3770,7 +3719,6 @@ async def create_session_logics(
         if template:
             message = ''
             saved_session = create_session(
-                mode,
                 run_stage, 
                 request, 
                 all_user_id,
@@ -3784,7 +3732,6 @@ async def create_session_logics(
             saved_session = {
                 'id': saved_session.get('id'),
                 "status": saved_session.get('attributes', {}).get('status'),
-                "mode": saved_session.get('attributes', {}).get('metadata', {}).get('mode'),
                 "user_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_user_profile', 'data'),
                 "job_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_job_profile', 'data'),
                 "template_id": safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
@@ -3819,7 +3766,6 @@ async def create_session_logics(
                 )
 
             saved_session = create_session(
-                mode,
                 run_stage, 
                 request, 
                 all_user_id,
@@ -3833,7 +3779,6 @@ async def create_session_logics(
             saved_session = {
                 'id': saved_session.get('id'),
                 "status": saved_session.get('attributes', {}).get('status'),
-                "mode": saved_session.get('attributes', {}).get('metadata', {}).get('mode'),
                 "user_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_user_profile', 'data'),
                 "job_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_job_profile', 'data'),
                 "template_id": safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
@@ -3901,7 +3846,6 @@ async def create_session_logics(
                     "generate": True,
                     "external": False,
                     "challenge": False,
-                    "mode": mode
                 },
                 "tinder_user_profile_id": tinder_user_profile_id,
                 "tinder_job_profile_id": job_profile_id,
@@ -3926,7 +3870,6 @@ async def create_session_logics(
             saved_session = {
                 'id': saved_session.get('id'),
                 "status": saved_session.get('attributes', {}).get('status'),
-                "mode": saved_session.get('attributes', {}).get('metadata', {}).get('mode'),
                 "user_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_user_profile', 'data'),
                 "job_profile_id": safe_get_id(saved_session, 'attributes', 'tinder_job_profile', 'data'),
                 "template_id": safe_get_id(saved_session, 'attributes', 'tinder_template', 'data'),
@@ -3940,7 +3883,6 @@ async def create_session_logics(
         return {'error': str(e)}
 
 def create_session(
-        mode,
         run_stage, 
         type, 
         all_user_id, 
@@ -3955,8 +3897,7 @@ def create_session(
                 "template": True,
                 "generate": False,
                 "external": False,
-                "challenge": False,
-                "mode": mode
+                "challenge": False
             }
             status = "Incomplete"
         elif type.get('external'):
@@ -3964,8 +3905,7 @@ def create_session(
                 "template": False,
                 "generate": False,
                 "external": True,
-                "challenge": False,
-                "mode": mode
+                "challenge": False
             }
             status = "External"
         elif type.get('challenge'):
@@ -3973,8 +3913,7 @@ def create_session(
                 "template": False,
                 "generate": False,
                 "external": False,
-                "challenge": True,
-                "mode": mode
+                "challenge": True
             }
             status = "Incomplete"
             
@@ -4006,8 +3945,7 @@ def create_session(
                     "template": False,
                     "generate": False,
                     "external": False,
-                    "challenge": True,
-                    "mode": mode
+                    "challenge": True
                 },
                 "tinder_user_profile_id": user_profile_id,
                 "tinder_job_profile_id": job_profile_id,
@@ -4049,41 +3987,6 @@ def create_session(
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}  
 
-def updating_session_mode(sessionId, mode, run_stage):
-    try:
-        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-        session_metadata = ipersona_session.get_by_id(
-            sessionId=sessionId, 
-            nopp=True, 
-            dataframe=False
-        )
-        session_metadata = session_metadata.get("metadata", {})
-        session_metadata["mode"] = mode
-        session_data = {
-            "i_persona_session_id": sessionId, 
-            "metadata": session_metadata,
-        }
-        updated_session = ipersona_session.update_session(
-            params=session_data, 
-            nopp=True, 
-            dataframe=False, 
-            return_object=True)
-     
-        if updated_session:
-            logger.info("session mode updated to closed")
-
-        data = get_session_data(updated_session)  
-
-        response = {
-            "id": data.get('id', {}),
-            "metadata": data.get('attributes', {}).get('metadata', {}),        
-        }
-
-        return response
-    
-    except Exception as e:
-        logger.error(f"Error processing files: {e}")
-        return {'error': str(e)}  
 
 def safe_get_id(data, *keys):
     """Safely traverse nested dicts and return the final 'id' if available, else None."""
