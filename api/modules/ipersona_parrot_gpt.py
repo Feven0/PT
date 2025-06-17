@@ -2151,7 +2151,8 @@ def summarize_interviews(
 
             ipersona_reaction = IpersonaSessionTinderUserReactionSchema(run_stage=run_stage)
             reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(
-                user_profile_id=user_profile_id, job_profile_id=job_profile_id,
+                user_profile_id=user_profile_id, 
+                job_profile_id=job_profile_id,
                 nopp=True, dataframe=False
             )
 
@@ -2286,10 +2287,10 @@ def summarize_challenge_interviews(
 
 def summarize(
     run_stage,
-    user_profile_id, 
+    user_profile_id,
     filter,
     cursor,
-    since, 
+    since,
     limit,
     information_level,
     return_skip
@@ -2300,91 +2301,94 @@ def summarize(
         kwargs = {**query_filter}
 
         data, cursors = ipersona_session.filter_by_tinder_user_profile_id(
-            user_profile_id=user_profile_id, 
-            cursor=cursor, 
-            since=since, 
-            limit=limit, 
-            nopp=True, 
+            user_profile_id=user_profile_id,
+            cursor=cursor,
+            since=since,
+            limit=limit,
+            nopp=True,
             dataframe=False,
             **kwargs
         )
 
         if not data:
+            return [], cursors
+
+        data = extracted_needed_metrics(data)
+        
+        if not data:
             logger.info("No session data found.")
             return add_engagement_columns([], cursor, kind='engagment-all', **kwargs), cursors
 
-        # Step 1: Extract metrics
 
-        data = extracted_needed_metrics(data)
-        return data, cursors
-        if not data:
-            logger.info("No data found after metric extraction.")
-            return add_engagement_columns([], cursor, kind='engagment-all', **kwargs), cursors
+        summary_map = defaultdict(list)
 
-        # Step 2: Filter for valid challenge_id only
-        valid_records = [d for d in data if d.get("challenge_id") not in (None, 0)]
-
-        if not valid_records:
-            logger.info("No valid challenge_id found.")
-            return add_engagement_columns([], cursor, kind='challenge', **kwargs), cursors
-
-        # Step 3: Group by challenge_id
-        challenge_summary = defaultdict(list)
-        for record in valid_records:
-            challenge_summary[record["challenge_id"]].append(record)
+        # Step 1: Group by either job_profile_id or challenge_id
+        for record in data:
+            if record.get("job_profile_id") not in (None, 0):
+                key = ("job", record["job_profile_id"])
+            elif record.get("challenge_id") not in (None, 0):
+                key = ("challenge", record["challenge_id"])
+            else:
+                continue  # skip invalid record
+            summary_map[key].append(record)
 
         summary_response = []
+        ipersona_job = IpersonaJobSchema(run_stage=run_stage)
+        ipersona_challenge = IpersonaChallengeDocumentSchema(run_stage=run_stage)
 
-        # Step 4: Process each valid challenge group
-        for challenge_id, records in challenge_summary.items():
+        # Step 2: Process each group
+        for (interview_type, profile_id), records in summary_map.items():
             complete_count = sum(1 for r in records if r.get("complete_status"))
-            incomplete_count = len(records) - complete_count
-
             total_score = sum(
-                r.get("overall_performance_score", 0) for r in records if r.get("overall_performance_score") is not None
+                r.get("overall_performance_score", 0)
+                for r in records
+                if r.get("overall_performance_score") is not None
             )
+            average_score = round(total_score / complete_count, 2) if complete_count > 0 else 0
 
-            average_score = (
-                round(total_score / complete_count, 2)
-                if complete_count > 0 else "N/A"
-            )
-
-            try:
-                ipersona_job = IpersonaChallengeDocumentSchema(run_stage=run_stage)
-                challenge_data = ipersona_job.get_challenge_by_id(
-                    challengeId=challenge_id,
-                    nopp=True,
-                    dataframe=False
+            if interview_type == "job":
+                job_title_data = ipersona_job.filter_by_job_id(profile_id, nopp=True, dataframe=False)
+                title = job_title_data[0]["attributes"]["attributes"].get("title", "Unknown Job Title") if job_title_data else "Unknown Job Title"
+                ipersona_reaction = IpersonaSessionTinderUserReactionSchema(run_stage=run_stage)
+                reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(
+                    user_profile_id=user_profile_id, 
+                    job_profile_id=profile_id,
+                    nopp=True, dataframe=False
                 )
+                summary_response.append({
+                    "type": "job",
+                    "title": title,
+                    "interview_count": len(records),
+                    "score": average_score,
+                    "job_profile_id": profile_id,
+                    "challenge_id": None,
+                    "user_profile_id": user_profile_id,
+                    "reaction_id": reaction_id
+                })
 
-                if not challenge_data or not isinstance(challenge_data, dict):
-                    logger.warning(f"Challenge data not found or invalid for challenge_id {challenge_id}")
-                    continue
-
-                challenge_title = challenge_data.get("attributes", {}).get("Title", "")
-
-            except Exception as e:
-                logger.error(f"Failed to fetch challenge data for challenge_id {challenge_id}: {e}")
-                continue
-
-            summary_response.append({
-                "challenge_id": challenge_id,
-                "challenge_title": challenge_title,
-                "complete_interviews_count": complete_count,
-                "incomplete_interviews_count": incomplete_count,
-                "total_interviews_count": complete_count + incomplete_count,
-                "score": average_score
-            })
+            elif interview_type == "challenge":
+                challenge_data = ipersona_challenge.get_challenge_by_id(challengeId=profile_id, nopp=True, dataframe=False)
+                title = challenge_data.get("attributes", {}).get("Title", "Unknown Challenge Title") if isinstance(challenge_data, dict) else "Unknown Challenge Title"
+                summary_response.append({
+                    "type": "challenge",
+                    "title": title,
+                    "interview_count": len(records),
+                    "score": average_score,
+                    "job_profile_id": None,
+                    "challenge_id": profile_id,
+                    "user_profile_id": user_profile_id,
+                    "reaction_id": ''
+                })
 
         cursor["total"] = len(summary_response)
-        output = add_engagement_columns(summary_response, cursor, kind='challenge', **kwargs)
+        output = add_engagement_columns(summary_response, cursor, kind='engagment-all', **kwargs)
 
         return output, cursors
 
     except Exception as e:
-        logger.error(f"Error processing challenge interviews: {e}")
+        logger.error(f"Error summarizing all interviews: {e}")
         return str(e), str(e)
-     
+
 def extracted_needed_metrics(data):
     try:
         extracted_observers = []  
@@ -3697,17 +3701,33 @@ def extract_json(response, quite=False):
         return {'error': str(e)}
     
 #------------------------------------------- Create Session -------------------------------------------------
-def check_if_session_exists(run_stage, user_profile_id, job_profile_id):
+def check_if_session_exists(run_stage, user_profile_id, job_profile_id, challenge_id, template_id):
     try:
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-        session_data = ipersona_session.filter_by_with_user_job_id_by_filtering( 
-            user_profile_id=user_profile_id,
-            job_profile_id=job_profile_id,
-            since=10, 
-            nopp=True,
-            dataframe=False
-        )
-
+        if job_profile_id:
+            session_data = ipersona_session.filter_by_with_user_job_id_by_filtering( 
+                user_profile_id=user_profile_id,
+                job_profile_id=job_profile_id,
+                since=10, 
+                nopp=True,
+                dataframe=False
+            )
+        elif challenge_id:
+            session_data = ipersona_session.filter_by_with_user_challenge_id( 
+                user_profile_id=user_profile_id,
+                challenge_id=challenge_id,
+                since=10, 
+                nopp=True,
+                dataframe=False
+            )
+        elif template_id:
+            session_data = ipersona_session.filter_by_with_user_template_id_by_filtering( 
+                user_profile_id=user_profile_id,
+                template_id=template_id,
+                since=10, 
+                nopp=True,
+                dataframe=False
+            )
         data = extracted_needed_metrics(session_data)
 
         def get_latest_incomplete_session(data):
@@ -3715,7 +3735,7 @@ def check_if_session_exists(run_stage, user_profile_id, job_profile_id):
                 if not item.get("complete_status", False):
                     # return item
                     return {
-                        "id": item.get('id'),
+                        "id": item.get('session_id'),
                         "mode": item.get('mode'),
                         "status": item.get('complete_status'),
                         "job_profile_id": item.get('job_profile_id'),
@@ -4029,6 +4049,41 @@ def create_session(
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}  
 
+def updating_session_mode(sessionId, mode, run_stage):
+    try:
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        session_metadata = ipersona_session.get_by_id(
+            sessionId=sessionId, 
+            nopp=True, 
+            dataframe=False
+        )
+        session_metadata = session_metadata.get("metadata", {})
+        session_metadata["mode"] = mode
+        session_data = {
+            "i_persona_session_id": sessionId, 
+            "metadata": session_metadata,
+        }
+        updated_session = ipersona_session.update_session(
+            params=session_data, 
+            nopp=True, 
+            dataframe=False, 
+            return_object=True)
+     
+        if updated_session:
+            logger.info("session mode updated to closed")
+
+        data = get_session_data(updated_session)  
+
+        response = {
+            "id": data.get('id', {}),
+            "metadata": data.get('attributes', {}).get('metadata', {}),        
+        }
+
+        return response
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}  
 
 def safe_get_id(data, *keys):
     """Safely traverse nested dicts and return the final 'id' if available, else None."""
@@ -4054,6 +4109,31 @@ async def analysis_challenge(challenge_id):
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}  
     
+
+def get_session_data(session_json):
+    try:
+        all_sessions = []
+
+        # Case 1: session_json is a list (like your example)
+        if isinstance(session_json, list):
+            for item in session_json:
+                if isinstance(item, dict) and 'data' in item:
+                    all_sessions.append(item['data'])
+
+        # Case 2: session_json is a single dict with 'data' key
+        elif isinstance(session_json, dict) and 'data' in session_json:
+            all_sessions = [session_json['data']]
+
+        if all_sessions:
+            return all_sessions[0]
+
+        logger.warning("No session data found in the session JSON.")
+        return None
+
+    except Exception as e:
+        logger.error(f"Error extracting session data from session JSON: {str(e)}")
+        return {'error': f"Error extracting session data from session JSON: {str(e)}"}
+
 #------------------------------------------- Extraction Function --------------------------------------------
 def extract_trainee_neccessary_values(data):
     try:

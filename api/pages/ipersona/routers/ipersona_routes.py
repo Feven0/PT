@@ -49,60 +49,12 @@ audio_processing_status = {}
 
 @routes.get("/health", tags=["Health Check"])
 async def health_check():
-    # ipersona_reaction = IpersonaSessionTinderUserJobMatchSchema(run_stage='dev')
-    # reaction_id = ipersona_reaction.filter_by_with_user_and_job_id(user_profile_id=198, job_profile_id=1855, nopp=True, dataframe=False)
-
-    # data = IpersonaSessionOverallObserverSchema(run_stage='dev')
-    # data = data.filter_by_with_user_and_job_id(user_profile_id=198, job_profile_id=1855, nopp=True, dataframe=False)
-    # return data
-    # return reaction_id
-    
-    # schema = StrapiGraphql(
-    #     # url=config.strapi.url,
-    #     # token=config.strapi.token,
-    #     # headers={
-    #     #     "Authorization": f"Bearer {config.strapi.token}",
-    #     #     "Content-Type": "application/json"          
-    #     # }
-    # )
-    # table = "iPersonaSession"
-    # res = schema.get_user_infos()
-    # return res
     try:
-        ipersona_session = IpersonaSessionSchema(run_stage="dev") 
-        sessionId=1620
-        # session_chatobserver = ipersona_session.get_session_by_id(sessionId=sessionId, nopp=True, dataframe=False)
-        # session_chatobserver = ipersona_session.filter_by_with_user_job_id(
-        #         user_profile_id=197,
-        #         job_profile_id=46, 
-        #         nopp=True, 
-        #         dataframe=False
-        #         ) 
-        # ipersona_template = IpersonaTinderTemplateSchema()
-        # session_chatobserver = ipersona_template.get_tinder_template_id(
-        #     templateId=55, 
-        #     return_object=True, 
-        #     nopp=True, 
-        #     dataframe=False
-        # )
-        ipersona_message = IpersonaSessionMessageSchema(run_stage="dev")
-
-        session_chathistory = ipersona_message.filter_by_session_id(
-            sessionId=1715, 
-            nopp=True, 
-            dataframe=False,
-            sort='asc')
-        chat_count = 0
-        chat = session_chathistory['total']
-        assistant_count = sum(1 for entry in chat if entry["user_type"] == "assistant")
-        chat_count += assistant_count 
-        return chat_count
-        # Determine chat count
-        session_chatobserver = session_chathistory['count']
-    
-      # session_chatobserver = util.update_or_create_observer(run_stage, userdata, new_session_metrics)
-#         session_chatobserver = util.append_new_session_metrics(existing_data, new_session_metrics)
-        return session_chatobserver
+        sessionId = 1879
+        mode = 'Chat'
+        run_stage = 'dev'
+        updated_mode = util.updating_session_mode(sessionId, mode, run_stage)
+        return updated_mode
     except Exception as e:
         logger.error(f"Error in health check: {str(e)}")
         return JSONResponse(
@@ -195,7 +147,23 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
                 "message": f"System error: {str(e)}"
             }
         )
+
+@routes.post("/update_session_mode",  tags=["Session Endpoints"])
+async def update_session_mode(request: pemodel.UpdateSessionModeRequestReceieved):
+    try:
+        sessionId = request.sessionId
+        mode = request.mode
+        run_stage = request.run_stage
+        updated_mode = util.updating_session_mode(sessionId, mode, run_stage)
+        return updated_mode
     
+    except Exception as e:
+        logger.error(f"Error in health check: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Health check failed: {str(e)}"}
+        )
+       
 @routes.post("/create_user_session", tags=["Session Endpoints"])
 async def user_session_files(request: pemodel.UserSessionRequestRecieved):
     """
@@ -235,10 +203,12 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         session_incomplete = util.check_if_session_exists(
             run_stage, 
             tinder_user_profile_id, 
-            job_profile_id)
+            job_profile_id,
+            challenge_id,
+            template_id)
         
         if session_incomplete:
-            logger.info(f"Incomplete session already exists for user ID: {all_user_id}, job ID: {job_profile_id}")
+            logger.info(f"Incomplete session already exists for user ID: {all_user_id}")
             return session_incomplete
         else:
             response = await util.create_session_logics(
@@ -1841,7 +1811,6 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) :
             dataframe=False
         )
 
-        return trainee_profile_data
         if not trainee_profile_data:
             logger.warn(f"No trainee user profiles found for user ID: {request.all_user_id}")
             return JSONResponse(

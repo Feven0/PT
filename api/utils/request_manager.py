@@ -633,10 +633,10 @@ class JobReactionManager(JobManagerBase):
 
 
         # Table column views for different devices
-        desktop_view = ['reaction_id', 'challenge_id', 'job_profile_id', 'context_id', 'interview_count', 'type', 'title', 'score', 'expand']
-        tablet_view = ['reaction_id', 'challenge_id', 'job_profile_id', 'context_id', 'interview_count', 'type', 'title', 'score', 'expand']
-        mobile_view = ['reaction_id', 'challenge_id', 'job_profile_id', 'context_id', 'interview_count', 'type', 'title', 'score', 'expand']
-        sorting = ['reaction_id', 'challenge_id', 'job_profile_id', 'context_id', 'interview_count', 'type', 'title', 'score']
+        desktop_view = ['interview_count', 'type', 'title', 'score', 'expand']
+        tablet_view = ['interview_count', 'type', 'title', 'score', 'expand']
+        mobile_view = ['interview_count', 'type', 'title', 'score', 'expand']
+        sorting = ['interview_count', 'type', 'title', 'score']
         link_icon = []
         # download_icon = []
         expand_icon = ["expand"]
@@ -647,8 +647,9 @@ class JobReactionManager(JobManagerBase):
             'reaction_id': {'label': 'Reaction ID', 'ctype': 'string', 'options': []},
             'challenge_id': {'label': 'Challenge ID', 'ctype': 'string', 'options': []},
             'job_profile_id': {'label': 'Job Profile ID', 'ctype': 'string', 'options': []},
-            'context_id': {'label': 'Context ID', 'ctype': 'string', 'options': []},
-            'interview_count': {'label': 'Complete Interview Count', 'ctype': 'number', 'options': []},
+            'user_profile_id': {'label': 'User Profile ID', 'ctype': 'string', 'options': []},
+            # 'context_id': {'label': 'Context ID', 'ctype': 'string', 'options': []},
+            'interview_count': {'label': 'Interview Count', 'ctype': 'number', 'options': []},
             'type': {'label': 'Type', 'ctype': 'number', 'options': []},
             'title': {'label': 'Title', 'ctype': 'string', 'options': []},
             'score': {'label': 'Score', 'ctype': 'string', 'options': []},
@@ -667,7 +668,7 @@ class JobReactionManager(JobManagerBase):
         for x in link_icon:
             self.engagement_all_columns[x]['icon'] = self.uiuxbt.create_link_icon()
         for x in expand_icon:
-            self.engagement_all_columns[x]['icon'] = self.uiuxbt.create_expand_icon("context_id")
+            self.engagement_all_columns[x]['icon'] = self.uiuxbt.create_expand_icon("user_profile_id")
         for x in keep_columns:
             self.keep_columns.append(x)
 

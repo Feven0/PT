@@ -131,8 +131,9 @@ class IpersonaSessionSchema(LeapBaseClass):
         response = {
             "id": data.get('id', {}),
             "status": data.get('attributes', {}).get('status', {}),
-            "template_id": data.get('attributes', {}).get('attributes', {}).get('template_id', {}),
-            "challenge_id": data.get('attributes', {}).get('attributes', {}).get('challenge_id', {}),
+            "template_id": data.get('attributes', {}).get('tinder_template', {}).get('data', {}),
+            "challenge_id": data.get('attributes', {}).get('challenge_document', {}).get('data', {}),
+            "metadata": data.get('attributes', {}).get('metadata', {}),
             "chat": data_msg
         }
         return response
@@ -365,7 +366,7 @@ class IpersonaSessionSchema(LeapBaseClass):
             data = self.get_sessions_data(data_json)
 
             if data is None:
-                logger.warning(f"No session data found for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}.")
+                logger.warning(f"No session data found for User Profile ID {user_profile_id}.")
                 return None
 
             # Apply limit if needed
@@ -375,7 +376,7 @@ class IpersonaSessionSchema(LeapBaseClass):
             return data
 
         except Exception as e:
-            logger.error(f"Error fetching session data for User Profile ID {user_profile_id} and Job Profile ID {job_profile_id}: {str(e)}")
+            logger.error(f"Error fetching session data for User Profile ID {user_profile_id}: {str(e)}")
             return {'error': f"Error fetching session data: {str(e)}"}
 
     def filter_by_with_user_challenge_id(self, user_profile_id, challenge_id, **kwargs):
@@ -579,12 +580,12 @@ class IpersonaSessionSchema(LeapBaseClass):
                 if 'data' in session_json:
                     return session_json['data']
                         
-            # if isinstance(session_json, dict) and len(session_json) > 0:  
-            #     first_item = session_json  
-            #     if 'data' in first_item and 'iPersonaSession' in first_item['data']:
-            #         session = first_item['data']['iPersonaSession']['data']
-            #         all_sessions = session
-            #         return all_sessions
+            if isinstance(session_json, dict) and len(session_json) > 0:  
+                first_item = session_json  
+                if 'data' in first_item and 'iPersonaSession' in first_item['data']:
+                    session = first_item['data']['iPersonaSession']['data']
+                    all_sessions = session
+                    return all_sessions
             
             logger.warn("No session data found in the session JSON.")
             return None

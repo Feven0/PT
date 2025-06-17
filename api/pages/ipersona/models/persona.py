@@ -25,6 +25,10 @@ class OverallRequestRecieved(MyBaseModel):
     job_profile_id: int
     challenge_id: int
 
+class UpdateSessionModeRequestReceieved(MyBaseModel):
+    sessionId: int
+    mode: str
+    
 class UserSessionRequestRecieved(MyBaseModel):
     mode: str 
     job_profile_id: int
