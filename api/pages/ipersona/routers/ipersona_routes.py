@@ -169,6 +169,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
     run_stage = request.run_stage
     template = request.template
     external = request.external
+    generate = request.generate
     challenge = request.challenge
     job_profile_id = request.job_profile_id
     all_user_id = request.all_user_id
@@ -184,11 +185,11 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         tinder_job_data = util.get_job_data(job_profile_id, run_stage)
     
         response = await util.create_session_logics(
-            request,
             run_stage, 
             template, 
             external, 
             challenge, 
+            generate,
             job_profile_id, 
             all_user_id, 
             template_id, 
@@ -1852,7 +1853,7 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) :
                 nopp=True, 
                 dataframe=False
             )
-
+            return user_data
             if not user_data:
                 logger.warn(f"No session data found for user ID: {request.all_user_id} and challenge ID: {request.challenge_id}")
                 return JSONResponse(
@@ -2793,17 +2794,13 @@ def process_audio_and_save_external(
         
         template_id = 0
         message = ''
-        type = {
-            "template": template,
-            "generate": generate,
-            "external": external,
-            "challenge": challenge
-        }
         mode = 'external'
         saved_session = util.create_session(
-            mode,
             run_stage,
-            type,  
+            template, 
+            external, 
+            challenge, 
+            generate,  
             all_user_id,
             tinder_user_profile_id,
             job_profile_id,

@@ -355,14 +355,15 @@ const InterviewChat = () => {
     const chooseTemplate = async (id: any) => {
         setLoad(true)
         const data = {
-            job_profile_id: 46,
+            job_profile_id: 0,
             all_user_id: 1959,
+            run_stage: "dev",
             template: true,
             generate: false,
             external: false,
             challenge: false,
-            template_id: 55, 
-            challenge_id: 0
+            template_id: 56, 
+            challenge_id: 26
         };
         const response = await Api.sessionCreate(data);
         localStorage.setItem("userSession", JSON.stringify(response?.data))
@@ -371,9 +372,9 @@ const InterviewChat = () => {
             handleTemplateInterview({ 
                 input, 
                 user_session: response?.data,
-                template_id: template_id,
-                challenge_id: challenge_id,
-                job_profile_id: job_profile_id,
+                template_id: 56,
+                challenge_id: 26,
+                job_profile_id: 0,
                 timerValue,
                 all_user_id: 1959
             });

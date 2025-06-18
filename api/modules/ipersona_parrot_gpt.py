@@ -3702,11 +3702,11 @@ def extract_json(response, quite=False):
     
 #------------------------------------------- Create Session -------------------------------------------------
 async def create_session_logics(
-        request,
         run_stage, 
         template, 
         external, 
         challenge, 
+        generate, 
         job_profile_id, 
         all_user_id, 
         template_id, 
@@ -3720,7 +3720,10 @@ async def create_session_logics(
             message = ''
             saved_session = create_session(
                 run_stage, 
-                request, 
+                template, 
+                external, 
+                challenge, 
+                generate,
                 all_user_id,
                 tinder_user_profile_id, 
                 job_profile_id,
@@ -3767,7 +3770,10 @@ async def create_session_logics(
 
             saved_session = create_session(
                 run_stage, 
-                request, 
+                template, 
+                external, 
+                challenge, 
+                generate,
                 all_user_id,
                 tinder_user_profile_id, 
                 job_profile_id,
@@ -3884,7 +3890,10 @@ async def create_session_logics(
 
 def create_session(
         run_stage, 
-        type, 
+        template, 
+        external, 
+        challenge, 
+        generate,
         all_user_id, 
         user_profile_id, 
         job_profile_id, 
@@ -3892,7 +3901,7 @@ def create_session(
         challenge_id,
         message):
     try:
-        if type.get('template'):
+        if template:
             metadata =  {
                 "template": True,
                 "generate": False,
@@ -3900,7 +3909,7 @@ def create_session(
                 "challenge": False
             }
             status = "Incomplete"
-        elif type.get('external'):
+        elif external:
             metadata =  {
                 "template": False,
                 "generate": False,
@@ -3908,7 +3917,7 @@ def create_session(
                 "challenge": False
             }
             status = "External"
-        elif type.get('challenge'):
+        elif challenge:
             metadata =  {
                 "template": False,
                 "generate": False,
@@ -3933,7 +3942,7 @@ def create_session(
             # Step 4: Add question numbers
             challenge_generated_questions = add_question_number(challenge_generated_questions)
             
-        if type.get('challenge'): 
+        if challenge: 
             # Step 5: Save session data
             session_data = {
                 "slug": str(f"all_user_id: {all_user_id}"),
