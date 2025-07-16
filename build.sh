@@ -191,9 +191,15 @@ EOF
 # fi
 
 export PORT=$tport
-docker-compose down --remove-orphans
-docker-compose build --no-cache $name
-docker-compose up -d --force-recreate $name
+export PORT=$tport
+
+# Clean up any existing container for this service/project
+docker stop "$name" 2>/dev/null || true
+docker rm "$name" 2>/dev/null || true
+
+docker-compose -p "$name" down --remove-orphans
+docker-compose -p "$name" build --no-cache $name
+docker-compose -p "$name" up -d --force-recreate $name
 # --remove-orphans --force-recreate -d $name
 docker ps
 
