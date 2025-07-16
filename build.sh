@@ -157,7 +157,11 @@ services:
       - WORKERS_PER_CORE=0.5
       - TIMEOUT=120
       - KEEP_ALIVE=60
-      - LOG_LEVEL=info      - 
+      - LOG_LEVEL=info      
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+
     networks:
       - ipersona_network    
     # volumes:
@@ -187,8 +191,9 @@ EOF
 # fi
 
 export PORT=$tport
-docker-compose build $name
-docker-compose up -d $name
+docker-compose down --remove-orphans
+docker-compose build --no-cache $name
+docker-compose up -d --force-recreate $name
 # --remove-orphans --force-recreate -d $name
 docker ps
 
