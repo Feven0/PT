@@ -19,6 +19,12 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
     IpersonaChallengeDocumentSchema,
     IpersonaSessionTinderUserJobMatchSchema
 )
+from api.pages.ipersona.models.endpoint_responses import (
+    UpdateSessionModeResponse, 
+    ErrorResponse,
+    CreateUserSessionResponse,
+    sanitize_create_user_session_response
+    )
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_gpt as gpt
 import api.pages.ipersona.models.persona as pemodel
@@ -62,6 +68,37 @@ async def health_check():
             content={"error": f"Health check failed: {str(e)}"}
         )
 
+@routes.post(
+    "/update_session_mode",
+    response_model=UpdateSessionModeResponse,
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid input"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
+    tags=["Session Endpoints"],
+    summary="Update the session mode",
+    description="Updates the mode of a session and returns the updated status."
+)
+async def update_session_mode(request: pemodel.UpdateSessionModeRequestReceieved):
+    """Update the mode of a session and return the updated status."""
+    try:
+        sessionId = request.sessionId
+        mode = request.mode
+        run_stage = request.run_stage
+        result = util.updating_session_mode(sessionId, mode, run_stage)
+        response_data = {
+            "sessionId": result.get("id", sessionId),
+            "mode": result.get("metadata", {}).get("mode", mode),
+            "status": 200,
+            "message": "Session mode updated successfully."
+        }
+        return UpdateSessionModeResponse(**response_data)
+    except Exception as e:
+        logger.error(f"Error in health check: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Health check failed: {str(e)}"}
+        )
 
 @routes.post("/audio_upload", tags=["Audio Endpoints"])
 async def speech_to_text(file: UploadFile = File(...)) -> dict:
@@ -148,29 +185,28 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
             }
         )
 
-@routes.post("/create_user_session", tags=["Session Endpoints"])
+@routes.post(
+    "/create_user_session",
+    # response_model=CreateUserSessionResponse,
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid input"},
+        404: {"model": ErrorResponse, "description": "Session not found or could not be updated"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
+    tags=["Session Endpoints"],
+    summary="Create a new user session",
+    description="Processes user session data and generates interview questions."
+)
 async def user_session_files(request: pemodel.UserSessionRequestRecieved):
     """
     Process user session data and generate interview questions.
-
-    Parameters
-    ----------
-    request : pemodel.UserSessionRequestRecieved
-        Object containing:
-        - all_user_id
-        - job_profile_id
-        - template, challenge, etc.
-
-    Returns
-    -------
-    Dict[str, Any]
-        Session data (ID, status, template_id, challenge_id)
     """
     run_stage = request.run_stage
+    mode = request.mode
     template = request.template
     external = request.external
-    generate = request.generate
     challenge = request.challenge
+    generate = request.generate
     job_profile_id = request.job_profile_id
     all_user_id = request.all_user_id
     template_id = request.template_id
@@ -178,27 +214,45 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
 
     try:
         logger.info(f"Starting user session creation for user ID: {all_user_id}, job ID: {job_profile_id}")
-
         # Step 1: Fetch user profile data
         tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
         # Step 2: Fetch job profile data
         tinder_job_data = util.get_job_data(job_profile_id, run_stage)
-    
-        response = await util.create_session_logics(
+        
+        session_incomplete = util.check_if_session_exists(
             run_stage, 
+            tinder_user_profile_id, 
+            job_profile_id,
+            challenge_id,
+            template_id,
             template, 
             external, 
             challenge, 
-            generate,
-            job_profile_id, 
-            all_user_id, 
-            template_id, 
-            challenge_id,
-            tinder_user_profile_id,
-            tinder_job_data, 
-            tinder_user_profile_data)
-        
-        return response
+            generate)
+        if session_incomplete:
+            logger.info(f"Incomplete session already exists for user ID: {all_user_id}")
+            session_data = sanitize_create_user_session_response(session_incomplete)
+            session_data["exist"] = True
+            return CreateUserSessionResponse(**session_data)
+        else:          
+            response = await util.create_session_logics(
+                run_stage, 
+                template, 
+                external, 
+                challenge, 
+                generate, 
+                job_profile_id, 
+                all_user_id, 
+                template_id, 
+                challenge_id,
+                tinder_user_profile_id,
+                tinder_job_data, 
+                tinder_user_profile_data)
+            if response:
+                session_data = sanitize_create_user_session_response(response)
+                session_data['exist'] = False
+            return CreateUserSessionResponse(**session_data)
+
     except Exception as e:
         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
         return JSONResponse(
@@ -206,6 +260,65 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             content={"error": f"Error processing user session: {str(e)}"}
         )
        
+
+# @routes.post("/create_user_session", tags=["Session Endpoints"])
+# async def user_session_files(request: pemodel.UserSessionRequestRecieved):
+#     """
+#     Process user session data and generate interview questions.
+
+#     Parameters
+#     ----------
+#     request : pemodel.UserSessionRequestRecieved
+#         Object containing:
+#         - all_user_id
+#         - job_profile_id
+#         - template, challenge, etc.
+
+#     Returns
+#     -------
+#     Dict[str, Any]
+#         Session data (ID, status, template_id, challenge_id)
+#     """
+#     run_stage = request.run_stage
+#     template = request.template
+#     external = request.external
+#     generate = request.generate
+#     challenge = request.challenge
+#     job_profile_id = request.job_profile_id
+#     all_user_id = request.all_user_id
+#     template_id = request.template_id
+#     challenge_id = request.challenge_id
+
+#     try:
+#         logger.info(f"Starting user session creation for user ID: {all_user_id}, job ID: {job_profile_id}")
+
+#         # Step 1: Fetch user profile data
+#         tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
+#         # Step 2: Fetch job profile data
+#         tinder_job_data = util.get_job_data(job_profile_id, run_stage)
+    
+#         response = await util.create_session_logics(
+#             run_stage, 
+#             template, 
+#             external, 
+#             challenge, 
+#             generate,
+#             job_profile_id, 
+#             all_user_id, 
+#             template_id, 
+#             challenge_id,
+#             tinder_user_profile_id,
+#             tinder_job_data, 
+#             tinder_user_profile_data)
+        
+#         return response
+#     except Exception as e:
+#         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
+#         return JSONResponse(
+#             status_code=500,
+#             content={"error": f"Error processing user session: {str(e)}"}
+#         )
+
 @routes.post("/clarify", tags=["Session Endpoints"])
 async def clarify_question(request: pemodel.ClarificationRequestRecieved) -> dict:
     """
@@ -1809,10 +1922,7 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) :
 
                 if not user_data:
                     logger.warn(f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
-                    return JSONResponse(
-                        status_code=200, 
-                        content={"message": f"No session data found for user ID: {request.all_user_id} and job ID: {request.job_profile_id}"}
-                    )
+                    return []
 
                 logger.info(f"Session data successfully retrieved for user ID: {request.all_user_id} and job ID: {request.job_profile_id}")
                 return user_data
@@ -1836,10 +1946,7 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) :
 
             if not user_data:
                 logger.warn(f"No session data found for user ID: {request.all_user_id} and template ID: {request.template_id}")
-                return JSONResponse(
-                    status_code=200, 
-                    content={"message": f"No session data found for user ID: {request.all_user_id} and template ID: {request.template_id}"}
-                )
+                return []
 
             logger.info(f"Session data successfully retrieved for user ID: {request.all_user_id} and template ID: {request.template_id}")
             return user_data
@@ -1853,13 +1960,10 @@ async def fetch_user_session(request: pemodel.AlUserSessionRequestRecieved) :
                 nopp=True, 
                 dataframe=False
             )
-            return user_data
+
             if not user_data:
                 logger.warn(f"No session data found for user ID: {request.all_user_id} and challenge ID: {request.challenge_id}")
-                return JSONResponse(
-                    status_code=200, 
-                    content={"message": f"No session data found for user ID: {request.all_user_id} and challenge ID: {request.challenge_id}"}
-                )
+                return []
 
             logger.info(f"Session data successfully retrieved for user ID: {request.all_user_id} and challenge ID: {request.challenge_id}")
             return user_data

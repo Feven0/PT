@@ -91,6 +91,9 @@ async def audio_endpoint(sid, data):
                 
             else:
                 print("Interim Transcription:", transcript.text)
+                # asyncio.run_coroutine_threadsafe(
+                #     sio.emit("audio transcribe", transcript.text), loop
+                # )
 
     def on_error(error: aai.RealtimeError):
         print("An error occurred:", error)
@@ -99,6 +102,14 @@ async def audio_endpoint(sid, data):
         print("Closing Session")
         global transcriber
         transcriber = None
+
+        # Send completion notification
+        asyncio.run_coroutine_threadsafe(
+            sio.emit("transcription_complete", {
+                "status": "completed",
+                "message": "Audio transcription finished"
+            }), loop
+        )
 
     if transcriber is None:
         transcriber = aai.RealtimeTranscriber(
@@ -266,7 +277,7 @@ async def audio_end_point(sid, data):
 
         # Insert the user's response if provided
         try:
-            if data.get('response'):
+            if data.get('response') and data.get('resume') is False:
                 try:
                     strapi.step1_insert_message(
                         run_stage, 
@@ -600,7 +611,7 @@ async def interview_endpoint(sid, data):
 
         # Insert the user's response if provided
         try:
-            if data.get('response'):
+            if data.get('response') and data.get('resume') is False:
                 try:
                     strapi.step1_insert_message(
                         run_stage, 

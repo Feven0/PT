@@ -1454,7 +1454,11 @@ def percentage_term(percent: float) -> dict:
 #----------------------------------------- Entire Data Progress Calculator -----------------------------------------   
 async def calculate_overall_progress(run_stage, userdata, data: list):
     try:
-        logger.info(f"calculating overall progress for a job overtime")
+        # Log what the function received first
+        logger.info(f"=== calculate_overall_progress function called ===")
+        logger.info(f"Function received - run_stage: {run_stage}")
+        logger.info(f"Function received - data length: {len(data) if data else 0}")
+        
         confidence_overtime = []  
         clarity_overtime = []     
         engagement_overtime = [] 
@@ -1462,9 +1466,35 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
         overall_competencies = []
         overall_performance_scores = []
         obs_ids = []      
-        challenge_id = userdata.get('challenge_id', 0)
-        job_profile_id = userdata.get('job_profile_id', 0)
+
+        # Extract parameters from the correct nested structure
+        user_session = userdata.get('user_session', {})
+        attributes = user_session.get('attributes', {})
+
+        # Extract challenge_id from challenge_document.data.id
+        challenge_doc = attributes.get('challenge_document', {})
+        challenge_id = challenge_doc.get('data', {}).get('id', 0) if challenge_doc.get('data') else 0
+
+        # Extract job_profile_id from tinder_job_profile.data.id
+        job_profile = attributes.get('tinder_job_profile', {})
+        job_profile_id = job_profile.get('data', {}).get('id', 0) if job_profile.get('data') else 0
+
+        # ✅ Correct way to extract all_user_id (from root, not attributes)
         all_user_id = userdata.get('all_user_id', 0)
+
+        logger.info(f"challenge_id::: {challenge_id}")
+        logger.info(f"job_profile_id::: {job_profile_id}")
+        logger.info(f"all_user_id::: {all_user_id}")
+        
+        # Convert to integers and handle empty strings
+        try:
+            challenge_id = int(challenge_id) if challenge_id and challenge_id != "" else 0
+            job_profile_id = int(job_profile_id) if job_profile_id and job_profile_id != "" else 0
+            all_user_id = int(all_user_id) if all_user_id and all_user_id != "" else 0
+        except (ValueError, TypeError):
+            challenge_id = 0
+            job_profile_id = 0
+            all_user_id = 0
 
         for entry in data:
             if isinstance(entry, dict):  
@@ -1528,9 +1558,10 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
 
         trainee_profile_data = ipersona_user.filter_by_alluser_id(all_user_id = all_user_id, nopp=True, dataframe=False)
+        
         if not trainee_profile_data:
-                logger.warn("No trainee user profiles found.")
-                return []
+            logger.error(f"No trainee user profiles found for all_user_id: {all_user_id}")
+            return f'Error: No trainee profile found for user {all_user_id}'
         
         tinder_user_profile_id = trainee_profile_data['id']    
         session_chatobserver = None
@@ -1548,6 +1579,12 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 challenge_id = challenge_id, 
                 nopp=True, 
                 dataframe=False)
+        
+        # Add comprehensive null check
+        if session_chatobserver is None:
+            logger.error(f"Database query returned None for user {tinder_user_profile_id}")
+            logger.error(f"Query parameters - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}")
+            return f'Error: No session data found for the given parameters'
         
         if not session_chatobserver.get("error"): 
             logger.info(f"Session job overall observer data exists, so updating the data")          
@@ -1568,17 +1605,6 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 }
                 existing_overall_data = session_chatobserver_sessions[0]
                 update_overall_data = append_new_session_metrics(existing_overall_data, new_overall_data)
-                # print("new_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                # print(new_overall_data)
-                # print("existing_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                # attributes = {
-                #     "overall_confidence": confidence_overtime,
-                #     "overall_clarity": clarity_overtime,
-                #     "overall_engagement": engagement_overtime,
-                #     "overall_time_management": overall_time_managements,
-                #     "overall_competency": overall_competencies,
-                #     "overall_performance": overall_performance_scores
-                # }
                             
                 message_data = {
                     "i_persona_session_overall_observer_id": session_chatobserver['id'], 
@@ -1586,22 +1612,11 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                     "i_persona_observers": obs_ids
                 }
                 if job_profile_id:
-                    # print("job_profile_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                    # print(job_profile_id)
                     message_data["tinder_user_profile"] = tinder_user_profile_id
                     message_data["tinder_job_profile"] = job_profile_id
                 elif challenge_id:
-                    # print("challenge_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                    # print(challenge_id)
-                    # print("update_overall_data++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                    # print(update_overall_data)
-                    # print("tinder_user_profile_id++++++++++++++++++++++++++++++++++++++++++++++++++++++")
                     message_data["tinder_user_profile"] = tinder_user_profile_id
                     message_data["challenge_document"] = challenge_id
-
-                # print("_0+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++0_")
-                # print(message_data)
-                # print("_0+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++0_")
 
                 response = ipersona_overall.update_session(
                     params=message_data, 
@@ -1623,8 +1638,8 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 dataframe=False)
             
             if not trainee_profile_data:
-                    logger.warn("No trainee user profiles found.")
-                    return []
+                    logger.error(f"No trainee user profiles found for all_user_id: {all_user_id} in else block")
+                    return f'Error: No trainee profile found for user {all_user_id} in else block'
             
             tinder_user_profile_id = trainee_profile_data['id']    
             message_data = {
@@ -1647,9 +1662,6 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 message_data["tinder_user_profile"] = tinder_user_profile_id
                 message_data["challenge_document"] = challenge_id
 
-            # print("_+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_")
-            # print(message_data)
-            # print("_+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++_")
             response = ipersona_overall.save_Session_Overall_Observer(
                 params=message_data, 
                 nopp=True, 
@@ -1659,7 +1671,9 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
             return response
     
     except Exception as e:
-        logger.error(f"Process failed: ${str(e)}")
+        logger.error(f"Process failed: {str(e)}")
+        logger.error(f"Function parameters - run_stage: {run_stage}, userdata: {userdata}, data_length: {len(data) if data else 0}")
+        logger.error(f"Exception type: {type(e).__name__}")
         return f'Error: {str(e)}'    
 
 def append_new_session_metrics(existing_data: dict, new_session_metrics: dict) -> dict:
@@ -3900,7 +3914,7 @@ def create_session(
         template_id, 
         challenge_id,
         message):
-    try:
+    try:   
         if template:
             metadata =  {
                 "template": True,
@@ -4145,6 +4159,131 @@ def extract_job_neccessary_values(data):
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
 
+def updating_session_mode(sessionId, mode, run_stage):
+    try:
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        session_metadata = ipersona_session.get_by_id(
+            sessionId=sessionId, 
+            nopp=True, 
+            dataframe=False
+        )
+        session_metadata = session_metadata.get("metadata", {})
+        session_metadata["mode"] = mode
+        session_data = {
+            "i_persona_session_id": sessionId, 
+            "metadata": session_metadata,
+        }
+        updated_session = ipersona_session.update_session(
+            params=session_data, 
+            nopp=True, 
+            dataframe=False, 
+            return_object=True)
+     
+        if updated_session:
+            logger.info("session mode updated to closed")
+
+        data = get_session_data(updated_session)  
+
+        response = {
+            "id": data.get('id', {}),
+            "metadata": data.get('attributes', {}).get('metadata', {}),        
+        }
+
+        return response
+    
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}  
+
+
+def check_if_session_exists(
+        run_stage, 
+        user_profile_id, 
+        job_profile_id, 
+        challenge_id, 
+        template_id,
+        template, 
+        external, 
+        challenge, 
+        generate):
+    try:
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        if job_profile_id:
+            session_data = ipersona_session.filter_by_with_user_job_id_by_filtering( 
+                user_profile_id=user_profile_id,
+                job_profile_id=job_profile_id,
+                since=10, 
+                nopp=True,
+                dataframe=False
+            )
+        elif challenge_id:
+            session_data = ipersona_session.filter_by_with_user_challenge_id( 
+                user_profile_id=user_profile_id,
+                challenge_id=challenge_id,
+                since=10, 
+                nopp=True,
+                dataframe=False
+            )
+         
+        elif template_id:
+            session_data = ipersona_session.filter_by_with_user_template_id_by_filtering( 
+                user_profile_id=user_profile_id,
+                template_id=template_id,
+                since=10, 
+                nopp=True,
+                dataframe=False
+            )
+        data = extracted_needed_metrics(session_data)
+
+        def extract_session_summary(item):
+            return {
+                "id": item.get('session_id'),
+                "mode": item.get('mode'),
+                "status": item.get('complete_status'),
+                "job_profile_id": item.get('job_profile_id'),
+                "user_profile_id": item.get('user_profile_id'),
+                "template_id": item.get('template_id'),
+                "challenge_id": item.get('challenge_id'),
+                "message": "Session already exists"
+            }
+
+        def get_latest_incomplete_session(data):
+            for item in data: 
+                if not item.get("complete_status", False):
+                    user_id = item.get("user_profile_id")
+                    template_id = item.get("template_id")
+                    challenge_id = item.get("challenge_id")
+                    job_id = item.get("job_profile_id")
+
+                    # Convert to int if stored as strings
+                    template_id = int(template_id) if template_id not in [None, "null"] else 0
+                    challenge_id = int(challenge_id) if challenge_id not in [None, "null"] else 0
+                    job_id = int(job_id) if job_id not in [None, "null"] else 0
+                    user_id = int(user_id) if user_id not in [None, "null"] else 0
+
+                    if template:
+                        if template_id and user_id and (
+                            (challenge_id and challenge_id != 0) or (job_id and job_id != 0)
+                        ):
+                            return extract_session_summary(item)
+
+                    elif generate:
+                        if template_id == 0 and user_id and job_id != 0:
+                            return extract_session_summary(item)
+
+                    elif challenge:
+                        if template_id == 0 and user_id and challenge_id != 0:
+                            return extract_session_summary(item)
+
+            return None
+
+        
+        return get_latest_incomplete_session(data)  
+
+    except Exception as e:
+        logger.error(f"Error processing files: {e}")
+        return {'error': str(e)}
+  
 # --------------------------------------------- Helper Functions -------------------------------------------- #
 def fetch_the_structure(type):
     try:

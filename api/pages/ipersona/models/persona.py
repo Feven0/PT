@@ -30,6 +30,7 @@ class UpdateSessionModeRequestReceieved(MyBaseModel):
     mode: str
     
 class UserSessionRequestRecieved(MyBaseModel):
+    mode: str 
     job_profile_id: int
     all_user_id: int
     template: bool = False
@@ -38,6 +39,16 @@ class UserSessionRequestRecieved(MyBaseModel):
     challenge: bool = False
     template_id: int
     challenge_id: int
+
+# class UserSessionRequestRecieved(MyBaseModel):
+#     job_profile_id: int
+#     all_user_id: int
+#     template: bool = False
+#     generate: bool 
+#     external: bool = False
+#     challenge: bool = False
+#     template_id: int
+#     challenge_id: int
 
 class AlUserSessionRequestRecieved(MyBaseModel):
     all_user_id: int
@@ -202,3 +213,7 @@ class ExternalRequestRecieved(MyBaseModel):
 
 class ChallengeRequestFiltering(MyBaseModel):
     challenge_id: int
+
+class UpdateSessionModeRequestReceieved(MyBaseModel):
+    sessionId: int
+    mode: str
