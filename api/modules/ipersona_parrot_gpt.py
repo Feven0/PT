@@ -3346,7 +3346,8 @@ def summarize_allusers_performance_data(run_stage, data):
             return []
         
         try:
-            data = extracted_needed_metrics_temp(data)  # Extract necessary metrics
+            data = extracted_needed_metrics(data)  # Extract necessary metrics
+
         except Exception as extract_error:
             logger.error(f"Error extracting metrics: {extract_error}")
             return {'error': f"Failed to extract metrics: {str(extract_error)}"}

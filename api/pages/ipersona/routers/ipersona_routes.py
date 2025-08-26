@@ -1658,7 +1658,6 @@ async def calculate_admin_allusers_performance_data(request: pemodel.AdminDataFi
         # Step 2: Summarize all users performance data
         result = util.summarize_allusers_performance_data(run_stage, data)
         # result = util.add_columns(result, kind='admin_allusers_performance', **kwargs)
-        
         logger.info("Admin all users performance data calculated successfully")
         return {
             "data": result, 
