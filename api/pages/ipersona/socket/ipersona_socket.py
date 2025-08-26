@@ -2,6 +2,7 @@ import asyncio, os, json
 import socketio, time
 from openai import OpenAI
 import assemblyai as aai
+from typing import Dict, Any
 
 from api import config
 import api.modules.ipersona_parrot_gpt as util
@@ -25,7 +26,8 @@ aai.settings.api_key = config.assemblyai.api_key
 OPENAI_API_KEY = config.openai.api_key
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-transcriber = None
+# Improved transcriber management - track per session
+transcribers: Dict[str, Any] = {}
 
 sio = socketio.AsyncServer(cors_allowed_origins="*", 
                            async_mode="asgi",
@@ -70,61 +72,129 @@ async def connect(sid):
 @sio.on("disconnect")
 async def disconnect(sid):
     logger.info(f"Client disconnected with SID: {sid}")
+    # Clean up any active transcribers for this session
+    existing = transcribers.pop(sid, None)
+    if existing is not None:
+        try:
+            if hasattr(existing, 'close') and callable(getattr(existing, 'close')):
+                existing.close()
+            elif hasattr(existing, 'disconnect') and callable(getattr(existing, 'disconnect')):
+                existing.disconnect()
+            elif hasattr(existing, 'terminate') and callable(getattr(existing, 'terminate')):
+                existing.terminate()
+            logger.info(f"Session closed cleanly on disconnect (sid={sid})")
+        except Exception as e:
+            logger.warn(f"Error while closing session on disconnect (sid={sid}): {e}")
  
-# assembly streaming
+# Improved assembly streaming with proper session management
 @sio.on("audio transcribe")
 async def audio_endpoint(sid, data):
+    """Handle audio transcribe event with improved session management."""
     loop = asyncio.get_event_loop()
-    audioblob = data['audioblob']
-    global transcriber
+    audioblob = data.get('audioblob')
+
+    # Log incoming audio data
+    if audioblob:
+        blob_length = len(audioblob) if hasattr(audioblob, '__len__') else 'unknown'
+        logger.info(f"[AUDIO RECEIVED] sid={sid}, audioblob length={blob_length}, type={type(audioblob)}")
+    else:
+        logger.info(f"[AUDIO RECEIVED] sid={sid}, audioblob=None (stop signal)")
+
+    # Treat None audioblob as an explicit stop signal from client
+    if audioblob is None:
+        logger.info(f"Stop requested by client (sid={sid}). Closing session if active...")
+        existing = transcribers.pop(sid, None)
+        if existing is not None:
+            try:
+                if hasattr(existing, 'close') and callable(getattr(existing, 'close')):
+                    existing.close()
+                elif hasattr(existing, 'disconnect') and callable(getattr(existing, 'disconnect')):
+                    existing.disconnect()
+                elif hasattr(existing, 'terminate') and callable(getattr(existing, 'terminate')):
+                    existing.terminate()
+                logger.info(f"Session closed cleanly after stop (sid={sid})")
+            except Exception as e:
+                logger.warn(f"Error while closing session on stop (sid={sid}): {e}")
+        else:
+            logger.info(f"No active session to close on stop (sid={sid})")
+        return
+
+    # Normalize audio bytes
+    try:
+        if hasattr(audioblob, 'buffer'):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, list):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, (bytes, bytearray, memoryview)):
+            audio_bytes = bytes(audioblob)
+        else:
+            audio_bytes = audioblob
+    except Exception:
+        # Fallback: try best effort conversion
+        audio_bytes = audioblob
+
+    # Log normalized audio data
+    normalized_length = len(audio_bytes) if hasattr(audio_bytes, '__len__') else 'unknown'
+    logger.info(f"[AUDIO NORMALIZED] sid={sid}, normalized_length={normalized_length}")
 
     def on_open(session_opened: aai.RealtimeSessionOpened):
-        print("Session ID:", session_opened.session_id)
+        logger.info(f"Session opened: {session_opened.session_id} (sid={sid})")
 
     def on_data(transcript: aai.RealtimeTranscript):
-        if transcript.text:
+        try:
+            if not transcript.text:
+                return
+            # Preserve legacy behavior: emit bare string only on final
             if isinstance(transcript, aai.RealtimeFinalTranscript):
-                print("Final Transcription:", transcript.text)
+                logger.info(f"Final transcript (sid={sid}): {transcript.text}")
+                logger.info(f"[SOCKET EMIT] Sending final transcript to sid={sid}: '{transcript.text}'")
                 asyncio.run_coroutine_threadsafe(
-                    sio.emit("audio transcribe", transcript.text), loop
+                    sio.emit("audio transcribe", transcript.text, room=sid),
+                    loop
                 )
+                logger.info(f"[SOCKET EMIT] Final transcript sent successfully to sid={sid}")
                 
             else:
-                print("Interim Transcription:", transcript.text)
-                # asyncio.run_coroutine_threadsafe(
-                #     sio.emit("audio transcribe", transcript.text), loop
-                # )
+                # Interim log (lighter)
+                logger.info(f"Interim transcript (sid={sid}): {transcript.text}")
+        except Exception as emit_err:
+            logger.error(f"Emit error: {emit_err}")
 
     def on_error(error: aai.RealtimeError):
-        print("An error occurred:", error)
+        logger.error(f"An error occurred: {error}")
 
     def on_close():
-        print("Closing Session")
-        global transcriber
-        transcriber = None
+        logger.info(f"Closing Session (sid={sid})")
+        transcribers.pop(sid, None)
 
-        # Send completion notification
         asyncio.run_coroutine_threadsafe(
             sio.emit("transcription_complete", {
                 "status": "completed",
                 "message": "Audio transcription finished"
-            }), loop
+            }, room=sid), loop
         )
+        logger.info(f"[SOCKET EMIT] transcription_complete sent successfully to sid={sid}")
 
-    if transcriber is None:
-        transcriber = aai.RealtimeTranscriber(
+    # Create a session-scoped transcriber if missing
+    if sid not in transcribers or transcribers.get(sid) is None:
+        logger.info(f"Creating new transcriber for sid={sid}")
+        transcribers[sid] = aai.RealtimeTranscriber(
             sample_rate=16000,
-            on_data=on_data,  
+            on_data=on_data,
             on_error=on_error,
             on_open=on_open,
             on_close=on_close
         )
-        transcriber.connect()
+        transcribers[sid].connect()
+        logger.info(f"Transcriber connected for sid={sid}")
 
+    # Stream audio chunk for this sid
     try:
-        transcriber.stream(audioblob)
+        logger.info(f"[AUDIO STREAM] Streaming audio to transcriber for sid={sid}, length={normalized_length}")
+        transcribers[sid].stream(audio_bytes)
+        logger.info(f"[AUDIO STREAM] Audio streamed successfully for sid={sid}")
     except Exception as e:
-        print(f"Error in audio streaming: {str(e)}")
+        logger.error(f"Error in audio streaming for sid={sid}: {str(e)}")
 
 # executor = ThreadPoolExecutor(max_workers=105)  
 
@@ -133,7 +203,7 @@ async def synthesize_text(text):
     try:
         response = client.audio.speech.create(
             model="tts-1",
-            voice="alloy",
+            voice="nova",
             input=text
         )
 
@@ -179,11 +249,15 @@ async def audio_end_point(sid, data):
             else:
                 error_msg = "Invalid user_session format: missing ID"
                 logger.error(error_msg)
+                logger.info(f"[SOCKET EMIT] Sending error to sid={sid}: {error_msg}")
                 await sio.emit("error", {"error": error_msg}, room=sid)
+                logger.info(f"[SOCKET EMIT] Error sent successfully to sid={sid}")
                 return
         except Exception as session_id_error:
             logger.error(f"Error extracting session ID: {str(session_id_error)}")
+            logger.info(f"[SOCKET EMIT] Sending error to sid={sid}: Failed to identify session")
             await sio.emit("error", {"error": "Failed to identify session"}, room=sid)
+            logger.info(f"[SOCKET EMIT] Error sent successfully to sid={sid}")
             return
         
         #-----------------------------------------------------------------------------------#
@@ -303,12 +377,16 @@ async def audio_end_point(sid, data):
             
             if not response:
                 logger.error("Failed to generate interview question: empty response")
+                logger.info(f"[SOCKET EMIT] Sending error to sid={sid}: Failed to generate next question")
                 await sio.emit("error", {"error": "Failed to generate next question"}, room=sid)
+                logger.info(f"[SOCKET EMIT] Error sent successfully to sid={sid}")
                 return
             
         except Exception as generate_error:
             logger.error(f"Error generating interview question: {str(generate_error)}")
+            logger.info(f"[SOCKET EMIT] Sending error to sid={sid}: Question generation failed")
             await sio.emit("error", {"error": f"Question generation failed: {str(generate_error)}"}, room=sid)
+            logger.info(f"[SOCKET EMIT] Error sent successfully to sid={sid}")
             return
              
         if response.get("interview") is not None:
@@ -329,7 +407,9 @@ async def audio_end_point(sid, data):
                         }
                     ]
             
+            logger.info(f"[SOCKET EMIT] Sending initial audio chat sentence to sid={sid}: {message}")
             await sio.emit("audio chat sentence", message, room=sid)  
+            logger.info(f"[SOCKET EMIT] Initial audio chat sentence sent successfully to sid={sid}")
             
             tasks = []
             for chunk in assistant_next_question:
@@ -349,7 +429,9 @@ async def audio_end_point(sid, data):
                             }
                         }]  
                                 
+                        logger.info(f"[SOCKET EMIT] Sending chunk response to sid={sid}: '{complete_sentence}'")
                         await sio.emit("audio chat sentence", message, room=sid)
+                        logger.info(f"[SOCKET EMIT] Chunk response sent successfully to sid={sid}")
                         tasks.append(synthesize_text(complete_sentence))
                     
                         accumulated_message = accumulated_message[last_end_pos + 1:].strip()                        
@@ -362,14 +444,20 @@ async def audio_end_point(sid, data):
                             "time_limit": timelimit.get("time_limit", "null"),
                         }
                     }]                    
+            logger.info(f"[SOCKET EMIT] Sending time limit to sid={sid}: {timelimit.get('time_limit', 'null')}")
             await sio.emit("audio_time_limit", message, room=sid)      
+            logger.info(f"[SOCKET EMIT] Time limit sent successfully to sid={sid}")
                
             audio_chunks = await asyncio.gather(*tasks)
             
-            for audio_data in audio_chunks:
+            for i, audio_data in enumerate(audio_chunks):
                 if isinstance(audio_data, dict) and 'error' in audio_data:
                     print(f"Error: {audio_data['error']}")
                     continue
+                
+                # Log blob length instead of full content
+                blob_length = len(audio_data) if audio_data else 0
+                logger.info(f"[SOCKET EMIT] Sending audio_base64_chunks to sid={sid}: chunk_{i+1}, blob_length={blob_length} bytes")
                 
                 message = [{
                         "content": {
@@ -377,10 +465,15 @@ async def audio_end_point(sid, data):
                         }
                     }]                    
                 await sio.emit("audio_base64_chunks", message, room=sid) 
+                logger.info(f"[SOCKET EMIT] audio_base64_chunks sent successfully to sid={sid}: chunk_{i+1}")
                 
+                logger.info(f"[SOCKET EMIT] Sending audio-single-chunk to sid={sid}: chunk_{i+1}, blob_length={blob_length} bytes")
                 await sio.emit("audio-single-chunk", audio_data, room=sid)
+                logger.info(f"[SOCKET EMIT] audio-single-chunk sent successfully to sid={sid}: chunk_{i+1}")
                 
+            logger.info(f"[SOCKET EMIT] Sending audio-single-text-chunk-done to sid={sid}")
             await sio.emit("audio-single-text-chunk-done", room=sid)
+            logger.info(f"[SOCKET EMIT] audio-single-text-chunk-done sent successfully to sid={sid}")
 
             # Perform real-time response evaluation if applicable
             if data['response'] is not [None, ""]:
@@ -399,7 +492,9 @@ async def audio_end_point(sid, data):
                         "full_response": accumulated_message
                     }
                 }]
+                logger.info(f"[SOCKET EMIT] Sending audio_realtime to sid={sid}: {realtime_evaluation}")
                 await sio.emit("audio_realtime", message, room=sid)  
+                logger.info(f"[SOCKET EMIT] audio_realtime sent successfully to sid={sid}")
              
        
         # Insert the message or conclude the interview if the chat count exceeds the limit
@@ -418,7 +513,9 @@ async def audio_end_point(sid, data):
                 sessionId)
         else:
             message = 'interview over'
+            logger.info(f"[SOCKET EMIT] Sending interview done to sid={sid}: {message}")
             await sio.emit("interview done", message, room=sid)
+            logger.info(f"[SOCKET EMIT] interview done sent successfully to sid={sid}")
 
             final = 'true'
             if response.get("status") is not None:
@@ -435,7 +532,9 @@ async def audio_end_point(sid, data):
                                 "realtime_evaluation": response.get("realtime", "null")
                             }
                         }]
+                    logger.info(f"[SOCKET EMIT] Sending last_audio_realtime_evaluation to sid={sid}")
                     await sio.emit("last_audio_realtime_evaluation", message, room=sid)   
+                    logger.info(f"[SOCKET EMIT] last_audio_realtime_evaluation sent successfully to sid={sid}")
 
                 except Exception as final_emit_error:
                             logger.error(f"Failed to emit final evaluation: {str(final_emit_error)}")
@@ -663,7 +762,9 @@ async def interview_endpoint(sid, data):
                             }
                         }
                     ]
+                    logger.info(f"[SOCKET EMIT] Sending initial interview chat to sid={sid}: {message}")
                     await sio.emit("interview chat", message, room=sid)
+                    logger.info(f"[SOCKET EMIT] Initial interview chat sent successfully to sid={sid}")
 
                 except Exception as initial_emit_error:
                     logger.error(f"Failed to emit initial message: {str(initial_emit_error)}")
@@ -677,7 +778,9 @@ async def interview_endpoint(sid, data):
                                     "time_limit": timelimit.get("time_limit", "null"),
                                 }
                             }]
+                    logger.info(f"[SOCKET EMIT] Sending time limit to sid={sid}: {timelimit.get('time_limit', 'null')}")
                     await sio.emit("time_limit", message, room=sid)
+                    logger.info(f"[SOCKET EMIT] Time limit sent successfully to sid={sid}")
 
                 except Exception as timelimit_error:
                     logger.error(f"Failed to calculate or emit time limit: {str(timelimit_error)}")
@@ -696,7 +799,7 @@ async def interview_endpoint(sid, data):
                         else:
                             assistant_next_question = [str(assistant_next_question)]
                             
-                    for chunk in assistant_next_question:
+                    for i, chunk in enumerate(assistant_next_question):
                         try:
                             accumulated_message += chunk
                             message = [{
@@ -704,7 +807,9 @@ async def interview_endpoint(sid, data):
                                     "chunk_response": chunk
                                 }
                             }]
+                            logger.info(f"[SOCKET EMIT] Sending interview chat chunk to sid={sid}: chunk_{i+1}, content='{chunk}'")
                             await sio.emit("interview chat", message, room=sid)
+                            logger.info(f"[SOCKET EMIT] Interview chat chunk sent successfully to sid={sid}: chunk_{i+1}")
                             
                         except Exception as chunk_error:
                             logger.error(f"Error processing chunk: {str(chunk_error)}")
@@ -736,7 +841,9 @@ async def interview_endpoint(sid, data):
                                     "full_response": accumulated_message
                                 }
                             }]
+                            logger.info(f"[SOCKET EMIT] Sending realtime evaluation to sid={sid}: {realtime_evaluation}")
                             await sio.emit("realtime", message, room=sid)
+                            logger.info(f"[SOCKET EMIT] Realtime evaluation sent successfully to sid={sid}")
 
                         except Exception as eval_emit_error:
                             logger.error(f"Failed to emit realtime evaluation: {str(eval_emit_error)}")
@@ -770,7 +877,9 @@ async def interview_endpoint(sid, data):
                 # Handle interview conclusion
                 try:
                     message = 'interview over'
+                    logger.info(f"[SOCKET EMIT] Sending interview done to sid={sid}: {message}")
                     await sio.emit("interview done", message, room=sid)
+                    logger.info(f"[SOCKET EMIT] Interview done sent successfully to sid={sid}")
                     final = 'true'
                     temp_id = data.get('template_id') if data.get('template_id') is not None else "null"
                     challenge_id = data.get('challenge_id') if data.get('challenge_id') is not None else "null"
@@ -789,7 +898,9 @@ async def interview_endpoint(sid, data):
                                     "realtime_evaluation": response.get("realtime", "null")
                                 }
                             }]
+                            logger.info(f"[SOCKET EMIT] Sending last_realtime_evaluation to sid={sid}")
                             await sio.emit("last_realtime_evaluation", message, room=sid)
+                            logger.info(f"[SOCKET EMIT] last_realtime_evaluation sent successfully to sid={sid}")
                         
                         except Exception as final_emit_error:
                             logger.error(f"Failed to emit final evaluation: {str(final_emit_error)}")

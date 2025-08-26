@@ -466,8 +466,13 @@ async def close_interview_session(request: pemodel.ClosedDataRequestRecieved):
         
     try:
         logger.info("Processing session closure and final evaluation")
-        
-        response = await util.overall_interview_evaluations(run_stage, request.data, status="Closed")
+        sessionId = request.data.get('user_session').get('id')
+        response = await util.overall_interview_evaluations(
+            run_stage, 
+            request.data,
+            status="Closed",
+            sessionId=sessionId, 
+            type="Closed")
         
         if not response:
             logger.warn("Session evaluation returned empty response")
@@ -1354,15 +1359,18 @@ async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFilterin
             **kwargs
         )        
         
-        # Step 2: Apply additional filtering by 'job_profile_id'
+        # Step 2: Keep only sessions that have a non-null tinder_job_profile id
         data = [
             session for session in data
             if (
-                session.get('attributes', {}).get('tinder_job_profile')
-                and session['attributes']['tinder_job_profile'].get('data')
-                and session['attributes']['tinder_job_profile']['data'].get('id') == str(job_profile_id)
+                isinstance(session, dict)
+                and isinstance(session.get('attributes'), dict)
+                and isinstance(session['attributes'].get('tinder_job_profile'), dict)
+                and isinstance(session['attributes']['tinder_job_profile'].get('data'), dict)
+                and session['attributes']['tinder_job_profile']['data'].get('id')
             )
         ]
+
 
         # data = ipersona_session.get_alladmin_sessions(
         #     # cursor=cursor, 
@@ -1412,6 +1420,7 @@ async def calculate_admin_eachjob_data(request: pemodel.AdminJobDataTempFilterin
         
         # Step 2: Summarize all jobs data
         result, total = util.summarize_eachjob_data(run_stage, data)
+        
         cursor['total'] = total
 
         if result:
@@ -1506,13 +1515,15 @@ async def calculate_admin_each_challenge_data(request: pemodel.AdminChallengeDat
             **kwargs
         )        
 
-        # Step 2: Apply additional filtering by 'job_profile_id'
+        # Step 2: Keep only sessions that have a non-null challenge_document id
         data = [
             session for session in data
             if (
-                session.get('attributes', {}).get('challenge_document')
-                and session['attributes']['challenge_document'].get('data')
-                and session['attributes']['challenge_document']['data'].get('id') == str(challenge_id)
+                isinstance(session, dict)
+                and isinstance(session.get('attributes'), dict)
+                and isinstance(session['attributes'].get('challenge_document'), dict)
+                and isinstance(session['attributes']['challenge_document'].get('data'), dict)
+                and session['attributes']['challenge_document']['data'].get('id')
             )
         ]     
 

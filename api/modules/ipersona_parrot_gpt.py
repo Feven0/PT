@@ -879,6 +879,7 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         # overall_evaluation_msg = message
       
         overall_evaluation_msg = read_prompt_overall_evaluation(type, history_str)
+        
 
         # data_content_metrics = ipersona_metric.get_smgCriterionMetric_by_id(metricId=173, nopp=True, dataframe=False)
         # message = data_content_metrics.get('attributes', {}).get('content', {})
@@ -890,15 +891,17 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         # overall_metrics_msg = message
         overall_metrics_msg = read_prompt_interview_evaluation_metrics(type, history_str)
         
-        persona = data['user_session']['attributes']['attributes'].get('persona', '')
-        content = persona + overall_evaluation_msg
         
+        # persona = data['user_session']['attributes']['attributes'].get('persona', '')
+        # content = persona + overall_evaluation_msg
+        content = overall_evaluation_msg
         overall_evaluation_response = gpt.openai_gpt_assistant_without_streaming(content)
        
         overall_evaluation_response_json = extract_json(overall_evaluation_response, quite=False)
    
-        persona = data['user_session']['attributes']['attributes'].get('persona', '')
-        content = persona + overall_metrics_msg
+        # persona = data['user_session']['attributes']['attributes'].get('persona', '')
+        # content = persona + overall_metrics_msg
+        content = overall_metrics_msg
 
         overall_interview_metrics_response = gpt.openai_gpt_assistant_without_streaming(content)
         overall_interview_metrics_json = extract_json(overall_interview_metrics_response, quite=False)
@@ -2412,13 +2415,18 @@ def extracted_needed_metrics(data):
             # Extract session id
             extracted_session['session_id'] = session['id']
             
-            # Get observer data
+            # Get observer data and session status
             observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
-            metadata = session.get('attributes').get('metadata')            # slug = session['attributes'].get('slug', None)
-      
-            # Determine if the session is complete
-            complete_status = observer_data is not None
-            extracted_session['complete_status'] = complete_status  
+            session_status = session['attributes'].get('status', 'Incomplete')
+            metadata = session.get('attributes').get('metadata')
+            
+            if session_status == 'Deleted':
+                extracted_session['complete_status'] = 'deleted'
+            elif session_status == 'Incomplete':
+                extracted_session['complete_status'] = False
+            else:
+                # Completed, Closed, External, etc. - all complete
+                extracted_session['complete_status'] = True
 
             if observer_data:
                 # Extract observer attributes
@@ -2469,7 +2477,7 @@ def extracted_needed_metrics(data):
                 attributes.get('tinder_user_profile', {}).get('data', {}) or {}
             ).get('id')
             extracted_session['mode'] = metadata.get('mode', {})
-            # extracted_session['slug'] = slug
+            
             # Append extracted session data
             extracted_observers.append(extracted_session)
         
@@ -4234,7 +4242,9 @@ def check_if_session_exists(
                 dataframe=False
             )
         data = extracted_needed_metrics(session_data)
-
+        print("************************************::::::::::::******************************")
+        print(data)
+        print("************************************::::::::::::******************************")
         def extract_session_summary(item):
             return {
                 "id": item.get('session_id'),
@@ -4249,7 +4259,8 @@ def check_if_session_exists(
 
         def get_latest_incomplete_session(data):
             for item in data: 
-                if not item.get("complete_status", False):
+                # Only consider sessions that are truly incomplete (not completed or deleted)
+                if item.get("complete_status") == False:  # Explicitly check for False
                     user_id = item.get("user_profile_id")
                     template_id = item.get("template_id")
                     challenge_id = item.get("challenge_id")
@@ -4276,8 +4287,7 @@ def check_if_session_exists(
                             return extract_session_summary(item)
 
             return None
-
-        
+    
         return get_latest_incomplete_session(data)  
 
     except Exception as e:

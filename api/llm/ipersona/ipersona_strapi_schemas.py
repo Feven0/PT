@@ -458,7 +458,7 @@ class IpersonaSessionSchema(LeapBaseClass):
                 cursor = True
                 
             data, cursor = self.get_all_objects(cursor=cursor, **kwargs)
- 
+
             session = self.get_sessions_data(data)
 
             if session is None:

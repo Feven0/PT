@@ -1,355 +1,126 @@
 {
-  "response": "6",
-  "user_session": {
-    "id": "2262",
-    "attributes": {
-      "slug": "all_user_id: 1959",
-      "status": "Incomplete",
-      "attributes": {
-        "persona": "Act as an experienced HR analyst with expertise in evaluating job descriptions and user profiles. \n\nThe documents are:\n  - Job description: {'status_code': 404, 'content': {'error': 'No job data found for the job_profile_id'}}\n   - User Profile: {'basics.attributes': [], 'projects.attributes': [], 'education.attributes': [], 'work_experience.attributes': []}\n\nError: None\n\n\nUse non-gender-specific pronouns like 'you' and 'your' instead of gender-specific pronouns or names. \n\n",
-        "generated_questions": [
-          {
-            "questions": [
-              {
-                "question": "Tell me about yourself and your professional journey so far?",
-                "ideal_answer": "I have a background in [your field/industry], where I have developed skills in [specific skills]. My journey began at [first job or educational experience], and since then, I have worked on various projects that have honed my abilities in [relevant areas]. I am passionate about [specific interests related to the job] and am excited about the opportunity to contribute to your team.",
-                "question_number": "1"
-              }
-            ],
-            "sectionType": "Introduction"
-          },
-          {
-            "questions": [
-              {
-                "question": "Can you describe your educational background and how it has prepared you for this role?",
-                "ideal_answer": "I hold a degree in [your degree] from [your university], where I focused on [relevant subjects]. This education provided me with a strong foundation in [relevant skills or knowledge], which I have applied in my previous roles, particularly in [specific experiences].",
-                "question_number": "2"
-              }
-            ],
-            "sectionType": "Background"
-          },
-          {
-            "questions": [
-              {
-                "question": "What specific technical skills do you possess that are relevant to this position?",
-                "ideal_answer": "I have expertise in [specific technical skills or tools], which I have utilized in my previous roles to [describe how you used these skills]. For example, I successfully [describe a project or task] that required [specific skills], resulting in [positive outcome].",
-                "question_number": "3"
-              }
-            ],
-            "sectionType": "Technical"
-          },
-          {
-            "questions": [
-              {
-                "question": "Describe a time when you faced a significant challenge at work. How did you handle it?",
-                "ideal_answer": "In my previous role, I encountered a challenge when [describe the situation]. I approached it by [explain your actions], which led to [describe the outcome]. This experience taught me the importance of [lesson learned] and improved my ability to [related skill].",
-                "question_number": "4"
-              }
-            ],
-            "sectionType": "Behavioral"
-          },
-          {
-            "questions": [
-              {
-                "question": "Imagine you are assigned a project with a tight deadline and limited resources. How would you prioritize your tasks?",
-                "ideal_answer": "I would start by assessing the project requirements and breaking them down into manageable tasks. I would prioritize based on urgency and impact, focusing on critical tasks first. I would also communicate with my team to ensure everyone is aligned and to delegate where possible, ensuring we meet the deadline effectively.",
-                "question_number": "5"
-              }
-            ],
-            "sectionType": "Ability"
-          },
-          {
-            "questions": [
-              {
-                "question": "Is there anything else you'd like to ask before we wrap up?",
-                "ideal_answer": "Yes, I would like to know more about the team I would be working with and the company culture. Additionally, I am curious about the next steps in the hiring process.",
-                "question_number": "6"
-              }
-            ],
-            "sectionType": "Closing"
+  "all_user_id": 1959,
+  "jobs": [
+    [
+      {
+        "id": "2291",
+        "attributes": {
+          "status": "Incomplete",
+          "i_persona_observer": {"data": null},
+          "tinder_job_profile": {"data": null},
+          "tinder_user_profile": {"data": {"id": "197"}},
+          "challenge_document": {"data": {"id": "24"}},
+          "metadata": {
+            "external": false,
+            "generate": false,
+            "template": false,
+            "challenge": true
           }
-        ]
-      },
-      "createdAt": "2025-08-22T15:42:50.752Z",
-      "i_persona_observer": {
-        "data": null
-      },
-      "i_persona_messages": {
-        "data": [
-          {
-            "id": "15249",
-            "attributes": {
-              "attributes": {
-                "message": {
-                  "content": {
-                    "final": "false",
-                    "time_limit": "02:30",
-                    "time_taken": "null",
-                    "full_response": "Tell me about yourself and your professional journey so far?",
-                    "realtime_evaluation": "null"
-                  },
-                  "user_type": "assistant",
-                  "content_type": "question"
-                }
-              }
-            }
-          },
-          {
-            "id": "15250",
-            "attributes": {
-              "attributes": {
-                "message": {
-                  "content": {
-                    "response": "1",
-                    "time_taken": "00:04",
-                    "realtime_evaluation": "null"
-                  },
-                  "user_type": "candidate",
-                  "content_type": "answer"
-                }
-              }
-            }
-          },
-          {
-            "id": "15251",
-            "attributes": {
-              "attributes": {
-                "message": {
-                  "content": {
-                    "final": "false",
-                    "time_limit": "02:30",
-                    "time_taken": "null",
-                    "full_response": "Can you describe your educational background and how it has prepared you for this role?",
-                    "realtime_evaluation": {
-                      "overall": {
-                        "feedback": "The response does not provide any information about your professional journey or background, which is the focus of the question.",
-                        "relevance": "weak"
-                      },
-                      "answer_relevancy": [
-                        {
-                          "level": 0,
-                          "reason": "The response does not address the question at all, as it lacks any relevant content about your professional journey."
-                        }
-                      ]
-                    }
-                  },
-                  "user_type": "assistant",
-                  "content_type": "question"
-                }
-              }
-            }
-          },
-          {
-            "id": "15252",
-            "attributes": {
-              "attributes": {
-                "message": {
-                  "content": {
-                    "response": "2",
-                    "time_taken": "00:04",
-                    "realtime_evaluation": "null"
-                  },
-                  "user_type": "candidate",
-                  "content_type": "answer"
-                }
-              }
-            }
-          },
-          {
-            "id": "15253",
-            "attributes": {
-              "attributes": {
-                "message": {
-                  "content": {
-                    "final": "false",
-                    "time_limit": "02:30",
-                    "time_taken": "null",
-                    "full_response": "What specific technical skills do you possess that are relevant to this position?",
-                    "realtime_evaluation": {
-                      "overall": {
-                        "feedback": "The response does not address the question about educational background and its relevance to the role. It appears to be a numeric response that lacks any information related to education.",
-                        "relevance": "weak"
-                      },
-                      "answer_relevancy": [
-                        {
-                          "level": 0,
-                          "reason": "The response does not provide any information regarding educational background or its preparation for the role, making it completely irrelevant to the question."
-                        }
-                      ]
-                    }
-                  },
-                  "user_type": "assistant",
-                  "content_type": "question"
-                }
-              }
-            }
-          },
-          {
-            "id": "15254",
-            "attributes": {
-              "attributes": {
-                "message": {
-                  "content": {
-                    "response": "3",
-                    "time_taken": "00:06",
-                    "realtime_evaluation": "null"
-                  },
-                  "user_type": "candidate",
-                  "content_type": "answer"
-                }
-              }
-            }
-          },
-          {
-            "id": "15255",
-            "attributes": {
-              "attributes": {
-                "message": {
-                  "content": {
-                    "final": "false",
-                    "time_limit": "02:30",
-                    "time_taken": "null",
-                    "full_response": "Describe a time when you faced a significant challenge at work. How did you handle it?",
-                    "realtime_evaluation": {
-                      "overall": {
-                        "feedback": "The response does not address the question about specific technical skills relevant to the position. Simply stating '3' does not provide any information about the skills possessed.",
-                        "relevance": "weak"
-                      },
-                      "answer_relevancy": [
-                        {
-                          "level": 0,
-                          "reason": "The response does not mention any technical skills or provide relevant details that relate to the question asked."
-                        }
-                      ]
-                    }
-                  },
-                  "user_type": "assistant",
-                  "content_type": "question"
-                }
-              }
-            }
-          },
-          {
-            "id": "15256",
-            "attributes": {
-              "attributes": {
-                "message": {
-                  "content": {
-                    "response": "4",
-                    "time_taken": "00:05",
-                    "realtime_evaluation": "null"
-                  },
-                  "user_type": "candidate",
-                  "content_type": "answer"
-                }
-              }
-            }
-          },
-          {
-            "id": "15257",
-            "attributes": {
-              "attributes": {
-                "message": {
-                  "content": {
-                    "final": "false",
-                    "time_limit": "02:30",
-                    "time_taken": "null",
-                    "full_response": "Imagine you are assigned a project with a tight deadline and limited resources. How would you prioritize your tasks?",
-                    "realtime_evaluation": {
-                      "overall": {
-                        "feedback": "The response does not address the question at all. It fails to describe a specific challenge faced at work or how it was handled.",
-                        "relevance": "weak"
-                      },
-                      "answer_relevancy": [
-                        {
-                          "level": 0,
-                          "reason": "The response '4' does not provide any information related to a significant challenge at work or the handling of such a situation."
-                        }
-                      ]
-                    }
-                  },
-                  "user_type": "assistant",
-                  "content_type": "question"
-                }
-              }
-            }
-          },
-          {
-            "id": "15258",
-            "attributes": {
-              "attributes": {
-                "message": {
-                  "content": {
-                    "response": "5",
-                    "time_taken": "00:03",
-                    "realtime_evaluation": "null"
-                  },
-                  "user_type": "candidate",
-                  "content_type": "answer"
-                }
-              }
-            }
-          },
-          {
-            "id": "15259",
-            "attributes": {
-              "attributes": {
-                "message": {
-                  "content": {
-                    "final": "false",
-                    "time_limit": "02:30",
-                    "time_taken": "null",
-                    "full_response": "Is there anything else you'd like to ask before we wrap up?",
-                    "realtime_evaluation": {
-                      "overall": {
-                        "feedback": "The response does not address the question at all. The question asks for a strategy on prioritizing tasks under specific conditions, while the response is simply a number without any context or explanation.",
-                        "relevance": "weak"
-                      },
-                      "answer_relevancy": [
-                        {
-                          "level": 0,
-                          "reason": "The response does not provide any relevant information or insight related to the question about prioritizing tasks in a project with a tight deadline and limited resources."
-                        }
-                      ]
-                    }
-                  },
-                  "user_type": "assistant",
-                  "content_type": "question"
-                }
-              }
-            }
-          }
-        ]
-      },
-      "tinder_job_profile": {
-        "data": null
-      },
-      "tinder_user_profile": {
-        "data": {
-          "id": "197"
         }
       },
-      "tinder_template": {
-        "data": null
-      },
-      "challenge_document": {
-        "data": {
-          "id": "128"
+      {
+        "id": "2290",
+        "attributes": {
+          "status": "Deleted",
+          "i_persona_observer": {"data": null},
+          "tinder_job_profile": {"data": null},
+          "tinder_user_profile": {"data": {"id": "197"}},
+          "challenge_document": {"data": {"id": "24"}},
+          "metadata": {
+            "external": false,
+            "generate": false,
+            "template": false,
+            "challenge": true
+          }
         }
       },
-      "metadata": {
-        "external": false,
-        "generate": true,
-        "template": false,
-        "challenge": false
+      {
+        "id": "2289",
+        "attributes": {
+          "status": "Completed",
+          "i_persona_observer": {
+            "data": {
+              "id": "747",
+              "attributes": {
+                "attributes": {
+                  "interview_evaluation": {
+                    "message": "Poor",
+                    "competency": [
+                      {"name": "Communication Skills", "sfia_level": "1"},
+                      {"name": "Data Engineering Knowledge", "sfia_level": "1"},
+                      {"name": "Problem Solving", "sfia_level": "1"}
+                    ],
+                    "evaluation": "The candidate's performance in the interview was significantly lacking. Responses were largely off-topic and did not address the questions posed, particularly regarding the anticipated challenges in securing a Data Engineering role. This indicates a need for improvement in both understanding the role and articulating relevant experiences or insights.",
+                    "recommendation": [
+                      {"link": "www.udemy.com", "type": "Online Course", "title": "Communication Skills Improvement", "resource": "Effective Communication Skills for Professionals"},
+                      {"link": "www.coursera.org", "type": "Online Course", "title": "Data Engineering Fundamentals", "resource": "Data Engineering on Google Cloud Platform Specialization"},
+                      {"link": "www.amazon.com", "type": "Book", "title": "Interview Preparation", "resource": "Cracking the Coding Interview"}
+                    ]
+                  },
+                  "interview_evaluation_metrics": {
+                    "rating": 1,
+                    "message": "Poor",
+                    "overall_performance_score": 10,
+                    "time_management": {"total_time_taken_by_candidate": "00:01:29"}
+                  }
+                }
+              }
+            }
+          },
+          "tinder_job_profile": {"data": null},
+          "tinder_user_profile": {"data": {"id": "197"}},
+          "challenge_document": {"data": {"id": "24"}},
+          "metadata": {"mode": "audio", "external": false, "generate": false, "template": false, "challenge": true}
+        }
       },
-      "updatedAt": "2025-08-22T15:42:50.752Z"
+      {
+        "id": "2288",
+        "attributes": {
+          "status": "Closed",
+          "i_persona_observer": {
+            "data": {
+              "id": "746",
+              "attributes": {
+                "attributes": {
+                  "interview_evaluation": {
+                    "message": "Poor",
+                    "competency": [
+                      {"name": "Communication Skills", "sfia_level": "Level 1"},
+                      {"name": "Domain Knowledge in Data Engineering", "sfia_level": "Level 1"},
+                      {"name": "Problem Solving", "sfia_level": "Level 1"}
+                    ],
+                    "evaluation": "The candidate's performance in the interview was significantly lacking, particularly in addressing the core question regarding anticipated challenges in securing a Data Engineering role. The response provided was completely irrelevant, indicating a lack of understanding of the role's requirements and the ability to articulate thoughts clearly.",
+                    "recommendation": [
+                      {"link": "https://www.crackingthecodinginterview.com", "type": "Book", "title": "Interview Preparation Resources", "resource": "Consider utilizing resources like 'Cracking the Coding Interview' to improve your ability to articulate responses to technical questions and challenges in your field."},
+                      {"link": "https://www.coursera.org/learn/gcp-data-machine-learning", "type": "Online Course", "title": "Data Engineering Fundamentals", "resource": "Enroll in a course like 'Data Engineering on Google Cloud' on Coursera to gain a better understanding of the challenges and skills required in Data Engineering."}
+                    ]
+                  },
+                  "interview_evaluation_metrics": {
+                    "rating": 1,
+                    "message": "Poor",
+                    "overall_performance_score": 0,
+                    "time_management": {"total_time_taken_by_candidate": "00:00:06"}
+                  }
+                }
+              }
+            }
+          },
+          "tinder_job_profile": {"data": null},
+          "tinder_user_profile": {"data": {"id": "197"}},
+          "challenge_document": {"data": {"id": "24"}},
+          "metadata": {"mode": "text", "external": false, "generate": false, "template": false, "challenge": true}
+        }
+      }
+    ],
+    {
+      "page": 1,
+      "pageSize": 20,
+      "page_count": 1,
+      "page_size": 20,
+      "query": {},
+      "total": 58
     }
-  },
-  "time_taken": "00:10",
-  "job_profile_id": 0,
-  "all_user_id": "1959",
-  "run_stage": "kaim",
-  "template_id": null,
-  "template": false
+  ],
+  "status": 200,
+  "message": ""
 }
