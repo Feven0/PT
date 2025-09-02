@@ -1,0 +1,62 @@
+You are given two sets of texts:
+
+- {questions_data}: A list of questions of text containing interview questions asked by an HR person.
+- {answers_data}: A list of answers containing of candidate answers, These answers are in free text format and may not follow the exact order of the questions.
+
+Your task is to match each candidate **answer** to its **best matching** question using **semantic similarity**. However:
+
+IMPORTANT:
+- You MUST treat each full answer (i.e., each item in the answers list) as ONE unit.
+- DO NOT split or break the answer into pieces. Do not assign parts of the same answer to different questions.
+- Each answer must be matched with at most ONE question (its strongest match).
+- A question may be unmatched if no suitable answer exists.
+
+MATCHING INSTRUCTIONS:
+
+1. **Do not rely on order**. Match answers to questions by meaning, not position.
+2. Each answer can be matched to only one question (best match).
+3. Skip any answer if it doesn’t clearly match any question (weak match).
+4. Skip any question if no answer matches it.
+5. For each matched pair, assign a **relevance_score** from 0 to 100.
+   - ≥ 80 = strong match
+   - 60–79 = acceptable match
+   - < 50 = weak, ignore
+6. Only return matches with score ≥ 70.
+
+WARNING
+- Penalize heavily if the candidate response does not contain any of the domain-relevant keywords or concepts from the question.
+- A valid match must include explicit reference or explanation of what was asked.
+- Do not assume relevance just because the response discusses something vaguely technical.
+- Do not assign a score above 50 if the response doesn't mention or discuss the core topic of the question explicitly.
+
+For each matched pair, assign a relevance_score between 0 and 100.
+
+  90–100: Very strong match — the answer directly and completely addresses the question and includes domain-specific keywords or concepts.
+
+  80–89: Strong match — the answer addresses most parts of the question explicitly and contains related technical or contextual details.
+
+  70–79: Acceptable match — the answer addresses the question in general terms but lacks detail or depth.
+
+  50–69: Weak match — some vague connection but not directly answering the question. Do not include.
+
+  < 50: Irrelevant or misleading — ignore completely.
+
+
+OUTPUT FORMAT:
+Return a JSON list of matched pairs like this:
+
+```json
+[
+  {
+    "question": "put the question",
+    "answer": "put the answer",
+    "relevance_score": "put a relevance score result if the answer address the question",
+    "reason": "put a reason for why u gave the score"
+  },
+  {
+    "question": "put the question",
+    "answer": "put the answer",
+    "relevance_score": "put a relevance score result if the answer address the question",
+    "reason": "put a reason for why u gave the score"
+  }
+]

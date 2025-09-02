@@ -3923,7 +3923,8 @@ def create_session(
         template_id, 
         challenge_id,
         message):
-    try:   
+    try:  
+        challenge_generated_questions = None
         if template:
             metadata =  {
                 "template": True,

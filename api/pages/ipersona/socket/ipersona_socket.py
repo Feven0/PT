@@ -492,9 +492,13 @@ async def audio_end_point(sid, data):
                         "full_response": accumulated_message
                     }
                 }]
+                status = "start"
+                await sio.emit("realtime_status", status, room=sid)  
                 logger.info(f"[SOCKET EMIT] Sending audio_realtime to sid={sid}: {realtime_evaluation}")
                 await sio.emit("audio_realtime", message, room=sid)  
                 logger.info(f"[SOCKET EMIT] audio_realtime sent successfully to sid={sid}")
+                status = "end"
+                await sio.emit("realtime_status", status, room=sid)  
              
        
         # Insert the message or conclude the interview if the chat count exceeds the limit
@@ -841,9 +845,14 @@ async def interview_endpoint(sid, data):
                                     "full_response": accumulated_message
                                 }
                             }]
+
+                            status = "started"
+                            await sio.emit("realtime_status", status, room=sid)  
                             logger.info(f"[SOCKET EMIT] Sending realtime evaluation to sid={sid}: {realtime_evaluation}")
                             await sio.emit("realtime", message, room=sid)
                             logger.info(f"[SOCKET EMIT] Realtime evaluation sent successfully to sid={sid}")
+                            status = "finished"
+                            await sio.emit("realtime_status", status, room=sid)  
 
                         except Exception as eval_emit_error:
                             logger.error(f"Failed to emit realtime evaluation: {str(eval_emit_error)}")

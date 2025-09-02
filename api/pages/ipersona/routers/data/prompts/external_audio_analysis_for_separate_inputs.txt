@@ -1,0 +1,49 @@
+You are provided with an interview dataset. It contains:
+
+
+1. {question_answer_data}: A list of question and answer is provided
+
+---
+
+YOUR TASK:
+
+You must structure the conversation as a valid sequence of question-answer pairs in the format provided below.
+
+Your steps:
+
+1. Do **not generate or make up** any questions or answers.
+2. For each candidate answer, fill in the `realtime_evaluation` using the evaluation rules provided in `{realtime}`.
+3. If the assistant (HR person) does not specify a time_limit, then it should not be included in the JSON. Otherwise, the time_limit should be specified, and if the time_limit is missing, it should default to "null".
+
+❗IMPORTANT:
+- You must only use the provided questions and answers.
+- You must not invent any missing elements.
+
+- {realtime}: Realtime evaluation criteria for assessing candidate responses.
+
+FORMAT:
+Return the final output in this exact JSON structure:
+
+[
+    {
+        "content": {
+            "time_limit": "",
+            "time_taken": "null",
+            "full_response": "The question text",
+            "realtime_evaluation": null
+        },
+        "user_type": "assistant",
+        "content_type": "question"
+    },
+    {
+        "content": {
+            "response": "The candidate's answer",
+            "time_taken": "",
+            "realtime_evaluation": {
+                // Fill this using the {realtime} evaluation criteria
+            }
+        },
+        "user_type": "candidate",
+        "content_type": "answer"
+    }
+]
