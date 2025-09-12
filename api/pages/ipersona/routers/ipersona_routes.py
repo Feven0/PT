@@ -33,6 +33,16 @@ import api.llm.ipersona.ipersona_gpt as gpt
 import api.pages.ipersona.models.persona as pemodel
 from api.utils.logger import LLPackerLogger
 import api.llm.ipersona.ipersona_strapi as strapi
+from api.socket.core import sio
+from api.services.celery.audio_tasks import (
+    process_upload_external_audio_task, 
+    process_upload_external_files_task,
+    process_upload_external_answer_file_task,
+    process_upload_external_answer_with_template_task
+)   
+
+from api.pages.ipersona.routers.celery_task import router as task_router
+
 settings = config.settings
 
 
@@ -59,10 +69,14 @@ audio_processing_status = {}
 @routes.get("/health", tags=["Health Check"])
 async def health_check():
     try:
+        # await sio.emit("processing_update", {"status": "processing cma healt check"})
         sessionId = 1879
         mode = 'Chat'
         run_stage = 'dev'
         updated_mode = util.updating_session_mode(sessionId, mode, run_stage)
+        user_profile_id = 197
+        template_id = 126
+       
         return updated_mode
     except Exception as e:
         logger.error(f"Error in health check: {str(e)}")
@@ -232,6 +246,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             external, 
             challenge, 
             generate)
+
         if session_incomplete:
             logger.info(f"Incomplete session already exists for user ID: {all_user_id}")
             session_data = sanitize_create_user_session_response(session_incomplete)
@@ -263,65 +278,6 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             content={"error": f"Error processing user session: {str(e)}"}
         )
        
-
-# @routes.post("/create_user_session", tags=["Session Endpoints"])
-# async def user_session_files(request: pemodel.UserSessionRequestRecieved):
-#     """
-#     Process user session data and generate interview questions.
-
-#     Parameters
-#     ----------
-#     request : pemodel.UserSessionRequestRecieved
-#         Object containing:
-#         - all_user_id
-#         - job_profile_id
-#         - template, challenge, etc.
-
-#     Returns
-#     -------
-#     Dict[str, Any]
-#         Session data (ID, status, template_id, challenge_id)
-#     """
-#     run_stage = request.run_stage
-#     template = request.template
-#     external = request.external
-#     generate = request.generate
-#     challenge = request.challenge
-#     job_profile_id = request.job_profile_id
-#     all_user_id = request.all_user_id
-#     template_id = request.template_id
-#     challenge_id = request.challenge_id
-
-#     try:
-#         logger.info(f"Starting user session creation for user ID: {all_user_id}, job ID: {job_profile_id}")
-
-#         # Step 1: Fetch user profile data
-#         tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
-#         # Step 2: Fetch job profile data
-#         tinder_job_data = util.get_job_data(job_profile_id, run_stage)
-    
-#         response = await util.create_session_logics(
-#             run_stage, 
-#             template, 
-#             external, 
-#             challenge, 
-#             generate,
-#             job_profile_id, 
-#             all_user_id, 
-#             template_id, 
-#             challenge_id,
-#             tinder_user_profile_id,
-#             tinder_job_data, 
-#             tinder_user_profile_data)
-        
-#         return response
-#     except Exception as e:
-#         logger.error(f"Error creating user session: {str(e)}", exc_info=True)
-#         return JSONResponse(
-#             status_code=500,
-#             content={"error": f"Error processing user session: {str(e)}"}
-#         )
-
 @routes.post("/clarify", tags=["Session Endpoints"])
 async def clarify_question(request: pemodel.ClarificationRequestRecieved) -> dict:
     """
@@ -513,6 +469,7 @@ async def calculate_overall_progress(request: pemodel.OverallRequestRecieved):
     run_stage = request.run_stage
     job_profile_id = request.job_profile_id
     challenge_id = request.challenge_id
+    template_id = request.template_id
     all_user_id = request.all_user_id
 
     try:
@@ -541,10 +498,18 @@ async def calculate_overall_progress(request: pemodel.OverallRequestRecieved):
                 job_profile_id=job_profile_id,
                 nopp=True,
                 dataframe=False)
+            # return session_chatobserver
         elif challenge_id:
             session_chatobserver = ipersona_overall.filter_by_with_user_and_challenge_id(
                 user_profile_id=tinder_user_profile_id,
                 challenge_id=challenge_id,
+                nopp=True,
+                dataframe=False)
+        elif template_id:
+            # Add template_id support for overall progress calculation
+            session_chatobserver = ipersona_overall.filter_by_with_user_and_template_id(
+                user_profile_id=tinder_user_profile_id,
+                template_id=template_id,
                 nopp=True,
                 dataframe=False)
 
@@ -2140,6 +2105,42 @@ async def fetch_single_session(request: pemodel.SessionIdRequestRecieved):
         )
 
 #----------------------------------- Question Template Processing APIS -----------------------------------#
+@routes.post("/get_all_tinder_templates", tags=["Template Endpoints"])
+def get_all_tinder_template(request: pemodel.GetAllTinderTemplateRequestRecieved):
+    try:
+        cursor = request.cursor
+        since = request.since
+        limit = request.limit
+        run_stage = request.run_stage
+        query_filter = request.filter or {}
+        # Prepare query parameter
+        kwargs = query_filter.copy() if query_filter else {}
+        ipersona_tinder = IpersonaTinderTemplateSchema(run_stage=run_stage)
+        templates, cursor = ipersona_tinder.get_all_templates(
+                cursor=cursor, 
+                since=since, 
+                limit=limit, 
+                nopp=True, 
+                dataframe=False,
+                **kwargs
+                )          
+        templates = util.simplify_templates(templates)
+        cursor["total"] = len(templates)
+        data = util.add_template_columns(templates, cursor, kind='tinder_template', **kwargs)    
+# Step 4: Prepare response
+        return {
+            "templates": data, 
+            # "cursor": cursor,                  
+            "status": 200, 
+            "message": ""
+        }
+    except Exception as e:
+        logger.error(f"Error getting all tinder templates: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error getting all tinder templates: {str(e)}"}
+        )
+
 @routes.post("/save_tinder_template", tags=["Template Endpoints"])
 def tinder_template(request: pemodel.TinderTemplateRequestRecieved):
     try:
@@ -2512,6 +2513,9 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
         challenge_ids = request.challenge_ids
         run_stage = request.run_stage
         tinder_user_profile_data = ""
+        tinder_challenge_data = ""
+        content = ""
+        tinder_job_data = ""
         
         if len(job_profile_ids) != 0:
             type='job_interview_config'
@@ -2586,6 +2590,26 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
                     type, 
                     tag)
                 
+        if len(challenge_ids) == 0 and len(job_profile_ids) == 0:
+            # Use content directly with structure instructions for custom JSON format
+            structure_instruction = """
+                IMPORTANT: Generate interview questions in this exact JSON format:
+                [
+                    {
+                        "sectionType": "Technical",
+                        "questions": [
+                            {
+                                "question": "Your question here",
+                                "ideal_answer": "Expected answer here", 
+                                "question_number": "1"
+                            }
+                        ]
+                    }
+                ]
+                Generate 5 questions by default unless specified otherwise in the context.
+            """
+            content = context + structure_instruction
+                
 
         # Generate interview questions
         response = gpt.openai_gpt_assistant_without_streaming(content)
@@ -2621,6 +2645,349 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
             status_code=500,
             content={"error": f"Error attaching id to template:: {str(e)}"}
         )
+
+
+#----------------------------------- Challenge Document Processing APIS -----------------------------------#
+@routes.post("/get_all_challenges", tags=["Challenge Endpoints"])
+def fetch_all_challenges():
+    try:
+        ipersona_challenge = IpersonaChallengeDocumentSchema()
+        challenges = ipersona_challenge.get_all_challenges(nopp=True, dataframe=False)
+
+        return {
+            "challenges": challenges,
+            "success": 200,
+            "message": 'Challenges are Fetched Successfully.'
+        }
+    
+    except Exception as e:
+        logger.error(f"Error creating user session: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error processing user session: {str(e)}"}
+        )
+ 
+@routes.post("/get_a_challenge", tags=["Challenge Endpoints"])
+def fetch_a_challenge(request: pemodel.ChallengeRequestFiltering):
+    try:
+        ipersona_challenge = IpersonaChallengeDocumentSchema()
+        challengeId=request.challenge_id
+        challenge = ipersona_challenge.get_challenge_by_id(challengeId, nopp=True, dataframe=False)
+   
+        return {
+            "challenge": challenge,
+            "success": 200,
+            "message": 'Challenge Fetched Successfully.'
+        }
+    
+    except Exception as e:
+        logger.error(f"Error creating user session: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Error processing user session: {str(e)}"}
+        )
+ 
+
+# ----------------------------------- External File Upload Celery Processing APIS -----------------------------------#
+
+@routes.post("/audio_upload_external", tags=["Audio Endpoints - Celery"])
+async def audio_upload_external_celery(
+    file: UploadFile = File(...),
+    target: Optional[str] = Form(None),
+    external: bool = Form(True),
+    run_stage: str = Form('dev')
+):
+    """
+    Celery-based replica of audio_upload_external endpoint
+    Uses Celery tasks instead of FastAPI background tasks
+    """
+    try:
+        if not file or not file.filename:
+            logger.error("Invalid file: No file or filename provided")
+            return {"transcription": "Failed", "status": 400, "message": "No file provided or invalid file"}
+                    
+
+        # Initialize all target variables
+        job_profile_id = None
+        challenge_id = None
+        template_id = None
+        session_id = None
+        all_user_id = None
+
+        # Try parsing `target` as JSON
+        if target:
+            try:
+                target_data = json.loads(target)
+                # Extract all supported target types
+                job_profile_id = target_data.get("job_profile_id")
+                challenge_id = target_data.get("challenge_id")
+                template_id = target_data.get("template_id")
+                session_id = target_data.get("session_id")
+                all_user_id = target_data.get("all_user_id")
+
+                logger.info(f"Parsed target - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}, session_id: {session_id}, all_user_id: {all_user_id}")
+            except json.JSONDecodeError:
+                logger.error("Failed to parse 'target' as JSON")
+                return {"transcription": "Failed", "status": 400, "message": "Failed to parse 'target' as JSON"}
+
+
+        logger.info(f"Starting async audio processing for file: {file.filename}")
+        audio_path = util.get_data_audio_path(file.filename)
+        os.makedirs(os.path.dirname(audio_path), exist_ok=True)
+        logger.debug(f"Audio file path resolved: {audio_path}")
+
+        contents = await file.read()
+        with open(audio_path, "wb") as f:
+            f.write(contents)
+        logger.info("Audio file saved successfully (async route)")
+
+        # Call Celery task with all target types
+        logger.info("Before calling celery task")
+        process_upload_external_audio_task.delay(
+            file.filename,
+            file.content_type,
+            audio_path,
+            job_profile_id,
+            challenge_id,
+            template_id,
+            session_id,
+            all_user_id,
+            external,
+            run_stage
+        )
+
+        logger.info("After calling celery task")
+        return {
+            "status": 200,
+            "message": "Uploaded file received and is being processed in the background."
+        }
+    except Exception as e:
+        logger.error(f"Error in process_audio_upload: {str(e)}")
+        return {'status': 500, 'message': str(e)}
+
+@routes.post("/files_upload_external", tags=["Audio Endpoints - Celery"])
+async def files_upload_external_celery(
+    question_file: UploadFile = File(...),
+    answer_file: UploadFile = File(...),
+    target: Optional[str] = Form(None),
+    external: bool = Form(True),
+    run_stage: str = Form('dev')
+):
+    try:
+        # 1. Input Validation for both files
+        if not question_file.filename or not answer_file.filename:
+            logger.error("Invalid input: Missing Question_file or Answer_file filename.")
+            return {'status': 400, 'message': 'Invalid input: Missing Question_file or Answer_file filename.'}
+        
+        # Initialize all target variables
+        job_profile_id = None
+        challenge_id = None
+        template_id = None
+        session_id = None
+        all_user_id = None
+
+        # 2. Parse `target` JSON
+        # Try parsing `target` as JSON
+        if target:
+            try:
+                target_data = json.loads(target)
+                # Extract all supported target types
+                job_profile_id = target_data.get("job_profile_id")
+                challenge_id = target_data.get("challenge_id")
+                template_id = target_data.get("template_id")
+                session_id = target_data.get("session_id")
+                all_user_id = target_data.get("all_user_id")
+
+                logger.info(f"Parsed target - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}, session_id: {session_id}, all_user_id: {all_user_id}")
+            except json.JSONDecodeError:
+                logger.error("Failed to parse 'target' as JSON")
+                return {"transcription": "Failed", "status": 400, "message": "Failed to parse 'target' as JSON"}
+
+        try:
+            audio_dir = util.get_data_audio_path()
+            os.makedirs(audio_dir, exist_ok=True)
+            logger.debug(f"Audio directory ensured at: {audio_dir}")
+
+            # --- Handle Question_file ---
+            question_audio_path = os.path.join(audio_dir, question_file.filename)
+            question_contents = await question_file.read()
+            
+            with open(question_audio_path, "wb") as f:
+                f.write(question_contents)
+            logger.info(f"Question audio file saved: {question_file.filename}")
+
+            # --- Handle Answer_file ---
+            answer_audio_path = os.path.join(audio_dir, answer_file.filename)
+            answer_contents = await answer_file.read()
+
+            with open(answer_audio_path, "wb") as f:
+                f.write(answer_contents)
+            logger.info(f"Answer audio file saved: {answer_file.filename}")
+            
+            logger.debug("Adding background task for dual audio processing")
+        
+            process_upload_external_files_task.delay(
+                question_filename=question_file.filename,
+                question_content_type=question_file.content_type,
+                question_audio_path=question_audio_path,
+                question_contents=question_contents,
+                
+                answer_filename=answer_file.filename,
+                answer_content_type=answer_file.content_type,
+                answer_audio_path=answer_audio_path,
+                answer_contents=answer_contents,
+                
+                job_profile_id=job_profile_id,
+                challenge_id=challenge_id,
+                template_id=template_id,
+                session_id=session_id,
+                all_user_id=all_user_id,
+                external=external,
+                run_stage=run_stage
+            )
+
+            logger.info("After calling celery task")
+            return {
+                "status": 200,
+                "message": "Uploaded file received and is being processed in the background."
+            }
+
+        except Exception as e:
+            logger.error(f"Error in process_audio_upload: {str(e)}")
+            return {'status': 500, 'message': str(e)}
+
+    except Exception as e:
+        logger.error(f"Error in process_audio_upload: {str(e)}")
+        return {'status': 500, 'message': str(e)}
+
+@routes.post("/answer_file_upload_external", tags=["Audio Endpoints - Celery"])
+async def files_upload_external_celery(
+    answer_file: UploadFile = File(...),
+    target: Optional[str] = Form(None),
+    external: bool = Form(True),
+    run_stage: str = Form('dev')
+):
+    try:
+        # 1. Input Validation for both files
+        if not answer_file.filename:
+            logger.error("Invalid input: Missing Answer_file filename.")
+            return {'status': 400, 'message': 'Invalid input: Missing Answer_file filename.'}
+        
+        # Initialize all target variables
+        job_profile_id = 0
+        challenge_id = 0
+        session_id = 0
+        all_user_id = 0
+        template_id = 0
+
+        # 2. Parse `target` JSON
+        # Try parsing `target` as JSON
+        if target:
+            try:
+                target_data = json.loads(target)
+                # Extract all supported target types
+                job_profile_id = target_data.get("job_profile_id", 0)
+                challenge_id = target_data.get("challenge_id", 0)
+                session_id = target_data.get("session_id", 0)
+                all_user_id = target_data.get("all_user_id", 0)
+                template_id = target_data.get("template_id", 0)
+
+                logger.info(f"Parsed target - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}, session_id: {session_id}, template_id: {template_id}, all_user_id: {all_user_id}")
+            except json.JSONDecodeError:
+                logger.error("Failed to parse 'target' as JSON")
+                return {"transcription": "Failed", "status": 400, "message": "Failed to parse 'target' as JSON"}
+
+        try:
+            audio_dir = util.get_data_audio_path()
+            os.makedirs(audio_dir, exist_ok=True)
+            logger.debug(f"Audio directory ensured at: {audio_dir}")
+
+            # --- Handle Answer_file ---
+            answer_audio_path = os.path.join(audio_dir, answer_file.filename)
+            answer_contents = await answer_file.read()
+
+            with open(answer_audio_path, "wb") as f:
+                f.write(answer_contents)
+            logger.info(f"Answer audio file saved: {answer_file.filename}")
+            
+            logger.debug("Adding background task for template answer processing")
+        
+            process_upload_external_answer_with_template_task.delay(
+                template_id=template_id,
+                
+                answer_filename=answer_file.filename,
+                answer_content_type=answer_file.content_type,
+                answer_audio_path=answer_audio_path,
+                answer_contents=answer_contents,
+                
+                job_profile_id=job_profile_id,
+                challenge_id=challenge_id,
+                session_id=session_id,
+                all_user_id=all_user_id,
+                external=external,
+                run_stage=run_stage
+            )
+
+            logger.info("After calling celery task")
+            return {
+                "status": 200,
+                "message": "Uploaded file received and is being processed in the background."
+            }
+
+        except Exception as e:
+            logger.error(f"Error in process_audio_upload: {str(e)}")
+            return {'status': 500, 'message': str(e)}
+
+    except Exception as e:
+        logger.error(f"Error in process_audio_upload: {str(e)}")
+        return {'status': 500, 'message': str(e)}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #----------------------------------- External Audio Upload Processing APIS -----------------------------------#
@@ -2769,863 +3136,877 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
 #         )
 
 
-#----------------------------------- Challenge Document Processing APIS -----------------------------------#
-@routes.post("/get_all_challenges", tags=["Challenge Endpoints"])
-def fetch_all_challenges():
-    try:
-        ipersona_challenge = IpersonaChallengeDocumentSchema()
-        challenges = ipersona_challenge.get_all_challenges(nopp=True, dataframe=False)
-
-        return {
-            "challenges": challenges,
-            "success": 200,
-            "message": 'Challenges are Fetched Successfully.'
-        }
-    
-    except Exception as e:
-        logger.error(f"Error creating user session: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Error processing user session: {str(e)}"}
-        )
- 
-@routes.post("/get_a_challenge", tags=["Challenge Endpoints"])
-def fetch_a_challenge(request: pemodel.ChallengeRequestFiltering):
-    try:
-        ipersona_challenge = IpersonaChallengeDocumentSchema()
-        challengeId=request.challenge_id
-        challenge = ipersona_challenge.get_challenge_by_id(challengeId, nopp=True, dataframe=False)
-   
-        return {
-            "challenge": challenge,
-            "success": 200,
-            "message": 'Challenge Fetched Successfully.'
-        }
-    
-    except Exception as e:
-        logger.error(f"Error creating user session: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Error processing user session: {str(e)}"}
-        )
- 
-
-
-
 # ----------------------------------- External File Upload Processing APIS -----------------------------------#
-@routes.post("/audio_upload", tags=["Audio Endpoints"])
-async def speech_to_text(file: UploadFile = File(...)) -> Dict:
-    if not file or not file.filename:
-        logger.error("Invalid file: No file or filename provided")
-        return JSONResponse(
-            status_code=400,
-            content={
-                "transcription": "Failed",
-                "status": 400,
-                "message": "No file provided or invalid file"
-            }
-        )
+# @routes.post("/audio_upload", tags=["Audio Endpoints"])
+# async def speech_to_text(file: UploadFile = File(...)) -> Dict:
+#     if not file or not file.filename:
+#         logger.error("Invalid file: No file or filename provided")
+#         return JSONResponse(
+#             status_code=400,
+#             content={
+#                 "transcription": "Failed",
+#                 "status": 400,
+#                 "message": "No file provided or invalid file"
+#             }
+#         )
 
-    try:
-        logger.info(f"Starting audio processing for file: {file.filename}")
-        # Create directory if it doesn't exist
-        audio_dir = data_path('audio')
-        os.makedirs(audio_dir, exist_ok=True)
+#     try:
+#         logger.info(f"Starting audio processing for file: {file.filename}")
+#         # Create directory if it doesn't exist
+#         audio_dir = data_path('audio')
+#         os.makedirs(audio_dir, exist_ok=True)
         
-        audio_path = os.path.join(audio_dir, file.filename)
-        logger.debug(f"Saving audio file to: {audio_path}")
+#         audio_path = os.path.join(audio_dir, file.filename)
+#         logger.debug(f"Saving audio file to: {audio_path}")
         
-        # Save the uploaded file
-        contents = await file.read()
-        with open(audio_path, "wb") as f:
-            f.write(contents)
+#         # Save the uploaded file
+#         contents = await file.read()
+#         with open(audio_path, "wb") as f:
+#             f.write(contents)
 
-        result = audio_transcription_logics(file.filename, audio_path, file.content_type)
+#         result = audio_transcription_logics(file.filename, audio_path, file.content_type)
 
-        if "error" in result:
-            logger.error("Transcription failed: " + result.get("error", "Unknown error"))
-            return JSONResponse(
-                status_code=result.get("status_code", 500),
-                content={
-                    "transcription": "Failed",
-                    "status": result.get("status_code", 500),
-                    "message": result.get("error"),
-                    "details": result.get("details", "")
-                }
-            )
+#         if "error" in result:
+#             logger.error("Transcription failed: " + result.get("error", "Unknown error"))
+#             return JSONResponse(
+#                 status_code=result.get("status_code", 500),
+#                 content={
+#                     "transcription": "Failed",
+#                     "status": result.get("status_code", 500),
+#                     "message": result.get("error"),
+#                     "details": result.get("details", "")
+#                 }
+#             )
 
-        # Success
-        logger.info("Transcription completed successfully")
-        return {
-            "transcription": result.get("content", "No transcription returned"),
-            "status": 200,
-            "message": ""
-        }
+#         # Success
+#         logger.info("Transcription completed successfully")
+#         return {
+#             "transcription": result.get("content", "No transcription returned"),
+#             "status": 200,
+#             "message": ""
+#         }
 
-    except Exception as e:
-        logger.error(f"Error during transcription: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={
-                "transcription": "Failed",
-                "status": 500,
-                "message": f"System error: {str(e)}"
-            }
-        )
+#     except Exception as e:
+#         logger.error(f"Error during transcription: {str(e)}", exc_info=True)
+#         return JSONResponse(
+#             status_code=500,
+#             content={
+#                 "transcription": "Failed",
+#                 "status": 500,
+#                 "message": f"System error: {str(e)}"
+#             }
+#         )
 
-@routes.post("/audio_upload_external", tags=["Audio Endpoints"])
-async def audio_upload_external(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
-    target: Optional[str] = Form(None),
-    external: bool = Form(True),
-    run_stage: str = Form('dev')
-):
-    # Initialize variables for parsed target data
-    job_profile_id: Optional[str] = None
-    challenge_id: Optional[str] = None
-    all_user_id: Optional[str] = None
+# @routes.post("/audio_upload_external_background", tags=["Audio Endpoints"])
+# async def audio_upload_external(
+#     background_tasks: BackgroundTasks,
+#     file: UploadFile = File(...),
+#     target: Optional[str] = Form(None),
+#     external: bool = Form(True),
+#     run_stage: str = Form('dev')
+# ):
+#     # Initialize variables for parsed target data
+#     job_profile_id: Optional[str] = None
+#     challenge_id: Optional[str] = None
+#     all_user_id: Optional[str] = None
     
-    if not file or not file.filename:
-        logger.error("Invalid file: No file or filename provided")
-        return JSONResponse(
-            status_code=400,
-            content={
-                "transcription": "Failed",
-                "status": 400,
-                "message": "No file provided or invalid file"
-            }
-        )
-    # Try parsing `target` as JSON
-    if target:
-        try:
-            target_data = json.loads(target)
-            job_profile_id = target_data.get("job_profile_id")
-            challenge_id = target_data.get("challenge_id")
-            all_user_id = target_data.get("all_user_id")
+#     if not file or not file.filename:
+#         logger.error("Invalid file: No file or filename provided")
+#         return JSONResponse(
+#             status_code=400,
+#             content={
+#                 "transcription": "Failed",
+#                 "status": 400,
+#                 "message": "No file provided or invalid file"
+#             }
+#         )
+#     # Try parsing `target` as JSON
+#     if target:
+#         try:
+#             target_data = json.loads(target)
+#             job_profile_id = target_data.get("job_profile_id")
+#             challenge_id = target_data.get("challenge_id")
+#             all_user_id = target_data.get("all_user_id")
 
-            logger.info(f"Parsed target - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}, all_user_id: {all_user_id}")
-        except json.JSONDecodeError:
-            logger.error("Failed to parse 'target' as JSON")
+#             logger.info(f"Parsed target - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}, all_user_id: {all_user_id}")
+#         except json.JSONDecodeError:
+#             logger.error("Failed to parse 'target' as JSON")
 
-    try:
-        logger.info(f"Starting async audio processing for file: {file.filename}")
-        audio_dir = data_path('audio')
-        os.makedirs(audio_dir, exist_ok=True)
-        logger.debug(f"Audio directory ensured at: {audio_dir}")
+#     try:
+#         logger.info(f"Starting async audio processing for file: {file.filename}")
         
-        audio_path = os.path.join(audio_dir, file.filename)
-        logger.debug(f"Audio file path resolved: {audio_path}")
+#         # Read file content (this is necessary for the background task)
+#         contents = await file.read()
         
-        contents = await file.read()
+#         logger.debug("Adding background task for audio processing")
+#         background_tasks.add_task(
+#             process_audio_and_save_external,
+#             file.filename,
+#             file.content_type,
+#             contents,  # Pass raw content instead of file path
+#             job_profile_id,
+#             challenge_id,
+#             all_user_id,
+#             external,
+#             run_stage
+#         )
+#         return {
+#             "status": 200,
+#             "message": "Uploaded file received and is being processed in the background."
+#         }
+#     except Exception as e:
+#         logger.error(f"Error during async audio upload: {str(e)}", exc_info=True)
+#         return JSONResponse(
+#             status_code=500,
+#             content={
+#                 "transcription": "Failed",
+#                 "status": 500,
+#                 "message": f"System error: {str(e)}"
+#             }
+#         )
 
-        with open(audio_path, "wb") as f:
-            f.write(contents)
-        logger.info("Audio file saved successfully (async route)")
+# @routes.post("/files_upload_external_background", tags=["Audio Endpoints"])
+# async def files_upload_external(
+#     background_tasks: BackgroundTasks,
+#     Question_file: UploadFile = File(...),
+#     Answer_file: UploadFile = File(...),
+#     target: Optional[str] = Form(None),
+#     external: bool = Form(True),
+#     run_stage: str = Form('dev')
+# ):
+#     # 1. Input Validation for both files
+#     if not Question_file.filename or not Answer_file.filename:
+#         logger.error("Invalid input: Missing Question_file or Answer_file filename.")
+#         return JSONResponse(
+#             status_code=400,
+#             content={
+#                 "status": 400,
+#                 "message": "Both Question_file and Answer_file are required."
+#             }
+#         )
 
-        logger.debug("Adding background task for audio processing")
-        background_tasks.add_task(
-            process_audio_and_save_external,
-            file.filename,
-            file.content_type,
-            audio_path,
-            contents,
-            job_profile_id,
-            challenge_id,
-            all_user_id,
-            external,
-            run_stage
-        )
-        return {
-            "status": 200,
-            "message": "Audio file received and is being processed in the background."
-        }
-    except Exception as e:
-        logger.error(f"Error during async audio upload: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={
-                "transcription": "Failed",
-                "status": 500,
-                "message": f"System error: {str(e)}"
-            }
-        )
-    
-@routes.post("/files_upload_external", tags=["Audio Endpoints"])
-async def files_upload_external(
-    background_tasks: BackgroundTasks,
-    Question_file: UploadFile = File(...),
-    Answer_file: UploadFile = File(...),
-    target: Optional[str] = Form(None),
-    external: bool = Form(True),
-    run_stage: str = Form('dev')
-):
-    # 1. Input Validation for both files
-    if not Question_file.filename or not Answer_file.filename:
-        logger.error("Invalid input: Missing Question_file or Answer_file filename.")
-        return JSONResponse(
-            status_code=400,
-            content={
-                "status": 400,
-                "message": "Both Question_file and Answer_file are required."
-            }
-        )
+#     # Initialize variables for parsed target data
+#     job_profile_id: Optional[str] = None
+#     challenge_id: Optional[str] = None
+#     all_user_id: Optional[str] = None
 
-    # Initialize variables for parsed target data
-    job_profile_id: Optional[str] = None
-    challenge_id: Optional[str] = None
-    all_user_id: Optional[str] = None
+#     # 2. Parse `target` JSON
+#     if target:
+#         try:
+#             target_data: Dict[str, Any] = json.loads(target)
+#             job_profile_id = target_data.get("job_profile_id")
+#             challenge_id = target_data.get("challenge_id")
+#             all_user_id = target_data.get("all_user_id")
 
-    # 2. Parse `target` JSON
-    if target:
-        try:
-            target_data: Dict[str, Any] = json.loads(target)
-            job_profile_id = target_data.get("job_profile_id")
-            challenge_id = target_data.get("challenge_id")
-            all_user_id = target_data.get("all_user_id")
-
-            logger.info(f"Parsed target - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}, all_user_id: {all_user_id}")
-        except json.JSONDecodeError:
-            logger.error("Failed to parse 'target' as JSON. Proceeding without target data.")
-    try:
-        audio_dir = data_path('audio')
-        os.makedirs(audio_dir, exist_ok=True)
-        logger.debug(f"Audio directory ensured at: {audio_dir}")
-
-        # --- Handle Question_file ---
-        question_audio_path = os.path.join(audio_dir, Question_file.filename)
-        question_contents = await Question_file.read()
+#             logger.info(f"Parsed target - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}, all_user_id: {all_user_id}")
+#         except json.JSONDecodeError:
+#             logger.error("Failed to parse 'target' as JSON. Proceeding without target data.")
+#     try:
+#         logger.info(f"Starting dual file processing")
         
-        with open(question_audio_path, "wb") as f:
-            f.write(question_contents)
-        logger.info(f"Question audio file saved: {Question_file.filename}")
-
-        # --- Handle Answer_file ---
-        answer_audio_path = os.path.join(audio_dir, Answer_file.filename)
-        answer_contents = await Answer_file.read()
-
-        with open(answer_audio_path, "wb") as f:
-            f.write(answer_contents)
-        logger.info(f"Answer audio file saved: {Answer_file.filename}")
+#         # Read both files (necessary for background task)
+#         question_contents = await Question_file.read()
+#         answer_contents = await Answer_file.read()
         
-        logger.debug("Adding background task for dual audio processing")
-        background_tasks.add_task(
-            process_upload_external_files,
-            question_filename=Question_file.filename,
-            question_content_type=Question_file.content_type,
-            question_audio_path=question_audio_path,
-            question_contents=question_contents,
+#         logger.debug("Adding background task for dual audio processing")
+#         background_tasks.add_task(
+#             process_upload_external_files,
+#             question_filename=Question_file.filename,
+#             question_content_type=Question_file.content_type,
+#             question_contents=question_contents,
             
-            answer_filename=Answer_file.filename,
-            answer_content_type=Answer_file.content_type,
-            answer_audio_path=answer_audio_path,
-            answer_contents=answer_contents,
+#             answer_filename=Answer_file.filename,
+#             answer_content_type=Answer_file.content_type,
+#             answer_contents=answer_contents,
             
-            job_profile_id=job_profile_id,
-            challenge_id=challenge_id,
-            all_user_id=all_user_id,
-            external=external,
-            run_stage=run_stage
-        )
+#             job_profile_id=job_profile_id,
+#             challenge_id=challenge_id,
+#             all_user_id=all_user_id,
+#             external=external,
+#             run_stage=run_stage
+#         )
         
-        return {
-            "status": 200,
-            "message": "Both audio files received and are being processed in the background."
-        }
+#         return {
+#             "status": 200,
+#             "message": "Both audio files received and are being processed in the background."
+#         }
 
-    except Exception as e:
-        logger.error(f"Error during async dual audio upload: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={
-                "transcription": "Failed", 
-                "status": 500,
-                "message": f"System error during file upload: {str(e)}"
-            }
-        )
+#     except Exception as e:
+#         logger.error(f"Error during async dual audio upload: {str(e)}", exc_info=True)
+#         return JSONResponse(
+#             status_code=500,
+#             content={
+#                 "transcription": "Failed", 
+#                 "status": 500,
+#                 "message": f"System error during file upload: {str(e)}"
+#             }
+#         )
     
 
-def process_audio_and_save_external(
-        filename,
-        content_type,
-        audio_path,
-        contents,
-        job_profile_id, 
-        challenge_id,
-        all_user_id, 
-        external,
-        run_stage):
-    try:
-        logger.info(f"🔊 Processing audio file: {filename}")
-        audio_processing_status[job_profile_id] = {"status": "processing", "message": ""}
-        template_id = 0
-        message = ''
-        template = False
-        challenge = False  
-        mode = None
-
-        try:
-            if "audio" in content_type or "video" in content_type:
-                original_format = content_type.split("/")[-1].lower()
-                if original_format != "mpeg" and original_format != "mp3":
-                    logger.info(f"🔄 Converting media file from {original_format} to mp3")
-                    contents = convert_to_mp3(contents, original_format)
-                    converted_filename = filename.rsplit(".", 1)[0] + ".mp3"
-                    audio_path = os.path.join(data_path("audio"), converted_filename)
-                    logger.success(f"🎧 MP3 file saved to: {audio_path}")
-                else:
-                    logger.info("✅ File already in mp3 format. Skipping conversion.")
-                    audio_path = os.path.join(data_path("audio"), filename)
-                    os.makedirs(os.path.dirname(audio_path), exist_ok=True)
-                    with open(audio_path, "wb") as f:
-                        f.write(contents)
-                    logger.success(f"🎧 MP3 file saved to: {audio_path}")
-                
-                result =  audio_transcription_logics(
-                    filename=filename,
-                    audio_path=audio_path,
-                    content_type="audio/mpeg"
-                )
-
-                if "error" in result:
-                    return JSONResponse(
-                        status_code=result.get("status_code", 500),
-                        content={
-                            "result": "Failed",
-                            "status": result.get("status_code", 500),
-                            "message": result.get("error"),
-                            "details": result.get("details", "")
-                        }
-                    )
-                
-                logger.debug("Initializing transcription")
-                transcript = result.get("content", "No transcription returned")
-
-            elif any(x in content_type for x in ["text", "pdf", "msword", "officedocument"]):
-                logger.info(f"📝 Text-based file detected: {filename}")
-                result = content_extraction_logics(filename, contents, content_type)
-           
-                if "error" in result:
-                    logger.error(f"❌ Text extraction failed: {result['error']}")
-                    audio_processing_status[job_profile_id] = {
-                        "status": "failed",
-                        "message": result.get("error")
-                    }
-                    return
-
-                logger.success(f"✅ Text extraction successful: {filename}")
-                audio_processing_status[job_profile_id] = {
-                    "status": "done",
-                    "message": "Text content extracted successfully",
-                    "content": result.get("content")
-                }
-                
-                logger.debug("Initializing transcription")
-                transcript = result.get("content", "No transcription returned")
-
-            else:
-                logger.warning(f"🚫 Unsupported file type: {content_type}")
-                audio_processing_status[job_profile_id] = {
-                    "status": "failed",
-                    "message": f"Unsupported file type: {content_type}"
-                }
-
-        except Exception as conversion_error:
-            logger.error(f"❌ MP3 conversion failed: {conversion_error}", exc_info=True)
-            audio_processing_status[job_profile_id] = {
-                "status": "failed",
-                "message": f"MP3 conversion failed: {conversion_error}"
-            }
-            return
-
-        # --- Existing logic continues here ---
-        logger.debug("Fetching trainee profile data")
-        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(
-            all_user_id=all_user_id, nopp=True, dataframe=False
-        )
-        if not trainee_profile_data:
-            logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": "No trainee user profiles found"}
-            return
-
-        tinder_user_profile_id = trainee_profile_data.get('id')
-        if not tinder_user_profile_id:
-            logger.error("Invalid trainee profile: missing ID")
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": "Invalid trainee profile: missing ID"}
-            return
-
-        logger.debug("Reading external audio analysis prompt")
-        external_audio_prompt = util.file_reader(prompt_path('external_audio_analysis.txt'))
-        realtime_prompt = util.file_reader(prompt_path('realtime_evaluation.txt'))
-
-        logger.debug("Replacing placeholders in prompts")
-        external_aud_prompt = external_audio_prompt.replace("{transcription}", str(transcript)).replace("{realtime}", str(realtime_prompt))
-
-        logger.debug("Sending prompt to GPT for analysis")
-        data = gpt.openai_gpt_assistant_without_streaming(external_aud_prompt)
-        response = util.extract_json(data, quite=False)
-
-        if not response:
-            logger.error("❌ Failed to process upload file: No data returned from transcription")
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": "No data returned"}
-            return
+# async def process_audio_and_save_external(
+#         filename,
+#         content_type,
+#         contents,
+#         job_profile_id, 
+#         challenge_id,
+#         all_user_id, 
+#         external,
+#         run_stage):
+#     try:
+#         logger.info(f"🔊 Processing audio file: {filename}")
+#         logger.info(f"🔍 DEBUG: Starting background task with job_profile_id: {job_profile_id}")
         
-        logger.debug("Creating session for audio processing")
-        saved_session = util.create_session(
-            mode,
-            run_stage,
-            template, 
-            external, 
-            challenge, 
-            all_user_id,
-            tinder_user_profile_id,
-            job_profile_id,
-            template_id,
-            challenge_id,
-            message
-        )
-
-        if saved_session:
-            sessionId = saved_session['id']
-            logger.info(f"📥 Session created successfully with ID: {sessionId}")
-            logger.debug("Saving transcribed chat to database")
-            saved = strapi.save_messages_to_db(response, sessionId)
-
-            logger.debug("Starting overall evaluation in a separate thread")
-            def run_overall():
-                try:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    overall = loop.run_until_complete(
-                        util.overall_interview_evaluations_external(
-                            run_stage, 
-                            response, 
-                            'External', 
-                            sessionId, 
-                            all_user_id, 
-                            tinder_user_profile_id, 
-                            job_profile_id,
-                            'job_interview_config'
-                        )
-                    )
-                    logger.info("✅ Overall evaluation completed successfully")
-                    audio_processing_status[job_profile_id] = {
-                        "status": "done", 
-                        "message": "Chat Saved Successfully", 
-                        "chat": saved, 
-                        "overall": overall
-                    }
-                except Exception as e:
-                    logger.error(f"Error in overall evaluation: {str(e)}", exc_info=True)
-                    audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
-
-            t = threading.Thread(target=run_overall)
-            t.start()
-            logger.success("🎉 EXTERNAL AUDIO PROCESSED AND SAVED SUCCESSFULLY!")
-        else:
-            logger.error("❌ Failed to save session")
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": "Chat Not Saved"}
-  
-    except Exception as e:
-        logger.error(f"🔥 Error in background audio processing: {str(e)}", exc_info=True)
-        audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
-
-def content_extraction_logics(filename: str, content: bytes, content_type: str) -> dict:
-    try:
-        files = {
-                    'file': (filename, content, content_type)
-                }
-        data = {
-            'request_source': 'text_extraction_endpoint',
-            'visual_description': 'false',
-            'description_prompt': 'Extract readable content',
-            'input_format': 'text'
-        }
-
-        endpoint_url = "https://content-extractor.10academy.org/content-extractor/extract"
-        response = requests.post(endpoint_url, data=data, files=files, timeout=60)
-        response.raise_for_status()
-        result = response.json()
-        return result
-
-    except requests.exceptions.HTTPError as e:
-        return {
-            "error": f"HTTP error: {e}",
-            "details": e.response.text,
-            "status_code": e.response.status_code
-        }
-
-    except Exception as e:
-        return {
-            "error": f"Unexpected error: {str(e)}",
-            "status_code": 500
-        }
-
-def audio_transcription_logics(filename: str, audio_path: str, content_type: str) -> dict:
-    try:
-        # Send to the content-extractor transcription endpoint
-        endpoint_url = "https://content-extractor.10academy.org/content-extractor/audio_transcript"
-
-        with open(audio_path, 'rb') as audio_file:
-            files = {
-                'file': (filename, audio_file, content_type)
-            }
-            data = {
-                'request_id': 'audio-upload-001',
-                'request_source': 'fastapi_audio_upload',
-                'prompt': 'Extract the text from the audio file.',
-                'llm_provider': 'openai',
-                'llm_model': 'gpt-4o'
-            }
-
-            logger.debug("Sending audio file to external transcription endpoint...")
-            response = requests.post(endpoint_url, files=files, data=data, timeout=90)
-            response.raise_for_status()
-            result = response.json()
-  
-        return result
-
-    except requests.exceptions.HTTPError as e:
-        return {
-            "error": f"HTTP error: {e}",
-            "details": e.response.text,
-            "status_code": e.response.status_code
-        }
-
-    except Exception as e:
-        return {
-            "error": f"Unexpected error: {str(e)}",
-            "status_code": 500
-        }
-
-def convert_to_mp3(input_bytes: bytes, original_format: str) -> bytes:
-    logger.info(f"Starting conversion of format: {original_format}")
-    try:
-        audio = AudioSegment.from_file(io.BytesIO(input_bytes), format=original_format)
-        mp3_io = io.BytesIO()
-        audio.export(mp3_io, format="mp3")
-        mp3_bytes = mp3_io.getvalue()
-        logger.info(f"Conversion successful. Original size: {len(input_bytes) / 1024 / 1024:.2f} MB | MP3 size: {len(mp3_bytes) / 1024 / 1024:.2f} MB")
-        return mp3_bytes
-    except Exception as e:
-        logger.error(f"Error during mp3 conversion: {e}")
-        raise
-
-# --- New Helper Function for Single File Processing ---
-def _process_and_transcribe_file(
-    filename: str,
-    content_type: str,
-    contents: bytes,
-    file_type_label: str 
-) -> Tuple[Optional[str], Optional[str]]: 
-    """
-    Handles the common logic for converting, saving, and transcribing/extracting content from a single file.
-    Returns the transcript if successful, or None and an error message if failed.
-    """
-    logger.info(f"🔊 Processing {file_type_label} file: {filename}")
-    
-    try:
-        audio_dir = data_path("audio") 
-        os.makedirs(audio_dir, exist_ok=True) 
-        final_file_path = os.path.join(audio_dir, filename) 
-
-        transcript: Optional[str] = None
-
-        if "audio" in content_type or "video" in content_type:
-            original_format = content_type.split("/")[-1].lower()
-            
-            if original_format not in ["mpeg", "mp3", "wav", "mp4", "webm"]:
-                logger.info(f"🔄 Converting {file_type_label} media file from {original_format} to mp3")
-                contents = convert_to_mp3(contents, original_format)
-                final_file_path = os.path.join(audio_dir, filename.rsplit(".", 1)[0] + ".mp3")
-                
-                with open(final_file_path, "wb") as f:
-                    f.write(contents)
-                logger.success(f"🎧 {file_type_label} MP3 file saved to: {final_file_path}")
-            else:
-                logger.info(f"✅ {file_type_label} file already in supported audio/video format. Skipping re-saving.")
-   
-            result = audio_transcription_logics( 
-                filename=filename,
-                audio_path=final_file_path,
-                content_type="audio/mpeg" 
-            )
-         
-            if "error" in result:
-                return None, f"Transcription failed: {result['error']}"
-            
-            transcript = result.get("content", "No transcription returned")
-            prompt = f"""
-                You are given a raw block of text transcribed from an interview. This text may include either interview **questions** or **answers**, but not both at the same time.
-
-                Your task is to segment this text into a list of **logically grouped full responses** — where each item in the list represents **a complete question or answer**, not just an individual sentence or phrase.
-
-                🧠 IMPORTANT RULES:
-                - DO NOT break an answer or question into parts unless there's a **clear topic shift or speaker change**.
-                - Consider the **semantic flow** and meaning of the text — some responses are long and should remain as one block.
-                - DO NOT split just because a sentence ends. Multiple sentences can and often do belong to the same complete response.
-                - Only split when it is evident that a **new question** or **new response** has begun.
-                - If unsure whether to split or not — DO NOT split. Keep it as one unified chunk.
-
-                Your output must be a JSON list of grouped conversation turns, like:
-                [
-                "First full question or answer here.",
-                "Second full question or answer here.",
-                ...
-                ]
-
-                Now segment the following transcription:
-                {transcript}
-                """
-            transcript = gpt.openai_gpt_assistant_without_streaming(prompt) 
-
-            logger.debug(f"{file_type_label} transcription initialized")
-
-        elif any(x in content_type for x in ["text", "pdf", "msword", "officedocument"]):
-            logger.info(f"📝 {file_type_label} text-based file detected: {filename}")
-
-            # Assuming you save it, then extract.
-            with open(final_file_path, "wb") as f:
-                f.write(contents)
-            logger.success(f"💾 {file_type_label} text file saved to: {final_file_path}")
-
-            result = content_extraction_logics(filename, contents, content_type) # Ensure this is async
-
-            if "error" in result:
-                return None, f"Text extraction failed: {result['error']}"
-
-            transcript = result.get("content", "No content returned")
-            prompt = f"""
-                You are given a raw block of text transcribed from an interview. This text may include either interview **questions** or **answers**, but not both at the same time.
-
-                Your task is to segment this text into a list of **logically grouped full responses** — where each item in the list represents **a complete question or answer**, not just an individual sentence or phrase.
-
-                🧠 IMPORTANT RULES:
-                - DO NOT break an answer or question into parts unless there's a **clear topic shift or speaker change**.
-                - Consider the **semantic flow** and meaning of the text — some responses are long and should remain as one block.
-                - DO NOT split just because a sentence ends. Multiple sentences can and often do belong to the same complete response.
-                - Only split when it is evident that a **new question** or **new response** has begun.
-                - If unsure whether to split or not — DO NOT split. Keep it as one unified chunk.
-
-                Your output must be a JSON list of grouped conversation turns, like:
-                [
-                "First full question or answer here.",
-                "Second full question or answer here.",
-                ...
-                ]
-
-                Now segment the following transcription:
-                {transcript}
-                """
-
-            transcript = gpt.openai_gpt_assistant_without_streaming(prompt) # Ensure async
-         
-            logger.success(f"✅ {file_type_label} text extraction successful: {filename}")
-            logger.debug(f"{file_type_label} content extraction initialized")
-
-        else:
-            return None, f"Unsupported file type for {file_type_label}: {content_type}"
-
-        return transcript, None # Success
-
-    except Exception as e:
-        logger.error(f"❌ Error in {file_type_label} file processing: {e}", exc_info=True)
-        return None, f"Processing failed for {file_type_label}: {e}"
-
-# --- Main Background Task Function ---
-def process_upload_external_files(
-    question_filename: str,
-    question_content_type: str,
-    question_audio_path: str, # This path is now the *initial* saved path, potentially re-saved by helper
-    question_contents: bytes,
-    answer_filename: str,
-    answer_content_type: str,
-    answer_audio_path: str,   # This path is now the *initial* saved path
-    answer_contents: bytes,
-    job_profile_id: Optional[str],
-    challenge_id: Optional[str],
-    all_user_id: Optional[str],
-    external: bool,
-    run_stage: str
-):
-    try:
-        if not job_profile_id:
-            logger.error("job_profile_id is missing, cannot track processing status.")
-            return
-
-        audio_processing_status[job_profile_id] = {"status": "processing", "message": "Starting dual file processing."}
-        logger.info(f"🔊 Starting combined processing for Job ID: {job_profile_id}")
-
-        # --- Process Question File using helper ---
-        question_transcript, question_error_msg = _process_and_transcribe_file(
-            question_filename, question_content_type, question_contents, "Question"
-        )
-  
-    
-        if question_error_msg:
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": f"Question file processing failed: {question_error_msg}"}
-            return
-
-        # --- Process Answer File using helper ---
-        answer_transcript, answer_error_msg = _process_and_transcribe_file(
-            answer_filename, answer_content_type, answer_contents, "Answer"
-        )
-        if answer_error_msg:
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": f"Answer file processing failed: {answer_error_msg}"}
-            return
+#         # Save file to disk in background task
+#         audio_dir = data_path('audio')
+#         os.makedirs(audio_dir, exist_ok=True)
+#         audio_path = os.path.join(audio_dir, filename)
         
-           
-        # Ensure transcripts are not None after helper calls (should be handled by error_msg)
-        if question_transcript is None or answer_transcript is None:
-            logger.error("One or both transcripts are missing after file processing. Cannot proceed.")
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": "Missing transcripts for analysis."}
-            return
-
-        logger.info("✅ Both question and answer files processed successfully.")        
-
-        # --- Remaining Original Logic (now much cleaner) ---
-        logger.debug("Fetching trainee profile data")
-        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-        trainee_profile_data = ipersona_user.filter_by_alluser_id(
-            all_user_id=all_user_id, nopp=True, dataframe=False
-        )
-        if not trainee_profile_data:
-            logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": "No trainee user profiles found"}
-            return
-
-        tinder_user_profile_id = trainee_profile_data.get('id')
-        if not tinder_user_profile_id:
-            logger.error("Invalid trainee profile: missing ID")
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": "Invalid trainee profile: missing ID"}
-            return
-
-        logger.debug("Reading external audio analysis prompt")
-        external_audio_prompt = util.file_reader(prompt_path('external_audio_analysis_for_separate_inputs.txt'))
-        external_all_file_prompt = util.file_reader(prompt_path('external_audio_analysis.txt'))
-        answer_question_matching = util.file_reader(prompt_path('answer_question_match.txt'))
-        realtime_prompt = util.file_reader(prompt_path('realtime_evaluation.txt'))
-
-        logger.debug("Replacing placeholders in prompts")
-        answer_question_match_scoring = answer_question_matching.replace("{questions_data}", question_transcript)\
-                                                   .replace("{answers_data}", answer_transcript)
-
-        logger.debug("Sending prompt to GPT for analysis")
-        data = gpt.openai_gpt_assistant_without_streaming(answer_question_match_scoring) # Ensure async
-        response = util.extract_json(data, quite=False)
-
-        # Filter out items with relevance_score > 80
-        filtered_data = [
-            {'question': item['question'], 'answer': item['answer']}
-            for item in response
-            if item['relevance_score'] >= 90
-        ]
-        logger.info("Transcription analysis pass through matching scoring")
-        logger.info(response)
-        logger.info(f"Lists for matching score above 80 {filtered_data}")
-        logger.info("Transcription analysis pass through matching scoring")
-
-        # return response
-        if not filtered_data:
-            logger.error("❌ Failed to process upload files: No Valuable matched question-answer data returned from LLM analysis")
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": "No analysis data returned from LLM"}
-            return
+#         with open(audio_path, "wb") as f:
+#             f.write(contents)
+#         logger.info("Audio file saved successfully in background task")
         
-        logger.debug("Replacing placeholders in prompts")
-        external_audio_prompt = external_audio_prompt.replace("{question_answer_data}", str(filtered_data))\
-                                                   .replace("{realtime}", str(realtime_prompt))
-        # external_all_file_prompt = external_all_file_prompt.replace("{transcription}", str(filtered_data))\
-        #                                                   .replace("{realtime}", str(realtime_prompt))
-        
-        data = gpt.openai_gpt_assistant_without_streaming(external_audio_prompt) # Ensure async
-        response = util.extract_json(data, quite=False)
-        logger.info("Matched question-answer data returned from LLM analysis with the new interview structure")
-        logger.info(response)
-        logger.info("Matched question-answer data returned from LLM analysis with the new interview structure")
-        # Initialize these for util.create_session (as per original logic)
-        template_id = 0 
-        message = '' 
-        template = False
-        challenge = False  
-        mode = None 
+#         # Update status stores and emit WebSocket update
+#         audio_processing_status[job_profile_id] = {"status": "processing", "message": "Starting audio processing"}
+      
+#         template_id = 0
+#         message = ''
+#         template = False
+#         challenge = False  
+#         mode = None
+#         transcript = None  # Initialize transcript variable
 
-        saved_session = util.create_session(
-            mode,
-            run_stage,
-            template, 
-            external, 
-            challenge, 
-            all_user_id,
-            tinder_user_profile_id,
-            job_profile_id,
-            template_id,
-            challenge_id,
-            message
-        )
-       
-        sessionId = saved_session.get('id') if isinstance(saved_session, dict) else None
-        if not sessionId:
-            logger.error(f"Saved session missing id. saved_session={saved_session}")
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": "Session missing id"}
-            return
-        if saved_session:
-            sessionId = saved_session['id']
-            logger.info(f"📥 Session created successfully with ID: {sessionId}")
-            logger.debug("Saving analyzed chat to database")
-            saved = strapi.save_messages_to_db(response, sessionId) 
-
-            logger.debug("Starting overall evaluation in a separate thread")
-            def run_overall_sync_wrapper():
-                try:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
+#         try:
+#             if "audio" in content_type or "video" in content_type:
+#                 original_format = content_type.split("/")[-1].lower()
+#                 if original_format != "mpeg" and original_format != "mp3":
+#                     logger.info(f"🔄 Converting media file from {original_format} to mp3")
+#                     contents = convert_to_mp3(contents, original_format)
+#                     converted_filename = filename.rsplit(".", 1)[0] + ".mp3"
+#                     audio_path = os.path.join(data_path("audio"), converted_filename)
                     
-                    overall = loop.run_until_complete(
-                        util.overall_interview_evaluations_external(
-                            run_stage, 
-                            response, 
-                            'External', 
-                            sessionId, 
-                            all_user_id, 
-                            tinder_user_profile_id, 
-                            job_profile_id,
-                            'job_interview_config'
-                        )
-                    )
-                    logger.info("✅ Overall evaluation completed successfully")
-                    audio_processing_status[job_profile_id] = {
-                        "status": "done", 
-                        "message": "Chat Saved Successfully", 
-                        "chat": saved, 
-                        "overall": overall
-                    }
-                except Exception as e:
-                    logger.error(f"Error in overall evaluation thread: {str(e)}", exc_info=True)
-                    audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
+#                     # Actually save the converted MP3 file to disk
+#                     with open(audio_path, "wb") as f:
+#                         f.write(contents)
+#                     logger.success(f"🎧 MP3 file saved to: {audio_path}")
+#                 else:
+#                     logger.info("✅ File already in mp3 format. Skipping conversion.")
+#                     audio_path = os.path.join(data_path("audio"), filename)
+#                     os.makedirs(os.path.dirname(audio_path), exist_ok=True)
+#                     with open(audio_path, "wb") as f:
+#                         f.write(contents)
+#                     logger.success(f"🎧 MP3 file saved to: {audio_path}")
+#                 logger.info(f"🔍 DEBUG: Starting transcription for job_profile_id: {job_profile_id}")
+                
+#                 # Update status stores and emit WebSocket update
+#                 audio_processing_status[job_profile_id] = {"status": "processing", "message": "Starting transcription"}
+                
+#                 result =  audio_transcription_logics(
+#                     filename=filename,
+#                     audio_path=audio_path,
+#                     content_type="audio/mpeg"
+#                 )
 
-            t = threading.Thread(target=run_overall_sync_wrapper)
-            t.start()
-            logger.success("🎉 EXTERNAL DUAL AUDIO PROCESSED AND SAVED SUCCESSFULLY!")
-        else:
-            logger.error("❌ Failed to save session")
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": "Session Not Saved"}
+#                 if "error" in result:
+#                     return JSONResponse(
+#                         status_code=result.get("status_code", 500),
+#                         content={
+#                             "result": "Failed",
+#                             "status": result.get("status_code", 500),
+#                             "message": result.get("error"),
+#                             "details": result.get("details", "")
+#                         }
+#                     )
+                
+#                 logger.debug("Initializing transcription")
+#                 transcript = result.get("content", "No transcription returned")
+
+#             elif any(x in content_type for x in ["text", "pdf", "msword", "officedocument"]):
+#                 logger.info(f"📝 Text-based file detected: {filename}")
+#                 result = content_extraction_logics(filename, contents, content_type)
+           
+#                 if "error" in result:
+#                     logger.error(f"❌ Text extraction failed: {result['error']}")
+#                     audio_processing_status[job_profile_id] = {
+#                         "status": "failed",
+#                         "message": result.get("error")
+#                     }
+#                     return
+
+#                 logger.success(f"✅ Text extraction successful: {filename}")
+#                 logger.info(f"🔍 DEBUG: Transcription completed for job_profile_id: {job_profile_id}")
+                
+#                 # Update status stores and emit WebSocket update
+#                 audio_processing_status[job_profile_id] = {
+#                     "status": "processing",
+#                     "message": "Transcription completed, starting analysis"
+#                 }
+                
+#                 logger.debug("Initializing transcription")
+#                 transcript = result.get("content", "No transcription returned")
+
+#             else:
+#                 logger.warn(f"🚫 Unsupported file type: {content_type}")
+#                 audio_processing_status[job_profile_id] = {
+#                     "status": "failed",
+#                     "message": f"Unsupported file type: {content_type}"
+#                 }
+#                 return
+
+#         except Exception as conversion_error:
+#             logger.error(f"❌ MP3 conversion failed: {conversion_error}", exc_info=True)
+#             audio_processing_status[job_profile_id] = {
+#                 "status": "failed",
+#                 "message": f"MP3 conversion failed: {conversion_error}"
+#             }
+#             return
+
+#         # --- Existing logic continues here ---
+#         logger.debug("Fetching trainee profile data")
+#         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+#         trainee_profile_data = ipersona_user.filter_by_alluser_id(
+#             all_user_id=all_user_id, nopp=True, dataframe=False
+#         )
+#         if not trainee_profile_data:
+#             logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": "No trainee user profiles found"}
+#             return
+
+#         tinder_user_profile_id = trainee_profile_data.get('id')
+#         if not tinder_user_profile_id:
+#             logger.error("Invalid trainee profile: missing ID")
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": "Invalid trainee profile: missing ID"}
+#             return
+
+#         logger.debug("Reading external audio analysis prompt")
+#         external_audio_prompt = util.file_reader(prompt_path('external_audio_analysis.txt'))
+#         realtime_prompt = util.file_reader(prompt_path('realtime_evaluation.txt'))
+
+#         logger.debug("Replacing placeholders in prompts")
+#         external_aud_prompt = external_audio_prompt.replace("{transcription}", str(transcript)).replace("{realtime}", str(realtime_prompt))
+
+#         logger.debug("Sending prompt to GPT for analysis")
+#         data = gpt.openai_gpt_assistant_without_streaming(external_aud_prompt)
+#         response = util.extract_json(data, quite=False)
+
+#         if not response:
+#             logger.error("❌ Failed to process upload file: No data returned from transcription")
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": "No data returned"}
+#             return
+        
+#         logger.debug("Creating session for audio processing")
+#         saved_session = util.create_session(
+#             mode,
+#             run_stage,
+#             template, 
+#             external, 
+#             challenge, 
+#             all_user_id,
+#             tinder_user_profile_id,
+#             job_profile_id,
+#             template_id,
+#             challenge_id,
+#             message
+#         )
+
+#         if saved_session:
+#             sessionId = saved_session['id']
+#             logger.info(f"📥 Session created successfully with ID: {sessionId}")
+#             logger.debug("Saving transcribed chat to database")
+#             saved = strapi.save_messages_to_db(response, sessionId)
+
+#             logger.debug("Starting overall evaluation in a separate thread")
+#             def run_overall():
+#                 try:
+#                     loop = asyncio.new_event_loop()
+#                     asyncio.set_event_loop(loop)
+#                     overall = loop.run_until_complete(
+#                         util.overall_interview_evaluations_external(
+#                             run_stage, 
+#                             response, 
+#                             'External', 
+#                             sessionId, 
+#                             all_user_id, 
+#                             tinder_user_profile_id, 
+#                             job_profile_id,
+#                             'job_interview_config'
+#                         )
+#                     )
+#                     logger.info("✅ Overall evaluation completed successfully")
+                    
+#                     # Update status stores and emit WebSocket update for completion
+#                     audio_processing_status[job_profile_id] = {
+#                         "status": "done", 
+#                         "message": "Chat Saved Successfully", 
+#                         "chat": saved, 
+#                         "overall": overall
+#                     }
+#                     # Emit WebSocket update (in thread - use create_task)
+#                     # try:
+#                     #     asyncio.create_task(sio.emit("processing_update_success", {"status": "Processing 'the uploaded files completed successfully!"}))
+#                     # except Exception as e:
+#                     #     logger.warn(f"Failed to emit WebSocket update: {e}")
+
+#                 except Exception as e:
+#                     logger.error(f"Error in overall evaluation: {str(e)}", exc_info=True)
+#                     audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
+
+#             t = threading.Thread(target=run_overall)
+#             t.start()
+#             logger.success("🎉 EXTERNAL AUDIO PROCESSED AND SAVED SUCCESSFULLY!")
+#         else:
+#             logger.error("❌ Failed to save session")
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": "Chat Not Saved"}
   
-    except Exception as e:
-        logger.error(f"🔥 Critical error in dual audio background processing: {str(e)}", exc_info=True)
-        if job_profile_id:
-            audio_processing_status[job_profile_id] = {"status": "failed", "message": f"System error: {str(e)}"}
+#     except Exception as e:
+#         logger.error(f"🔥 Error in background audio processing: {str(e)}", exc_info=True)
+        
+#         # Update status stores and emit WebSocket update for error
+#         audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
+#         # try:
+#         #         asyncio.create_task(sio.emit("processing_update_failed", {"status": "Processing failed. Likely causes: not interview content, unclear audio, or no detectable Q/A. Please re-upload a clear interview file, then try again."}))
 
-def sanitize_create_user_session_response(data):
-    return {
-        "id": data.get("id") or "",
-        "status": str(data.get("status") or "Incomplete"),
-        "mode": str(data.get("mode") or ""),
-        "user_profile_id": data.get("user_profile_id") or "",
-        "job_profile_id": data.get("job_profile_id") or "",
-        "template_id": data.get("template_id") or "",
-        "challenge_id": data.get("challenge_id") or "",
-    }
+#         # except Exception as emit_error:
+#         #     logger.warn(f"Failed to emit WebSocket update: {emit_error}")
+
+# def content_extraction_logics(filename: str, content: bytes, content_type: str) -> dict:
+#     try:
+#         files = {
+#                     'file': (filename, content, content_type)
+#                 }
+#         data = {
+#             'request_source': 'text_extraction_endpoint',
+#             'visual_description': 'false',
+#             'description_prompt': 'Extract readable content',
+#             'input_format': 'text'
+#         }
+
+#         endpoint_url = "https://content-extractor.10academy.org/content-extractor/extract"
+#         response = requests.post(endpoint_url, data=data, files=files, timeout=60)
+#         response.raise_for_status()
+#         result = response.json()
+#         return result
+
+#     except requests.exceptions.HTTPError as e:
+#         return {
+#             "error": f"HTTP error: {e}",
+#             "details": e.response.text,
+#             "status_code": e.response.status_code
+#         }
+
+#     except Exception as e:
+#         return {
+#             "error": f"Unexpected error: {str(e)}",
+#             "status_code": 500
+#         }
+
+# def audio_transcription_logics(filename: str, audio_path: str, content_type: str) -> dict:
+#     try:
+#         # Debug: Check if file exists before opening
+#         import os
+#         if not os.path.exists(audio_path):
+#             logger.error(f"❌ Audio file does not exist: {audio_path}")
+#             return {
+#                 "error": f"Audio file not found: {audio_path}",
+#                 "status_code": 404
+#             }
+        
+#         logger.info(f"✅ Audio file exists, size: {os.path.getsize(audio_path)} bytes")
+        
+#         # Send to the content-extractor transcription endpoint
+#         endpoint_url = "https://content-extractor.10academy.org/content-extractor/audio_transcript"
+
+#         with open(audio_path, 'rb') as audio_file:
+#             files = {
+#                 'file': (filename, audio_file, content_type)
+#             }
+#             data = {
+#                 'request_id': 'audio-upload-001',
+#                 'request_source': 'fastapi_audio_upload',
+#                 'prompt': 'Extract the text from the audio file.',
+#                 'llm_provider': 'openai',
+#                 'llm_model': 'gpt-4o'
+#             }
+
+#             logger.debug("Sending audio file to external transcription endpoint...")
+#             response = requests.post(endpoint_url, files=files, data=data, timeout=90)
+#             response.raise_for_status()
+#             result = response.json()
+  
+#         return result
+
+#     except requests.exceptions.HTTPError as e:
+#         return {
+#             "error": f"HTTP error: {e}",
+#             "details": e.response.text,
+#             "status_code": e.response.status_code
+#         }
+
+#     except Exception as e:
+#         return {
+#             "error": f"Unexpected error: {str(e)}",
+#             "status_code": 500
+#         }
+
+# def convert_to_mp3(input_bytes: bytes, original_format: str) -> bytes:
+#     logger.info(f"Starting conversion of format: {original_format}")
+#     try:
+#         audio = AudioSegment.from_file(io.BytesIO(input_bytes), format=original_format)
+#         mp3_io = io.BytesIO()
+#         audio.export(mp3_io, format="mp3")
+#         mp3_bytes = mp3_io.getvalue()
+#         logger.info(f"Conversion successful. Original size: {len(input_bytes) / 1024 / 1024:.2f} MB | MP3 size: {len(mp3_bytes) / 1024 / 1024:.2f} MB")
+#         return mp3_bytes
+#     except Exception as e:
+#         logger.error(f"Error during mp3 conversion: {e}")
+#         raise
+
+# # --- New Helper Function for Single File Processing ---
+# def _process_and_transcribe_file(
+#     filename: str,
+#     content_type: str,
+#     contents: bytes,
+#     file_type_label: str 
+# ) -> Tuple[Optional[str], Optional[str]]: 
+#     """
+#     Handles the common logic for converting, saving, and transcribing/extracting content from a single file.
+#     Returns the transcript if successful, or None and an error message if failed.
+#     """
+#     logger.info(f"🔊 Processing {file_type_label} file: {filename}")
+    
+#     try:
+#         audio_dir = data_path("audio") 
+#         os.makedirs(audio_dir, exist_ok=True) 
+#         final_file_path = os.path.join(audio_dir, filename) 
+
+#         transcript: Optional[str] = None
+
+#         if "audio" in content_type or "video" in content_type:
+#             original_format = content_type.split("/")[-1].lower()
+            
+#             if original_format not in ["mpeg", "mp3", "wav", "mp4", "webm"]:
+#                 logger.info(f"🔄 Converting {file_type_label} media file from {original_format} to mp3")
+#                 contents = convert_to_mp3(contents, original_format)
+#                 final_file_path = os.path.join(audio_dir, filename.rsplit(".", 1)[0] + ".mp3")
+                
+#                 with open(final_file_path, "wb") as f:
+#                     f.write(contents)
+#                 logger.success(f"🎧 {file_type_label} MP3 file saved to: {final_file_path}")
+#             else:
+#                 logger.info(f"✅ {file_type_label} file already in supported audio/video format. Skipping re-saving.")
+   
+#             result = audio_transcription_logics( 
+#                 filename=filename,
+#                 audio_path=final_file_path,
+#                 content_type="audio/mpeg" 
+#             )
+         
+#             if "error" in result:
+#                 return None, f"Transcription failed: {result['error']}"
+            
+#             transcript = result.get("content", "No transcription returned")
+#             prompt = f"""
+#                 You are given a raw block of text transcribed from an interview. This text may include either interview **questions** or **answers**, but not both at the same time.
+
+#                 Your task is to segment this text into a list of **logically grouped full responses** — where each item in the list represents **a complete question or answer**, not just an individual sentence or phrase.
+
+#                 🧠 IMPORTANT RULES:
+#                 - DO NOT break an answer or question into parts unless there's a **clear topic shift or speaker change**.
+#                 - Consider the **semantic flow** and meaning of the text — some responses are long and should remain as one block.
+#                 - DO NOT split just because a sentence ends. Multiple sentences can and often do belong to the same complete response.
+#                 - Only split when it is evident that a **new question** or **new response** has begun.
+#                 - If unsure whether to split or not — DO NOT split. Keep it as one unified chunk.
+
+#                 Your output must be a JSON list of grouped conversation turns, like:
+#                 [
+#                 "First full question or answer here.",
+#                 "Second full question or answer here.",
+#                 ...
+#                 ]
+
+#                 Now segment the following transcription:
+#                 {transcript}
+#                 """
+#             transcript = gpt.openai_gpt_assistant_without_streaming(prompt) 
+
+#             logger.debug(f"{file_type_label} transcription initialized")
+
+#         elif any(x in content_type for x in ["text", "pdf", "msword", "officedocument"]):
+#             logger.info(f"📝 {file_type_label} text-based file detected: {filename}")
+
+#             # Assuming you save it, then extract.
+#             with open(final_file_path, "wb") as f:
+#                 f.write(contents)
+#             logger.success(f"💾 {file_type_label} text file saved to: {final_file_path}")
+
+#             result = content_extraction_logics(filename, contents, content_type) # Ensure this is async
+
+#             if "error" in result:
+#                 return None, f"Text extraction failed: {result['error']}"
+
+#             transcript = result.get("content", "No content returned")
+#             prompt = f"""
+#                 You are given a raw block of text transcribed from an interview. This text may include either interview **questions** or **answers**, but not both at the same time.
+
+#                 Your task is to segment this text into a list of **logically grouped full responses** — where each item in the list represents **a complete question or answer**, not just an individual sentence or phrase.
+
+#                 🧠 IMPORTANT RULES:
+#                 - DO NOT break an answer or question into parts unless there's a **clear topic shift or speaker change**.
+#                 - Consider the **semantic flow** and meaning of the text — some responses are long and should remain as one block.
+#                 - DO NOT split just because a sentence ends. Multiple sentences can and often do belong to the same complete response.
+#                 - Only split when it is evident that a **new question** or **new response** has begun.
+#                 - If unsure whether to split or not — DO NOT split. Keep it as one unified chunk.
+
+#                 Your output must be a JSON list of grouped conversation turns, like:
+#                 [
+#                 "First full question or answer here.",
+#                 "Second full question or answer here.",
+#                 ...
+#                 ]
+
+#                 Now segment the following transcription:
+#                 {transcript}
+#                 """
+
+#             transcript = gpt.openai_gpt_assistant_without_streaming(prompt) # Ensure async
+         
+#             logger.success(f"✅ {file_type_label} text extraction successful: {filename}")
+#             logger.debug(f"{file_type_label} content extraction initialized")
+
+#         else:
+#             return None, f"Unsupported file type for {file_type_label}: {content_type}"
+
+#         return transcript, None # Success
+
+#     except Exception as e:
+#         logger.error(f"❌ Error in {file_type_label} file processing: {e}", exc_info=True)
+#         return None, f"Processing failed for {file_type_label}: {e}"
+
+# # --- Main Background Task Function ---
+# async def process_upload_external_files(
+#     question_filename: str,
+#     question_content_type: str,
+#     question_contents: bytes,
+#     answer_filename: str,
+#     answer_content_type: str,
+#     answer_contents: bytes,
+#     job_profile_id: Optional[str],
+#     challenge_id: Optional[str],
+#     all_user_id: Optional[str],
+#     external: bool,
+#     run_stage: str
+# ):
+#     try:
+#         if not job_profile_id:
+#             logger.error("job_profile_id is missing, cannot track processing status.")
+#             return
+        
+#         audio_processing_status[job_profile_id] = {"status": "processing", "message": "Starting dual file processing."}
+#         logger.info(f"🔊 Starting combined processing for Job ID: {job_profile_id}")
+
+#         # Save files to disk in background task
+#         audio_dir = data_path('audio')
+#         os.makedirs(audio_dir, exist_ok=True)
+        
+#         question_audio_path = os.path.join(audio_dir, question_filename)
+#         answer_audio_path = os.path.join(audio_dir, answer_filename)
+        
+#         with open(question_audio_path, "wb") as f:
+#             f.write(question_contents)
+#         logger.info(f"Question audio file saved: {question_filename}")
+        
+#         with open(answer_audio_path, "wb") as f:
+#             f.write(answer_contents)
+#         logger.info(f"Answer audio file saved: {answer_filename}")
+
+#         # --- Process Question File using helper ---
+#         question_transcript, question_error_msg = _process_and_transcribe_file(
+#             question_filename, question_content_type, question_contents, "Question"
+#         )
+  
+    
+#         if question_error_msg:
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": f"Question file processing failed: {question_error_msg}"}
+#             return
+
+#         # --- Process Answer File using helper ---
+#         answer_transcript, answer_error_msg = _process_and_transcribe_file(
+#             answer_filename, answer_content_type, answer_contents, "Answer"
+#         )
+#         if answer_error_msg:
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": f"Answer file processing failed: {answer_error_msg}"}
+#             return
+        
+           
+#         # Ensure transcripts are not None after helper calls (should be handled by error_msg)
+#         if question_transcript is None or answer_transcript is None:
+#             logger.error("One or both transcripts are missing after file processing. Cannot proceed.")
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": "Missing transcripts for analysis."}
+#             return
+
+#         logger.info("✅ Both question and answer files processed successfully.")        
+
+#         # --- Remaining Original Logic (now much cleaner) ---
+#         logger.debug("Fetching trainee profile data")
+#         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+#         trainee_profile_data = ipersona_user.filter_by_alluser_id(
+#             all_user_id=all_user_id, nopp=True, dataframe=False
+#         )
+#         if not trainee_profile_data:
+#             logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": "No trainee user profiles found"}
+#             return
+
+#         tinder_user_profile_id = trainee_profile_data.get('id')
+#         if not tinder_user_profile_id:
+#             logger.error("Invalid trainee profile: missing ID")
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": "Invalid trainee profile: missing ID"}
+#             return
+
+#         logger.debug("Reading external audio analysis prompt")
+#         external_audio_prompt = util.file_reader(prompt_path('external_audio_analysis_for_separate_inputs.txt'))
+#         external_all_file_prompt = util.file_reader(prompt_path('external_audio_analysis.txt'))
+#         answer_question_matching = util.file_reader(prompt_path('answer_question_match.txt'))
+#         realtime_prompt = util.file_reader(prompt_path('realtime_evaluation.txt'))
+
+#         logger.debug("Replacing placeholders in prompts")
+#         answer_question_match_scoring = answer_question_matching.replace("{questions_data}", question_transcript)\
+#                                                    .replace("{answers_data}", answer_transcript)
+
+#         logger.debug("Sending prompt to GPT for analysis")
+#         data = gpt.openai_gpt_assistant_without_streaming(answer_question_match_scoring) # Ensure async
+#         response = util.extract_json(data, quite=False)
+
+#         # Filter out items with relevance_score > 80
+#         filtered_data = [
+#             {'question': item['question'], 'answer': item['answer']}
+#             for item in response
+#             if item['relevance_score'] >= 90
+#         ]
+
+#         # return response
+#         if not filtered_data:
+#             # Get detailed error information for user action
+#             relevance_scores = [item.get('relevance_score', 0) for item in response] if response else []
+#             max_score = max(relevance_scores) if relevance_scores else 0
+            
+#             logger.error("❌ Failed to process upload files: No Valuable matched question-answer data returned from LLM analysis")
+            
+#             # Update status stores and emit WebSocket update with detailed error
+#             audio_processing_status[job_profile_id] = {
+#                 "status": "failed", 
+#                 "message": f"No valuable matches found (best score: {max_score}/100, need 90+)"
+#             }
+#             # Emit WebSocket update
+#             try:
+#                 logger.info(f"[SOCKET EMIT] Processing update sent for job")
+#                 await sio.emit("processing_update_failed", {"status": f"❌ No valuable matches found between the question and answer files for Job with id: {job_profile_id}. Please re-upload a clear interview file, then try again."})
+      
+#             except Exception as emit_error:
+#                 logger.warn(f"Failed to emit WebSocket update: {emit_error}")
+#             return
+        
+#         external_audio_prompt = external_audio_prompt.replace("{question_answer_data}", str(filtered_data))\
+#                                                    .replace("{realtime}", str(realtime_prompt))
+#         # external_all_file_prompt = external_all_file_prompt.replace("{transcription}", str(filtered_data))\
+#         #                                                   .replace("{realtime}", str(realtime_prompt))
+        
+#         data = gpt.openai_gpt_assistant_without_streaming(external_audio_prompt) # Ensure async
+#         response = util.extract_json(data, quite=False)
+
+#         # Initialize these for util.create_session (as per original logic)
+#         template_id = 0 
+#         message = '' 
+#         template = False
+#         challenge = False  
+#         mode = None 
+
+#         saved_session = util.create_session(
+#             mode,
+#             run_stage,
+#             template, 
+#             external, 
+#             challenge, 
+#             all_user_id,
+#             tinder_user_profile_id,
+#             job_profile_id,
+#             template_id,
+#             challenge_id,
+#             message
+#         )
+       
+#         sessionId = saved_session.get('id') if isinstance(saved_session, dict) else None
+#         if not sessionId:
+#             logger.error(f"Saved session missing id. saved_session={saved_session}")
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": "Session missing id"}
+#             return
+#         if saved_session:
+#             sessionId = saved_session['id']
+#             logger.info(f"📥 Session created successfully with ID: {sessionId}")
+#             logger.debug("Saving analyzed chat to database")
+#             saved = strapi.save_messages_to_db(response, sessionId) 
+
+#             logger.debug("Starting overall evaluation in a separate thread")
+#             async def run_overall_sync_wrapper():
+#                 try:
+#                     # Run the blocking operation in a thread pool
+#                     loop = asyncio.get_event_loop()
+#                     overall = await loop.run_in_executor(
+#                         None,  # Use default thread pool
+#                         lambda: util.overall_interview_evaluations_external(
+#                             run_stage, 
+#                             response, 
+#                             'External', 
+#                             sessionId, 
+#                             all_user_id, 
+#                             tinder_user_profile_id, 
+#                             job_profile_id,
+#                             'job_interview_config'
+#                         )
+#                     )
+#                     logger.info("✅ Overall evaluation completed successfully")
+                    
+#                     # Update status stores and emit WebSocket update for completion
+#                     audio_processing_status[job_profile_id] = {
+#                         "status": "done", 
+#                         "message": "Chat Saved Successfully", 
+#                         "chat": saved, 
+#                         "overall": overall
+#                     }
+                    
+#                     # Now we can use await sio.emit!
+#                     await sio.emit("processing_update_success", {"status": "Processing the uploaded interview files completed successfully!"})
+#                     logger.info(f"[SOCKET EMIT TRY] Processing update sent for job")
+                    
+#                 except Exception as e:
+#                     logger.error(f"Error in overall evaluation: {str(e)}", exc_info=True)
+#                     audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
+
+#             # Start the async task
+#             asyncio.create_task(run_overall_sync_wrapper())
+#             logger.success("🎉 EXTERNAL DUAL AUDIO PROCESSED AND SAVED SUCCESSFULLY!")
+#         else:
+#             logger.error("❌ Failed to save session")
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": "Session Not Saved"}
+  
+#     except Exception as e:
+#         logger.error(f"🔥 Critical error in dual audio background processing: {str(e)}", exc_info=True)
+#         if job_profile_id:
+#             audio_processing_status[job_profile_id] = {"status": "failed", "message": f"System error: {str(e)}"}
+
+# def sanitize_create_user_session_response(data):
+#     return {
+#         "id": data.get("id") or "",
+#         "status": str(data.get("status") or "Incomplete"),
+#         "mode": str(data.get("mode") or ""),
+#         "user_profile_id": data.get("user_profile_id") or "",
+#         "job_profile_id": data.get("job_profile_id") or "",
+#         "template_id": data.get("template_id") or "",
+#         "challenge_id": data.get("challenge_id") or "",
+#     }
+
+
+# Include task management routes
+routes.include_router(task_router)
 
 
 

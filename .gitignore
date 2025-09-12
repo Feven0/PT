@@ -163,3 +163,4 @@ venv.bak/
 .mypy_cache/
 
 langraph_client
+node_modules

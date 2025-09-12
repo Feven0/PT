@@ -1,5 +1,4 @@
 import asyncio, os, json
-import socketio, time
 from openai import OpenAI
 import assemblyai as aai
 from typing import Dict, Any
@@ -16,6 +15,7 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
 
 import urllib.parse  
 from api.utils.logger import LLPackerLogger
+from api.socket.core import sio, get_socket_asgi_app
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
@@ -28,14 +28,6 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Improved transcriber management - track per session
 transcribers: Dict[str, Any] = {}
-
-sio = socketio.AsyncServer(cors_allowed_origins="*", 
-                           async_mode="asgi",
-                           logger=False,
-                           engineio_logger=False)
-
-
-socket_app = socketio.ASGIApp(sio)
 
 @sio.event
 async def connect(sid, environ):
@@ -928,11 +920,5 @@ async def interview_endpoint(sid, data):
         return error_message
 
 def get_socketio_app(fast_app):
-    app = socketio.ASGIApp(
-        socketio_server=sio,
-        other_asgi_app=fast_app,
-        socketio_path='/socket.io/'
-        # transports=["websocket"]
-    )
-    return app
+    return get_socket_asgi_app(fast_app)
 

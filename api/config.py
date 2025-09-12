@@ -555,13 +555,22 @@ class fastapi:
                     '127.0.0.1']
     user_info = {}    
     
+# @dataclass
+# class cache:
+#     MEMCACHED_HOST = os.getenv("MEMCACHED_HOST", "localhost")
+#     MEMCACHED_PORT = os.getenv("MEMCACHED_PORT", 11211)
+#     REDIS_HOST = "clustercfg.leap.kizxdo.use1.cache.amazonaws.com"
+#     REDIS_PORT = 6379
+#     REDIS_URL = f"rediss://{REDIS_HOST}:{REDIS_PORT}"
+
 @dataclass
 class cache:
     MEMCACHED_HOST = os.getenv("MEMCACHED_HOST", "localhost")
     MEMCACHED_PORT = os.getenv("MEMCACHED_PORT", 11211)
-    REDIS_HOST = "clustercfg.leap.kizxdo.use1.cache.amazonaws.com"
+    REDIS_HOST = "redis.10academy.org"
     REDIS_PORT = 6379
-    REDIS_URL = f"rediss://{REDIS_HOST}:{REDIS_PORT}"
+    REDIS_PASSWORD = "D1BxSM9&t!wSGM"
+    REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}"
     
 @dataclass
 class shorturl:

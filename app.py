@@ -13,6 +13,7 @@ _ = config.load_dotenv()
 
 
 import ast
+import asyncio
 import json
 import logging
 import time
@@ -72,8 +73,22 @@ def shutdown_event():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     startup_event()
+    
+    # TODO: Start Redis notification subscriber in background
+    # Temporarily disabled to fix FastAPI startup
+    subscriber_task = None
+    logger.info("🔔 Redis notification subscriber temporarily disabled")
+    
     yield
+    
     # Clean up the ML models and release the resources
+    if subscriber_task:
+        notification_subscriber.stop_subscriber()
+        subscriber_task.cancel()
+        try:
+            await subscriber_task
+        except asyncio.CancelledError:
+            pass
     shutdown_event()
     
 

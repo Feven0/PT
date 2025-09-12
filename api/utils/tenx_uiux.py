@@ -334,7 +334,8 @@ class BaseTable():
                 **kwargs):
         
         data = copy.deepcopy(dataIn)
-        # self.table['cursor'] = cursor  
+        if cursor:
+            self.table['cursor'] = cursor  
         # print(data)
         # Check if data is a dictionary
         if isinstance(data, dict):

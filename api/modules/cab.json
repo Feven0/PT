@@ -1,126 +1,2122 @@
 {
-  "all_user_id": 1959,
-  "jobs": [
-    [
-      {
-        "id": "2291",
-        "attributes": {
-          "status": "Incomplete",
-          "i_persona_observer": {"data": null},
-          "tinder_job_profile": {"data": null},
-          "tinder_user_profile": {"data": {"id": "197"}},
-          "challenge_document": {"data": {"id": "24"}},
-          "metadata": {
-            "external": false,
-            "generate": false,
-            "template": false,
-            "challenge": true
-          }
-        }
-      },
-      {
-        "id": "2290",
-        "attributes": {
-          "status": "Deleted",
-          "i_persona_observer": {"data": null},
-          "tinder_job_profile": {"data": null},
-          "tinder_user_profile": {"data": {"id": "197"}},
-          "challenge_document": {"data": {"id": "24"}},
-          "metadata": {
-            "external": false,
-            "generate": false,
-            "template": false,
-            "challenge": true
-          }
-        }
-      },
-      {
-        "id": "2289",
-        "attributes": {
-          "status": "Completed",
-          "i_persona_observer": {
-            "data": {
-              "id": "747",
-              "attributes": {
-                "attributes": {
-                  "interview_evaluation": {
-                    "message": "Poor",
-                    "competency": [
-                      {"name": "Communication Skills", "sfia_level": "1"},
-                      {"name": "Data Engineering Knowledge", "sfia_level": "1"},
-                      {"name": "Problem Solving", "sfia_level": "1"}
-                    ],
-                    "evaluation": "The candidate's performance in the interview was significantly lacking. Responses were largely off-topic and did not address the questions posed, particularly regarding the anticipated challenges in securing a Data Engineering role. This indicates a need for improvement in both understanding the role and articulating relevant experiences or insights.",
-                    "recommendation": [
-                      {"link": "www.udemy.com", "type": "Online Course", "title": "Communication Skills Improvement", "resource": "Effective Communication Skills for Professionals"},
-                      {"link": "www.coursera.org", "type": "Online Course", "title": "Data Engineering Fundamentals", "resource": "Data Engineering on Google Cloud Platform Specialization"},
-                      {"link": "www.amazon.com", "type": "Book", "title": "Interview Preparation", "resource": "Cracking the Coding Interview"}
-                    ]
-                  },
-                  "interview_evaluation_metrics": {
-                    "rating": 1,
-                    "message": "Poor",
-                    "overall_performance_score": 10,
-                    "time_management": {"total_time_taken_by_candidate": "00:01:29"}
-                  }
-                }
-              }
-            }
-          },
-          "tinder_job_profile": {"data": null},
-          "tinder_user_profile": {"data": {"id": "197"}},
-          "challenge_document": {"data": {"id": "24"}},
-          "metadata": {"mode": "audio", "external": false, "generate": false, "template": false, "challenge": true}
-        }
-      },
-      {
-        "id": "2288",
-        "attributes": {
-          "status": "Closed",
-          "i_persona_observer": {
-            "data": {
-              "id": "746",
-              "attributes": {
-                "attributes": {
-                  "interview_evaluation": {
-                    "message": "Poor",
-                    "competency": [
-                      {"name": "Communication Skills", "sfia_level": "Level 1"},
-                      {"name": "Domain Knowledge in Data Engineering", "sfia_level": "Level 1"},
-                      {"name": "Problem Solving", "sfia_level": "Level 1"}
-                    ],
-                    "evaluation": "The candidate's performance in the interview was significantly lacking, particularly in addressing the core question regarding anticipated challenges in securing a Data Engineering role. The response provided was completely irrelevant, indicating a lack of understanding of the role's requirements and the ability to articulate thoughts clearly.",
-                    "recommendation": [
-                      {"link": "https://www.crackingthecodinginterview.com", "type": "Book", "title": "Interview Preparation Resources", "resource": "Consider utilizing resources like 'Cracking the Coding Interview' to improve your ability to articulate responses to technical questions and challenges in your field."},
-                      {"link": "https://www.coursera.org/learn/gcp-data-machine-learning", "type": "Online Course", "title": "Data Engineering Fundamentals", "resource": "Enroll in a course like 'Data Engineering on Google Cloud' on Coursera to gain a better understanding of the challenges and skills required in Data Engineering."}
-                    ]
-                  },
-                  "interview_evaluation_metrics": {
-                    "rating": 1,
-                    "message": "Poor",
-                    "overall_performance_score": 0,
-                    "time_management": {"total_time_taken_by_candidate": "00:00:06"}
-                  }
-                }
-              }
-            }
-          },
-          "tinder_job_profile": {"data": null},
-          "tinder_user_profile": {"data": {"id": "197"}},
-          "challenge_document": {"data": {"id": "24"}},
-          "metadata": {"mode": "text", "external": false, "generate": false, "template": false, "challenge": true}
-        }
-      }
-    ],
+  "overall_clarity": [
     {
-      "page": 1,
-      "pageSize": 20,
-      "page_count": 1,
-      "page_size": 20,
-      "query": {},
-      "total": 58
+      "time": "23 Aug 2025 02:53 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "23 Aug 2025 03:13 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 02:14 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 05:44 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 06:11 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 06:20 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 08:02 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 08:30 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 08:39 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 04:45 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 05:16 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 06:10 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 06:18 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 03:49 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 04:23 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "26 Aug 2025 06:52 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 09:17 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 11:25 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 11:30 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 11:35 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:14 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:38 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:42 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:49 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:53 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 01:04 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 02:38 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 02:42 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 02:50 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:27 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:30 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:35 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:40 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:52 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 02:49 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 03:15 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 03:56 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 04:34 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 06:57 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 07:18 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 03:03 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 03:19 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 04:03 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 04:40 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "06 Sep 2025 03:43 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "06 Sep 2025 03:52 PM",
+      "level": "poor",
+      "value": 1
     }
   ],
-  "status": 200,
-  "message": ""
+  "overall_competency": [
+    {
+      "time": "23 Aug 2025 02:53 PM",
+      "competency": [
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Professional Communication",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "23 Aug 2025 03:13 PM",
+      "competency": [
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Professional Communication",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "24 Aug 2025 02:14 PM",
+      "competency": [
+        {
+          "name": "Communication",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "24 Aug 2025 05:44 PM",
+      "competency": [
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Communication",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "24 Aug 2025 06:11 PM",
+      "competency": [
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "24 Aug 2025 06:20 PM",
+      "competency": [
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Communication",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "24 Aug 2025 08:02 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "Level 1"
+        }
+      ]
+    },
+    {
+      "time": "24 Aug 2025 08:30 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "24 Aug 2025 08:39 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "Level 1"
+        }
+      ]
+    },
+    {
+      "time": "25 Aug 2025 04:45 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Research and Data Verification",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "25 Aug 2025 05:16 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "25 Aug 2025 06:10 AM",
+      "competency": [
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "25 Aug 2025 06:18 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "Level 1"
+        }
+      ]
+    },
+    {
+      "time": "25 Aug 2025 03:49 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "Level 1"
+        }
+      ]
+    },
+    {
+      "time": "25 Aug 2025 04:23 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "26 Aug 2025 06:52 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 09:17 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 11:25 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 11:30 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Research Skills",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 11:35 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 12:14 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 12:38 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "Level 1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 12:42 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 12:49 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 12:53 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 01:04 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 02:38 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 02:42 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 02:50 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "Level 1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "Level 1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 03:27 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 03:30 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 03:35 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 03:40 PM",
+      "competency": [
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Communication",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "01 Sep 2025 03:52 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "02 Sep 2025 02:49 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "02 Sep 2025 03:15 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "02 Sep 2025 03:56 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "02 Sep 2025 04:34 AM",
+      "competency": [
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Communication",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "02 Sep 2025 06:57 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "02 Sep 2025 07:18 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "05 Sep 2025 03:03 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "05 Sep 2025 03:19 AM",
+      "competency": [
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Communication",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "05 Sep 2025 04:03 AM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Research Skills",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "05 Sep 2025 04:40 AM",
+      "competency": [
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Communication",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "06 Sep 2025 03:43 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    },
+    {
+      "time": "06 Sep 2025 03:52 PM",
+      "competency": [
+        {
+          "name": "Communication Skills",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Data Analysis",
+          "sfia_level": "1"
+        },
+        {
+          "name": "Problem Solving",
+          "sfia_level": "1"
+        }
+      ]
+    }
+  ],
+  "overall_confidence": [
+    {
+      "time": "23 Aug 2025 02:53 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "23 Aug 2025 03:13 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 02:14 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 05:44 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 06:11 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 06:20 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 08:02 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 08:30 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 08:39 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 04:45 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 05:16 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 06:10 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 06:18 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 03:49 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 04:23 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "26 Aug 2025 06:52 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 09:17 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 11:25 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 11:30 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 11:35 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:14 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:38 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:42 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:49 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:53 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 01:04 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 02:38 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 02:42 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 02:50 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:27 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:30 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:35 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:40 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:52 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 02:49 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 03:15 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 03:56 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 04:34 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 06:57 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 07:18 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 03:03 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 03:19 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 04:03 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 04:40 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "06 Sep 2025 03:43 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "06 Sep 2025 03:52 PM",
+      "level": "poor",
+      "value": 1
+    }
+  ],
+  "overall_engagement": [
+    {
+      "time": "23 Aug 2025 02:53 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "23 Aug 2025 03:13 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 02:14 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 05:44 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 06:11 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 06:20 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 08:02 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 08:30 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "24 Aug 2025 08:39 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 04:45 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 05:16 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 06:10 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 06:18 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 03:49 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "25 Aug 2025 04:23 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "26 Aug 2025 06:52 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 09:17 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 11:25 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 11:30 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 11:35 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:14 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:38 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:42 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:49 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 12:53 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 01:04 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 02:38 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 02:42 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 02:50 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:27 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:30 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:35 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:40 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "01 Sep 2025 03:52 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 02:49 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 03:15 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 03:56 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 04:34 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 06:57 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "02 Sep 2025 07:18 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 03:03 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 03:19 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 04:03 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "05 Sep 2025 04:40 AM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "06 Sep 2025 03:43 PM",
+      "level": "poor",
+      "value": 1
+    },
+    {
+      "time": "06 Sep 2025 03:52 PM",
+      "level": "poor",
+      "value": 1
+    }
+  ],
+  "overall_performance": [
+    {
+      "time": "23 Aug 2025 02:53 PM",
+      "score": 21.67
+    },
+    {
+      "time": "23 Aug 2025 03:13 PM",
+      "score": 13.33
+    },
+    {
+      "time": "24 Aug 2025 02:14 PM",
+      "score": 10
+    },
+    {
+      "time": "24 Aug 2025 05:44 PM",
+      "score": 23.33
+    },
+    {
+      "time": "24 Aug 2025 06:11 PM",
+      "score": 28.33
+    },
+    {
+      "time": "24 Aug 2025 06:20 PM",
+      "score": 6.67
+    },
+    {
+      "time": "24 Aug 2025 08:02 PM",
+      "score": 1.67
+    },
+    {
+      "time": "24 Aug 2025 08:30 PM",
+      "score": 20
+    },
+    {
+      "time": "24 Aug 2025 08:39 PM",
+      "score": 16.67
+    },
+    {
+      "time": "25 Aug 2025 04:45 AM",
+      "score": 18.33
+    },
+    {
+      "time": "25 Aug 2025 05:16 AM",
+      "score": 5
+    },
+    {
+      "time": "25 Aug 2025 06:10 AM",
+      "score": 1.67
+    },
+    {
+      "time": "25 Aug 2025 06:18 AM",
+      "score": 0
+    },
+    {
+      "time": "25 Aug 2025 03:49 PM",
+      "score": 10
+    },
+    {
+      "time": "25 Aug 2025 04:23 PM",
+      "score": 8.33
+    },
+    {
+      "time": "26 Aug 2025 06:52 AM",
+      "score": 8.33
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "score": 6.67
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "score": 33.33
+    },
+    {
+      "time": "01 Sep 2025 09:17 AM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 11:25 AM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 11:30 AM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 11:35 AM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 12:14 PM",
+      "score": 1.67
+    },
+    {
+      "time": "01 Sep 2025 12:38 PM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 12:42 PM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 12:49 PM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 12:53 PM",
+      "score": 6.67
+    },
+    {
+      "time": "01 Sep 2025 01:04 PM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 02:38 PM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 02:42 PM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 02:50 PM",
+      "score": 10
+    },
+    {
+      "time": "01 Sep 2025 03:27 PM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 03:30 PM",
+      "score": 10
+    },
+    {
+      "time": "01 Sep 2025 03:35 PM",
+      "score": 0
+    },
+    {
+      "time": "01 Sep 2025 03:40 PM",
+      "score": 8.33
+    },
+    {
+      "time": "01 Sep 2025 03:52 PM",
+      "score": 10
+    },
+    {
+      "time": "02 Sep 2025 02:49 AM",
+      "score": 5
+    },
+    {
+      "time": "02 Sep 2025 03:15 AM",
+      "score": 0
+    },
+    {
+      "time": "02 Sep 2025 03:56 AM",
+      "score": 5
+    },
+    {
+      "time": "02 Sep 2025 04:34 AM",
+      "score": 1.67
+    },
+    {
+      "time": "02 Sep 2025 06:57 AM",
+      "score": 3.33
+    },
+    {
+      "time": "02 Sep 2025 07:18 AM",
+      "score": 11.67
+    },
+    {
+      "time": "05 Sep 2025 03:03 AM",
+      "score": 16.67
+    },
+    {
+      "time": "05 Sep 2025 03:19 AM",
+      "score": 16.67
+    },
+    {
+      "time": "05 Sep 2025 04:03 AM",
+      "score": 20
+    },
+    {
+      "time": "05 Sep 2025 04:40 AM",
+      "score": 10
+    },
+    {
+      "time": "06 Sep 2025 03:43 PM",
+      "score": 0
+    },
+    {
+      "time": "06 Sep 2025 03:52 PM",
+      "score": 0
+    }
+  ],
+  "overall_time_management": [
+    {
+      "time": "23 Aug 2025 02:53 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 2,
+        "total_time_taken_by_candidate": "00:01:42"
+      }
+    },
+    {
+      "time": "23 Aug 2025 03:13 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:02:02"
+      }
+    },
+    {
+      "time": "24 Aug 2025 02:14 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:02:16"
+      }
+    },
+    {
+      "time": "24 Aug 2025 05:44 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:07:20"
+      }
+    },
+    {
+      "time": "24 Aug 2025 06:11 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:04:22"
+      }
+    },
+    {
+      "time": "24 Aug 2025 06:20 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:01:44"
+      }
+    },
+    {
+      "time": "24 Aug 2025 08:02 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:46"
+      }
+    },
+    {
+      "time": "24 Aug 2025 08:30 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:03:40"
+      }
+    },
+    {
+      "time": "24 Aug 2025 08:39 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:02:03"
+      }
+    },
+    {
+      "time": "25 Aug 2025 04:45 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:01:17"
+      }
+    },
+    {
+      "time": "25 Aug 2025 05:16 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:02:42"
+      }
+    },
+    {
+      "time": "25 Aug 2025 06:10 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:03:19"
+      }
+    },
+    {
+      "time": "25 Aug 2025 06:18 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:39"
+      }
+    },
+    {
+      "time": "25 Aug 2025 03:49 PM",
+      "time_management": {
+        "fail": 1,
+        "pass": 5,
+        "total_time_taken_by_candidate": "00:07:50"
+      }
+    },
+    {
+      "time": "25 Aug 2025 04:23 PM",
+      "time_management": {
+        "fail": 2,
+        "pass": 4,
+        "total_time_taken_by_candidate": "00:11:58"
+      }
+    },
+    {
+      "time": "26 Aug 2025 06:52 AM",
+      "time_management": {
+        "fail": 1,
+        "pass": 5,
+        "total_time_taken_by_candidate": "00:05:25"
+      }
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 5,
+        "total_time_taken_by_candidate": "00:00:30"
+      }
+    },
+    {
+      "time": "27 Aug 2025 12:20 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 5,
+        "total_time_taken_by_candidate": "00:01:09"
+      }
+    },
+    {
+      "time": "01 Sep 2025 09:17 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 5,
+        "total_time_taken_by_candidate": "00:00:18"
+      }
+    },
+    {
+      "time": "01 Sep 2025 11:25 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:23"
+      }
+    },
+    {
+      "time": "01 Sep 2025 11:30 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:21"
+      }
+    },
+    {
+      "time": "01 Sep 2025 11:35 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:28"
+      }
+    },
+    {
+      "time": "01 Sep 2025 12:14 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:02:06"
+      }
+    },
+    {
+      "time": "01 Sep 2025 12:38 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:18"
+      }
+    },
+    {
+      "time": "01 Sep 2025 12:42 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:09"
+      }
+    },
+    {
+      "time": "01 Sep 2025 12:49 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:26"
+      }
+    },
+    {
+      "time": "01 Sep 2025 12:53 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:03:07"
+      }
+    },
+    {
+      "time": "01 Sep 2025 01:04 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:02:30"
+      }
+    },
+    {
+      "time": "01 Sep 2025 02:38 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:16"
+      }
+    },
+    {
+      "time": "01 Sep 2025 02:42 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:15"
+      }
+    },
+    {
+      "time": "01 Sep 2025 02:50 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:01:11"
+      }
+    },
+    {
+      "time": "01 Sep 2025 03:27 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:37"
+      }
+    },
+    {
+      "time": "01 Sep 2025 03:30 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:02:38"
+      }
+    },
+    {
+      "time": "01 Sep 2025 03:35 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:02:09"
+      }
+    },
+    {
+      "time": "01 Sep 2025 03:40 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:01:18"
+      }
+    },
+    {
+      "time": "01 Sep 2025 03:52 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:54"
+      }
+    },
+    {
+      "time": "02 Sep 2025 02:49 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:02:35"
+      }
+    },
+    {
+      "time": "02 Sep 2025 03:15 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:01:18"
+      }
+    },
+    {
+      "time": "02 Sep 2025 03:56 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:02:03"
+      }
+    },
+    {
+      "time": "02 Sep 2025 04:34 AM",
+      "time_management": {
+        "fail": 1,
+        "pass": 5,
+        "total_time_taken_by_candidate": "00:03:42"
+      }
+    },
+    {
+      "time": "02 Sep 2025 06:57 AM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:03:56"
+      }
+    },
+    {
+      "time": "02 Sep 2025 07:18 AM",
+      "time_management": {
+        "fail": 2,
+        "pass": 4,
+        "total_time_taken_by_candidate": "00:05:59"
+      }
+    },
+    {
+      "time": "05 Sep 2025 03:03 AM",
+      "time_management": {
+        "fail": 1,
+        "pass": 3,
+        "total_time_taken_by_candidate": "00:07:31"
+      }
+    },
+    {
+      "time": "05 Sep 2025 03:19 AM",
+      "time_management": {
+        "fail": 1,
+        "pass": 2,
+        "total_time_taken_by_candidate": "00:07:40"
+      }
+    },
+    {
+      "time": "05 Sep 2025 04:03 AM",
+      "time_management": {
+        "fail": 1,
+        "pass": 1,
+        "total_time_taken_by_candidate": "00:04:32"
+      }
+    },
+    {
+      "time": "05 Sep 2025 04:40 AM",
+      "time_management": {
+        "fail": 2,
+        "pass": 4,
+        "total_time_taken_by_candidate": "00:09:15"
+      }
+    },
+    {
+      "time": "06 Sep 2025 03:43 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:00:54"
+      }
+    },
+    {
+      "time": "06 Sep 2025 03:52 PM",
+      "time_management": {
+        "fail": 0,
+        "pass": 6,
+        "total_time_taken_by_candidate": "00:01:56"
+      }
+    }
+  ]
 }

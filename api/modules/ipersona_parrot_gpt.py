@@ -450,7 +450,7 @@ async def helper_func(
     run_stage, 
     question_count,
     chat_count, 
-    count: int, 
+    count, 
     question_type: str, 
     section: list, 
     data: dict, 
@@ -811,6 +811,8 @@ def process_audio_and_save_external(
                             all_user_id, 
                             tinder_user_profile_id, 
                             job_profile_id,
+                            challenge_id,
+                            0,  # template_id (not available in this context)
                             type
                         )
                     )
@@ -1205,8 +1207,25 @@ def identify_class(all_class: list, jd: str) -> dict:
 def time_to_seconds(time_str):
     """Convert time in 'HH:MM:SS' or 'MM:SS' format to seconds."""
     try:
+        # Handle null/None values
+        if time_str is None or time_str == "null" or time_str == "null":
+            return 0
+            
         if not time_str or time_str == "00:00" or time_str == "00:00:00":
             return 0
+        
+        # Handle text-based time formats like "1 minute", "2 minutes", etc.
+        if isinstance(time_str, str) and "minute" in time_str.lower():
+            import re
+            # Extract number from text like "1 minute", "2 minutes"
+            match = re.search(r'(\d+)', time_str)
+            if match:
+                minutes = int(match.group(1))
+                return minutes * 60
+            else:
+                return 0
+        
+        # Handle colon-separated formats
         time_parts = time_str.split(':')
         
         if len(time_parts) == 2:
@@ -1582,21 +1601,32 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 challenge_id = challenge_id, 
                 nopp=True, 
                 dataframe=False)
-        
+
         # Add comprehensive null check
         if session_chatobserver is None:
             logger.error(f"Database query returned None for user {tinder_user_profile_id}")
             logger.error(f"Query parameters - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}")
             return f'Error: No session data found for the given parameters'
         
-        if not session_chatobserver.get("error"): 
+        # Handle both list and dict cases from database query
+        session_id = None
+        if isinstance(session_chatobserver, list) and len(session_chatobserver) > 0:
+            # Database returned a list - take the first item
+            session_data = session_chatobserver[0]
+            if isinstance(session_data, dict) and not session_data.get("error"):
+                logger.info(f"Session job overall observer data exists, so updating the data")          
+                session_chatobserver_sessions = session_data['all_sessions']
+                session_id = session_data['id']
+            else:
+                session_chatobserver_sessions = None
+        elif isinstance(session_chatobserver, dict) and not session_chatobserver.get("error"):
             logger.info(f"Session job overall observer data exists, so updating the data")          
-      
             session_chatobserver_sessions = session_chatobserver['all_sessions']
-            
-            logger.info(f"Value of session_overall_observer_by_user_and_job: {len(session_chatobserver_sessions)}")
-                
-            if len(session_chatobserver_sessions) > 0:
+            session_id = session_chatobserver['id']
+        else:
+            session_chatobserver_sessions = None
+        
+        if session_chatobserver_sessions and len(session_chatobserver_sessions) > 0:
                 logger.info(f"Updating session job overall observer data")
                 new_overall_data = {
                     "overall_confidence": confidence_overtime,
@@ -1610,7 +1640,7 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 update_overall_data = append_new_session_metrics(existing_overall_data, new_overall_data)
                             
                 message_data = {
-                    "i_persona_session_overall_observer_id": session_chatobserver['id'], 
+                    "i_persona_session_overall_observer_id": session_id, 
                     "attributes": update_overall_data,
                     "i_persona_observers": obs_ids
                 }
@@ -1675,7 +1705,6 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
     
     except Exception as e:
         logger.error(f"Process failed: {str(e)}")
-        logger.error(f"Function parameters - run_stage: {run_stage}, userdata: {userdata}, data_length: {len(data) if data else 0}")
         logger.error(f"Exception type: {type(e).__name__}")
         return f'Error: {str(e)}'    
 
@@ -1789,14 +1818,25 @@ async def calculate_overall_progress_external(
         session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(user_profile_id=tinder_user_profile_id, job_profile_id=job_profile_id, nopp=True, dataframe=False)
        
         
-        if not session_chatobserver.get("error"): 
+        # Handle both list and dict cases from database query
+        session_id = None
+        if isinstance(session_chatobserver, list) and len(session_chatobserver) > 0:
+            # Database returned a list - take the first item
+            session_data = session_chatobserver[0]
+            if isinstance(session_data, dict) and not session_data.get("error"):
+                logger.info(f"Session job overall observer data exists, so updating the data")          
+                session_chatobserver_sessions = session_data['all_sessions']
+                session_id = session_data['id']
+            else:
+                session_chatobserver_sessions = None
+        elif isinstance(session_chatobserver, dict) and not session_chatobserver.get("error"):
             logger.info(f"Session job overall observer data exists, so updating the data")          
-      
             session_chatobserver_sessions = session_chatobserver['all_sessions']
+            session_id = session_chatobserver['id']
+        else:
+            session_chatobserver_sessions = None
             
-            logger.info(f"Value of session_overall_observer_by_user_and_job: {len(session_chatobserver_sessions)}")
-                
-            if len(session_chatobserver_sessions) > 0:
+        if session_chatobserver_sessions and len(session_chatobserver_sessions) > 0:
                 logger.info(f"Updating session job overall observer data")
                 attributes = {
                     "overall_confidence": confidence_overtime,
@@ -1808,7 +1848,7 @@ async def calculate_overall_progress_external(
                 }
                             
                 overall_data = {
-                    "i_persona_session_overall_observer_id": session_chatobserver['id'], 
+                    "i_persona_session_overall_observer_id": session_id, 
                     "attributes": attributes,
                 }
                 response = ipersona_overall.update_session(params=overall_data, nopp=True, dataframe=False, return_object=True)
@@ -2086,6 +2126,32 @@ def add_template_columns(
         output = [] 
 
 #-------------------------------------------- user engagment jobs --------------------------------------------
+from typing import Any, Dict, List, Optional
+
+def simplify_templates(templates: Any) -> List[Dict[str, Optional[str]]]:
+    if not isinstance(templates, list):
+        return []
+
+    simplified: List[Dict[str, Optional[str]]] = []
+    for item in templates:
+        try:
+            if not isinstance(item, dict):
+                continue
+
+            template_id = item.get("id")
+            attrs = item.get("attributes") if isinstance(item.get("attributes"), dict) else {}
+
+            simplified.append({
+                "template_id": str(template_id) if template_id is not None else None,
+                "name": attrs.get("name") if isinstance(attrs.get("name"), (str, type(None))) else None,
+                "tag": attrs.get("tag") if isinstance(attrs.get("tag"), (str, type(None))) else None,
+                "description": attrs.get("description") if isinstance(attrs.get("description"), (str, type(None))) else None,
+            })
+        except Exception:
+            continue
+
+    return simplified
+
 def summarize_interviews(
     run_stage,
     user_profile_id, 
@@ -2339,12 +2405,14 @@ def summarize(
 
         summary_map = defaultdict(list)
 
-        # Step 1: Group by either job_profile_id or challenge_id
+        # Step 1: Group by either job_profile_id, challenge_id, or template_id
         for record in data:
             if record.get("job_profile_id") not in (None, 0):
                 key = ("job", record["job_profile_id"])
             elif record.get("challenge_id") not in (None, 0):
                 key = ("challenge", record["challenge_id"])
+            elif record.get("template_id") not in (None, 0):  # NEW: Template-only sessions
+                key = ("template", record["template_id"])
             else:
                 continue  # skip invalid record
             summary_map[key].append(record)
@@ -2379,6 +2447,7 @@ def summarize(
                     "score": average_score,
                     "job_profile_id": profile_id,
                     "challenge_id": None,
+                    "template_id": None,
                     "user_profile_id": user_profile_id,
                     "reaction_id": reaction_id
                 })
@@ -2393,6 +2462,37 @@ def summarize(
                     "score": average_score,
                     "job_profile_id": None,
                     "challenge_id": profile_id,
+                    "template_id": None,
+                    "user_profile_id": user_profile_id,
+                    "reaction_id": ''
+                })
+
+            elif interview_type == "template":
+                # Fetch template title/name
+                ipersona_template = IpersonaTinderTemplateSchema(run_stage=run_stage)
+                template_data = ipersona_template.get_tinder_template_id(templateId=profile_id, nopp=True, dataframe=False)
+                
+                # Safety check for template_data
+                if template_data:
+                    if isinstance(template_data, list) and len(template_data) > 0:
+                        title = template_data[0]["attributes"].get("name", "Unknown Template")
+                    elif isinstance(template_data, dict) and "attributes" in template_data:
+                        title = template_data["attributes"].get("name", "Unknown Template")
+                    else:
+                        title = "Unknown Template"
+                        print(f"Warning: Unexpected template data format for template_id: {profile_id}")
+                else:
+                    title = "Unknown Template"
+                    print(f"Warning: No template data found for template_id: {profile_id}")
+                
+                summary_response.append({
+                    "type": "template",
+                    "title": title,
+                    "interview_count": len(records),
+                    "score": average_score,
+                    "job_profile_id": None,
+                    "challenge_id": None,
+                    "template_id": profile_id,
                     "user_profile_id": user_profile_id,
                     "reaction_id": ''
                 })
@@ -4244,9 +4344,6 @@ def check_if_session_exists(
                 dataframe=False
             )
         data = extracted_needed_metrics(session_data)
-        print("************************************::::::::::::******************************")
-        print(data)
-        print("************************************::::::::::::******************************")
         def extract_session_summary(item):
             return {
                 "id": item.get('session_id'),
@@ -4279,7 +4376,9 @@ def check_if_session_exists(
                             (challenge_id and challenge_id != 0) or (job_id and job_id != 0)
                         ):
                             return extract_session_summary(item)
-
+                            
+                        elif template_id and user_id and job_id == 0 and challenge_id == 0:
+                            return extract_session_summary(item)
                     elif generate:
                         if template_id == 0 and user_id and job_id != 0:
                             return extract_session_summary(item)
@@ -4295,6 +4394,7 @@ def check_if_session_exists(
     except Exception as e:
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
+  
   
 # --------------------------------------------- Helper Functions -------------------------------------------- #
 def fetch_the_structure(type):
@@ -4841,3 +4941,62 @@ def attach_session_id_to_a_template(template_id, session_id):
     except Exception as e:  
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
+
+# ---------------------------------------- AUDIO PATH ----------------------------------------
+def get_project_root() -> str:
+    """Get the project root directory.
+    
+    Returns:
+        Absolute path to project root
+    """
+    # Get the directory containing this file (utils/)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # Go up one level to get project root
+    return os.path.dirname(current_dir) 
+
+def audio_path(relative_path: str) -> str:
+    """Get absolute path to prompt file.
+    
+    Args:
+        relative_path: Relative path from prompts directory
+        
+    Returns:
+        Absolute path to prompt file
+    """
+    return os.path.join(get_project_root(), "audio", relative_path)
+
+def prompt_path(relative_path: str) -> str:
+    """Get absolute path to prompt file.
+    
+    Args:
+        relative_path: Relative path from prompts directory
+        
+    Returns:
+        Absolute path to prompt file
+    """
+    # get_project_root() currently points to the 'api' directory, so do NOT prepend another 'api'
+    return os.path.join(get_project_root(), "pages", "ipersona", "routers", "data", "prompts", relative_path)
+
+def get_data_audio_path(filename: str = "") -> str:
+    """
+    Return the absolute path to the data/audio directory in the project root.
+    If filename is provided, return the path to that file inside data/audio.
+    """
+    base = os.path.join(get_project_root(), 'audio')
+    return os.path.join(base, filename) if filename else base
+    
+def convert_to_mp3(input_bytes: bytes, original_format: str) -> bytes:
+    logger.info(f"Starting conversion of format: {original_format}")
+    try:
+        from pydub import AudioSegment
+        import io
+        audio = AudioSegment.from_file(io.BytesIO(input_bytes), format=original_format)
+        mp3_io = io.BytesIO()
+        audio.export(mp3_io, format="mp3")
+        mp3_bytes = mp3_io.getvalue()
+        logger.info(f"Conversion successful. Original size: {len(input_bytes) / 1024 / 1024:.2f} MB | MP3 size: {len(mp3_bytes) / 1024 / 1024:.2f} MB")
+        return mp3_bytes
+    except Exception as e:
+        logger.error(f"Error during mp3 conversion: {e}")
+        raise
+

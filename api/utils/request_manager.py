@@ -648,6 +648,7 @@ class JobReactionManager(JobManagerBase):
             'challenge_id': {'label': 'Challenge ID', 'ctype': 'string', 'options': []},
             'job_profile_id': {'label': 'Job Profile ID', 'ctype': 'string', 'options': []},
             'user_profile_id': {'label': 'User Profile ID', 'ctype': 'string', 'options': []},
+            'template_id': {'label': 'Template ID', 'ctype': 'string', 'options': []},
             # 'context_id': {'label': 'Context ID', 'ctype': 'string', 'options': []},
             'interview_count': {'label': 'Interview Count', 'ctype': 'number', 'options': []},
             'type': {'label': 'Type', 'ctype': 'number', 'options': []},
@@ -669,6 +670,39 @@ class JobReactionManager(JobManagerBase):
             self.engagement_all_columns[x]['icon'] = self.uiuxbt.create_link_icon()
         for x in expand_icon:
             self.engagement_all_columns[x]['icon'] = self.uiuxbt.create_expand_icon("user_profile_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+
+        # Colums configuration for the admin tinder template info
+        desktop_view = ['name', 'tag', 'description', 'expand']
+        tablet_view = ['name', 'tag', 'description', 'expand']
+        mobile_view = ['name', 'tag', 'description', 'expand']
+        sorting = ['name', 'tag', 'description', 'expand']
+        link_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+
+        self.tinder_template_columns = {
+            'template_id': {'label': 'Template ID', 'ctype': 'string', 'options': []},
+            'name': {'label': 'Name', 'ctype': 'string', 'options': []},
+            'tag': {'label': 'Tag', 'ctype': 'string', 'options': []},
+            'description': {'label': 'Description', 'ctype': 'string', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]},
+        }
+        
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.tinder_template_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.tinder_template_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.tinder_template_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.tinder_template_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.tinder_template_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.tinder_template_columns[x]['icon'] = self.uiuxbt.create_expand_icon("template_id")
         for x in keep_columns:
             self.keep_columns.append(x)
 
@@ -867,6 +901,8 @@ class JobReactionManager(JobManagerBase):
                 colmap = self.challenge_by_template_columns
             elif kind == 'interview_by_template':
                 colmap = self.interview_by_template_columns
+            elif kind == 'tinder_template':
+                colmap = self.tinder_template_columns
 
             for c, cval in colmap.items():
                 cval['name'] = c

@@ -1836,6 +1836,32 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
             logger.error(f"Error filtering by user profile ID {user_profile_id} and job profile ID {challenge_id}: {str(e)}")
             return {'error': f"Error processing request: {str(e)}"}
 
+    def filter_by_with_user_and_template_id(self, user_profile_id, template_id, **kwargs):
+        try:
+            session_overall_observer_filter = f"""
+                filters: {{
+                    tinder_user_profile : {{ id: {{ eq: {user_profile_id} }} }},
+                    tinder_template : {{ id: {{ eq: {template_id} }} }}
+                }}
+            """
+            data_json = self.get_all_objects(filter=session_overall_observer_filter, **kwargs)
+        
+            if not data_json:
+                logger.warn(f"No data returned for user profile ID: {user_profile_id} and template ID: {template_id}")
+                return None
+
+            data = self.get_extracted_from_user_job_data(data_json)
+            
+            if not data:
+                logger.warn(f"No extracted data found for user profile ID: {user_profile_id} and template ID: {template_id}")
+                return None
+            
+            return data
+
+        except Exception as e:
+            logger.error(f"Error filtering by user profile ID {user_profile_id} and template ID {template_id}: {str(e)}")
+            return {'error': f"Error processing request: {str(e)}"}
+
     def save_Session_Overall_Observer(self, params, **kwargs):
         try:
             session_json = self.save_or_update_object(params, **kwargs)

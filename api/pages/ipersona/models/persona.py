@@ -24,6 +24,7 @@ class OverallRequestRecieved(MyBaseModel):
     all_user_id: int
     job_profile_id: int
     challenge_id: int
+    template_id: Optional[int] = None
 
 class UpdateSessionModeRequestReceieved(MyBaseModel):
     sessionId: int
@@ -217,3 +218,10 @@ class ChallengeRequestFiltering(MyBaseModel):
 class UpdateSessionModeRequestReceieved(MyBaseModel):
     sessionId: int
     mode: str
+
+class GetAllTinderTemplateRequestRecieved(MyBaseModel):
+    cursor: Optional[Dict] = {}
+    since: Optional[int] = default_days_since
+    limit: Optional[int] = default_limit
+    run_stage: Optional[str] = "dev"
+    filter: Optional[Dict] = {}
