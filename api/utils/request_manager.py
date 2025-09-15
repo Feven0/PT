@@ -633,10 +633,10 @@ class JobReactionManager(JobManagerBase):
 
 
         # Table column views for different devices - Template Engagement
-        desktop_view = ['template_title', 'template_type', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
-        tablet_view = ['template_title', 'template_type', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
-        mobile_view = ['template_title', 'template_type', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
-        sorting = ['template_title', 'template_type', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count']
+        desktop_view = ['template_title', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        tablet_view = ['template_title', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        mobile_view = ['template_title', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        sorting = ['template_title', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count']
         link_icon = []
         # download_icon = []
         expand_icon = ["expand"]
@@ -646,7 +646,6 @@ class JobReactionManager(JobManagerBase):
         self.template_engagement_columns = {
             'template_id': {'label': 'Template ID', 'ctype': 'string', 'options': []},
             'template_title': {'label': 'Template Title', 'ctype': 'string', 'options': []},
-            'template_type': {'label': 'Template Type', 'ctype': 'string', 'options': []},
             'complete_interviews_count': {'label': 'Complete Interview Count', 'ctype': 'number', 'options': []},
             'incomplete_interviews_count': {'label': 'Incomplete Interview Count', 'ctype': 'number', 'options': []},
             'total_interviews_count': {'label': 'Total Interview Count', 'ctype': 'number', 'options': []},

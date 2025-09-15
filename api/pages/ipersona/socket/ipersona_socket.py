@@ -550,9 +550,7 @@ async def interview_endpoint(sid, data):
     """
     try:
         logger.info(f"Received interview request with template_id: {data.get('template_id')}, job: {data.get('job_profile_id', None)}, challenge: {data.get('challenge_id', None)}")
-        print("----------------------------------------ppp----------------------------------------")
-        print(data)
-        print("----------------------------------------ppp----------------------------------------")
+     
         # Validate input data
         if not isinstance(data, dict):
             error_msg = "Invalid data format: expected a dictionary"
