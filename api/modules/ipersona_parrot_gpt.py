@@ -2191,12 +2191,13 @@ def summarize_interviews(
             dataframe=False,
             **kwargs
         )
-
+        #return data, cursors
         if not data:
             output = add_engagement_columns([], cursor, kind='jobs', **kwargs)
             return output, cursors
 
         data = extracted_needed_metrics(data)
+        # return data, cursors
         if not data:
             logger.info("The given trainee has no observer data after metric extraction.")
             return add_engagement_columns([], cursor, kind='jobs', **kwargs), cursors
@@ -2385,10 +2386,10 @@ def summarize_challenge_interviews(
 
 def summarize_template_interviews(
     run_stage,
-    user_profile_id, 
+    user_profile_id,
     filter,
     cursor,
-    since, 
+    since,
     limit,
     information_level,
     return_skip
@@ -2399,15 +2400,15 @@ def summarize_template_interviews(
         kwargs = {**query_filter}
 
         data, cursors = ipersona_session.filter_by_tinder_user_profile_id(
-            user_profile_id=user_profile_id, 
-            cursor=cursor, 
-            since=since, 
-            limit=limit, 
-            nopp=True, 
+            user_profile_id=user_profile_id,
+            cursor=cursor,
+            since=since,
+            limit=limit,
+            nopp=True,
             dataframe=False,
             **kwargs
         )
-
+        # return data, cursors
         if not data:
             logger.info("No session data found.")
             return add_engagement_columns([], cursor, kind='template', **kwargs), cursors
@@ -2447,30 +2448,30 @@ def summarize_template_interviews(
                 if complete_count > 0 else "N/A"
             )
 
+            template_title = "Unknown Template"
             try:
-                ipersona_template = IpersonaTinderTemplateSchema(run_stage=run_stage)
+                ipersona_template = None
+                try:
+                    ipersona_template = IpersonaTinderTemplateSchema(run_stage=run_stage)
+                except Exception:
+                    ipersona_template = IpersonaTinderTemplateSchema()
+
                 template_data = ipersona_template.get_tinder_template_id(
                     templateId=template_id,
-                    return_object=True,
                     nopp=True,
                     dataframe=False
                 )
 
-                if not template_data or not isinstance(template_data, dict):
-                    logger.warning(f"Template data not found or invalid for template_id {template_id}")
-                    continue
-
-                template_title = template_data.get("attributes", {}).get("name", "")
-                template_type = template_data.get("attributes", {}).get("type", "")
-
+                if isinstance(template_data, list) and len(template_data) > 0 and isinstance(template_data[0], dict):
+                    template_title = template_data[0].get("attributes", {}).get("name", "Unknown Template")
+                elif isinstance(template_data, dict):
+                    template_title = template_data.get("attributes", {}).get("name", "Unknown Template")
             except Exception as e:
                 logger.error(f"Failed to fetch template data for template_id {template_id}: {e}")
-                continue
 
             summary_response.append({
                 "template_id": template_id,
                 "template_title": template_title,
-                "template_type": template_type,
                 "complete_interviews_count": complete_count,
                 "incomplete_interviews_count": incomplete_count,
                 "total_interviews_count": complete_count + incomplete_count,
@@ -2629,14 +2630,20 @@ def extracted_needed_metrics(data):
         extracted_observers = []  
         
         for session in data:
-            extracted_session = {}              
-            # Extract session id
-            extracted_session['session_id'] = session['id']
+            if not isinstance(session, dict):
+                continue
+            extracted_session = {}
+            
+            # Extract session id safely
+            extracted_session['session_id'] = session.get('id')
+            
+            # Get attributes safely
+            attributes = session.get('attributes') or {}
             
             # Get observer data and session status
-            observer_data = session['attributes'].get('i_persona_observer', {}).get('data')
-            session_status = session['attributes'].get('status', 'Incomplete')
-            metadata = session.get('attributes').get('metadata')
+            observer_data = attributes.get('i_persona_observer', {}).get('data')
+            session_status = attributes.get('status', 'Incomplete')
+            metadata = attributes.get('metadata') or {}
             
             if session_status == 'Deleted':
                 extracted_session['complete_status'] = 'deleted'
@@ -2675,8 +2682,7 @@ def extracted_needed_metrics(data):
                 extracted_session['engagement'] = None
 
             # Extract additional session details
-            attributes = session.get('attributes', {})
-
+            # attributes already defined
             extracted_session['createdAt'] = attributes.get('createdAt')
 
             extracted_session['job_profile_id'] = (
@@ -3058,6 +3064,7 @@ def summarize_allusers_data(run_stage, data):
         for user_profile_id, records in user_summary.items():
             job_profile_ids = set()
             challenge_ids = set()
+            template_ids = set()
             complete_sessions_count = 0
             incomplete_sessions_count = 0
             total_interview_score = 0
@@ -3072,6 +3079,10 @@ def summarize_allusers_data(run_stage, data):
 
                 if challenge_id:
                     challenge_ids.add(challenge_id)
+
+                template_id = record.get('template_id')
+                if template_id:
+                    template_ids.add(template_id)
 
                 if record.get('complete_status') is True:
                     complete_sessions_count += 1
@@ -3110,6 +3121,7 @@ def summarize_allusers_data(run_stage, data):
                 "nationality": userdata.get('nationality', 'Unknown'),
                 "job_count": len(job_profile_ids),
                 "challenge_count": len(challenge_ids),
+                "template_count": len(template_ids),
                 "total_interviews_count": total_interviews_count,
                 "complete_sessions_count": complete_sessions_count,
                 "incomplete_sessions_count": incomplete_sessions_count,

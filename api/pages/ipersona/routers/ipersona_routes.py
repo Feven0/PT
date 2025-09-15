@@ -692,7 +692,7 @@ def calculate_engagement_jobs_status(request: pemodel.AllUserSessionRequestRecie
             information_level=information_level,
             return_skip=return_skip            
         )
-
+        # return data
         logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
 
         
@@ -837,8 +837,7 @@ def calculate_engagement_template_status(request: pemodel.AllUserSessionRequestR
     """
     Calculate interview engagement status for a user across all templates.
     
-    Retrieves and summarizes a user's engagement with interview sessions for
-    different template categories.
+    Retrieves and summarizes a user's engagement with interview sessions grouped by template.
     
     Parameters
     ----------
@@ -869,7 +868,7 @@ def calculate_engagement_template_status(request: pemodel.AllUserSessionRequestR
         }
         
     try:
-        logger.info(f"Calculating engagement status for user ID: {request.all_user_id}")
+        logger.info(f"Calculating template engagement status for user ID: {request.all_user_id}")
         
         # Step 1: Fetch trainee profile data
         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
@@ -907,7 +906,7 @@ def calculate_engagement_template_status(request: pemodel.AllUserSessionRequestR
         limit = max(request.limit, 1)  # Ensure minimum value of 1
         cursor = request.cursor
 
-        # Step 3: Fetch and summarize interview data
+        # Step 3: Fetch and summarize interview data grouped by templates
         data, cursor = util.summarize_template_interviews(
             run_stage,                                                 
             tinder_user_profile_id, 
@@ -918,12 +917,10 @@ def calculate_engagement_template_status(request: pemodel.AllUserSessionRequestR
             information_level=information_level,
             return_skip=return_skip            
         )
+        # return data
+        logger.info(f"Template engagement summary completed for user ID: {request.all_user_id}")
 
-        logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
-
-        
         # Step 4: Prepare response
-        # if data:
         return {
             "all_user_id": request.all_user_id,
             "templates": data, 
@@ -932,7 +929,7 @@ def calculate_engagement_template_status(request: pemodel.AllUserSessionRequestR
         }
 
     except Exception as e:
-        logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
+        logger.error(f"Error calculating template engagement status: {str(e)}", exc_info=True)
         return {
             "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
             "templates": [],  

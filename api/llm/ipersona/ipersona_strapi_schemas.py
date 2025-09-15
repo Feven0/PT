@@ -164,6 +164,7 @@ class IpersonaSessionSchema(LeapBaseClass):
     
     def filter_by_tinder_user_profile_id(self, user_profile_id, cursor={}, since=None, limit=None, **kwargs):
         try:
+            print("=============================", user_profile_id)
             if not user_profile_id:
                 logger.error("User Profile ID is missing!")
                 return None
@@ -183,7 +184,7 @@ class IpersonaSessionSchema(LeapBaseClass):
 
             # Step 3: Fetch data with the filter
             data_json, cursors = self.get_all_objects(filter=session_filter, cursor=cursor, **kwargs)
-
+            # return data_json, cursors
             # Step 4: Extract session data
             data = self.get_sessions_data(data_json)
 
@@ -1731,6 +1732,11 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
                                 id
                             }
                         }
+                        tinder_template {
+                            data {
+                                id
+                            }
+                        }
                         challenge_document {
                             data {
                                 id
@@ -1750,7 +1756,8 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
             "tinder_user_profile": "ID",
             "tinder_job_profile": "ID",
             "i_persona_observers": "ID",
-            "challenge_document": "ID"    
+            "challenge_document": "ID",
+            "tinder_template": "ID"    
          }
 
         self.id_names_map = {  }
@@ -1845,7 +1852,7 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
                 }}
             """
             data_json = self.get_all_objects(filter=session_overall_observer_filter, **kwargs)
-        
+
             if not data_json:
                 logger.warn(f"No data returned for user profile ID: {user_profile_id} and template ID: {template_id}")
                 return None
