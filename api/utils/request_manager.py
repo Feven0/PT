@@ -632,6 +632,45 @@ class JobReactionManager(JobManagerBase):
             self.keep_columns.append(x)
 
 
+        # Table column views for different devices - Template Engagement
+        desktop_view = ['template_title', 'template_type', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        tablet_view = ['template_title', 'template_type', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        mobile_view = ['template_title', 'template_type', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count', 'expand']
+        sorting = ['template_title', 'template_type', 'score', 'complete_interviews_count', 'incomplete_interviews_count', 'total_interviews_count']
+        link_icon = []
+        # download_icon = []
+        expand_icon = ["expand"]
+        keep_columns = ["expand"]
+
+        # Columns configuration for template engagement
+        self.template_engagement_columns = {
+            'template_id': {'label': 'Template ID', 'ctype': 'string', 'options': []},
+            'template_title': {'label': 'Template Title', 'ctype': 'string', 'options': []},
+            'template_type': {'label': 'Template Type', 'ctype': 'string', 'options': []},
+            'complete_interviews_count': {'label': 'Complete Interview Count', 'ctype': 'number', 'options': []},
+            'incomplete_interviews_count': {'label': 'Incomplete Interview Count', 'ctype': 'number', 'options': []},
+            'total_interviews_count': {'label': 'Total Interview Count', 'ctype': 'number', 'options': []},
+            'score': {'label': 'Score', 'ctype': 'string', 'options': []},
+            'expand': {'label':'Detail', 'ctype':'expand', 'csource':'details','cformat':'page', 'options':[]}
+        }
+        
+        # Set column visibility for different devices and icons
+        for x in desktop_view:
+            self.template_engagement_columns[x]['indesktop'] = True
+        for x in tablet_view:
+            self.template_engagement_columns[x]['intablet'] = True
+        for x in mobile_view:
+            self.template_engagement_columns[x]['inmobile'] = True
+        for x in sorting:
+            self.template_engagement_columns[x]['sorting'] = False
+        for x in link_icon:
+            self.template_engagement_columns[x]['icon'] = self.uiuxbt.create_link_icon()
+        for x in expand_icon:
+            self.template_engagement_columns[x]['icon'] = self.uiuxbt.create_expand_icon("template_id")
+        for x in keep_columns:
+            self.keep_columns.append(x)
+
+
         # Table column views for different devices
         desktop_view = ['interview_count', 'type', 'title', 'score', 'expand']
         tablet_view = ['interview_count', 'type', 'title', 'score', 'expand']
@@ -854,6 +893,8 @@ class JobReactionManager(JobManagerBase):
                 colmap = self.challenge_columns 
             elif kind == 'engagment-all':
                 colmap = self.engagement_all_columns 
+            elif kind == 'template':
+                colmap = self.template_engagement_columns 
 
             for c, cval in colmap.items():
                 cval['name'] = c

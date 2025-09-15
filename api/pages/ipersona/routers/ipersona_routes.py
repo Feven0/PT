@@ -75,9 +75,16 @@ async def health_check():
         run_stage = 'dev'
         updated_mode = util.updating_session_mode(sessionId, mode, run_stage)
         user_profile_id = 197
-        template_id = 126
+        template_id = 129
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        session = ipersona_session.filter_by_with_user_template_id(
+                    user_profile_id=197,
+                    template_id=129, 
+                    nopp=True, 
+                    dataframe=False
+                    ) 
        
-        return updated_mode
+        return session
     except Exception as e:
         logger.error(f"Error in health check: {str(e)}")
         return JSONResponse(
@@ -246,7 +253,12 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             external, 
             challenge, 
             generate)
-
+        
+        print(f"session_template::: {template}")
+        print(f"session_challenge::: {challenge}")
+        print(f"session_generate::: {generate}")
+        print(f"session_external::: {external}")
+        
         if session_incomplete:
             logger.info(f"Incomplete session already exists for user ID: {all_user_id}")
             session_data = sanitize_create_user_session_response(session_incomplete)
@@ -255,6 +267,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         else:          
             response = await util.create_session_logics(
                 run_stage, 
+                mode,
                 template, 
                 external, 
                 challenge, 
@@ -815,6 +828,114 @@ def calculate_engagement_challenge_status(request: pemodel.AllUserSessionRequest
         return {
             "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
             "challenges": [],  
+            "status": 500, 
+            "message": str(e)
+        }
+
+@routes.post("/engagement_template_status", tags=["Session Endpoints"])
+def calculate_engagement_template_status(request: pemodel.AllUserSessionRequestRecieved):
+    """
+    Calculate interview engagement status for a user across all templates.
+    
+    Retrieves and summarizes a user's engagement with interview sessions for
+    different template categories.
+    
+    Parameters
+    ----------
+    request : pemodel.AllUserSessionRequestRecieved
+        Object containing:
+        - all_user_id: User identifier
+        - filter: Optional query filters
+        - return_skip: Flag to include skipped items
+        - information_level: Detail level for results
+        - since: Starting point for pagination
+        - limit: Maximum number of items to return
+        - cursor: Pagination cursor
+        
+    Returns
+    -------
+    Dict[str, Any]
+        Engagement summary data or error response
+    """
+    run_stage = request.run_stage
+
+    if not request or not request.all_user_id:
+        logger.error("Invalid request: Missing user ID")
+        return {
+            "all_user_id": [],
+            "templates": [],
+            "status": 400,
+            "message": "User ID is required"
+        }
+        
+    try:
+        logger.info(f"Calculating engagement status for user ID: {request.all_user_id}")
+        
+        # Step 1: Fetch trainee profile data
+        ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+        trainee_profile_data = ipersona_user.filter_by_alluser_id(
+            all_user_id=request.all_user_id, 
+            nopp=True, 
+            dataframe=False
+        )
+        
+        if not trainee_profile_data:
+            logger.warn(f"No trainee profiles found for user ID: {request.all_user_id}")
+            return {
+                "all_user_id": request.all_user_id,
+                "templates": [],
+                "status": 404,
+                "message": "No trainee profiles found for the given user ID"
+            }
+        
+        tinder_user_profile_id = trainee_profile_data.get('id')
+
+        if not tinder_user_profile_id:
+            logger.error(f"Invalid trainee profile for user ID: {request.all_user_id}")
+            return {
+                "all_user_id": request.all_user_id,
+                "templates": [],
+                "status": 500,
+                "message": "Invalid trainee profile data"
+            }
+            
+        # Step 2: Process request parameters with defaults
+        query_filter = request.filter or {}
+        return_skip = request.return_skip
+        information_level = request.information_level
+        since = max(request.since, 1)  # Ensure minimum value of 1
+        limit = max(request.limit, 1)  # Ensure minimum value of 1
+        cursor = request.cursor
+
+        # Step 3: Fetch and summarize interview data
+        data, cursor = util.summarize_template_interviews(
+            run_stage,                                                 
+            tinder_user_profile_id, 
+            filter=query_filter,
+            cursor=cursor, 
+            since=since, 
+            limit=limit,
+            information_level=information_level,
+            return_skip=return_skip            
+        )
+
+        logger.info(f"Interview engagement summary completed for user ID: {request.all_user_id}")
+
+        
+        # Step 4: Prepare response
+        # if data:
+        return {
+            "all_user_id": request.all_user_id,
+            "templates": data, 
+            "status": 200, 
+            "message": ""
+        }
+
+    except Exception as e:
+        logger.error(f"Error calculating engagement status: {str(e)}", exc_info=True)
+        return {
+            "all_user_id": request.all_user_id if hasattr(request, 'all_user_id') else [], 
+            "templates": [],  
             "status": 500, 
             "message": str(e)
         }
@@ -2724,6 +2845,13 @@ async def audio_upload_external_celery(
                 template_id = target_data.get("template_id")
                 session_id = target_data.get("session_id")
                 all_user_id = target_data.get("all_user_id")
+                print("____________________________________________________________")
+                print(job_profile_id)
+                print(challenge_id)
+                print(template_id)
+                print(session_id)
+                print(all_user_id)
+                print("____________________________________________________________")
 
                 logger.info(f"Parsed target - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}, session_id: {session_id}, all_user_id: {all_user_id}")
             except json.JSONDecodeError:
@@ -2881,7 +3009,7 @@ async def files_upload_external_celery(
         template_id = 0
 
         # 2. Parse `target` JSON
-        # Try parsing `target` as JSON
+    # Try parsing `target` as JSON
         if target:
             try:
                 target_data = json.loads(target)
@@ -2913,8 +3041,6 @@ async def files_upload_external_celery(
             logger.debug("Adding background task for template answer processing")
         
             process_upload_external_answer_with_template_task.delay(
-                template_id=template_id,
-                
                 answer_filename=answer_file.filename,
                 answer_content_type=answer_file.content_type,
                 answer_audio_path=answer_audio_path,
@@ -2922,21 +3048,22 @@ async def files_upload_external_celery(
                 
                 job_profile_id=job_profile_id,
                 challenge_id=challenge_id,
+                template_id=template_id,
                 session_id=session_id,
                 all_user_id=all_user_id,
                 external=external,
                 run_stage=run_stage
             )
-
+        
             logger.info("After calling celery task")
             return {
                 "status": 200,
-                "message": "Uploaded file received and is being processed in the background."
+                    "message": "Uploaded file received and is being processed in the background."
             }
 
         except Exception as e:
-            logger.error(f"Error in process_audio_upload: {str(e)}")
-            return {'status': 500, 'message': str(e)}
+                logger.error(f"Error in process_audio_upload: {str(e)}")
+                return {'status': 500, 'message': str(e)}
 
     except Exception as e:
         logger.error(f"Error in process_audio_upload: {str(e)}")

@@ -102,16 +102,11 @@ async def generate_interview_question(run_stage, data: dict, question_count, tem
     try:
         # Retrieve either generated_questions or template_questions
         user_attributes = data['user_session']['attributes']['attributes']
-        # print("coww0w0w0w0w0w0w0w0w0w0w0w0w0w0w0w0")
-        # print(data['job_profile_id'])      
-        # print("coww0w0w0w0w0w0w0w0w0w0w0w0w0w0w0w0")
 
         # Choose between generated_questions and template_questions
         collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions') or user_attributes.get('challenge_questions')
         collection = json.loads(collection) if isinstance(collection, str) else collection
-        # print("collection is here ==========================================")
-        # print(challenge_id)
-        # print("collection is here ==========================================")
+
         if(challenge_id != 0):
             response = await choose_interview_question_challenge_new_structure(
                 run_stage, 
@@ -529,6 +524,7 @@ async def helper_func(
                 strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId)
             rstage=''
             status = "Completed"
+   
             await overall_interview_evaluations(rstage, data, status, sessionId, type)
             logger.info("Calculate the overall and save to database done.")            
                 
@@ -974,7 +970,7 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
             dataframe=False)
 
         session_chatobserver = extract_observers_metrics(session)
-        
+
         if status == 'Completed':  
             await calculate_overall_progress(
                 run_stage, 
@@ -1500,22 +1496,28 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
         # Extract job_profile_id from tinder_job_profile.data.id
         job_profile = attributes.get('tinder_job_profile', {})
         job_profile_id = job_profile.get('data', {}).get('id', 0) if job_profile.get('data') else 0
+        
+        # Extract template_id from tinder_template.data.id
+        template_id = user_session.get('id', 0)
 
         # ✅ Correct way to extract all_user_id (from root, not attributes)
         all_user_id = userdata.get('all_user_id', 0)
 
         logger.info(f"challenge_id::: {challenge_id}")
         logger.info(f"job_profile_id::: {job_profile_id}")
+        logger.info(f"template_id::: {template_id}")
         logger.info(f"all_user_id::: {all_user_id}")
         
         # Convert to integers and handle empty strings
         try:
             challenge_id = int(challenge_id) if challenge_id and challenge_id != "" else 0
             job_profile_id = int(job_profile_id) if job_profile_id and job_profile_id != "" else 0
+            template_id = int(template_id) if template_id and template_id != "" else 0
             all_user_id = int(all_user_id) if all_user_id and all_user_id != "" else 0
         except (ValueError, TypeError):
             challenge_id = 0
             job_profile_id = 0
+            template_id = 0
             all_user_id = 0
 
         for entry in data:
@@ -1602,10 +1604,17 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 nopp=True, 
                 dataframe=False)
 
+        elif template_id:
+            session_chatobserver = ipersona_overall.filter_by_with_user_and_template_id(
+                user_profile_id = tinder_user_profile_id, 
+                template_id = template_id, 
+                nopp=True, 
+                dataframe=False)
+
         # Add comprehensive null check
         if session_chatobserver is None:
             logger.error(f"Database query returned None for user {tinder_user_profile_id}")
-            logger.error(f"Query parameters - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}")
+            logger.error(f"Query parameters - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}, template_id: {template_id}")
             return f'Error: No session data found for the given parameters'
         
         # Handle both list and dict cases from database query
@@ -1650,6 +1659,9 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                 elif challenge_id:
                     message_data["tinder_user_profile"] = tinder_user_profile_id
                     message_data["challenge_document"] = challenge_id
+                elif template_id:
+                    message_data["tinder_user_profile"] = tinder_user_profile_id
+                    message_data["tinder_template"] = template_id
 
                 response = ipersona_overall.update_session(
                     params=message_data, 
@@ -1694,6 +1706,9 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
             elif challenge_id:
                 message_data["tinder_user_profile"] = tinder_user_profile_id
                 message_data["challenge_document"] = challenge_id
+            elif template_id:
+                message_data["tinder_user_profile"] = tinder_user_profile_id
+                message_data["tinder_template"] = template_id
 
             response = ipersona_overall.save_Session_Overall_Observer(
                 params=message_data, 
@@ -2366,6 +2381,109 @@ def summarize_challenge_interviews(
 
     except Exception as e:
         logger.error(f"Error processing challenge interviews: {e}")
+        return str(e), str(e)
+
+def summarize_template_interviews(
+    run_stage,
+    user_profile_id, 
+    filter,
+    cursor,
+    since, 
+    limit,
+    information_level,
+    return_skip
+):
+    try:
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        query_filter = filter or {}
+        kwargs = {**query_filter}
+
+        data, cursors = ipersona_session.filter_by_tinder_user_profile_id(
+            user_profile_id=user_profile_id, 
+            cursor=cursor, 
+            since=since, 
+            limit=limit, 
+            nopp=True, 
+            dataframe=False,
+            **kwargs
+        )
+
+        if not data:
+            logger.info("No session data found.")
+            return add_engagement_columns([], cursor, kind='template', **kwargs), cursors
+
+        # Step 1: Extract metrics
+        data = extracted_needed_metrics(data)
+
+        if not data:
+            logger.info("No data found after metric extraction.")
+            return add_engagement_columns([], cursor, kind='template', **kwargs), cursors
+
+        # Step 2: Filter for valid template_id only
+        valid_records = [d for d in data if d.get("template_id") not in (None, 0)]
+
+        if not valid_records:
+            logger.info("No valid template_id found.")
+            return add_engagement_columns([], cursor, kind='template', **kwargs), cursors
+
+        # Step 3: Group by template_id
+        template_summary = defaultdict(list)
+        for record in valid_records:
+            template_summary[record["template_id"]].append(record)
+
+        summary_response = []
+
+        # Step 4: Process each valid template group
+        for template_id, records in template_summary.items():
+            complete_count = sum(1 for r in records if r.get("complete_status"))
+            incomplete_count = len(records) - complete_count
+
+            total_score = sum(
+                r.get("overall_performance_score", 0) for r in records if r.get("overall_performance_score") is not None
+            )
+
+            average_score = (
+                round(total_score / complete_count, 2)
+                if complete_count > 0 else "N/A"
+            )
+
+            try:
+                ipersona_template = IpersonaTinderTemplateSchema(run_stage=run_stage)
+                template_data = ipersona_template.get_tinder_template_id(
+                    templateId=template_id,
+                    return_object=True,
+                    nopp=True,
+                    dataframe=False
+                )
+
+                if not template_data or not isinstance(template_data, dict):
+                    logger.warning(f"Template data not found or invalid for template_id {template_id}")
+                    continue
+
+                template_title = template_data.get("attributes", {}).get("name", "")
+                template_type = template_data.get("attributes", {}).get("type", "")
+
+            except Exception as e:
+                logger.error(f"Failed to fetch template data for template_id {template_id}: {e}")
+                continue
+
+            summary_response.append({
+                "template_id": template_id,
+                "template_title": template_title,
+                "template_type": template_type,
+                "complete_interviews_count": complete_count,
+                "incomplete_interviews_count": incomplete_count,
+                "total_interviews_count": complete_count + incomplete_count,
+                "score": average_score
+            })
+
+        cursor["total"] = len(summary_response)
+        output = add_engagement_columns(summary_response, cursor, kind='template', **kwargs)
+
+        return output, cursors
+
+    except Exception as e:
+        logger.error(f"Error processing template interviews: {e}")
         return str(e), str(e)
 
 def summarize(
@@ -3826,6 +3944,7 @@ def extract_json(response, quite=False):
 #------------------------------------------- Create Session -------------------------------------------------
 async def create_session_logics(
         run_stage, 
+        mode,
         template, 
         external, 
         challenge, 
@@ -3843,10 +3962,10 @@ async def create_session_logics(
             message = ''
             saved_session = create_session(
                 run_stage, 
+                mode,
                 template, 
                 external, 
                 challenge, 
-                generate,
                 all_user_id,
                 tinder_user_profile_id, 
                 job_profile_id,
@@ -3893,10 +4012,10 @@ async def create_session_logics(
 
             saved_session = create_session(
                 run_stage, 
+                mode,
                 template, 
                 external, 
                 challenge, 
-                generate,
                 all_user_id,
                 tinder_user_profile_id, 
                 job_profile_id,
@@ -3963,6 +4082,12 @@ async def create_session_logics(
             generated_question_json = add_question_number(generated_question_json)
             logger.info("Persona and questions generated successfully")
 
+            # Convert all ID fields to integers if they're valid numbers
+            job_profile_id_value = convert_id_to_int(job_profile_id)
+            user_profile_id_value = convert_id_to_int(tinder_user_profile_id)
+            template_id_value = convert_id_to_int(template_id)
+            challenge_id_value = convert_id_to_int(challenge_id)
+            
             session_data = {
                 "slug": f"all_user_id: {all_user_id}",
                 "status": "Incomplete",
@@ -3971,16 +4096,23 @@ async def create_session_logics(
                     "generated_questions": generated_question_json
                 },
                 "metadata": {
+                    "mode": mode,
                     "template": False,
                     "generate": True,
                     "external": False,
                     "challenge": False,
-                },
-                "tinder_user_profile_id": tinder_user_profile_id,
-                "tinder_job_profile_id": job_profile_id,
-                "tinder_template": template_id,
-                "challenge_document": challenge_id
+                }
             }
+            
+            # Only include ID fields if they're valid
+            if user_profile_id_value is not None:
+                session_data["tinder_user_profile_id"] = user_profile_id_value
+            if job_profile_id_value is not None:
+                session_data["tinder_job_profile_id"] = job_profile_id_value
+            if template_id_value is not None:
+                session_data["tinder_template"] = template_id_value
+            if challenge_id_value is not None:
+                session_data["challenge_document"] = challenge_id_value
 
             ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
             saved_session = ipersona_session.save_session(
@@ -4011,12 +4143,21 @@ async def create_session_logics(
         logger.error(f"Error processing files: {e}")
         return {'error': str(e)}
 
+def convert_id_to_int(id_value):
+    """Convert ID value to integer if it's a valid number, otherwise return None"""
+    if id_value is not None and str(id_value).strip():
+        try:
+            return int(id_value)
+        except (ValueError, TypeError):
+            return None
+    return None
+
 def create_session(
         run_stage, 
+        mode,
         template, 
         external, 
         challenge, 
-        generate,
         all_user_id, 
         user_profile_id, 
         job_profile_id, 
@@ -4027,6 +4168,7 @@ def create_session(
         challenge_generated_questions = None
         if template:
             metadata =  {
+                "mode": mode,
                 "template": True,
                 "generate": False,
                 "external": False,
@@ -4035,6 +4177,7 @@ def create_session(
             status = "Incomplete"
         elif external:
             metadata =  {
+                "mode": mode,
                 "template": False,
                 "generate": False,
                 "external": True,
@@ -4043,6 +4186,7 @@ def create_session(
             status = "External"
         elif challenge:
             metadata =  {
+                "mode": mode,
                 "template": False,
                 "generate": False,
                 "external": False,
@@ -4067,7 +4211,14 @@ def create_session(
             challenge_generated_questions = add_question_number(challenge_generated_questions)
             
         if challenge: 
+            print(f"🎯 [DEBUG] Taking CHALLENGE code path - challenge_id: {challenge_id}")
             # Step 5: Save session data
+            # Convert all ID fields to integers if they're valid numbers
+            job_profile_id_value = convert_id_to_int(job_profile_id)
+            user_profile_id_value = convert_id_to_int(user_profile_id)
+            template_id_value = convert_id_to_int(template_id)
+            challenge_id_value = convert_id_to_int(challenge_id)
+            
             session_data = {
                 "slug": str(f"all_user_id: {all_user_id}"),
                 "status": "Incomplete",
@@ -4075,33 +4226,64 @@ def create_session(
                     "challenge_questions": challenge_generated_questions
                 },
                 "metadata": {
+                    "mode": mode,
                     "template": False,
                     "generate": False,
                     "external": False,
                     "challenge": True
-                },
-                "tinder_user_profile_id": user_profile_id,
-                "tinder_job_profile_id": job_profile_id,
-                "tinder_template": template_id,
-                "challenge_document": challenge_id
+                }
             }
+            
+            # Only include ID fields if they're valid
+            if user_profile_id_value is not None:
+                session_data["tinder_user_profile_id"] = user_profile_id_value
+            if job_profile_id_value is not None:
+                session_data["tinder_job_profile_id"] = job_profile_id_value
+            if template_id_value is not None:
+                session_data["tinder_template"] = template_id_value
+            if challenge_id_value is not None:
+                session_data["challenge_document"] = challenge_id_value
+            
         else:
+            # Convert all ID fields to integers if they're valid numbers
+            job_profile_id_value = convert_id_to_int(job_profile_id)
+            user_profile_id_value = convert_id_to_int(user_profile_id)
+            template_id_value = convert_id_to_int(template_id)
+            challenge_id_value = convert_id_to_int(challenge_id)
+            attr = {}
+            if external == True:
+                attr = {
+                        "external": external
+                      }
+            else:
+                attr = {
+                        "template_id": template_id
+                      }
             session_data = {
                     "slug": str(f"all_user_id: {all_user_id}"),
                     "status": status,
-                    "attributes": {
-                        "template_id": template_id
-                    },
-                    "metadata": metadata,
-                    "tinder_user_profile_id": user_profile_id,
-                    "tinder_job_profile_id": job_profile_id,
-                    "tinder_template": template_id,
-                    "challenge_document": challenge_id
+                    "attributes": attr,
+                    "metadata": metadata
                 }
+            
+            # Only include ID fields if they're valid
+            if user_profile_id_value is not None:
+                session_data["tinder_user_profile_id"] = user_profile_id_value
+            if job_profile_id_value is not None:
+                session_data["tinder_job_profile_id"] = job_profile_id_value
+            if template_id_value is not None:
+                session_data["tinder_template"] = template_id_value
+            if challenge_id_value is not None:
+                session_data["challenge_document"] = challenge_id_value
+            
+            print(f"📋 [DEBUG] Final session data: {session_data}")
           
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         saved_session = ipersona_session.save_session(
-            params=session_data, return_object=True, nopp=True, dataframe=False
+            params=session_data, 
+            return_object=True, 
+            nopp=True, 
+            dataframe=False
         )
 
         if not saved_session:

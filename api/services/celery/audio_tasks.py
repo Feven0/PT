@@ -8,8 +8,8 @@ audio_util = AudioUtils()
 def process_upload_external_audio_task(
     self,
     filename, content_type, audio_path, 
-    job_profile_id, challenge_id, template_id, session_id, all_user_id, 
-    external, run_stage
+    job_profile_id, challenge_id, template_id, 
+    session_id, all_user_id, external, run_stage
 ):
     # Register task with tracker - now supporting all target types
     target = task_tracker.create_target_dict(
@@ -170,6 +170,7 @@ def process_upload_external_files_task(
             answer_contents,
             job_profile_id, 
             challenge_id, 
+            template_id,
             all_user_id, 
             external, 
             run_stage
@@ -312,9 +313,8 @@ def process_upload_external_answer_file_task(
 @celery_app.task(bind=True)
 def process_upload_external_answer_with_template_task(
     self,
-    template_id,
     answer_filename, answer_content_type, answer_audio_path, answer_contents,
-    job_profile_id, challenge_id, session_id, all_user_id,
+    job_profile_id, challenge_id, template_id, session_id, all_user_id,
     external, run_stage
 ):
     # Register task with tracker - now supporting all target types
@@ -407,6 +407,7 @@ def process_upload_external_answer_with_template_task(
             answer_contents,
             job_profile_id, 
             challenge_id, 
+            template_id,
             all_user_id, 
             external, 
             run_stage

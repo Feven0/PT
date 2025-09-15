@@ -76,7 +76,6 @@ class AudioUtils:
                 print(f"❌ [DEBUG] Failed to set Redis status: {str(e)}")
 
             try:
-                template_id = 0
                 message = ''
                 template = False
                 challenge = False  
@@ -243,6 +242,18 @@ class AudioUtils:
                 except Exception as e:
                     print(f"❌ [DEBUG] Failed to set Redis error status: {str(e)}")
                 return
+            except Exception as e:
+                print(f"❌ [DEBUG] Audio processing failed: {str(e)}")
+                logger.error(f"❌ Audio processing failed: {str(e)}")
+                try:
+                    redis.set(f"audio_status:{job_profile_id}", {
+                        "status": "failed",
+                        "message": f"Audio processing failed: {str(e)}"
+                    })
+                    print(f"📝 [DEBUG] Set Redis status to 'failed' for audio processing error")
+                except Exception as redis_e:
+                    print(f"❌ [DEBUG] Failed to set Redis error status: {str(redis_e)}")
+                return 'Audio processing failed'
 
             # --- Existing logic continues here ---
             try:
@@ -320,8 +331,8 @@ class AudioUtils:
                 print(f"💾 [DEBUG] Creating session for audio processing")
                 logger.debug("Creating session for audio processing")
                 saved_session = util.create_session(
-                    mode,
                     run_stage,
+                    mode,
                     template,
                     external,
                     challenge,
@@ -433,6 +444,7 @@ class AudioUtils:
         answer_contents,
         job_profile_id,
         challenge_id,
+        template_id,
         all_user_id,
         external,
         run_stage
@@ -535,7 +547,7 @@ class AudioUtils:
 
             print(f"📋 [DEBUG] Filtered data count: {len(filtered_data)}")
             print(f"📋 [DEBUG] All relevance scores: {[item.get('relevance_score', 'N/A') for item in response]}")
-            
+
             if not filtered_data:
                 error_msg = "❌ Failed to process upload files: No Valuable matched question-answer data returned from LLM analysis"
                 logger.error(error_msg)
@@ -552,15 +564,14 @@ class AudioUtils:
             print(f"📋 [DEBUG] Q Response: {response}")
            
             # Initialize these for util.create_session (as per original logic)
-            template_id = 0
             message = ''
             template = False
             challenge = False
             mode = None
 
             saved_session = util.create_session(
-                mode,
                 run_stage,
+                mode,
                 template,
                 external,
                 challenge,
@@ -573,10 +584,18 @@ class AudioUtils:
             )
 
             if saved_session:
-                sessionId = saved_session['id']
-                logger.info(f"📥 Session created successfully with ID: {sessionId}")
-                logger.debug("Saving analyzed chat to database")
-                saved = strapi.save_messages_to_db(response, sessionId)
+                # Check if saved_session is a valid dictionary with an 'id' field
+                if isinstance(saved_session, dict) and 'id' in saved_session:
+                    sessionId = saved_session['id']
+                    logger.info(f"📥 Session created successfully with ID: {sessionId}")
+                    logger.debug("Saving analyzed chat to database")
+                    saved = strapi.save_messages_to_db(response, sessionId)
+                else:
+                    # Handle case where saved_session is not a valid session object
+                    logger.error(f"❌ Invalid session data returned: {type(saved_session)} - {saved_session}")
+                    logger.error("❌ Failed to save session - invalid session data")
+                    redis.set(f"audio_status:{job_profile_id}", {"status": "failed", "message": "Invalid session data returned"})
+                    return
 
                 logger.debug("Starting overall evaluation in a separate thread")
                 def run_overall_sync_wrapper():
@@ -594,7 +613,7 @@ class AudioUtils:
                                 tinder_user_profile_id,
                                 job_profile_id,
                                 challenge_id,
-                                0,  # template_id
+                                template_id,
                                 'job_interview_config'
                             )
                         )
@@ -628,7 +647,7 @@ class AudioUtils:
                 redis.set(f"audio_status:{job_profile_id}", {"status": "failed", "message": f"System error: {str(e)}"})
             # Re-raise the exception so Celery knows the task failed
             raise e 
-
+ 
     async def process_upload_external_answer_with_template(
         self,
         template_questions,
@@ -638,6 +657,7 @@ class AudioUtils:
         answer_contents,
         job_profile_id,
         challenge_id,
+        template_id,
         all_user_id,
         external,
         run_stage
@@ -654,6 +674,8 @@ class AudioUtils:
 
             redis.set(f"audio_status:{job_profile_id}", {"status": "processing", "message": "Starting template answer processing."})
             logger.info(f"🔊 Starting template answer processing for Job ID: {job_profile_id}")
+            logger.info(f"🔊 Starting template answer processing for Template ID: {template_id}")
+            logger.info(f"🔊 Starting template answer processing for Challenge ID: {challenge_id}")
 
             # Process Answer File using helper
             print(f"🔊 [DEBUG] Processing answer file: {answer_filename}, content_type: {answer_content_type}, size: {len(answer_contents)} bytes")
@@ -754,15 +776,14 @@ class AudioUtils:
             print(f"📋 [DEBUG] Q Response: {response}")
            
             # Initialize these for util.create_session (as per original logic)
-            template_id = 0
             message = ''
             template = False
             challenge = False
             mode = None
 
             saved_session = util.create_session(
-                mode,
                 run_stage,
+                mode,
                 template,
                 external,
                 challenge,
@@ -773,12 +794,21 @@ class AudioUtils:
                 challenge_id,
                 message
             )
-
+            print(f"📋 [DEBUG] Saved session========: {saved_session}")
+            logger.success(f"📋 [DEBUG] Saved session:::::::: {saved_session}")
             if saved_session:
-                sessionId = saved_session['id']
-                logger.info(f"📥 Session created successfully with ID: {sessionId}")
-                logger.debug("Saving analyzed chat to database")
-                saved = strapi.save_messages_to_db(response, sessionId)
+                # Check if saved_session is a valid dictionary with an 'id' field
+                if isinstance(saved_session, dict) and 'id' in saved_session:
+                    sessionId = saved_session['id']
+                    logger.info(f"📥 Session created successfully with ID: {sessionId}")
+                    logger.debug("Saving analyzed chat to database")
+                    saved = strapi.save_messages_to_db(response, sessionId)
+                else:
+                    # Handle case where saved_session is not a valid session object
+                    logger.error(f"❌ Invalid session data returned: {type(saved_session)} - {saved_session}")
+                    logger.error("❌ Failed to save session - invalid session data")
+                    redis.set(f"audio_status:{job_profile_id}", {"status": "failed", "message": "Invalid session data returned"})
+                    return
 
                 logger.debug("Starting overall evaluation in a separate thread")
                 def run_overall_sync_wrapper():
@@ -1234,6 +1264,30 @@ class AudioUtils:
             or an error message if an exception occurs during processing.
         """
         try:
+            # Convert string IDs to integers for proper boolean evaluation
+            job_profile_id_int = None
+            if job_profile_id and str(job_profile_id).strip():
+                try:
+                    job_profile_id_int = int(job_profile_id)
+                except (ValueError, TypeError):
+                    job_profile_id_int = None
+            
+            challenge_id_int = None
+            if challenge_id and str(challenge_id).strip():
+                try:
+                    challenge_id_int = int(challenge_id)
+                except (ValueError, TypeError):
+                    challenge_id_int = None
+            
+            template_id_int = None
+            if template_id and str(template_id).strip():
+                try:
+                    template_id_int = int(template_id)
+                except (ValueError, TypeError):
+                    template_id_int = None
+            
+            print(f"🔍 [DEBUG] ID values - job_profile_id: '{job_profile_id}' -> {job_profile_id_int}, challenge_id: '{challenge_id}' -> {challenge_id_int}, template_id: '{template_id}' -> {template_id_int}")
+            
             history_str = '\n'.join(str(item) for item in data)   
             overall_evaluation_msg = util.read_prompt_overall_evaluation(type, history_str)   
             overall_metrics_msg = util.read_prompt_interview_evaluation_metrics(type, history_str)
@@ -1315,24 +1369,24 @@ class AudioUtils:
                 logger.info("session status updated to closed")
 
             session = None
-            if job_profile_id:            
+            if job_profile_id_int and job_profile_id_int != 0:            
                 session = ipersona_session.filter_by_with_user_job_id(
                     user_profile_id=tinder_user_profile_id,
-                    job_profile_id=job_profile_id, 
+                    job_profile_id=job_profile_id_int, 
                     nopp=True, 
                     dataframe=False
                     ) 
-            elif challenge_id:
+            elif challenge_id_int and challenge_id_int != 0:
                 session = ipersona_session.filter_by_with_user_challenge_id(
                     user_profile_id=tinder_user_profile_id,
-                    challenge_id=challenge_id, 
+                    challenge_id=challenge_id_int, 
                     nopp=True, 
                     dataframe=False
                     ) 
-            elif template_id:
+            elif template_id_int and template_id_int != 0:
                 session = ipersona_session.filter_by_with_user_template_id(
                     user_profile_id=tinder_user_profile_id,
-                    template_id=template_id, 
+                    template_id=template_id_int, 
                     nopp=True, 
                     dataframe=False
                     ) 
@@ -1377,6 +1431,29 @@ class AudioUtils:
             data):
         try:
             logger.info(f"calculating overall progress for a job overtime")
+            
+            # Convert string IDs to integers for proper boolean evaluation
+            job_profile_id_int = None
+            if job_profile_id and str(job_profile_id).strip():
+                try:
+                    job_profile_id_int = int(job_profile_id)
+                except (ValueError, TypeError):
+                    job_profile_id_int = None
+            
+            challenge_id_int = None
+            if challenge_id and str(challenge_id).strip():
+                try:
+                    challenge_id_int = int(challenge_id)
+                except (ValueError, TypeError):
+                    challenge_id_int = None
+            
+            template_id_int = None
+            if template_id and str(template_id).strip():
+                try:
+                    template_id_int = int(template_id)
+                except (ValueError, TypeError):
+                    template_id_int = None
+                        
             confidence_overtime = []  
             clarity_overtime = []     
             engagement_overtime = [] 
@@ -1391,11 +1468,13 @@ class AudioUtils:
                     entry = entry.get("evaluation_metrics", {})
                     iso_time = entry.get("createdAt", "")
                     created_time = util.convert_iso_to_readable_format(iso_time)
+                    
+                    # Skip entries with invalid dates to maintain chart integrity
+                    if not created_time:
+                        continue
+                        
                     performance = entry.get("performance", [])
-                    # print("pp=======================================================================dpp")
-                    # print(performance)
-                    # print("pp=======================================================================dpp")
-
+          
                     realtime = entry.get('communication_skills', []) 
                     # time = entry.get('time_management', {})
                     competency = entry.get('competency', [])
@@ -1459,29 +1538,32 @@ class AudioUtils:
             tinder_user_profile_id = trainee_profile_data['id']    
             session_chatobserver = None
     
-            if job_profile_id: 
+            if job_profile_id_int and job_profile_id_int != 0: 
+                print(f"🎯 [DEBUG] Taking JOB_PROFILE path - job_profile_id: {job_profile_id_int}")
                 session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(
                     user_profile_id = tinder_user_profile_id, 
-                    job_profile_id = job_profile_id, 
+                    job_profile_id = job_profile_id_int, 
                     nopp=True, 
                     dataframe=False)
                 
-            elif challenge_id:
+            elif challenge_id_int and challenge_id_int != 0:
+                print(f"🎯 [DEBUG] Taking CHALLENGE path - challenge_id: {challenge_id_int}")
                 session_chatobserver = ipersona_overall.filter_by_with_user_and_challenge_id(
                     user_profile_id = tinder_user_profile_id, 
-                    challenge_id = challenge_id, 
+                    challenge_id = challenge_id_int, 
                     nopp=True, 
-                    dataframe=False)    
+                    dataframe=False)   
 
-            elif template_id:
+            elif template_id_int and template_id_int != 0:
+                print(f"🎯 [DEBUG] Taking TEMPLATE path - template_id: {template_id_int}")
                 session_chatobserver = ipersona_overall.filter_by_with_user_and_template_id(
                     user_profile_id = tinder_user_profile_id, 
-                    template_id = template_id, 
+                    template_id = template_id_int, 
                     nopp=True, 
                     dataframe=False)    
                        
             
-            if not session_chatobserver.get("error"): 
+            if session_chatobserver and not session_chatobserver.get("error"): 
                 logger.info(f"Session job overall observer data exists, so updating the data")          
         
                 session_chatobserver_sessions = session_chatobserver['all_sessions']
@@ -1507,15 +1589,15 @@ class AudioUtils:
                         "attributes": update_overall_data,
                         "i_persona_observers": obs_ids
                     }
-                    if job_profile_id:
+                    if job_profile_id_int and job_profile_id_int != 0:
                         message_data["tinder_user_profile"] = tinder_user_profile_id
-                        message_data["tinder_job_profile"] = job_profile_id
-                    elif challenge_id:
+                        message_data["tinder_job_profile"] = job_profile_id_int
+                    elif challenge_id_int and challenge_id_int != 0:
                         message_data["tinder_user_profile"] = tinder_user_profile_id
-                        message_data["challenge_document"] = challenge_id
-                    elif template_id:
+                        message_data["challenge_document"] = challenge_id_int
+                    elif template_id_int and template_id_int != 0:
                         message_data["tinder_user_profile"] = tinder_user_profile_id
-                        message_data["tinder_template"] = template_id
+                        message_data["tinder_template"] = template_id_int
 
                     
                     response = ipersona_overall.update_session(
@@ -1529,20 +1611,19 @@ class AudioUtils:
             
             else:  
                 logger.info(f"Creating a new session job overall observer data")          
-                        
                 ipersona_overall = IpersonaSessionOverallObserverSchema(run_stage=run_stage)
-                ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+                # ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
 
-                trainee_profile_data = ipersona_user.filter_by_alluser_id(
-                    all_user_id=all_user_id, 
-                    nopp=True, 
-                    dataframe=False)
+                # trainee_profile_data = ipersona_user.filter_by_alluser_id(
+                #     all_user_id=all_user_id, 
+                #     nopp=True, 
+                #     dataframe=False)
                 
-                if not trainee_profile_data:
-                        logger.warn("No trainee user profiles found.")
-                        return []
+                # if not trainee_profile_data:
+                #         logger.warn("No trainee user profiles found.")
+                #         return []
                 
-                tinder_user_profile_id = trainee_profile_data['id']    
+                # tinder_user_profile_id = trainee_profile_data['id']    
                 message_data = {
                     "attributes": {
                         "overall_confidence": confidence_overtime,
@@ -1556,16 +1637,16 @@ class AudioUtils:
                 }
 
                 # Add the correct attribute based on which ID is present
-                if job_profile_id:
+                if job_profile_id_int and job_profile_id_int != 0:
                     message_data["tinder_user_profile"] = tinder_user_profile_id
-                    message_data["tinder_job_profile"] = job_profile_id
-                elif challenge_id:
+                    message_data["tinder_job_profile"] = job_profile_id_int
+                elif challenge_id_int and challenge_id_int != 0:
                     message_data["tinder_user_profile"] = tinder_user_profile_id
-                    message_data["challenge_document"] = challenge_id
-                elif template_id:
+                    message_data["challenge_document"] = challenge_id_int
+                elif template_id_int and template_id_int != 0:
                     message_data["tinder_user_profile"] = tinder_user_profile_id
-                    message_data["tinder_template"] = template_id
-                    
+                    message_data["tinder_template"] = template_id_int
+
                 response = ipersona_overall.save_Session_Overall_Observer(
                     params=message_data, 
                     nopp=True, 

@@ -254,11 +254,6 @@ async def audio_end_point(sid, data):
         
         #-----------------------------------------------------------------------------------#
         try:
-            logger.info("=====================================-------------------------------------=============")
-            logger.info(data)
-            logger.info(data.get('template'))
-            logger.info("=====================================-------------------------------------=============")
-
             if data.get('template'):
                     try:
                         template_id = data.get('template_id')
@@ -553,10 +548,11 @@ async def interview_endpoint(sid, data):
     Returns:
         None: Responses are sent via socket.io events
     """
-    logger.info(f"Received interview request with template_id-=-: {data.get('template_id')}, job: {data.get('job_profile_id', None)}")
     try:
-        logger.info(f"Received interview request with template_id-=-: {data.get('challenge_id')}, job: {data.get('job_profile_id', None)}")
-        
+        logger.info(f"Received interview request with template_id: {data.get('template_id')}, job: {data.get('job_profile_id', None)}, challenge: {data.get('challenge_id', None)}")
+        print("----------------------------------------ppp----------------------------------------")
+        print(data)
+        print("----------------------------------------ppp----------------------------------------")
         # Validate input data
         if not isinstance(data, dict):
             error_msg = "Invalid data format: expected a dictionary"
