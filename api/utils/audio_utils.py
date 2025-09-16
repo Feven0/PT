@@ -21,6 +21,99 @@ logger = LLPackerLogger(os.path.basename(__file__))
 class AudioUtils:
     def __init__(self):
         pass
+    
+    def ai_validate_interview_content(self, transcript):
+        """
+        AI-Powered Content Validation for Interview Content
+        
+        This function uses AI to validate if the transcribed content represents
+        a proper job interview with Q&A patterns, interviewer presence, and
+        relevant evaluation content.
+        
+        Args:
+            transcript (str): The transcribed content to validate
+            
+        Returns:
+            dict: {"valid": bool, "reason": str}
+        """
+        try:
+            print(f"🤖 [DEBUG] Starting AI validation for transcript length: {len(transcript)}")
+            
+            # Basic length check first
+            if len(transcript.strip()) < 50:
+                return {
+                    "valid": False,
+                    "reason": "Content too short - minimum 50 characters required for evaluation"
+                }
+            
+            # AI validation prompt
+            validation_prompt = f"""
+            Analyze this transcript and determine if it's a valid job interview suitable for evaluation.
+            
+            Transcript: {transcript}
+            
+            Check for the following criteria:
+            1. **Interview Structure**: Does it contain interviewer questions and candidate answers?
+            2. **Q&A Pattern**: Are there clear question-answer exchanges?
+            3. **Interviewer Presence**: Can you identify questions being asked by an interviewer?
+            4. **Candidate Responses**: Are there substantive answers from a candidate?
+            5. **Interview Context**: Is the content relevant to job evaluation (technical skills, behavioral questions, etc.)?
+            6. **Content Quality**: Is the content coherent and meaningful for evaluation?
+            
+            **Invalid Content Examples:**
+            - Music or entertainment content
+            - Random conversations not related to interviews
+            - Only answers without questions
+            - Only questions without answers
+            - Background noise or empty content
+            - Non-interview discussions
+            - Incomplete or fragmented content
+            - Poor quality transcription with gibberish
+            
+            **Valid Content Examples:**
+            - Structured interview with clear Q&A
+            - Technical interview with problem-solving questions
+            - Behavioral interview with situational questions
+            - Panel interview with multiple participants
+            - Mock interview or practice session
+            
+            Return your analysis in this exact JSON format:
+            {{
+                "valid": true/false,
+                "reason": "Detailed explanation of why the content is valid or invalid",
+                "content_type": "interview/not_interview/incomplete/poor_quality",
+                "has_questions": true/false,
+                "has_answers": true/false,
+                "interviewer_present": true/false,
+                "suitable_for_evaluation": true/false
+            }}
+            """
+            
+            print(f"📤 [DEBUG] Sending validation prompt to GPT")
+            response = gpt.openai_gpt_assistant_without_streaming(validation_prompt)
+            
+            print(f"📥 [DEBUG] Received GPT response for validation")
+            
+            # Extract JSON from response
+            validation_result = util.extract_json(response, quite=False)
+            
+            if not validation_result:
+                print(f"❌ [DEBUG] Failed to extract JSON from validation response")
+                return {
+                    "valid": False,
+                    "reason": "AI validation failed - unable to process response"
+                }
+            
+            print(f"✅ [DEBUG] AI validation completed successfully")
+            return validation_result
+            
+        except Exception as e:
+            print(f"❌ [DEBUG] AI validation process failed: {str(e)}")
+            logger.error(f"AI validation process failed: {str(e)}")
+            return {
+                "valid": False,
+                "reason": f"AI validation process failed: {str(e)}"
+            }
         
     def update_task_progress(self, target, task_type, progress, status=None, error_message=None):
         """
@@ -57,7 +150,9 @@ class AudioUtils:
         template_id,
         all_user_id,
         external,
-        run_stage):
+        run_stage,
+        test_mode=False,
+        test_sample_file=None):
         print(f"🚀 [DEBUG] process_upload_external_audio STARTED")
         
         try:
@@ -66,6 +161,83 @@ class AudioUtils:
         except Exception as e:
             print(f"❌ [DEBUG] Failed to establish Redis connection: {str(e)}")
             return 'Redis connection failed'
+        
+        # TESTING MODE: Use sample transcription files instead of calling Whisper API
+        if test_mode and test_sample_file:
+            try:
+                print(f"🧪 [DEBUG] TESTING MODE ENABLED - Using sample file: {test_sample_file}")
+                sample_file_path = f"/home/rehmet/tenx_ipersona/api/utils/sample_transcriptions/{test_sample_file}"
+                
+                if not os.path.exists(sample_file_path):
+                    print(f"❌ [DEBUG] Sample file not found: {sample_file_path}")
+                    redis.set(f"audio_status:{job_profile_id}", {
+                        "status": "failed",
+                        "message": f"Test sample file not found: {test_sample_file}"
+                    })
+                    return f"Test sample file not found: {test_sample_file}"
+                
+                with open(sample_file_path, 'r', encoding='utf-8') as f:
+                    transcript = f.read().strip()
+                
+                print(f"📖 [DEBUG] Loaded sample transcript: {transcript[:100]}...")
+                
+                # Skip directly to AI validation
+                try:
+                    print(f"🔍 [DEBUG] Starting AI-powered content validation (TESTING MODE)")
+                    validation_result = self.ai_validate_interview_content(transcript)
+                    print(f"📊 [DEBUG] Validation result: {validation_result}")
+                    
+                    if not validation_result.get('valid', False):
+                        error_reason = validation_result.get('reason', 'Content validation failed')
+                        print(f"❌ [DEBUG] Content validation failed: {error_reason}")
+                        try:
+                            redis.set(f"audio_status:{job_profile_id}", {
+                                "status": "failed",
+                                "message": f"Invalid interview content: {error_reason}"
+                            })
+                            print(f"📝 [DEBUG] Set Redis status to 'failed' for validation error")
+                        except Exception as e:
+                            print(f"❌ [DEBUG] Failed to set Redis validation error status: {str(e)}")
+                        return f"Invalid interview content: {error_reason}"
+                    
+                    print(f"✅ [DEBUG] Content validation passed (TESTING MODE)")
+                    logger.success("Content validation passed (TESTING MODE)")
+                    
+                except Exception as e:
+                    print(f"❌ [DEBUG] Content validation process failed: {str(e)}")
+                    try:
+                        redis.set(f"audio_status:{job_profile_id}", {
+                            "status": "failed",
+                            "message": f"Content validation failed: {str(e)}"
+                        })
+                        print(f"📝 [DEBUG] Set Redis status to 'failed' for validation process error")
+                    except Exception as redis_e:
+                        print(f"❌ [DEBUG] Failed to set Redis validation error status: {str(redis_e)}")
+                    return f"Content validation failed: {str(e)}"
+                
+                # Set success status for testing mode
+                try:
+                    redis.set(f"audio_status:{job_profile_id}", {
+                        "status": "done",
+                        "message": f"Testing mode - validation passed for sample: {test_sample_file}",
+                        "content": transcript,
+                        "test_mode": True,
+                        "sample_file": test_sample_file
+                    })
+                    print(f"📝 [DEBUG] Set Redis status to 'done' for testing mode")
+                except Exception as e:
+                    print(f"❌ [DEBUG] Failed to set Redis success status: {str(e)}")
+                
+                print(f"✅ [DEBUG] TESTING MODE COMPLETED SUCCESSFULLY")
+                return f"Testing completed successfully for sample: {test_sample_file}"
+                
+            except Exception as e:
+                print(f"❌ [DEBUG] Testing mode failed: {str(e)}")
+                redis.set(f"audio_status:{job_profile_id}", {
+                    "status": "failed",
+                    "message": f"Testing mode failed: {str(e)}"
+                })
+                return f"Testing mode failed: {str(e)}"
         
         try:
             print(f"🔊 [DEBUG] Starting audio processing for file: {filename}")
@@ -158,6 +330,40 @@ class AudioUtils:
                         print(f"❌ [DEBUG] Failed to extract transcript: {str(e)}")
                         raise Exception('Transcript extraction failed')
 
+                    # AI-Powered Content Validation
+                    try:
+                        print(f"🔍 [DEBUG] Starting AI-powered content validation")
+                        validation_result = self.ai_validate_interview_content(transcript)
+                        print(f"📊 [DEBUG] Validation result: {validation_result}")
+                        
+                        if not validation_result.get('valid', False):
+                            error_reason = validation_result.get('reason', 'Content validation failed')
+                            print(f"❌ [DEBUG] Content validation failed: {error_reason}")
+                            try:
+                                redis.set(f"audio_status:{job_profile_id}", {
+                                    "status": "failed",
+                                    "message": f"Invalid interview content: {error_reason}"
+                                })
+                                print(f"📝 [DEBUG] Set Redis status to 'failed' for validation error")
+                            except Exception as e:
+                                print(f"❌ [DEBUG] Failed to set Redis validation error status: {str(e)}")
+                            return f"Invalid interview content: {error_reason}"
+                        
+                        print(f"✅ [DEBUG] Content validation passed")
+                        logger.success("Content validation passed")
+                        
+                    except Exception as e:
+                        print(f"❌ [DEBUG] Content validation process failed: {str(e)}")
+                        try:
+                            redis.set(f"audio_status:{job_profile_id}", {
+                                "status": "failed",
+                                "message": f"Content validation failed: {str(e)}"
+                            })
+                            print(f"📝 [DEBUG] Set Redis status to 'failed' for validation process error")
+                        except Exception as redis_e:
+                            print(f"❌ [DEBUG] Failed to set Redis validation error status: {str(redis_e)}")
+                        return f"Content validation failed: {str(e)}"
+
                     try:
                         redis.set(f"audio_status:{job_profile_id}", {
                             "status": "done",
@@ -207,6 +413,40 @@ class AudioUtils:
                     except Exception as e:
                         print(f"❌ [DEBUG] Failed to extract content: {str(e)}")
                         return 'Content extraction failed'
+
+                    # AI-Powered Content Validation for Text Documents
+                    try:
+                        print(f"🔍 [DEBUG] Starting AI-powered content validation for text document")
+                        validation_result = self.ai_validate_interview_content(transcript)
+                        print(f"📊 [DEBUG] Validation result: {validation_result}")
+                        
+                        if not validation_result.get('valid', False):
+                            error_reason = validation_result.get('reason', 'Content validation failed')
+                            print(f"❌ [DEBUG] Content validation failed: {error_reason}")
+                            try:
+                                redis.set(f"audio_status:{job_profile_id}", {
+                                    "status": "failed",
+                                    "message": f"Invalid interview content: {error_reason}"
+                                })
+                                print(f"📝 [DEBUG] Set Redis status to 'failed' for validation error")
+                            except Exception as e:
+                                print(f"❌ [DEBUG] Failed to set Redis validation error status: {str(e)}")
+                            return f"Invalid interview content: {error_reason}"
+                        
+                        print(f"✅ [DEBUG] Content validation passed")
+                        logger.success("Content validation passed")
+                        
+                    except Exception as e:
+                        print(f"❌ [DEBUG] Content validation process failed: {str(e)}")
+                        try:
+                            redis.set(f"audio_status:{job_profile_id}", {
+                                "status": "failed",
+                                "message": f"Content validation failed: {str(e)}"
+                            })
+                            print(f"📝 [DEBUG] Set Redis status to 'failed' for validation process error")
+                        except Exception as redis_e:
+                            print(f"❌ [DEBUG] Failed to set Redis validation error status: {str(redis_e)}")
+                        return f"Content validation failed: {str(e)}"
                         
                     try:
                         redis.set(f"audio_status:{job_profile_id}", {

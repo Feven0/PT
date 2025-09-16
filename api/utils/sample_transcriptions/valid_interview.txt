@@ -1,0 +1,19 @@
+Interviewer: Good morning! Thank you for joining us today. Can you tell me a bit about yourself and your background in software development?
+
+Candidate: Good morning! Thank you for having me. I'm a software engineer with 5 years of experience primarily in full-stack development. I've worked with technologies like React, Node.js, Python, and have experience with both frontend and backend development.
+
+Interviewer: That's great! Can you walk me through a challenging project you've worked on recently?
+
+Candidate: Absolutely. Last year, I led the development of a real-time collaboration platform for our team. The biggest challenge was implementing WebSocket connections that could handle 1000+ concurrent users without performance degradation. I solved this by implementing a Redis-based pub-sub system and optimizing our database queries.
+
+Interviewer: How do you approach debugging complex issues in production?
+
+Candidate: I follow a systematic approach. First, I check the logs and monitoring dashboards to understand the scope of the issue. Then I reproduce it in a staging environment if possible. I use tools like browser dev tools, network analyzers, and sometimes even write custom debugging scripts to trace the problem.
+
+Interviewer: What's your experience with testing and code quality?
+
+Candidate: I'm a strong advocate for test-driven development. I write unit tests for individual functions, integration tests for API endpoints, and end-to-end tests for critical user flows. I also use code review processes and static analysis tools to maintain code quality.
+
+Interviewer: Excellent. Do you have any questions for us about the role or the company?
+
+Candidate: Yes, I'd love to know more about the team structure and what technologies you're planning to adopt in the next year. Also, what does career growth look like for developers in this role?

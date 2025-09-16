@@ -35,7 +35,7 @@ OPENAI_API_KEY  = get_auth(ssmkey='OPENAI_PARROT_API_KEY')
 openai_client = OpenAI(api_key=OPENAI_API_KEY )
 
 module_dir= os.path.dirname(__file__)
-prompt_path = lambda x: os.path.join(module_dir, "prompts", x)
+prompts_path = lambda x: os.path.join(module_dir, "prompts", x)
 data_path = lambda x: os.path.join(module_dir, "data", x)
 
 
@@ -1143,7 +1143,7 @@ async def clarify_question(question: str) -> dict:
         an exception occurs during processing.
     """
     try:
-        message = file_reader(prompt_path("ipersona/clarify_question.txt"))
+        message = file_reader(prompts_path("ipersona/clarify_question.txt"))
         context = str(message)
         msg = context.replace("{question}", question)
         # response = await hr_agent.interview_question_clarification(msg)
@@ -4962,7 +4962,7 @@ def read_realtime_evaluation():
         return realtime_msg
     else:
         # Fallback to default realtime evaluation
-        realtime_prompt = file_reader(prompt_path('realtime_evaluation.txt'))
+        realtime_prompt = file_reader(prompts_path('realtime_evaluation.txt'))
         return realtime_prompt
     
 def read_prompt_realtime_evaluation(type, data, last_assistant_response):
