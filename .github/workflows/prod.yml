@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Deploy to ECS HR-Persona Backend Production Version
+name: Deploy to ECS
 
 permissions:
   id-token: write # required to use OIDC authentication
@@ -10,29 +10,29 @@ permissions:
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [prod]
-  #pull_request:
-  #  branches: [ main, dev ]
+    branches: [ dev-prod ]
+  pull_request:
+    branches: [ dev-prod ]
 
 env:
   #ECS cluster name
-  clustername: ecs-hragent-cluster
+  clustername: ecs-ipersona-cluster
   #ECS service name used in clustername
-  servicename: ecs-hragent-service
+  servicename: ecs-ipersona-service
   #ECS task name used in servicename
-  taskname: ecs-hragent-task
+  taskname: ecs-ipersona-task
   #ECS container name in taskname
-  containername: hragent-container
+  containername: ipersona-container
   #ECR repo name
-  ecrreponame: hragent
+  ecrreponame: ipersona
   #Docker tag
   tag: latest
-
+    
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest    
     steps:
       - uses: actions/checkout@v2
       # - name: Configure AWS credentials
@@ -41,13 +41,13 @@ jobs:
       #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
       #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       #     aws-region: ${{ secrets.AWS_REGION }}
-
+      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: arn:aws:iam::070096167435:role/github_actions_role
           aws-region: us-east-1
-
+          
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -59,18 +59,9 @@ jobs:
           ECR_REPOSITORY: ${{ env.ecrreponame }}
           IMAGE_TAG: ${{ env.tag }}
         run: |
-          branch_name="${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}"
-          bash build.sh
-          #
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-
-      - name: Download task definition
-        env:
-          TASK_NAME: ${{ env.taskname }}
-        run: |
-          aws ecs describe-task-definition --task-definition $TASK_NAME --query taskDefinition > task-definition.json
 
       - name: Fill in the new image ID in the Amazon ECS task definition
         id: task-def
