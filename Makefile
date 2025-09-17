@@ -1,7 +1,7 @@
 # Makefile for Tenx iPersona Celery Management
 # Usage: make <command>
 
-.PHONY: help celery-start celery-stop celery-restart celery-status celery-monitor celery-flower celery-purge celery-logs install-celery
+.PHONY: help celery-start celery-stop celery-restart celery-status celery-monitor celery-flower celery-purge celery-logs install-celery run-worker run-flower
 
 # Default target
 help:
@@ -15,6 +15,8 @@ help:
 	@echo "  make celery-status    - Check Celery worker status"
 	@echo "  make celery-monitor   - Monitor Celery tasks and workers"
 	@echo "  make celery-flower    - Start Flower (Celery monitoring web UI)"
+	@echo "  make run-worker       - Run worker with stdout logs (exact cmd)"
+	@echo "  make run-flower       - Run Flower on 0.0.0.0:5555 (exact cmd)"
 	@echo "  make celery-purge     - Purge all pending tasks"
 	@echo "  make celery-logs      - Show Celery worker logs"
 	@echo "  make install-celery   - Install Celery dependencies"
@@ -108,6 +110,18 @@ celery-flower:
 	@echo "Starting Flower monitoring web UI..."
 	@echo "Flower will be available at: http://localhost:5555"
 	celery -A api.services.celery.celery_config flower --port=5555
+
+# Exact run: Celery worker with stdout logs
+worker:
+	@echo "Starting Celery worker (stdout logs; parrot env)..."
+	@/bin/bash -lc 'source /opt/miniconda/etc/profile.d/conda.sh && conda activate parrot && \
+	PYTHONPATH=/home/rehmet/tenx_ipersona celery -A api.services.celery.celery_worker:celery_app worker -l info'
+
+# Exact run: Flower on 0.0.0.0:5555
+flower:
+	@echo "Starting Flower on 0.0.0.0:5555 (parrot env)..."
+	@/bin/bash -lc 'source /opt/miniconda/etc/profile.d/conda.sh && conda activate parrot && \
+	PYTHONPATH=/home/rehmet/tenx_ipersona celery -A api.services.celery.celery_worker:celery_app flower --address=0.0.0.0 --port=5555'
 
 # Purge all pending tasks
 celery-purge:
