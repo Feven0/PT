@@ -37,6 +37,36 @@ async def emit_to_job(job_id: str, event: str, data):
     room = f"processing_{job_id}"
     await sio.emit(event, data, room=room)
 
+async def emit_to_user_job(job_id: str, user_id: str, event: str, data):
+    """Emit to user-specific job room"""
+    room = f"processing_{job_id}_{user_id}"
+    await sio.emit(event, data, room=room)
+
+async def websocket_notification_callback(notification):
+    """Handle Redis notifications and emit to appropriate WebSocket rooms"""
+    try:
+        notification_type = notification.get('type')
+        
+        if notification_type == 's3_upload_complete':
+            job_id = notification.get('job_id')
+            user_id = notification.get('user_id')
+            
+            # Handle None/null job_id (common in Celery tasks)
+            if job_id is None:
+                job_id = "None"
+            
+            if user_id and (job_id or job_id == "None"):
+                await emit_to_user_job(job_id, user_id, 's3_upload_complete', notification)
+                print(f"📡 [DEBUG] Emitted S3 completion to room processing_{job_id}_{user_id}")
+            else:
+                print(f"❌ [DEBUG] Missing job_id or user_id in S3 notification: {notification}")
+        else:
+            # Handle other notification types
+            print(f"📡 [DEBUG] Unhandled notification type: {notification_type}")
+            
+    except Exception as e:
+        print(f"❌ [DEBUG] Error in websocket_notification_callback: {str(e)}")
+
 async def join_job_room(sid: str, job_id: str):
     await sio.enter_room(sid, f"processing_{job_id}")
 

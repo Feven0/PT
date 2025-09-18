@@ -30,6 +30,24 @@ const useWebSocket = (url: string) => {
     newSocket.on('initial connect', (message: any) => {
       console.log('Connected to WebSocket server');
       console.log(message)
+      
+      // Automatically subscribe to processing updates for common user/job combinations
+      // This will listen for S3 completion events
+      setTimeout(() => {
+        console.log('🔔 Auto-subscribing to processing updates...');
+        
+        // Subscribe to the room that matches your Celery logs: user_id=1959, job_id=46
+        newSocket.emit('subscribe_to_processing', { 
+          job_id: '46',  // Based on your Celery logs (job_profile_id: 46)
+          user_id: '1959'  // Based on your Celery logs
+        });
+        
+        // Also subscribe to a generic room for any user
+        newSocket.emit('subscribe_to_processing', { 
+          job_id: 'any', 
+          user_id: 'any' 
+        });
+      }, 1000);
     });
 
     // newSocket.emit('initial connect', { 
@@ -288,8 +306,37 @@ const useWebSocket = (url: string) => {
       setChunkDone(true);
     })
 
-        // ================================= ================= =============================//
+    // ================================= S3 Processing Events =============================//
 
+    // Listen for processing subscription confirmations
+    newSocket.on('processing_confirmed', (data: any) => {
+      console.log('✅ Processing subscription confirmed:', data);
+    });
+
+    // Listen for processing errors
+    newSocket.on('processing_error', (error: any) => {
+      console.error('❌ Processing WebSocket error:', error);
+    });
+
+    // Listen for S3 upload completion events
+    newSocket.on('s3_upload_complete', (data: any) => {
+      console.log('🎉 S3 upload completed!');
+      console.log('📁 S3 URL:', data.s3_url);
+      console.log('👤 User ID:', data.user_id);
+      console.log('🔧 Job ID:', data.job_id);
+      console.log('📦 Bucket:', data.bucket);
+      console.log('🔑 Key:', data.key);
+      console.log('📄 Filename:', data.filename);
+      console.log('⏰ Timestamp:', data.timestamp);
+      console.log('Full data:', data);
+    });
+
+    // Listen for general processing updates
+    newSocket.on('processing_update', (data: any) => {
+      console.log('📊 Processing update:', data);
+    });
+
+        // ================================= ================= =============================//
 
     newSocket.on('disconnect', () => {
       console.log('Disconnected from WebSocket server');

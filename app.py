@@ -74,10 +74,14 @@ def shutdown_event():
 async def lifespan(app: FastAPI):
     startup_event()
     
-    # TODO: Start Redis notification subscriber in background
-    # Temporarily disabled to fix FastAPI startup
-    subscriber_task = None
-    logger.info("🔔 Redis notification subscriber temporarily disabled")
+    # Start Redis notification subscriber in background
+    from api.services.redis.notification_subscriber import notification_subscriber
+    from api.socket.core import websocket_notification_callback
+    
+    subscriber_task = asyncio.create_task(
+        notification_subscriber.start_subscriber(websocket_notification_callback)
+    )
+    logger.info("🔔 Redis notification subscriber started")
     
     yield
     

@@ -52,6 +52,33 @@ async def connect(sid, environ):
         print(f"Session after save: {session}")
     except Exception as e:
         print(f"Session error: {e}")
+
+@sio.on("subscribe_to_processing")
+async def subscribe_to_processing(sid, data):
+    """Subscribe to user-specific processing updates"""
+    job_id = data.get("job_id")
+    user_id = data.get("user_id")
+    
+    # Handle None/null job_id (common in Celery tasks)
+    if job_id is None:
+        job_id = "None"
+    elif job_id == "any":
+        job_id = "any"
+    
+    if user_id and (job_id or job_id == "None"):
+        room = f"processing_{job_id}_{user_id}"
+        await sio.enter_room(sid, room)
+        await sio.emit("processing_confirmed", {
+            "job_id": job_id,
+            "user_id": user_id,
+            "room": room,
+            "message": f"Subscribed to processing updates for job {job_id}, user {user_id}"
+        }, room=sid)
+        print(f"📡 [DEBUG] User {user_id} subscribed to room {room} for job {job_id}")
+    else:
+        await sio.emit("processing_error", {
+            "error": f"Missing job_id or user_id for subscription. Got job_id={job_id}, user_id={user_id}"
+        }, room=sid)
     
 @sio.on("initial connect")
 async def connect(sid):

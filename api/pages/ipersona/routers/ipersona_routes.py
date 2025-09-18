@@ -239,9 +239,21 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
     try:
         logger.info(f"Starting user session creation for user ID: {all_user_id}, job ID: {job_profile_id}")
         # Step 1: Fetch user profile data
-        tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
+        _user_result = util.get_user_data(all_user_id, run_stage)
+        if isinstance(_user_result, dict) and _user_result.get("status_code"):
+            return JSONResponse(
+                status_code=_user_result.get("status_code", 400),
+                content=_user_result.get("content", {})
+            )
+        tinder_user_profile_data, tinder_user_profile_id = _user_result
         # Step 2: Fetch job profile data
-        tinder_job_data = util.get_job_data(job_profile_id, run_stage)
+        _job_result = util.get_job_data(job_profile_id, run_stage)
+        if isinstance(_job_result, dict) and _job_result.get("status_code"):
+            return JSONResponse(
+                status_code=_job_result.get("status_code", 400),
+                content=_job_result.get("content", {})
+            )
+        tinder_job_data = _job_result
         
         session_incomplete = util.check_if_session_exists(
             run_stage, 
@@ -2639,7 +2651,13 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
             type='job_interview_config'
             persona_tag = 'parrot_persona'
 
-            tinder_user_profile_data, tinder_user_profile_id = util.get_user_data(all_user_id, run_stage)
+            _user_result = util.get_user_data(all_user_id, run_stage)
+            if isinstance(_user_result, dict) and _user_result.get("status_code"):
+                return JSONResponse(
+                    status_code=_user_result.get("status_code", 400),
+                    content=_user_result.get("content", {})
+                )
+            tinder_user_profile_data, tinder_user_profile_id = _user_result
             tinder_job_data = util.get_job_data_template_for_multiple_ids(job_profile_ids, run_stage)
             # Load and format prompt templates
             response_obj = util.fetch_the_structure(type)

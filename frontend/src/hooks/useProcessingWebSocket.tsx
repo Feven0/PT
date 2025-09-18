@@ -73,6 +73,24 @@ const useProcessingWebSocket = (url: string) => {
       }
     });
 
+    // S3 upload completion event
+    newSocket.on('s3_upload_complete', (data: any) => {
+      console.log('🎉 S3 upload completed:', data);
+      console.log('📁 S3 URL:', data.s3_url);
+      
+      // Update processing status with S3 URL
+      setProcessingStatuses((prev: ProcessingStatus) => ({
+        ...prev,
+        [data.job_id]: {
+          ...prev[data.job_id],
+          s3_url: data.s3_url,
+          status: 'uploaded',
+          message: 'File uploaded to S3 successfully',
+          timestamp: Date.now()
+        }
+      }));
+    });
+
     return () => {
       newSocket.disconnect();
     };
