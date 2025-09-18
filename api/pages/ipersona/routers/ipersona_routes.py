@@ -163,11 +163,7 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
         tinder_user_profile_data, tinder_user_profile_id = _user_result
         # Step 2: Fetch job profile data
         _job_result = util.get_job_data(job_profile_id, run_stage)
-        if isinstance(_job_result, dict) and _job_result.get("status_code"):
-            return JSONResponse(
-                status_code=_job_result.get("status_code", 400),
-                content=_job_result.get("content", {})
-            )
+    
         tinder_job_data = _job_result
         
         session_incomplete = util.check_if_session_exists(

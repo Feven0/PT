@@ -1,4 +1,5 @@
 import os
+import asyncio
 import socketio
 
 # Centralized Socket.IO server instance
@@ -67,10 +68,30 @@ async def emit_with_log(event: str, data: dict, room: str | None = None):
         except Exception:
             pass
         print(f"[SIO] → Emitting event='{event}' room='{room or 'ALL'}' targets≈{approx_targets} keys={list(data.keys())}")
-        await sio.emit(event, data, room=room)
-        print(f"[SIO] ✓ Emitted event='{event}'")
+        try:
+            await sio.emit(event, data, room=room)
+            print(f"[SIO] ✓ Emitted event='{event}' via manager")
+            return
+        except Exception as e:
+            print("Cannot publish to redis... retrying")
+            print(f"[SIO] manager emit failed: {e}")
+            # Fallback: emit via transient Socket.IO client to the server URL
+            await _emit_via_client(event, data)
+            print(f"[SIO] ✓ Emitted event='{event}' via client fallback")
     except Exception as e:
         print(f"[SIO] ✗ Emit failed event='{event}': {e}")
+
+async def _emit_via_client(event: str, data: dict):
+    try:
+        import socketio as _sio
+        server_url = os.environ.get("SOCKETIO_SERVER_URL") or os.environ.get("WS_PUBLIC_URL") or "http://localhost:9900"
+        client = _sio.AsyncClient()
+        # Prefer websocket to avoid long-poll fallback issues
+        await client.connect(server_url, transports=['websocket'])
+        await client.emit(event, data)
+        await client.disconnect()
+    except Exception as e:
+        print(f"[SIO] client fallback failed: {e}")
 
 async def emit_to_user_job(job_id: str, user_id: str, event: str, data):
     """Emit to user-specific job room"""
