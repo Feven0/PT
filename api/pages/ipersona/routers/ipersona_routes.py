@@ -124,91 +124,6 @@ async def update_session_mode(request: pemodel.UpdateSessionModeRequestReceieved
             content={"error": f"Health check failed: {str(e)}"}
         )
 
-@routes.post("/audio_upload", tags=["Audio Endpoints"])
-async def speech_to_text(file: UploadFile = File(...)) -> dict:
-    """
-    Convert an audio file to text using a speech-to-text service.
-    
-    Processes an uploaded audio file, saves it to the specified location,
-    and uses an Assembly AI transcriber to convert the audio to text.
-    
-    Parameters
-    ----------
-    file : UploadFile
-        The audio file uploaded by the user.
-        
-    Returns
-    -------
-    Union[List, Dict]
-        A dictionary containing:
-        - 'transcription': The transcribed text or "Failed" on error
-        - 'status': HTTP status code (200 for success, 400 for transcription error)
-        - 'message': Empty string on success or error message
-        
-    Raises
-    ------
-    Exception
-        If any error occurs during file handling or transcription
-    """
-    if not file or not file.filename:
-        logger.error("Invalid file: No file or filename provided")
-        return JSONResponse(
-            status_code=400,
-            content={
-                "transcription": "Failed",
-                "status": 400,
-                "message": "No file provided or invalid file"
-            }
-        )
-        
-    try:
-        logger.info(f"Starting audio processing for file: {file.filename}")
-        
-        # Create directory if it doesn't exist
-        audio_dir = data_path('audio')
-        os.makedirs(audio_dir, exist_ok=True)
-        
-        audio_path = os.path.join(audio_dir, file.filename)
-        logger.debug(f"Saving audio file to: {audio_path}")
-        
-        # Save the uploaded file
-        contents = await file.read()
-        with open(audio_path, "wb") as f:
-            f.write(contents)
-        logger.info("Audio file saved successfully")
-        
-        # Initialize transcriber and process file
-        transcriber = aai.Transcriber()
-        transcript = transcriber.transcribe(audio_path)
-
-        if transcript.status == aai.TranscriptStatus.error:
-            error_msg = getattr(transcript, 'error', 'Unknown transcription error')
-            logger.error(f"Transcription error: {error_msg}")
-            return {
-                "transcription": "Failed",
-                "status": 400, 
-                "message": error_msg
-            }
-            
-        logger.info("Transcription completed successfully")
-        logger.debug(f"Transcription text: {transcript.text}")
-        return {
-            "transcription": transcript.text,
-            "status": 200, 
-            "message": ""
-        }
-    
-    except Exception as e:
-        logger.error(f"Error during transcription: {str(e)}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={
-                "transcription": "Failed",
-                "status": 500,
-                "message": f"System error: {str(e)}"
-            }
-        )
-
 @routes.post(
     "/create_user_session",
     # response_model=CreateUserSessionResponse,
@@ -2860,13 +2775,6 @@ async def audio_upload_external_celery(
                 template_id = target_data.get("template_id")
                 session_id = target_data.get("session_id")
                 all_user_id = target_data.get("all_user_id")
-                print("____________________________________________________________")
-                print(job_profile_id)
-                print(challenge_id)
-                print(template_id)
-                print(session_id)
-                print(all_user_id)
-                print("____________________________________________________________")
 
                 logger.info(f"Parsed target - job_profile_id: {job_profile_id}, challenge_id: {challenge_id}, session_id: {session_id}, all_user_id: {all_user_id}")
             except json.JSONDecodeError:
@@ -3085,10 +2993,90 @@ async def files_upload_external_celery(
         return {'status': 500, 'message': str(e)}
 
 
+@routes.post("/audio_upload", tags=["Audio Endpoint"])
+async def speech_to_text(file: UploadFile = File(...)) -> dict:
+    """
+    Convert an audio file to text using a speech-to-text service.
+    
+    Processes an uploaded audio file, saves it to the specified location,
+    and uses an Assembly AI transcriber to convert the audio to text.
+    
+    Parameters
+    ----------
+    file : UploadFile
+        The audio file uploaded by the user.
+        
+    Returns
+    -------
+    Union[List, Dict]
+        A dictionary containing:
+        - 'transcription': The transcribed text or "Failed" on error
+        - 'status': HTTP status code (200 for success, 400 for transcription error)
+        - 'message': Empty string on success or error message
+        
+    Raises
+    ------
+    Exception
+        If any error occurs during file handling or transcription
+    """
+    if not file or not file.filename:
+        logger.error("Invalid file: No file or filename provided")
+        return JSONResponse(
+            status_code=400,
+            content={
+                "transcription": "Failed",
+                "status": 400,
+                "message": "No file provided or invalid file"
+            }
+        )
+        
+    try:
+        logger.info(f"Starting audio processing for file: {file.filename}")
+        
+        # Create directory if it doesn't exist
+        audio_dir = data_path('audio')
+        os.makedirs(audio_dir, exist_ok=True)
+        
+        audio_path = os.path.join(audio_dir, file.filename)
+        logger.debug(f"Saving audio file to: {audio_path}")
+        
+        # Save the uploaded file
+        contents = await file.read()
+        with open(audio_path, "wb") as f:
+            f.write(contents)
+        logger.info("Audio file saved successfully")
+        
+        # Initialize transcriber and process file
+        transcriber = aai.Transcriber()
+        transcript = transcriber.transcribe(audio_path)
 
-
-
-
+        if transcript.status == aai.TranscriptStatus.error:
+            error_msg = getattr(transcript, 'error', 'Unknown transcription error')
+            logger.error(f"Transcription error: {error_msg}")
+            return {
+                "transcription": "Failed",
+                "status": 400, 
+                "message": error_msg
+            }
+            
+        logger.info("Transcription completed successfully")
+        logger.debug(f"Transcription text: {transcript.text}")
+        return {
+            "transcription": transcript.text,
+            "status": 200, 
+            "message": ""
+        }
+    
+    except Exception as e:
+        logger.error(f"Error during transcription: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "transcription": "Failed",
+                "status": 500,
+                "message": f"System error: {str(e)}"
+            }
+        )
 
 
 

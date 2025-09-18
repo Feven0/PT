@@ -1,4 +1,5 @@
 
+from nturl2path import url2pathname
 import os
 import requests
 from typing import Optional, Tuple
@@ -15,12 +16,78 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
 )
 import api.llm.ipersona.ipersona_strapi as strapi
 import api.modules.ipersona_parrot_gpt as util
+from pydub import AudioSegment
+from io import BytesIO
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
 class AudioUtils:
     def __init__(self):
         pass
+    
+    def _build_upload_meta(self, s3_url: str, content_type: str, filename: str, audio_path: Optional[str] = None, contents: Optional[bytes] = None, text_size_bytes: Optional[int] = None) -> dict:
+        """
+        Build a basic upload metadata dict with url, s3_url, content_type, original_filename,
+        and computed duration_secs (only for AV) and size_bytes.
+        """
+        is_av = ("audio" in content_type) or ("video" in content_type)
+        duration_value: Optional[str] = None
+        size_bytes_value: Optional[int] = None
+        try:
+            if is_av:
+                if contents:
+                    duration_secs_f = len(AudioSegment.from_file(BytesIO(contents), format='mp3')) / 1000.0
+                    duration_value = f"{duration_secs_f} seconds"
+                    size_bytes_value = len(contents)
+                elif audio_path:
+                    duration_secs_f = len(AudioSegment.from_file(audio_path)) / 1000.0
+                    duration_value = f"{duration_secs_f} seconds"
+                    import os as _os
+                    size_bytes_value = _os.path.getsize(audio_path) if _os.path.exists(audio_path) else None
+            else:
+                size_bytes_value = text_size_bytes if text_size_bytes is not None else (len(contents) if contents else None)
+        except Exception:
+            # Best-effort; leave None on failure
+            pass
+
+        return {
+            "url": s3_url,
+            "content_type": content_type,
+            "original_filename": filename,
+            "duration_secs": duration_value,
+            "size_bytes": size_bytes_value,
+        }
+
+    def _upload_and_get_duration(self, filename: str, content_type: str, contents: bytes) -> tuple[str, Optional[str], int]:
+        """
+        Uploads bytes to S3 under the appropriate prefix and returns (url, duration_string_or_None).
+        Duration is computed only for audio/video inputs.
+        """
+        from api.utils import s3_client as _s3h
+        def _pick_bucket():
+            buckets = _s3h.list_buckets()
+            if 'tenx-parrot-assets' not in buckets:
+                raise Exception("tenx-parrot-assets bucket not found or not accessible")
+            return 'tenx-parrot-assets'
+        bucket = _pick_bucket()
+
+        is_av = ("audio" in content_type) or ("video" in content_type)
+        prefix = "audio" if is_av else "documents"
+        key = f"{prefix}/{filename}"
+        url, _ = _s3h.upload_bytes_and_get_url(bucket, contents, key=key)
+
+        duration_str: Optional[str] = None
+        size_bytes: int = len(contents)
+        if is_av:
+            try:
+                fmt = content_type.split("/")[-1].lower()
+                fmt = 'mp3' if fmt == 'mpeg' else fmt
+                duration_secs = len(AudioSegment.from_file(BytesIO(contents), format=fmt)) / 1000.0
+                duration_str = f"{duration_secs} seconds"
+            except Exception:
+                duration_str = None
+
+        return url, duration_str, size_bytes
     
     def ai_validate_interview_content(self, transcript):
         """
@@ -355,6 +422,7 @@ class AudioUtils:
                             bucket = _pick_bucket()
                             url, key = _s3h.upload_file_and_get_url(bucket, audio_path, key=f"documents/{filename}")
                             s3_text_url = url
+                            text_size_bytes = len(contents)
                             print(f"☁️ [DEBUG] Uploaded document to S3: {url}")
                         except Exception as e:
                             print(f"❌ [DEBUG] S3 upload failed (document): {str(e)}")
@@ -431,7 +499,9 @@ class AudioUtils:
                             "status": "done",
                             "message": "Text content extracted successfully",
                             "content": result.get("content"),
-                            "s3_url": s3_text_url or s3_audio_url
+                            "url": s3_text_url or s3_audio_url,
+                            "size_bytes": text_size_bytes if 'text_size_bytes' in locals() else None,
+                            "duration_secs": None
                         })
                         print(f"📝 [DEBUG] Set Redis status to 'done' with content")
                     except Exception as e:
@@ -552,6 +622,22 @@ class AudioUtils:
             try:
                 print(f"💾 [DEBUG] Creating session for audio processing")
                 logger.debug("Creating session for audio processing")
+
+                base_meta = self._build_upload_meta(
+                    s3_url=s3_audio_url or s3_text_url,
+                    content_type=content_type,
+                    filename=filename,
+                    audio_path=audio_path,
+                    contents=contents if 'contents' in locals() else None,
+                    text_size_bytes=text_size_bytes if 'text_size_bytes' in locals() else None,
+                )
+
+                upload_metadata = {
+                    "mode": "combined_mode",
+                    **base_meta,
+                    "source": "uploaded_file"
+                }
+
                 saved_session = util.create_session(
                     run_stage,
                     mode,
@@ -563,7 +649,8 @@ class AudioUtils:
                     job_profile_id,
                     template_id,
                     challenge_id,
-                    message
+                    message,
+                    upload_metadata
                 )
                 print(f"📊 [DEBUG] Session creation result: {saved_session}")
             except Exception as e:
@@ -673,12 +760,6 @@ class AudioUtils:
      ):
         redis = RedisBase()
         try:
-            if not job_profile_id:
-                logger.error("job_profile_id is missing, cannot track processing status.")
-                return
-
-            redis.set(f"audio_status:{job_profile_id}", {"status": "processing", "message": "Starting dual file processing."})
-            logger.info(f"🔊 Starting combined processing for Job ID: {job_profile_id}")
 
             # --- Process Question File using helper ---
             question_transcript, question_error_msg = await self.process_and_transcribe_file(
@@ -710,6 +791,14 @@ class AudioUtils:
                 raise Exception(error_msg)
 
             logger.info("✅ Both question and answer files processed successfully.")
+
+            # --- Upload both assets to S3 and collect URLs (simplified via helper) ---
+            try:
+                question_url, q_duration, q_size = self._upload_and_get_duration(question_filename, question_content_type, question_contents)
+                answer_url, a_duration, a_size = self._upload_and_get_duration(answer_filename, answer_content_type, answer_contents)
+            except Exception as s3e:
+                redis.set(f"audio_status:{job_profile_id}", {"status": "failed", "message": f"S3 upload failed: {str(s3e)}"})
+                raise
 
             # --- Remaining Original Logic (now much cleaner) ---
             logger.debug("Fetching trainee profile data")
@@ -791,6 +880,23 @@ class AudioUtils:
             challenge = False
             mode = None
 
+            # Build upload metadata with distinct URLs, optional durations, and sizes
+            upload_metadata = {
+                "mode": "qa_split_mode",
+                "question_url": question_url,
+                "answer_url": answer_url,
+                "question_content_type": question_content_type,
+                "answer_content_type": answer_content_type,
+                "question_original_filename": question_filename,
+                "answer_original_filename": answer_filename,
+                "question_duration_secs": q_duration,
+                "answer_duration_secs": a_duration,
+                "question_size_bytes": q_size,
+                "answer_size_bytes": a_size,
+                "source": "uploaded_file"
+            }
+          
+
             saved_session = util.create_session(
                 run_stage,
                 mode,
@@ -802,7 +908,8 @@ class AudioUtils:
                 job_profile_id,
                 template_id,
                 challenge_id,
-                message
+                message,
+                upload_metadata
             )
 
             if saved_session:
@@ -920,6 +1027,24 @@ class AudioUtils:
 
             logger.info("✅ Answer file processed successfully.")
 
+            # Upload answer asset to S3 and prepare upload metadata
+            try:
+                answer_url, a_duration, a_size = self._upload_and_get_duration(
+                    answer_filename, answer_content_type, answer_contents
+                )
+                upload_metadata = {
+                    "mode": "answer_only_mode",
+                    "answer_url": answer_url,
+                    "answer_content_type": answer_content_type,
+                    "answer_original_filename": answer_filename,
+                    "duration_secs": a_duration,
+                    "answer_size_bytes": a_size,
+                    "source": "uploaded_file"
+                }
+            except Exception as s3e:
+                redis.set(f"audio_status:{job_profile_id}", {"status": "failed", "message": f"S3 upload failed: {str(s3e)}"})
+                raise
+
             # Convert template_questions to question text format
             question_text = self.convert_template_questions_to_text(template_questions)
             logger.info(f"📋 Converted {len(template_questions)} template questions to text format")
@@ -1014,7 +1139,8 @@ class AudioUtils:
                 job_profile_id,
                 template_id,
                 challenge_id,
-                message
+                message,
+                upload_metadata
             )
             print(f"📋 [DEBUG] Saved session========: {saved_session}")
             logger.success(f"📋 [DEBUG] Saved session:::::::: {saved_session}")
@@ -1106,9 +1232,6 @@ class AudioUtils:
  
 
 
-
-
-
     def content_extraction_logics(self, filename: str, content: bytes, content_type: str) -> dict:
         try:
             files = {
@@ -1154,7 +1277,6 @@ class AudioUtils:
             
             try:
                 # Compress the audio file to reduce size
-                from pydub import AudioSegment
                 print(f"🔄 [DEBUG] Loading audio file: {audio_path}")
                 audio = AudioSegment.from_mp3(audio_path)
                 print(f"🔄 [DEBUG] Audio loaded successfully, duration: {len(audio)/1000:.2f}s")

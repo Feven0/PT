@@ -778,16 +778,22 @@ def process_audio_and_save_external(
             "external": external,
             "challenge": challenge
         }
+        upload_metadata = None
+        mode = None
         saved_session = create_session(
             run_stage,
-            type,  
+            mode,
+            template,
+            external,
+            challenge,
             all_user_id,
             tinder_user_profile_id,
             job_profile_id,
             template_id,
             challenge_id,
-            message)
-        
+            message,
+            upload_metadata)
+
         if saved_session:
             sessionId = saved_session['id']
             saved = strapi.save_messages_to_db(transcribe_chat, sessionId)
@@ -3969,7 +3975,7 @@ async def create_session_logics(
         tinder_job_data, 
         tinder_user_profile_data):
     try:
-
+        upload_metadata = None
         if template:
             message = ''
             saved_session = create_session(
@@ -3983,7 +3989,8 @@ async def create_session_logics(
                 job_profile_id,
                 template_id, 
                 challenge_id, 
-                message
+                message,
+                upload_metadata
             )
 
             saved_session = {
@@ -4033,7 +4040,8 @@ async def create_session_logics(
                 job_profile_id,
                 template_id, 
                 challenge_id, 
-                challenge_prompt
+                challenge_prompt,
+                upload_metadata
             )
 
             saved_session = {
@@ -4175,7 +4183,8 @@ def create_session(
         job_profile_id, 
         template_id, 
         challenge_id,
-        message):
+        message,
+        upload_metadata):
     try:  
         challenge_generated_questions = None
         if template:
@@ -4193,7 +4202,8 @@ def create_session(
                 "template": False,
                 "generate": False,
                 "external": True,
-                "challenge": False
+                "challenge": False,
+                "upload_metadata": upload_metadata
             }
             status = "External"
         elif challenge:
