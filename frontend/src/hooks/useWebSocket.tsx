@@ -30,32 +30,20 @@ const useWebSocket = (url: string) => {
     newSocket.on('initial connect', (message: any) => {
       console.log('Connected to WebSocket server');
       console.log(message)
-      
-      // Automatically subscribe to processing updates for common user/job combinations
-      // This will listen for S3 completion events
-      setTimeout(() => {
-        console.log('🔔 Auto-subscribing to processing updates...');
-        
-        // Subscribe to the room that matches your Celery logs: user_id=1959, job_id=46
-        newSocket.emit('subscribe_to_processing', { 
-          job_id: '46',  // Based on your Celery logs (job_profile_id: 46)
-          user_id: '1959'  // Based on your Celery logs
-        });
-        
-        // Also subscribe to a generic room for any user
-        newSocket.emit('subscribe_to_processing', { 
-          job_id: 'any', 
-          user_id: 'any' 
-        });
-      }, 1000);
     });
 
     // newSocket.emit('initial connect', { 
     //   run_stage: 'dev'  // Pass your run_stage value here
     // });
 
-        // ================================= text To text Sockets =============================//
+    newSocket.on('processing_update_failed', (data: any) => {
+      console.log('🔔 Failed: Processing update received:');
+      console.log(data)
+    });
 
+
+        // ================================= text To text Sockets =============================//
+    
     newSocket.on('interview chat', (message) => {
       setChatInterview((prevMessages) => {
         if (!Array.isArray(prevMessages)) {

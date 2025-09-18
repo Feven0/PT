@@ -2210,22 +2210,30 @@ def tinder_template(request: pemodel.TinderTemplateRequestRecieved):
             challenge_ids)
           
         if saved_data.get('status') == 'error':
-            return {
-                "template": saved_data,
-                "success": 200,
-                "message": 'Process Failed'
-            }
+            logger.error(f"Failed to save tinder template: {saved_data}")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "template": saved_data,
+                    "success": 0,
+                    "message": 'Failed to save template',
+                }
+            )
         else:
             return {
                 "template": saved_data,
                 "success": 200,
-                "message": 'Template Fetched Successfully.'
+                "message": 'Template saved successfully.'
             }
              
     except Exception as e:
+        logger.error(f"Unhandled error saving tinder template: {str(e)}", exc_info=True)
         return JSONResponse(
             status_code=500,
-            content={"error": f"Error saving template: {str(e)}"}
+            content={
+                "error": "Error saving template",
+                "details": str(e)
+            }
         )
      
 @routes.post("/get_tinder_templates", tags=["Template Endpoints"])

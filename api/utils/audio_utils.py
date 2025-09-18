@@ -18,6 +18,7 @@ import api.llm.ipersona.ipersona_strapi as strapi
 import api.modules.ipersona_parrot_gpt as util
 from pydub import AudioSegment
 from io import BytesIO
+from api.socket.core import sio
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
@@ -324,53 +325,60 @@ class AudioUtils:
                         logger.info("✅ File already in mp3 format. Skipping conversion.")
                         # Upload existing mp3 to S3
                         try:
-                            bucket = _pick_bucket()
-                            url, key = _s3h.upload_file_and_get_url(bucket, audio_path, key=f"audio/{filename}")
+                            # bucket = _pick_bucket()
+                            # url, key = _s3h.upload_file_and_get_url(bucket, audio_path, key=f"audio/{filename}")
+                            url = None
                             s3_audio_url = url
                             print(f"☁️ [DEBUG] Uploaded audio (mp3) to S3: {url}")
                         except Exception as e:
                             print(f"❌ [DEBUG] S3 upload failed (existing mp3): {str(e)}")
                             return f'S3 upload failed: {str(e)}'
 
-                    try:
-                        print(f"🎤 [DEBUG] Calling audio_transcription_logics")
-                        result = self.audio_transcription_logics(
-                            filename=filename,
-                            audio_path=audio_path,
-                            content_type="audio/mpeg",
-                        )
-                        # print(f"📊 [DEBUG] Transcription result: {result}")
-                    except Exception as e:
-                        print(f"❌ [DEBUG] Audio transcription failed: {str(e)}")
-                        return 'Transcription failed'
+                    # try:
+                    #     print(f"🎤 [DEBUG] Calling audio_transcription_logics")
+                    #     result = self.audio_transcription_logics(
+                    #         filename=filename,
+                    #         audio_path=audio_path,
+                    #         content_type="audio/mpeg",
+                    #     )
+                    #     # print(f"📊 [DEBUG] Transcription result: {result}")
+                    # except Exception as e:
+                    #     print(f"❌ [DEBUG] Audio transcription failed: {str(e)}")
+                    #     return 'Transcription failed'
 
-                    if "error" in result:
-                        print(f"❌ [DEBUG] Transcription failed with error: {result.get('error')}")
-                        try:
-                            redis.set(f"audio_status:{job_profile_id}", {
-                                "status": "failed",
-                                "message": result.get("error"),
-                                "details": result.get("details", "")
-                            })
-                            print(f"📝 [DEBUG] Set Redis status to 'failed'")
-                        except Exception as e:
-                            print(f"❌ [DEBUG] Failed to set Redis error status: {str(e)}")
-                        raise Exception("Transcription failed")
+                    # if "error" in result:
+                    #     print(f"❌ [DEBUG] Transcription failed with error: {result.get('error')}")
+                    #     try:
+                    #         redis.set(f"audio_status:{job_profile_id}", {
+                    #             "status": "failed",
+                    #             "message": result.get("error"),
+                    #             "details": result.get("details", "")
+                    #         })
+                    #         print(f"📝 [DEBUG] Set Redis status to 'failed'")
+                    #     except Exception as e:
+                    #         print(f"❌ [DEBUG] Failed to set Redis error status: {str(e)}")
+                    #     raise Exception("Transcription failed")
 
-                    try:
-                        transcript = result.get("content", "No transcription returned")
-                        print(f"📝 [DEBUG] Extracted transcript: {transcript[:50]}..." if len(str(transcript)) > 100 else f"📝 [DEBUG] Extracted transcript")
-                        logger.success("Initializing transcription")
-                    except Exception as e:
-                        print(f"❌ [DEBUG] Failed to extract transcript: {str(e)}")
-                        raise Exception('Transcript extraction failed')
+                    # try:
+                    #     transcript = result.get("content", "No transcription returned")
+                    #     print(f"📝 [DEBUG] Extracted transcript: {transcript[:50]}..." if len(str(transcript)) > 100 else f"📝 [DEBUG] Extracted transcript")
+                    #     logger.success("Initializing transcription")
+                    # except Exception as e:
+                    #     print(f"❌ [DEBUG] Failed to extract transcript: {str(e)}")
+                    #     raise Exception('Transcript extraction failed')
 
                     # AI-Powered Content Validation
                     try:
-                        # transcript = util.file_reader(f"/home/rehmet/tenx_ipersona/api/utils/sample_transcriptions/QA.txt")
+                        transcript = util.file_reader(f"/home/rehmet/tenx_ipersona/api/utils/sample_transcriptions/answers_only.txt")
                         print(f"🔍 [DEBUG] Starting AI-powered content validation", transcript)
                         validation_result = self.ai_validate_interview_content(transcript)
                         print(f"📊 [DEBUG] Validation result: {validation_result}")
+                        from api.socket.core import emit_with_log
+                        await emit_with_log(
+                            "processing_update_failed",
+                            {"status": f"❌ No valuable matches found between the question and answer files for Job with id: {job_profile_id}. Please re-upload a clear interview file, then try again."}
+                        )
+
                         
                         if not validation_result.get('valid', False):
                             error_reason = validation_result.get('reason', 'Content validation failed')
@@ -548,183 +556,183 @@ class AudioUtils:
 
 
             # --- Existing logic continues here ---
-            try:
-                print(f"👤 [DEBUG] Fetching trainee profile data for all_user_id: {all_user_id}")
-                logger.debug("Fetching trainee profile data")
-                ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-                trainee_profile_data = ipersona_user.filter_by_alluser_id(
-                    all_user_id=all_user_id, nopp=True, dataframe=False
-                )
-                # print(f"📊 [DEBUG] Trainee profile data: {trainee_profile_data}")
-            except Exception as e:
-                print(f"❌ [DEBUG] Failed to fetch trainee profile data: {str(e)}")
-                return 'Profile fetch failed'
+        #     try:
+        #         print(f"👤 [DEBUG] Fetching trainee profile data for all_user_id: {all_user_id}")
+        #         logger.debug("Fetching trainee profile data")
+        #         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+        #         trainee_profile_data = ipersona_user.filter_by_alluser_id(
+        #             all_user_id=all_user_id, nopp=True, dataframe=False
+        #         )
+        #         # print(f"📊 [DEBUG] Trainee profile data: {trainee_profile_data}")
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Failed to fetch trainee profile data: {str(e)}")
+        #         return 'Profile fetch failed'
             
-            if not trainee_profile_data:
-                print(f"⚠️ [DEBUG] No trainee user profiles found for all_user_id: {all_user_id}")
-                logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
-                return
+        #     if not trainee_profile_data:
+        #         print(f"⚠️ [DEBUG] No trainee user profiles found for all_user_id: {all_user_id}")
+        #         logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
+        #         return
 
-            try:
-                tinder_user_profile_id = trainee_profile_data.get('id')
-                print(f"🆔 [DEBUG] Extracted tinder_user_profile_id: {tinder_user_profile_id}")
-            except Exception as e:
-                print(f"❌ [DEBUG] Failed to extract tinder_user_profile_id: {str(e)}")
-                return 'Profile ID extraction failed'
+        #     try:
+        #         tinder_user_profile_id = trainee_profile_data.get('id')
+        #         print(f"🆔 [DEBUG] Extracted tinder_user_profile_id: {tinder_user_profile_id}")
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Failed to extract tinder_user_profile_id: {str(e)}")
+        #         return 'Profile ID extraction failed'
                 
-            if not tinder_user_profile_id:
-                print(f"❌ [DEBUG] Invalid trainee profile: missing ID")
-                logger.error("Invalid trainee profile: missing ID")
-                return
+        #     if not tinder_user_profile_id:
+        #         print(f"❌ [DEBUG] Invalid trainee profile: missing ID")
+        #         logger.error("Invalid trainee profile: missing ID")
+        #         return
 
-            try:
-                print(f"📖 [DEBUG] Reading external audio analysis prompt")
-                logger.debug("Reading external audio analysis prompt")
-                external_audio_prompt = util.file_reader(util.prompt_path('external_audio_analysis.txt'))
-                realtime_prompt = util.file_reader(util.prompt_path('realtime_evaluation.txt'))
-                print(f"📝 [DEBUG] Loaded prompts - external_audio_prompt length: {len(external_audio_prompt)}, realtime_prompt length: {len(realtime_prompt)}")
-            except Exception as e:
-                print(f"❌ [DEBUG] Failed to read prompts: {str(e)}")
-                return 'Prompt reading failed'
+        #     try:
+        #         print(f"📖 [DEBUG] Reading external audio analysis prompt")
+        #         logger.debug("Reading external audio analysis prompt")
+        #         external_audio_prompt = util.file_reader(util.prompt_path('external_audio_analysis.txt'))
+        #         realtime_prompt = util.file_reader(util.prompt_path('realtime_evaluation.txt'))
+        #         print(f"📝 [DEBUG] Loaded prompts - external_audio_prompt length: {len(external_audio_prompt)}, realtime_prompt length: {len(realtime_prompt)}")
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Failed to read prompts: {str(e)}")
+        #         return 'Prompt reading failed'
 
-            try:
-                print(f"🔧 [DEBUG] Replacing placeholders in prompts")
-                logger.debug("Replacing placeholders in prompts")
-                external_aud_prompt = external_audio_prompt.replace("{transcription}", str(transcript)).replace("{realtime}", str(realtime_prompt))
-                print(f"📝 [DEBUG] Final prompt length: {len(external_aud_prompt)}")
-            except Exception as e:
-                print(f"❌ [DEBUG] Failed to replace prompt placeholders: {str(e)}")
-                return 'Prompt processing failed'
+        #     try:
+        #         print(f"🔧 [DEBUG] Replacing placeholders in prompts")
+        #         logger.debug("Replacing placeholders in prompts")
+        #         external_aud_prompt = external_audio_prompt.replace("{transcription}", str(transcript)).replace("{realtime}", str(realtime_prompt))
+        #         print(f"📝 [DEBUG] Final prompt length: {len(external_aud_prompt)}")
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Failed to replace prompt placeholders: {str(e)}")
+        #         return 'Prompt processing failed'
 
-            try:
-                print(f"🤖 [DEBUG] Sending prompt to GPT for analysis")
-                logger.debug("Sending prompt to GPT for analysis", external_aud_prompt)
-                data = gpt.openai_gpt_assistant_without_streaming(external_aud_prompt)
-                # print(f"📊 [DEBUG] Raw GPT response: {data[:100]}...") 
-            except Exception as e:
-                print(f"❌ [DEBUG] GPT analysis failed: {str(e)}")
-                return 'GPT analysis failed'
+        #     try:
+        #         print(f"🤖 [DEBUG] Sending prompt to GPT for analysis")
+        #         logger.debug("Sending prompt to GPT for analysis", external_aud_prompt)
+        #         data = gpt.openai_gpt_assistant_without_streaming(external_aud_prompt)
+        #         # print(f"📊 [DEBUG] Raw GPT response: {data[:100]}...") 
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] GPT analysis failed: {str(e)}")
+        #         return 'GPT analysis failed'
                 
-            try:
-                # Extract JSON from the llm_client response (handled automatically by extract_json)
-                response = util.extract_json(data, quite=False)
-                print(f"📋 [DEBUG] Extracted JSON response: {response}")
-                logger.debug("Response from GPT", response)
-            except Exception as e:
-                print(f"❌ [DEBUG] Failed to extract JSON from GPT response: {str(e)}")
-                return 'JSON extraction failed'
+        #     try:
+        #         # Extract JSON from the llm_client response (handled automatically by extract_json)
+        #         response = util.extract_json(data, quite=False)
+        #         print(f"📋 [DEBUG] Extracted JSON response: {response}")
+        #         logger.debug("Response from GPT", response)
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Failed to extract JSON from GPT response: {str(e)}")
+        #         return 'JSON extraction failed'
             
-            if not response:
-                print(f"❌ [DEBUG] Failed to process upload file: No data returned from transcription")
-                logger.error("❌ Failed to process upload file: No data returned from transcription")
-                return
+        #     if not response:
+        #         print(f"❌ [DEBUG] Failed to process upload file: No data returned from transcription")
+        #         logger.error("❌ Failed to process upload file: No data returned from transcription")
+        #         return
 
-            try:
-                print(f"💾 [DEBUG] Creating session for audio processing")
-                logger.debug("Creating session for audio processing")
+        #     try:
+        #         print(f"💾 [DEBUG] Creating session for audio processing")
+        #         logger.debug("Creating session for audio processing")
 
-                base_meta = self._build_upload_meta(
-                    s3_url=s3_audio_url or s3_text_url,
-                    content_type=content_type,
-                    filename=filename,
-                    audio_path=audio_path,
-                    contents=contents if 'contents' in locals() else None,
-                    text_size_bytes=text_size_bytes if 'text_size_bytes' in locals() else None,
-                )
+        #         base_meta = self._build_upload_meta(
+        #             s3_url=s3_audio_url or s3_text_url,
+        #             content_type=content_type,
+        #             filename=filename,
+        #             audio_path=audio_path,
+        #             contents=contents if 'contents' in locals() else None,
+        #             text_size_bytes=text_size_bytes if 'text_size_bytes' in locals() else None,
+        #         )
 
-                upload_metadata = {
-                    "mode": "combined_mode",
-                    **base_meta,
-                    "source": "uploaded_file"
-                }
+        #         upload_metadata = {
+        #             "mode": "combined_mode",
+        #             **base_meta,
+        #             "source": "uploaded_file"
+        #         }
 
-                saved_session = util.create_session(
-                    run_stage,
-                    mode,
-                    template,
-                    external,
-                    challenge,
-                    all_user_id,
-                    tinder_user_profile_id,
-                    job_profile_id,
-                    template_id,
-                    challenge_id,
-                    message,
-                    upload_metadata
-                )
-                print(f"📊 [DEBUG] Session creation result: {saved_session}")
-            except Exception as e:
-                print(f"❌ [DEBUG] Session creation failed: {str(e)}")
-                return 'Session creation failed'
+        #         saved_session = util.create_session(
+        #             run_stage,
+        #             mode,
+        #             template,
+        #             external,
+        #             challenge,
+        #             all_user_id,
+        #             tinder_user_profile_id,
+        #             job_profile_id,
+        #             template_id,
+        #             challenge_id,
+        #             message,
+        #             upload_metadata
+        #         )
+        #         print(f"📊 [DEBUG] Session creation result: {saved_session}")
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Session creation failed: {str(e)}")
+        #         return 'Session creation failed'
 
-            if saved_session and isinstance(saved_session, dict):
-                try:
-                    sessionId = saved_session['id']
-                    print(f"✅ [DEBUG] Session created successfully with ID: {sessionId}")
-                    logger.info(f"📥 Session created successfully with ID: {sessionId}")
-                except Exception as e:
-                    print(f"❌ [DEBUG] Failed to extract session ID: {str(e)}")
-                    return 'Session ID extraction failed'
+        #     if saved_session and isinstance(saved_session, dict):
+        #         try:
+        #             sessionId = saved_session['id']
+        #             print(f"✅ [DEBUG] Session created successfully with ID: {sessionId}")
+        #             logger.info(f"📥 Session created successfully with ID: {sessionId}")
+        #         except Exception as e:
+        #             print(f"❌ [DEBUG] Failed to extract session ID: {str(e)}")
+        #             return 'Session ID extraction failed'
                     
-                try:
-                    print(f"💾 [DEBUG] Saving transcribed chat to database")
-                    logger.debug("Saving transcribed chat to database")
-                    # saved = await strapi.sav e_message(sessionId, response)
-                    saved = strapi.save_messages_to_db(response, sessionId)
-                    print(f"📊 [DEBUG] Save message result: {saved}")
-                except Exception as e:
-                    print(f"❌ [DEBUG] Failed to save message to database: {str(e)}")
-                    return 'Message save failed'
+        #         try:
+        #             print(f"💾 [DEBUG] Saving transcribed chat to database")
+        #             logger.debug("Saving transcribed chat to database")
+        #             # saved = await strapi.sav e_message(sessionId, response)
+        #             saved = strapi.save_messages_to_db(response, sessionId)
+        #             print(f"📊 [DEBUG] Save message result: {saved}")
+        #         except Exception as e:
+        #             print(f"❌ [DEBUG] Failed to save message to database: {str(e)}")
+        #             return 'Message save failed'
 
-                try:
-                    logger.debug("Starting overall evaluation in a separate thread")
-                    def run_overall():
-                        try:
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                            print(f"🔄 [DEBUG] Created new event loop for overall evaluation")
-                            overall = loop.run_until_complete(
-                                self.overall_interview_evaluations_external(
-                                    run_stage,
-                                    response,
-                                    'External',
-                                    sessionId,
-                                    all_user_id,
-                                    tinder_user_profile_id,
-                                    job_profile_id,
-                                    challenge_id,
-                                    template_id,
-                                    'job_interview_config'
-                                )
-                            )
+        #         try:
+        #             logger.debug("Starting overall evaluation in a separate thread")
+        #             def run_overall():
+        #                 try:
+        #                     loop = asyncio.new_event_loop()
+        #                     asyncio.set_event_loop(loop)
+        #                     print(f"🔄 [DEBUG] Created new event loop for overall evaluation")
+        #                     overall = loop.run_until_complete(
+        #                         self.overall_interview_evaluations_external(
+        #                             run_stage,
+        #                             response,
+        #                             'External',
+        #                             sessionId,
+        #                             all_user_id,
+        #                             tinder_user_profile_id,
+        #                             job_profile_id,
+        #                             challenge_id,
+        #                             template_id,
+        #                             'job_interview_config'
+        #                         )
+        #                     )
 
-                            if overall:
-                                logger.info("✅ Overall evaluation completed successfully")
-                                redis.set(f"audio_status:{job_profile_id}", {
-                                    "status": "done",
-                                    "message": "Chat Saved Successfully",
-                                    "chat": saved,
-                                    "overall": overall
-                                })
-                            else:
-                                logger.error("❌ Overall evaluation failed")
-                        except Exception as e:
-                            print(f"❌ [DEBUG] Error in overall evaluation: {str(e)}")
-                            logger.error(f"Error in overall evaluation: {str(e)}")
+        #                     if overall:
+        #                         logger.info("✅ Overall evaluation completed successfully")
+        #                         redis.set(f"audio_status:{job_profile_id}", {
+        #                             "status": "done",
+        #                             "message": "Chat Saved Successfully",
+        #                             "chat": saved,
+        #                             "overall": overall
+        #                         })
+        #                     else:
+        #                         logger.error("❌ Overall evaluation failed")
+        #                 except Exception as e:
+        #                     print(f"❌ [DEBUG] Error in overall evaluation: {str(e)}")
+        #                     logger.error(f"Error in overall evaluation: {str(e)}")
 
-                    t = threading.Thread(target=run_overall)
-                    t.start()
-                    print(f"🔄 [DEBUG] Overall evaluation thread started")
-                    logger.success("🎉 EXTERNAL AUDIO PROCESSED AND SAVED SUCCESSFULLY!")
-                except Exception as e:
-                    print(f"❌ [DEBUG] Failed to start overall evaluation thread: {str(e)}")
-                    return 'Threading failed'
-            elif isinstance(saved_session, str):
-                print(f"❌ [DEBUG] Session creation returned error string: {saved_session}")
-                return f'Session creation failed: {saved_session}'
-            else:
-                print(f"❌ [DEBUG] Session creation returned invalid result: {saved_session}")
-                return 'Session creation returned invalid result'
+        #             t = threading.Thread(target=run_overall)
+        #             t.start()
+        #             print(f"🔄 [DEBUG] Overall evaluation thread started")
+        #             logger.success("🎉 EXTERNAL AUDIO PROCESSED AND SAVED SUCCESSFULLY!")
+        #         except Exception as e:
+        #             print(f"❌ [DEBUG] Failed to start overall evaluation thread: {str(e)}")
+        #             return 'Threading failed'
+        #     elif isinstance(saved_session, str):
+        #         print(f"❌ [DEBUG] Session creation returned error string: {saved_session}")
+        #         return f'Session creation failed: {saved_session}'
+        #     else:
+        #         print(f"❌ [DEBUG] Session creation returned invalid result: {saved_session}")
+        #         return 'Session creation returned invalid result'
 
         except Exception as e:
             print(f"🔥 [DEBUG] Critical error in background audio processing: {str(e)}")

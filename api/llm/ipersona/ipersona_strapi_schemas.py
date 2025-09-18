@@ -3229,9 +3229,9 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
             $tag: String!, 
             $description: String!,
             $attributes: JSON!, 
-            $jobProfileIds: [ID!],
-            $challengeIds: [ID!],
-            $smgIds: [ID!]) {
+            $jobProfileIds: [ID],
+            $challengeIds: [ID],
+            $smgIds: [ID]) {
                 createTinderTemplate(data: {
                     name: $name
                     type: $type
@@ -3276,6 +3276,25 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
             }
         """
 
+        def _normalize_ids(ids):
+            try:
+                if not ids:
+                    return None
+                cleaned = []
+                for x in ids:
+                    if x in [None, "", 0, "0", False]:
+                        continue
+                    try:
+                        # Accept strings or ints; convert to string to be safe for GraphQL ID
+                        xv = str(int(x)) if isinstance(x, (int, float)) else str(x)
+                    except Exception:
+                        xv = str(x)
+                    if xv and xv != "0":
+                        cleaned.append(xv)
+                return cleaned or None
+            except Exception:
+                return None
+
         variables = {
             "name": name,
             "type": type,
@@ -3284,17 +3303,42 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
             "attributes": {
                 "template_questions": template_questions
             },
-            "jobProfileIds": job_profile_ids,
-            "challengeIds": challengeIds,
-            "smgIds": smgIds
+            "jobProfileIds": _normalize_ids(job_profile_ids),
+            "challengeIds": _normalize_ids(challengeIds),
+            "smgIds": _normalize_ids(smgIds)
         }
         
         # Execute the GraphQL mutation
-        res_json = self.sg.insert_table(query=mutation_query, variables=variables)
+        try:
+            res_json = self.sg.insert_table(query=mutation_query, variables=variables)
+        except Exception as e:
+            logger.error(f"GraphQL request failed for createTinderTemplate: {str(e)}", exc_info=True)
+            return {
+                "status": "error",
+                "message": "GraphQL request failed",
+                "details": {
+                    "exception": str(e)
+                }
+            }
 
         # Parse the response
         try:
             response = json.loads(res_json)
+
+            # Surface GraphQL errors directly if present
+            gql_errors = response.get("errors")
+            if gql_errors:
+                logger.error("GraphQL errors during createTinderTemplate:")
+                try:
+                    logger.error(json.dumps(gql_errors, indent=2))
+                except Exception:
+                    logger.error(str(gql_errors))
+                return {
+                    "status": "error",
+                    "message": "GraphQL returned errors",
+                    "details": gql_errors
+                }
+
             template_data = response.get("data", {}).get("createTinderTemplate", {}).get("data", {})
             
             if template_data:
@@ -3320,15 +3364,26 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
                     }
                 }
             else:
+                logger.error("createTinderTemplate returned no data node")
                 return {
                     "status": "error",
-                    "message": "Failed to create template. No data returned."
+                    "message": "Failed to create template. No data returned.",
+                    "details": response
                 }
         
         except json.JSONDecodeError:
+            logger.error("Invalid JSON response from the GraphQL server while creating template", exc_info=True)
             return {
                 "status": "error",
-                "message": "Invalid JSON response from the server."
+                "message": "Invalid JSON response from the server.",
+                "details": res_json if isinstance(res_json, str) else None
+            }
+        except Exception as e:
+            logger.error(f"Unexpected error parsing GraphQL response: {str(e)}", exc_info=True)
+            return {
+                "status": "error",
+                "message": "Unexpected error parsing GraphQL response",
+                "details": str(e)
             }
 
     def update_template(self, template_id, name=None, type=None, tag=None, description=None, 

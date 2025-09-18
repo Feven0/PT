@@ -9,7 +9,22 @@ _ENGINEIO_LOGGER = os.environ.get("SOCKETIO_ENGINEIO_LOGGER", "false").lower() =
 _SOCKETIO_LOGGER = os.environ.get("SOCKETIO_LOGGER", "false").lower() == "true"
 
 # Optional: for multi-worker deployments, set REDIS_URL env
-_REDIS_URL = os.environ.get("SOCKETIO_REDIS_URL", "")
+# Resolve Redis URL with credentials from env or config
+_ENV_REDIS_URL = os.environ.get("SOCKETIO_REDIS_URL", "")
+if not _ENV_REDIS_URL:
+    try:
+        # api/config.py defines REDIS_URL like: redis://:PASSWORD@HOST:PORT
+        from api import config as _cfg
+        _BASE_REDIS_URL = getattr(_cfg, "REDIS_URL", "")
+    except Exception:
+        _BASE_REDIS_URL = ""
+    # Ensure a DB index is present (default to /0)
+    if _BASE_REDIS_URL and not _BASE_REDIS_URL.rstrip().split("/")[-1].isdigit():
+        _REDIS_URL = _BASE_REDIS_URL + "/0"
+    else:
+        _REDIS_URL = _BASE_REDIS_URL or ""
+else:
+    _REDIS_URL = _ENV_REDIS_URL
 _CLIENT_MANAGER = None
 if _REDIS_URL:
     try:
@@ -36,6 +51,26 @@ def get_socket_asgi_app(fast_app):
 async def emit_to_job(job_id: str, event: str, data):
     room = f"processing_{job_id}"
     await sio.emit(event, data, room=room)
+
+# Debug helper to log emits from any process (API or Celery)
+async def emit_with_log(event: str, data: dict, room: str | None = None):
+    try:
+        ns = "/"
+        approx_targets = "unknown"
+        try:
+            if room:
+                participants = await sio.get_participants(ns, room)
+                approx_targets = len(participants) if participants is not None else 0
+            else:
+                # engineio has no direct count; rely on sessions when available
+                approx_targets = "broadcast"
+        except Exception:
+            pass
+        print(f"[SIO] → Emitting event='{event}' room='{room or 'ALL'}' targets≈{approx_targets} keys={list(data.keys())}")
+        await sio.emit(event, data, room=room)
+        print(f"[SIO] ✓ Emitted event='{event}'")
+    except Exception as e:
+        print(f"[SIO] ✗ Emit failed event='{event}': {e}")
 
 async def emit_to_user_job(job_id: str, user_id: str, event: str, data):
     """Emit to user-specific job room"""

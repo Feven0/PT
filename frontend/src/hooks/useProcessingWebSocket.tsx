@@ -41,6 +41,11 @@ const useProcessingWebSocket = (url: string) => {
       setIsConnected(false);
     });
 
+    newSocket.on('processing_update_failed', (data: any) => {
+      console.log('🔔 Failed: Processing update received:');
+      console.log(data)
+    });
+
     // Processing status events
     newSocket.on('processing_confirmed', (data: any) => {
       console.log('Processing connection confirmed:', data);

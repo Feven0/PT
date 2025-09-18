@@ -3,14 +3,15 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { BrowserRouter } from 'react-router-dom'
+import { ProcessingProvider } from './context/ProcessingContext'
 // import { PersonaContext } from './context/context.js';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {/* <PersonaContext> */}
-      <BrowserRouter>
+    <BrowserRouter>
+      <ProcessingProvider>
         <App />
-      </BrowserRouter>
-    {/* </PersonaContext> */}
+      </ProcessingProvider>
+    </BrowserRouter>
   </React.StrictMode>,
 )
