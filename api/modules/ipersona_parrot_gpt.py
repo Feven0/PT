@@ -643,9 +643,7 @@ async def fetch_interview_question(
         message = message.replace("{candidate_response}", data['response'])
         message = message.replace("{question_numbers}", str(asked_numbers))
         msg = message
-        print("msg is here ==========================================")
-        print(msg)
-        print("msg is here ==========================================")
+
         
         persona = data['user_session']['attributes']['attributes'].get('persona', '')
         content = persona + msg
@@ -655,21 +653,146 @@ async def fetch_interview_question(
         
   
         if template_id != 0 or template_id is not None:
-            picked_question_text = gpt.openai_gpt_assistant_without_streaming(content)
-            print("response_text is here ==========================================")
-            print(picked_question_text)
-            print("response_text is here ==========================================")
-            await append_asked_question_number_from_sections(
-                        asked_numbers,
-                        picked_question_text, 
-                        section, 
-                        sessionId,
-                        run_stage,
-                        current_attrs)
+            # Use asyncio.create_task for background processing in regular functions
+            import asyncio
+            asyncio.create_task(process_question_generation_background(
+                content,
+                asked_numbers,
+                section,
+                sessionId,
+                run_stage,
+                current_attrs
+            ))
         return response
     except Exception as e:
         logger.error(f"Choosing the right question process failed: ${str(e)}")
         return {'error': str(e)}
+
+async def process_question_generation_background(
+    content: str,
+    asked_numbers: list,
+    section: list,
+    sessionId: str,
+    run_stage: str,
+    current_attrs: dict
+):
+    """
+    Background task to process question generation without blocking the main response
+    """
+    try:
+        picked_question_text = gpt.openai_gpt_assistant_without_streaming(content)
+        
+        await append_asked_question_number_from_sections(
+            asked_numbers,
+            picked_question_text, 
+            section, 
+            sessionId,
+            run_stage,
+            current_attrs
+        )
+        print("✅ [BACKGROUND] Question generation completed successfully")
+    except Exception as e:
+        print(f"❌ [BACKGROUND] Question generation failed: {str(e)}")
+        logger.error(f"Background question generation failed: {str(e)}")
+
+async def process_time_limit_calculation_background(
+    response: str,
+    section: list,
+    sessionId: str,
+    run_stage: str,
+    sio,
+    sid: str
+):
+    """
+    Background task to calculate time limit for template questions
+    """
+    try:
+        print("🔄 [BACKGROUND] Starting time limit calculation...")
+        print(f"🔄 [BACKGROUND] Response: {response}")
+        print(f"🔄 [BACKGROUND] Response type: {type(response)}")
+        print(f"🔄 [BACKGROUND] Section: {section}")
+        print(f"🔄 [BACKGROUND] Section type: {type(section)}")
+        print(f"🔄 [BACKGROUND] SessionId: {sessionId}")
+        print(f"🔄 [BACKGROUND] Run stage: {run_stage}")
+        print(f"🔄 [BACKGROUND] SID: {sid}")
+        logger.info(f"[BACKGROUND] Starting time limit calculation for session {sessionId}")
+        logger.info(f"[BACKGROUND] Response text: {str(response)[:100]}...")
+        logger.info(f"[BACKGROUND] Section data: {section}")
+        
+        # Find the specific question in the section to get its time limit
+        time_limit = None
+        
+        # Normalize the response text for matching
+        def normalize(text: str) -> str:
+            if text is None:
+                return ""
+            # Remove trailing question marks and normalize whitespace
+            normalized = " ".join(str(text).strip().split()).lower()
+            # Remove trailing question mark for better matching
+            if normalized.endswith('?'):
+                normalized = normalized[:-1]
+            return normalized
+        
+        response_norm = normalize(response)
+        print(f"🔄 [BACKGROUND] Normalized response: '{response_norm}'")
+        
+        # Search through sections to find matching question
+        print(f"🔄 [BACKGROUND] Searching through {len(section)} section items...")
+        for i, section_item in enumerate(section):
+            print(f"🔄 [BACKGROUND] Section item {i}: {type(section_item)}")
+            if isinstance(section_item, dict) and 'questions' in section_item:
+                questions = section_item.get('questions', [])
+                print(f"🔄 [BACKGROUND] Found {len(questions)} questions in section {i}")
+                for j, question in enumerate(questions):
+                    if isinstance(question, dict):
+                        question_text = question.get('question', '')
+                        question_norm = normalize(question_text)
+                        print(f"🔄 [BACKGROUND] Question {j}: '{question_text}'")
+                        print(f"🔄 [BACKGROUND] Question time_limit: '{question.get('time_limit')}'")
+                        print(f"🔄 [BACKGROUND] Normalized question: '{question_norm}'")
+                        print(f"🔄 [BACKGROUND] Normalized response: '{response_norm}'")
+                        print(f"🔄 [BACKGROUND] Exact match: '{question_norm}' == '{response_norm}' ? {question_norm == response_norm}")
+                        print(f"🔄 [BACKGROUND] Contains match: '{response_norm}' in '{question_norm}' ? {response_norm in question_norm}")
+                        print(f"🔄 [BACKGROUND] Reverse contains: '{question_norm}' in '{response_norm}' ? {question_norm in response_norm}")
+                        
+                        # Check if this question matches the response
+                        if question_norm == response_norm or response_norm in question_norm:
+                            time_limit = question.get('time_limit')
+                            if time_limit:
+                                print(f"✅ [BACKGROUND] Found time limit: {time_limit}")
+                                logger.info(f"[BACKGROUND] Found matching question with time limit: {time_limit}")
+                                break
+                if time_limit:
+                    break
+            else:
+                print(f"🔄 [BACKGROUND] Section item {i} is not a dict with questions or has no questions key")
+        
+        # If no specific time limit found, use default calculation
+        if not time_limit:
+            print("🔄 [BACKGROUND] No specific time limit found, using default calculation")
+            import api.llm.ipersona.ipersona_strapi as strapi
+            timelimit_result = strapi.calculate_time_limit(response)
+            time_limit = timelimit_result.get("time_limit", "null")
+        
+        # Emit the time limit to the socket
+        message = [{
+            "content": {
+                "time_limit": time_limit,
+            }
+        }]
+        
+        print(f"🔄 [BACKGROUND] Emitting time limit: {time_limit}")
+        print(f"🔄 [BACKGROUND] Message: {message}")
+        print(f"🔄 [BACKGROUND] SID: {sid}")
+        logger.info(f"[BACKGROUND] Emitting time limit {time_limit} to SID {sid}")
+        
+        await sio.emit("time_limit", message, room=sid)
+        print("✅ [BACKGROUND] Time limit calculation and emission completed successfully")
+        logger.info(f"[BACKGROUND] Time limit emission completed successfully for SID {sid}")
+        
+    except Exception as e:
+        print(f"❌ [BACKGROUND] Time limit calculation failed: {str(e)}")
+        logger.error(f"Background time limit calculation failed: {str(e)}")
 
 async def append_asked_question_number_from_sections(
     asked_numbers: list,

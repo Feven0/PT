@@ -177,11 +177,6 @@ async def user_session_files(request: pemodel.UserSessionRequestRecieved):
             challenge, 
             generate)
         
-        print(f"session_template::: {template}")
-        print(f"session_challenge::: {challenge}")
-        print(f"session_generate::: {generate}")
-        print(f"session_external::: {external}")
-        
         if session_incomplete:
             logger.info(f"Incomplete session already exists for user ID: {all_user_id}")
             session_data = sanitize_create_user_session_response(session_incomplete)
@@ -2570,13 +2565,14 @@ async def create_template_by_llm(request: pemodel.TemplateLLMContextRequestRecie
             type='job_interview_config'
             persona_tag = 'parrot_persona'
 
-            _user_result = util.get_user_data(all_user_id, run_stage)
-            if isinstance(_user_result, dict) and _user_result.get("status_code"):
-                return JSONResponse(
-                    status_code=_user_result.get("status_code", 400),
-                    content=_user_result.get("content", {})
-                )
-            tinder_user_profile_data, tinder_user_profile_id = _user_result
+            # _user_result = util.get_user_data(all_user_id, run_stage)
+            # if isinstance(_user_result, dict) and _user_result.get("status_code"):
+            #     return JSONResponse(
+            #         status_code=_user_result.get("status_code", 400),
+            #         content=_user_result.get("content", {})
+            #     )
+            # tinder_user_profile_data, tinder_user_profile_id = _user_result
+            tinder_user_profile_data = None
             tinder_job_data = util.get_job_data_template_for_multiple_ids(job_profile_ids, run_stage)
             # Load and format prompt templates
             response_obj = util.fetch_the_structure(type)

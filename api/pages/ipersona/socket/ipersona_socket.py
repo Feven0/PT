@@ -609,7 +609,7 @@ async def interview_endpoint(sid, data):
         timelimit = {"time_limit": "null"}
         total_questions = 0
         template = data.get('template', False)
-        
+        collection = []
         # Get run stage from session
         try:
             session = await sio.get_session(sid)        
@@ -792,23 +792,7 @@ async def interview_endpoint(sid, data):
                     logger.error(f"Failed to emit initial message: {str(initial_emit_error)}")
                     # Continue despite emission failure
 
-                # Calculate and emit time limit
-                try:
-                    timelimit = strapi.calculate_time_limit(response)
-                    message = [{
-                                "content": {
-                                    "time_limit": timelimit.get("time_limit", "null"),
-                                }
-                            }]
-                    logger.info(f"[SOCKET EMIT] Sending time limit to sid={sid}: {timelimit.get('time_limit', 'null')}")
-                    await sio.emit("time_limit", message, room=sid)
-                    logger.info(f"[SOCKET EMIT] Time limit sent successfully to sid={sid}")
-
-                except Exception as timelimit_error:
-                    logger.error(f"Failed to calculate or emit time limit: {str(timelimit_error)}")
-                    timelimit = {"time_limit": "null"}
-                    # Continue despite time limit failure
-
+                
                 # Process and emit the assistant's message in chunks
                 
                 is_generator = hasattr(assistant_next_question, '__iter__') and hasattr(assistant_next_question, '__next__')
@@ -840,7 +824,60 @@ async def interview_endpoint(sid, data):
                 except Exception as chunks_error:
                     logger.error(f"Error processing message chunks: {str(chunks_error)}")
                     # Continue despite chunks processing failure
-            
+                
+                # Calculate and emit time limit
+                try:
+                    if template:
+                        
+                        # Get the section data for time limit matching
+                        user_attributes = data['user_session']['attributes']['attributes']
+                        collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions') or user_attributes.get('challenge_questions')
+                        section = json.loads(collection) if isinstance(collection, str) else collection
+                        
+                        logger.info(f"[BACKGROUND] Starting time limit calculation for template question")
+                        print("r=here ==========================================")
+                        print(accumulated_message)
+                        print("s=here ==========================================")
+                        print(section)
+                        print("s=here ==========================================")
+                        print(sessionId)
+                        print("run=here ==========================================")
+                        print(run_stage)
+                        print("s=here ==========================================")
+                        print(sio)
+                        print("s=here ==========================================")
+                        print(sid)
+                        
+                        # Start background time limit calculation
+                        asyncio.create_task(util.process_time_limit_calculation_background(
+                            accumulated_message,
+                            section,  # Use section instead of collection
+                            sessionId,
+                            run_stage,
+                            sio,
+                            sid
+                        ))
+                        logger.info(f"[BACKGROUND] Time limit calculation started in background for template question")
+                        
+                        # Set default time limit for immediate response
+                        timelimit = {"time_limit": "null"}
+                    else:
+                        # Use synchronous processing for non-template questions
+                        timelimit = strapi.calculate_time_limit(response)
+                        message = [{
+                                    "content": {
+                                        "time_limit": timelimit.get("time_limit", "null"),
+                                    }
+                                }]
+                        logger.info(f"[SOCKET EMIT] Sending time limit to sid={sid}: {timelimit.get('time_limit', 'null')}")
+                        await sio.emit("time_limit", message, room=sid)
+                        logger.info(f"[SOCKET EMIT] Time limit sent successfully to sid={sid}")
+
+                except Exception as timelimit_error:
+                    logger.error(f"Failed to calculate or emit time limit: {str(timelimit_error)}")
+                    timelimit = {"time_limit": "null"}
+                    # Continue despite time limit failure
+
                 # Perform real-time response evaluation if applicable
                 try:
                     if data.get('response') not in [None, "", []]:
