@@ -259,6 +259,7 @@ async def audio_end_point(sid, data):
         template_id = data.get('template_id', "null")
         challenge_id = data.get('challenge_id', "null")
         total_questions = 0
+        template = data.get('template', False)
 
          # Get session ID with error handling
         try:
@@ -387,7 +388,8 @@ async def audio_end_point(sid, data):
                 total_questions, 
                 template_id, 
                 challenge_id, 
-                sessionId)
+                sessionId,
+                template)
             
             if not response:
                 logger.error("Failed to generate interview question: empty response")
@@ -606,6 +608,7 @@ async def interview_endpoint(sid, data):
         challenge_id = data.get('challenge_id', "null")
         timelimit = {"time_limit": "null"}
         total_questions = 0
+        template = data.get('template', False)
         
         # Get run stage from session
         try:
@@ -661,6 +664,7 @@ async def interview_endpoint(sid, data):
                     collection = data['user_session']['attributes']['attributes']['template_questions']
                     question_counts = {section['sectionType']: len(section['questions']) for section in collection}
                     total_questions = sum(question_counts.values())
+                
                 except Exception as template_error:
                     logger.error(f"Error retrieving template: {str(template_error)}")
                     return {"error": f"Template retrieval failed: {str(template_error)}"}
@@ -750,7 +754,8 @@ async def interview_endpoint(sid, data):
                 total_questions, 
                 template_id, 
                 challenge_id, 
-                sessionId)
+                sessionId,
+                template)
             if not response:
                 logger.error("Failed to generate interview question: empty response")
                 return {"error": "Failed to generate next question"}

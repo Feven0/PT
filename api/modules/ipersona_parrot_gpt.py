@@ -80,7 +80,7 @@ def create_persona(job_desc):
 
 
 #--------------------------------------------  Generate Interview Questions --------------------------------
-async def generate_interview_question(run_stage, data: dict, question_count, template_id, challenge_id, sessionId):
+async def generate_interview_question(run_stage, data: dict, question_count, template_id, challenge_id, sessionId, template):
     """
     Generates interview questions based on user session data.
 
@@ -102,7 +102,7 @@ async def generate_interview_question(run_stage, data: dict, question_count, tem
     try:
         # Retrieve either generated_questions or template_questions
         user_attributes = data['user_session']['attributes']['attributes']
-
+        
         # Choose between generated_questions and template_questions
         collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions') or user_attributes.get('challenge_questions')
         collection = json.loads(collection) if isinstance(collection, str) else collection
@@ -115,7 +115,8 @@ async def generate_interview_question(run_stage, data: dict, question_count, tem
                 data, 
                 template_id, 
                 challenge_id, 
-                sessionId)
+                sessionId,
+                template)
             return response
         
         if not collection:
@@ -128,7 +129,8 @@ async def generate_interview_question(run_stage, data: dict, question_count, tem
             data, 
             template_id, 
             challenge_id, 
-            sessionId)
+            sessionId,
+            template)
         
         return response
     
@@ -145,7 +147,8 @@ async def choose_interview_question_new_structure(
         data: dict, 
         template_id, 
         challenge_id, 
-        sessionId):
+        sessionId,
+        template):
     try: 
         # Fetch session chat history
         type = 'job_interview_config'
@@ -215,8 +218,12 @@ async def choose_interview_question_new_structure(
             # Determine if this is a specific chat count moment (optional)
             count = None
             section_start = section_boundaries[question_type]['start']
+            print(f"DEBUG: question_type = '{question_type}', chat_count = {chat_count}, section_start = {section_start}")
             if chat_count == section_start:
                 count = chat_count
+                print(f"DEBUG: chat_count ({chat_count}) == section_start ({section_start}) - Setting count = {count}")
+            else:
+                print(f"DEBUG: chat_count ({chat_count}) != section_start ({section_start}) - count remains None")
             
             # Call helper function to fetch or generate question
             response = await helper_func(
@@ -230,7 +237,8 @@ async def choose_interview_question_new_structure(
                 sessionId,
                 template_id,
                 challenge_id,
-                type)
+                type,
+                template)
 
             return response
         
@@ -302,7 +310,8 @@ async def choose_interview_question_challenge_new_structure(
     data: dict, 
     template_id, 
     challenge_id, 
-    sessionId):
+    sessionId,
+    template):
     try: 
         # Fetch session chat history
         type = 'challenge_interview_config'
@@ -326,7 +335,7 @@ async def choose_interview_question_challenge_new_structure(
         else:
             logger.info("Chat is empty.")
 
-        
+
         # Dynamically calculate section question counts
         question_counts = {section['sectionType']: len(section['questions']) for section in collection}
         total_questions = sum(question_counts.values())
@@ -382,8 +391,12 @@ async def choose_interview_question_challenge_new_structure(
             # Determine if this is a specific chat count moment (optional)
             count = None
             section_start = section_boundaries[question_type]['start']
+            print(f"DEBUG: question_type = '{question_type}', chat_count = {chat_count}, section_start = {section_start}")
             if chat_count == section_start:
                 count = chat_count
+                print(f"DEBUG: chat_count ({chat_count}) == section_start ({section_start}) - Setting count = {count}")
+            else:
+                print(f"DEBUG: chat_count ({chat_count}) != section_start ({section_start}) - count remains None")
             # print("CURRENT SECTION IS HERE ==========================================")
             # print(current_section)
             # print("CURRENT SECTION IS HERE ==========================================")
@@ -403,7 +416,8 @@ async def choose_interview_question_challenge_new_structure(
                 sessionId,
                 template_id,
                 challenge_id,
-                type)
+                type,
+                template)
 
             return response
         
@@ -452,7 +466,8 @@ async def helper_func(
     sessionId,
     template_id,
     challenge_id,
-    type):
+    type,
+    template):
     """
     Processes interview questions and evaluations based on candidate responses.
 
@@ -486,35 +501,59 @@ async def helper_func(
         interview_question_json = None
         realtime_evaluation = None
         status = None
-        # print("QUESTION COUNT *******************************************", question_count)  
-        # print("CHAT COUNT *******************************************", chat_count)
+        print("QUESTION COUNT *******************************************", count, question_count)  
+        print("CHAT COUNT *******************************************", chat_count, template_id)
         if chat_count < question_count + 2:
             if data['response']:
+                print("data['response'] is not none *******************************************")
                 if count is not None:
-                    # print("count is not none *******************************************")
-                    interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type) 
+                    print("count is not none *******************************************")
+                    interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type, template_id, sessionId, run_stage) 
+                  
+                    # await append_asked_question_number_from_sections(
+                    #     interview_question_json, 
+                    #     section, 
+                    #     sessionId,
+                    #     run_stage)
                 else:
-                    # print("count is on followup *******************************************", count)
-                    response = await check_if_followup(data['response'], type)
-                    # print("response is followup *******************************************", response)
-                    if not response:
-                        # print("response is not none *******************************************")
-                        interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type)
-                        # print("interview_question_json is *******************************************")
-                        # print(section)
-                        # print("interview_question_json is *******************************************") 
+                    print("count is None - entering followup logic *******************************************")
+                    print("DEBUG: template_id check - not template_itemmplate =", template)
+                    if not template:
+                        print("template_id is falsy - checking followup *******************************************")
+                        response = await check_if_followup(data['response'], type)
+                        print("response is followup *******************************************", response)
+                        if not response:
+                            # print("response is not none *******************************************")
+                            interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type, template_id, sessionId, run_stage)
+                            # print("interview_question_json is *******************************************")
+                            # print(section)
+                            # print("interview_question_json is *******************************************") 
+                        else:
+                            # print("response is true, generating followup *******************************************")
+                            interview_question_json = await generate_followup(data, type)
+                            # print(interview_question_json)
+                            print("interview_question_json is *******************************************")
                     else:
-                        # print("response is true, generating followup *******************************************")
-                        interview_question_json = await generate_followup(data, type)
-                        # print(interview_question_json)
-                        # print("interview_question_json is *******************************************")
-                       
+                        print("template_id is truthy - skipping followup logic *******************************************")
+                        interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type, template_id, sessionId, run_stage)
+                        # await append_asked_question_number_from_sections(
+                        #     interview_question_json, 
+                        #     section, 
+                        #     sessionId,
+                        #     run_stage)
+
+                        
             else:
                 # print("data is none *******************************************")
-                interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type) 
+                interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type, template_id, sessionId, run_stage) 
+                # await append_asked_question_number_from_sections(
+                #         interview_question_json, 
+                #         section, 
+                #         sessionId,
+                #         run_stage)
    
         else:  
-            # print("Final else part ******************************************* question_count", question_count)
+            print("Final else part ******************************************* question_count", question_count)
             realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId, type)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
             logger.info(f"Realtime evaluation is: {realtime_evaluation}")
@@ -541,7 +580,15 @@ async def helper_func(
         return {'error': str(e)}
    
 #----------------------------------------- picking the right Question ----------------------------------------- 
-async def fetch_interview_question(section: list, question_type: str, data: dict, question_count, type):
+async def fetch_interview_question(
+    section: list, 
+    question_type: str, 
+    data: dict, 
+    question_count,
+    type, 
+    template_id,
+    sessionId,
+    run_stage):
     """
     Fetches an interview question based on the provided section and candidate response.
 
@@ -567,22 +614,237 @@ async def fetch_interview_question(section: list, question_type: str, data: dict
         if chat_count == question_count + 2:
             message = read_prompt_interview_closing(type)
         else:
-            message = read_prompt_pick_interview_question(type)
+            if template_id:
+                message = file_reader(prompts_path('ipersona/template_question_picking.txt'))
+            else:
+                message = read_prompt_pick_interview_question(type)
             
+        # Ensure asked_question_numbers is defined to avoid NameError
+        ipersona_user = IpersonaSessionSchema(run_stage=run_stage)
+        session_fetched = ipersona_user.get_session_by_id(
+            sessionId=sessionId, 
+            nopp=True, 
+            dataframe=False
+        )
+
+        if not session_fetched:
+            logger.error(f"Session not found: {sessionId}")
+            print(f"DEBUG: Session fetch failed for session_id: {sessionId}")
+            return []
+            
+        print(f"DEBUG: Session fetched successfully: {sessionId}")
+        
+        # Get current attributes - session_fetched['attributes']['attributes'] is the inner attributes
+        session_attributes = session_fetched.get('attributes', {})
+        current_attrs = session_attributes.get('attributes', {})
+        asked_numbers = current_attrs.get('asked_question_numbers', [])
         message = message.replace("{collection}", str(section))
         message = message.replace("{type}", str(question_type))
         message = message.replace("{candidate_response}", data['response'])
+        message = message.replace("{question_numbers}", str(asked_numbers))
         msg = message
+        print("msg is here ==========================================")
+        print(msg)
+        print("msg is here ==========================================")
         
         persona = data['user_session']['attributes']['attributes'].get('persona', '')
         content = persona + msg
+        
+        # Call both LLM functions directly (they're not async)
         response = gpt.openai_gpt_assistant_with_streaming(content)
         
+  
+        if template_id != 0 or template_id is not None:
+            picked_question_text = gpt.openai_gpt_assistant_without_streaming(content)
+            print("response_text is here ==========================================")
+            print(picked_question_text)
+            print("response_text is here ==========================================")
+            await append_asked_question_number_from_sections(
+                        asked_numbers,
+                        picked_question_text, 
+                        section, 
+                        sessionId,
+                        run_stage,
+                        current_attrs)
         return response
     except Exception as e:
         logger.error(f"Choosing the right question process failed: ${str(e)}")
         return {'error': str(e)}
-    
+
+async def append_asked_question_number_from_sections(
+    asked_numbers: list,
+    picked_question_text: str,
+    sections: list,
+    session_id: str,
+    run_stage: str,
+    current_attrs: dict
+):
+    """
+    Find the question_number of the picked question by matching against the nested
+    sections structure, then append it to session's asked_question_numbers.
+
+    Returns: updated_asked_list: list
+    """
+    try:
+        print("=== DEBUG: Starting append_asked_question_number_from_sections ===")
+        print(f"DEBUG: picked_question_text = '{picked_question_text}'")
+        print(f"DEBUG: session_id = '{session_id}'")
+        print(f"DEBUG: run_stage = '{run_stage}'")
+        print(f"DEBUG: sections type = {type(sections)}")
+        print(f"DEBUG: sections length = {len(sections) if sections else 0}")
+        print(f"DEBUG: Current session attributes = {current_attrs}")
+        print(f"DEBUG: Current asked_question_numbers = {asked_numbers}")
+        
+        # Ensure it's a list of strings
+        asked_numbers = [str(x) for x in asked_numbers] if isinstance(asked_numbers, list) else []
+        print(f"DEBUG: Normalized asked_numbers = {asked_numbers}")
+        
+        def normalize(text: str) -> str:
+            if text is None:
+                return ""
+            t = " ".join(str(text).strip().split()).lower()
+            # Ignore a trailing '?' difference for matching
+            return t[:-1] if t.endswith("?") else t
+
+        picked_norm = normalize(picked_question_text)
+        print(f"DEBUG: Normalized picked question = '{picked_norm}'")
+
+        # Flatten questions from sections
+        flat_questions = []
+        print(f"DEBUG: Processing sections for flattening...")
+        
+        # Check if sections is a flat list of questions or nested structure
+        if sections and isinstance(sections, list):
+            # Check if first item has 'questions' key (nested structure)
+            if sections[0] and isinstance(sections[0], dict) and 'questions' in sections[0]:
+                print(f"DEBUG: Detected nested structure with 'questions' key")
+                # Nested structure: [{"questions": [...]}]
+                for i, section in enumerate(sections):
+                    print(f"DEBUG: Section {i}: {type(section)} - {section}")
+                    if isinstance(section, dict):
+                        questions = section.get("questions", [])
+                        print(f"DEBUG: Section {i} has {len(questions)} questions")
+                        for j, q in enumerate(questions or []):
+                            print(f"DEBUG: Question {j}: {q}")
+                            if isinstance(q, dict):
+                                flat_questions.append(q)
+                                print(f"DEBUG: Added question {j} to flat_questions")
+            else:
+                print(f"DEBUG: Detected flat structure - each item is a question")
+                # Flat structure: [{"question": "...", "question_number": 1}, ...]
+                for i, question in enumerate(sections):
+                    print(f"DEBUG: Question {i}: {type(question)} - {question}")
+                    if isinstance(question, dict):
+                        flat_questions.append(question)
+                        print(f"DEBUG: Added question {i} to flat_questions")
+        
+        print(f"DEBUG: Total flattened questions: {len(flat_questions)}")
+        for i, q in enumerate(flat_questions):
+            print(f"DEBUG: Flat question {i}: question_number={q.get('question_number')}, question='{q.get('question', '')[:50]}...'")
+
+        # Collect exact normalized matches (prefer exact over fuzzy)
+        matches = []
+        print(f"DEBUG: Starting exact match comparison...")
+        for i, q in enumerate(flat_questions):
+            q_text = q.get("question")
+            qn = q.get("question_number")
+            qn_norm = normalize(q_text)
+            is_exact_match = qn_norm == picked_norm
+            print(f"DEBUG: Question {i} (qn={qn}): '{qn_norm}' == '{picked_norm}' ? {is_exact_match}")
+            if is_exact_match:
+                if qn is not None:
+                    try:
+                        matches.append(int(qn))
+                        print(f"DEBUG: EXACT MATCH FOUND! Added question_number {qn} to matches")
+                    except Exception as e:
+                        print(f"DEBUG: Error converting question_number {qn} to int: {e}")
+                        pass
+                else:
+                    print(f"DEBUG: Question {i} has no question_number, skipping")
+
+        print(f"DEBUG: Exact matches found: {matches}")
+
+        # Fallback: containment-based match if exact failed
+        if not matches:
+            print(f"DEBUG: No exact matches found, trying containment matching...")
+            for i, q in enumerate(flat_questions):
+                q_text = q.get("question")
+                qn = q.get("question_number")
+                if qn is None:
+                    print(f"DEBUG: Question {i} has no question_number, skipping containment check")
+                    continue
+                qn_norm = normalize(q_text)
+                is_containment_match = picked_norm and (qn_norm.startswith(picked_norm) or picked_norm.startswith(qn_norm) or picked_norm in qn_norm)
+                print(f"DEBUG: Question {i} (qn={qn}): containment check '{qn_norm}' vs '{picked_norm}' ? {is_containment_match}")
+                if is_containment_match:
+                    try:
+                        matches.append(int(qn))
+                        print(f"DEBUG: CONTAINMENT MATCH FOUND! Added question_number {qn} to matches")
+                    except Exception as e:
+                        print(f"DEBUG: Error converting question_number {qn} to int: {e}")
+                        pass
+            print(f"DEBUG: Containment matches found: {matches}")
+        else:
+            print(f"DEBUG: Skipping containment matching since exact matches were found")
+
+        matched_number = None
+        if matches:
+            # If duplicates exist, choose the lowest number deterministically
+            matched_number = str(min(matches))
+            print(f"DEBUG: Selected matched_number = '{matched_number}' from matches {matches}")
+        else:
+            print(f"DEBUG: No matches found, matched_number = None")
+
+        # Append to asked list if found and update session
+        if matched_number is not None and matched_number not in asked_numbers:
+            print(f"DEBUG: matched_number '{matched_number}' is not in asked_numbers {asked_numbers}, proceeding with update")
+            asked_numbers.append(matched_number)
+            print(f"DEBUG: After append, asked_numbers = {asked_numbers}")
+            
+            # Update session attributes - current_attrs is the inner attributes object
+            current_attrs['asked_question_numbers'] = asked_numbers
+            print(f"DEBUG: Updated current_attrs = {current_attrs}")
+            
+            # Update the session in database
+            update_data = {
+                "i_persona_session_id": session_id,
+                "attributes": current_attrs
+            }
+            print(f"DEBUG: Update data structure = {update_data}")
+            
+            ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+            print(f"DEBUG: Calling update_session with params...")
+            updated_session = ipersona_session.update_session(
+                params=update_data, 
+                nopp=True, 
+                dataframe=False, 
+                return_object=True
+            )
+            print(f"DEBUG: update_session returned: {updated_session}")
+            print(f"DEBUG: update_session type: {type(updated_session)}")
+            
+            if updated_session:
+                logger.info(f"Updated session===== {session_id} with asked_question_numbers: {asked_numbers}")
+                print(f"DEBUG: SUCCESS! Session updated successfully")
+            else:
+                logger.error(f"Failed to update session {session_id}")
+                print(f"DEBUG: FAILURE! Session update returned None/False")
+        else:
+            if matched_number is None:
+                print(f"DEBUG: No matched_number found, skipping update")
+            elif matched_number in asked_numbers:
+                print(f"DEBUG: matched_number '{matched_number}' already in asked_numbers {asked_numbers}, skipping update")
+            else:
+                print(f"DEBUG: Unexpected condition, skipping update")
+
+        print(f"DEBUG: Final asked_numbers to return: {asked_numbers}")
+        print("=== DEBUG: Ending append_asked_question_number_from_sections ===")
+        return asked_numbers
+        
+    except Exception as e:
+        logger.error(f"Error in append_asked_question_number_from_sections: {str(e)}")
+        return []
+
 #-------------------------------- Interview question time limit generation ---------------------------- 
 def interview_question_time_limit(question: str):
     try:
@@ -4279,7 +4541,8 @@ def create_session(
                       }
             else:
                 attr = {
-                        "template_id": template_id
+                        "template_id": template_id,
+                        "asked_question_numbers": []
                       }
             session_data = {
                     "slug": str(f"all_user_id: {all_user_id}"),
@@ -4299,7 +4562,8 @@ def create_session(
                 session_data["challenge_document"] = challenge_id_value
             
             print(f"📋 [DEBUG] Final session data: {session_data}")
-          
+
+         
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         saved_session = ipersona_session.save_session(
             params=session_data, 
