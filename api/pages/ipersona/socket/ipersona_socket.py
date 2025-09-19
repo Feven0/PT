@@ -828,39 +828,25 @@ async def interview_endpoint(sid, data):
                 # Calculate and emit time limit
                 try:
                     if template:
+                        # Use synchronous processing for template questions to ensure timelimit is available for database save
+                        logger.info(f"[SYNC] Starting time limit calculation for template question")
                         
                         # Get the section data for time limit matching
                         user_attributes = data['user_session']['attributes']['attributes']
                         collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions') or user_attributes.get('challenge_questions')
                         section = json.loads(collection) if isinstance(collection, str) else collection
                         
-                        logger.info(f"[BACKGROUND] Starting time limit calculation for template question")
-                        print("r=here ==========================================")
-                        print(accumulated_message)
-                        print("s=here ==========================================")
-                        print(section)
-                        print("s=here ==========================================")
-                        print(sessionId)
-                        print("run=here ==========================================")
-                        print(run_stage)
-                        print("s=here ==========================================")
-                        print(sio)
-                        print("s=here ==========================================")
-                        print(sid)
-                        
-                        # Start background time limit calculation
-                        asyncio.create_task(util.process_time_limit_calculation_background(
+                        # Calculate time limit synchronously
+                        timelimit = await util.calculate_template_time_limit_sync(
                             accumulated_message,
-                            section,  # Use section instead of collection
+                            section,
                             sessionId,
                             run_stage,
                             sio,
                             sid
-                        ))
-                        logger.info(f"[BACKGROUND] Time limit calculation started in background for template question")
+                        )
                         
-                        # Set default time limit for immediate response
-                        timelimit = {"time_limit": "null"}
+                        logger.info(f"[SYNC] Time limit calculated: {timelimit}")
                     else:
                         # Use synchronous processing for non-template questions
                         timelimit = strapi.calculate_time_limit(response)

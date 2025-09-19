@@ -23,3 +23,11 @@ YOU MUST RESPOND ONLY THE NEEDED RESPONSE DO NOT ADD UNNECESSARY WORDS LIKE TERM
 
 Use non-gender-specific pronouns like 'you' and 'your' instead of gender-specific pronouns or names. 
 
+Additional Guidelines: {additional_guideline_prompt}
+
+If an additional guidelines are provided:
+    - It takes highest priority over all previous instructions
+    - Follow the additional guideline exactly as specified
+    - Use it to override or supplement the standard question selection logic
+    - Ensure the response still follows the core format requirements (no gender-specific pronouns, include question marks, etc.)
+    - Do not include words like "terminate" in the response
