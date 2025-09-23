@@ -14,9 +14,9 @@ _SOCKETIO_LOGGER = os.environ.get("SOCKETIO_LOGGER", "false").lower() == "true"
 _ENV_REDIS_URL = os.environ.get("SOCKETIO_REDIS_URL", "")
 if not _ENV_REDIS_URL:
     try:
-        # api/config.py defines REDIS_URL like: redis://:PASSWORD@HOST:PORT
+        # Prefer configured cache Redis URL: redis://:PASSWORD@HOST:PORT
         from api import config as _cfg
-        _BASE_REDIS_URL = getattr(_cfg, "REDIS_URL", "")
+        _BASE_REDIS_URL = getattr(_cfg, "cache").REDIS_URL
     except Exception:
         _BASE_REDIS_URL = ""
     # Ensure a DB index is present (default to /0)
@@ -27,6 +27,8 @@ if not _ENV_REDIS_URL:
 else:
     _REDIS_URL = _ENV_REDIS_URL
 _CLIENT_MANAGER = None
+# Simple in-memory registry mapping client_id to current sid (for targeting)
+CLIENT_REGISTRY: dict[str, str] = {}
 if _REDIS_URL:
     try:
         from socketio import AsyncRedisManager
@@ -54,7 +56,7 @@ async def emit_to_job(job_id: str, event: str, data):
     await sio.emit(event, data, room=room)
 
 # Debug helper to log emits from any process (API or Celery)
-async def emit_with_log(event: str, data: dict, room: str | None = None):
+async def emit_with_log(event: str, data: dict, room: str | None = None, sid: str | None = None):
     try:
         ns = "/"
         approx_targets = "unknown"
@@ -67,28 +69,34 @@ async def emit_with_log(event: str, data: dict, room: str | None = None):
                 approx_targets = "broadcast"
         except Exception:
             pass
-        print(f"[SIO] → Emitting event='{event}' room='{room or 'ALL'}' targets≈{approx_targets} keys={list(data.keys())}")
-        try:
-            await sio.emit(event, data, room=room)
-            print(f"[SIO] ✓ Emitted event='{event}' via manager")
+        target_desc = f"sid='{sid}'" if sid else f"room='{room or 'ALL'}'"
+        print(f"[SIO] → Emitting event='{event}' {target_desc} targets≈{approx_targets} keys={list(data.keys())}")
+        print(f"[SIO] client_manager present? {'yes' if _CLIENT_MANAGER else 'no'}; redis_url={_REDIS_URL or 'unset'}")
+        # If no Redis manager in this process, use HTTP client fallback to reach the Socket.IO server
+        if not _CLIENT_MANAGER:
+            await _emit_via_client(event, data, room, sid)
+            print(f"[SIO] ✓ Emitted event='{event}' via client fallback (no manager in process)")
             return
-        except Exception as e:
-            print("Cannot publish to redis... retrying")
-            print(f"[SIO] manager emit failed: {e}")
-            # Fallback: emit via transient Socket.IO client to the server URL
-            await _emit_via_client(event, data)
-            print(f"[SIO] ✓ Emitted event='{event}' via client fallback")
+        # Otherwise emit via the manager (works across processes)
+        if sid:
+            await sio.emit(event, data, to=sid)
+        else:
+            await sio.emit(event, data, room=room)
+        print(f"[SIO] ✓ Emitted event='{event}' via manager")
+        return
     except Exception as e:
         print(f"[SIO] ✗ Emit failed event='{event}': {e}")
 
-async def _emit_via_client(event: str, data: dict):
+async def _emit_via_client(event: str, data: dict, room: str | None = None, sid: str | None = None):
     try:
         import socketio as _sio
-        server_url = os.environ.get("SOCKETIO_SERVER_URL") or os.environ.get("WS_PUBLIC_URL") or "http://localhost:9900"
+        server_url = os.environ.get("SOCKETIO_SERVER_URL") or os.environ.get("WS_PUBLIC_URL") or "http://localhost:9990"
+        print(f"[SIO] client fallback using server_url={server_url}")
         client = _sio.AsyncClient()
         # Prefer websocket to avoid long-poll fallback issues
         await client.connect(server_url, transports=['websocket'])
-        await client.emit(event, data)
+        # Send to a server-side relay handler with target event & room
+        await client.emit('server_emit', {"event": event, "data": data, "room": room, "sid": sid})
         await client.disconnect()
     except Exception as e:
         print(f"[SIO] client fallback failed: {e}")
@@ -142,5 +150,103 @@ def get_processing_rooms():
         return {r: list(s) for r, s in namespace_rooms.items() if isinstance(r, str) and r.startswith('processing_')}
     except Exception:
         return {}
+
+
+# Basic event handlers for joining/leaving rooms from clients
+@sio.on('join')
+async def on_join(sid, data):
+    try:
+        print("[SIO][join] sid=", sid)
+        print("[SIO][join] data=", data)
+        room = None
+        if isinstance(data, dict):
+            room = data.get('room')
+            job_id = data.get('job_id')
+            if not room and job_id:
+                room = f"processing_{job_id}"
+        if not room:
+            # ignore if no room provided
+            print("[SIO][join] no room provided; ignoring")
+            return
+        print(f"[SIO][join] computed room= {room}")
+        await sio.enter_room(sid, room)
+        try:
+            participants = await sio.get_participants('/', room)
+            print(f"[SIO][join] participants in {room} -> {participants}")
+        except Exception as e:
+            print(f"[SIO][join] get_participants failed: {e}")
+        print(f"[SIO] SID {sid} joined room {room}")
+    except Exception as e:
+        print(f"[SIO] join error: {e}")
+
+@sio.on('leave')
+async def on_leave(sid, data):
+    try:
+        print("[SIO][leave] sid=", sid)
+        print("[SIO][leave] data=", data)
+        room = None
+        if isinstance(data, dict):
+            room = data.get('room')
+            job_id = data.get('job_id')
+            if not room and job_id:
+                room = f"processing_{job_id}"
+        if not room:
+            print("[SIO][leave] no room provided; ignoring")
+            return
+        print(f"[SIO][leave] computed room= {room}")
+        await sio.leave_room(sid, room)
+        try:
+            participants = await sio.get_participants('/', room)
+            print(f"[SIO][leave] participants in {room} after leave -> {participants}")
+        except Exception as e:
+            print(f"[SIO][leave] get_participants failed: {e}")
+        print(f"[SIO] SID {sid} left room {room}")
+    except Exception as e:
+        print(f"[SIO] leave error: {e}")
+
+
+@sio.on('server_emit')
+async def on_server_emit(sid, payload):
+    """Relay for background processes using HTTP client fallback.
+    Expects: {event: str, data: dict, room: Optional[str], sid: Optional[str]}
+    """
+    try:
+        event = None
+        data = None
+        room = None
+        target_sid = None
+        if isinstance(payload, dict):
+            event = payload.get('event')
+            data = payload.get('data')
+            room = payload.get('room')
+            target_sid = payload.get('sid')
+        if not event:
+            print("[SIO][server_emit] missing event; ignoring")
+            return
+        print(f"[SIO][server_emit] relaying event='{event}' room='{room}' sid='{target_sid}' keys={list(data.keys()) if isinstance(data, dict) else 'n/a'}")
+        if target_sid:
+            await sio.emit(event, data, to=target_sid)
+        else:
+            await sio.emit(event, data, room=room)
+    except Exception as e:
+        print(f"[SIO][server_emit] error: {e}")
+
+
+@sio.on('register')
+async def on_register(sid, data):
+    """Register a client_id to target this sid later (no room needed).
+    Payload: { client_id: string }
+    """
+    try:
+        client_id = None
+        if isinstance(data, dict):
+            client_id = data.get('client_id')
+        if not client_id:
+            print(f"[SIO][register] missing client_id for sid={sid}")
+            return
+        CLIENT_REGISTRY[client_id] = sid
+        print(f"[SIO][register] client_id='{client_id}' -> sid='{sid}'")
+    except Exception as e:
+        print(f"[SIO][register] error: {e}")
 
 

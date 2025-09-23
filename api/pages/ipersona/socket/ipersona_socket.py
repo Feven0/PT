@@ -302,8 +302,18 @@ async def audio_end_point(sid, data):
                             return {"error": f"Template not found: {template_id}"}
                             
                         data['user_session'] = saved_template
-                        collection = data['user_session']['attributes']['attributes']['template_questions']
-                        question_counts = {section['sectionType']: len(section['questions']) for section in collection}
+                        # Safely extract template questions
+                        user_attrs = (data.get('user_session') or {}).get('attributes') or {}
+                        nested_attrs = user_attrs.get('attributes') or {}
+                        collection = nested_attrs.get('template_questions') or nested_attrs.get('generated_questions') or nested_attrs.get('challenge_questions')
+                        if isinstance(collection, str):
+                            try:
+                                collection = json.loads(collection)
+                            except Exception:
+                                collection = []
+                        if not isinstance(collection, list):
+                            collection = []
+                        question_counts = {section.get('sectionType'): len(section.get('questions', [])) for section in collection if isinstance(section, dict)}
                         total_questions = sum(question_counts.values())
                     
                     except Exception as template_error:
@@ -454,15 +464,45 @@ async def audio_end_point(sid, data):
                     else:
                         break   
                     
-            timelimit = strapi.calculate_time_limit(response)
-            message = [{
-                        "content": {
-                            "time_limit": timelimit.get("time_limit", "null"),
-                        }
-                    }]                    
-            logger.info(f"[SOCKET EMIT] Sending time limit to sid={sid}: {timelimit.get('time_limit', 'null')}")
-            await sio.emit("audio_time_limit", message, room=sid)      
-            logger.info(f"[SOCKET EMIT] Time limit sent successfully to sid={sid}")
+            # Calculate and emit time limit
+            try:
+                if template:
+                    # Use synchronous processing for template questions to ensure timelimit is available for database save
+                    logger.info(f"[SYNC] Starting time limit calculation for template question")
+                    
+                    # Get the section data for time limit matching
+                    user_attributes = data['user_session']['attributes']['attributes']
+                    collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions') or user_attributes.get('challenge_questions')
+                    section = json.loads(collection) if isinstance(collection, str) else collection
+                    
+                    # Calculate time limit synchronously
+                    timelimit = await util.calculate_template_time_limit_sync(
+                        accumulated_message,
+                        section,
+                        sessionId,
+                        run_stage,
+                        sio,
+                        sid
+                    )
+                    
+                    logger.info(f"[SYNC] Time limit calculated: {timelimit}")
+                else:
+                    # Use synchronous processing for non-template questions
+                    timelimit = strapi.calculate_time_limit(response)
+                    message = [{
+                                "content": {
+                                    "time_limit": timelimit.get("time_limit", "null"),
+                                }
+                            }]
+                    logger.info(f"[SOCKET EMIT] Sending time limit to sid={sid}: {timelimit.get('time_limit', 'null')}")
+                    await sio.emit("time_limit", message, room=sid)
+                    logger.info(f"[SOCKET EMIT] Time limit sent successfully to sid={sid}")
+
+            except Exception as timelimit_error:
+                logger.error(f"Failed to calculate or emit time limit: {str(timelimit_error)}")
+                timelimit = {"time_limit": "null"}
+                # Continue despite time limit failure
+
                
             audio_chunks = await asyncio.gather(*tasks)
             
@@ -622,7 +662,7 @@ async def interview_endpoint(sid, data):
         except Exception as stage_error:
             logger.error(f"Error retrieving run stage: {str(stage_error)}")
             run_stage = 'democms'  # Default to production if error occurs
-        
+
         # Get session ID with error handling
         try:
             if isinstance(data.get('user_session'), dict) and 'id' in data['user_session']:
@@ -661,8 +701,18 @@ async def interview_endpoint(sid, data):
                         return {"error": f"Template not found: {template_id}"}
                         
                     data['user_session'] = saved_template
-                    collection = data['user_session']['attributes']['attributes']['template_questions']
-                    question_counts = {section['sectionType']: len(section['questions']) for section in collection}
+                    # Safely extract template questions
+                    user_attrs = (data.get('user_session') or {}).get('attributes') or {}
+                    nested_attrs = user_attrs.get('attributes') or {}
+                    collection = nested_attrs.get('template_questions') or nested_attrs.get('generated_questions') or nested_attrs.get('challenge_questions')
+                    if isinstance(collection, str):
+                        try:
+                            collection = json.loads(collection)
+                        except Exception:
+                            collection = []
+                    if not isinstance(collection, list):
+                        collection = []
+                    question_counts = {section.get('sectionType'): len(section.get('questions', [])) for section in collection if isinstance(section, dict)}
                     total_questions = sum(question_counts.values())
                 
                 except Exception as template_error:
@@ -824,7 +874,7 @@ async def interview_endpoint(sid, data):
                 except Exception as chunks_error:
                     logger.error(f"Error processing message chunks: {str(chunks_error)}")
                     # Continue despite chunks processing failure
-                
+
                 # Calculate and emit time limit
                 try:
                     if template:

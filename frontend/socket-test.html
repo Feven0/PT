@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Socket Test</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 24px; }
+      #log { white-space: pre-wrap; background: #111; color: #0f0; padding: 12px; border-radius: 8px; min-height: 180px; }
+      input, button { font-size: 16px; padding: 8px; }
+    </style>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  </head>
+  <body>
+    <h1>Socket Test</h1>
+
+    <div>
+      <label>Server URL: <input id="serverUrl" size="40" value="http://localhost:9990" /></label>
+      <button id="connectBtn">Connect</button>
+    </div>
+
+    <div style="margin-top:12px;">
+      <label>Client ID: <input id="clientId" size="24" placeholder="test-client-1" /></label>
+      <button id="registerBtn">Register SID</button>
+      <button id="triggerSidBtn">Trigger by SID (no join)</button>
+    </div>
+
+    <div style="margin-top:12px;">
+      <label>Job ID (room): <input id="jobId" size="24" placeholder="123" /></label>
+      <button id="joinBtn">Join Room</button>
+      <button id="leaveBtn">Leave Room</button>
+      <button id="triggerBtn">Trigger Celery Emit</button>
+      <button id="directBtn">Trigger Direct Emit</button>
+    </div>
+
+    <h3>Log</h3>
+    <div id="log"></div>
+
+    <script>
+      const log = (m) => {
+        const el = document.getElementById('log');
+        el.textContent += (typeof m === 'string' ? m : JSON.stringify(m)) + "\n";
+        el.scrollTop = el.scrollHeight;
+      };
+
+      let socket;
+      document.getElementById('connectBtn').onclick = () => {
+        if (typeof io === 'undefined') {
+          log('Socket.IO client not loaded. Check network/console and reload.');
+          return;
+        }
+        const url = document.getElementById('serverUrl').value.trim();
+        if (socket && socket.connected) socket.disconnect();
+        socket = io(url, { transports: ['websocket'] });
+        socket.on('connect', () => log(`connected: ${socket.id}`));
+        socket.on('disconnect', (r) => log(`disconnected: ${r}`));
+        socket.on('connect_error', (e) => log(`connect_error: ${e.message}`));
+        socket.on('socket_test', (data) => log(['socket_test', data]));
+        // Catch-all to see if events arrive under unexpected names
+        socket.onAny((event, ...args) => {
+          if (event !== 'socket_test') {
+            log(['onAny', event, args?.[0] ?? null]);
+          }
+        });
+        // Auto-register client id
+        let cid = document.getElementById('clientId').value.trim();
+        if (!cid) {
+          cid = `client-${Math.random().toString(36).slice(2,8)}`;
+          document.getElementById('clientId').value = cid;
+        }
+        socket.emit('register', { client_id: cid });
+        log(['registered', cid]);
+        socket.on('progress_update', (data) => log(['progress_update', data]));
+      };
+
+      document.getElementById('joinBtn').onclick = async () => {
+        const jobId = document.getElementById('jobId').value.trim();
+        if (!jobId) return log('enter job id');
+        try {
+          socket.emit('join', { room: `processing_${jobId}` });
+          log(`joined processing_${jobId}`);
+        } catch (e) { log(e.message); }
+      };
+
+      document.getElementById('registerBtn').onclick = () => {
+        const cid = document.getElementById('clientId').value.trim() || `client-${Math.random().toString(36).slice(2,8)}`;
+        document.getElementById('clientId').value = cid;
+        socket.emit('register', { client_id: cid });
+        log(['registered', cid]);
+      };
+
+      document.getElementById('leaveBtn').onclick = async () => {
+        const jobId = document.getElementById('jobId').value.trim();
+        if (!jobId) return log('enter job id');
+        try {
+          socket.emit('leave', { room: `processing_${jobId}` });
+          log(`left processing_${jobId}`);
+        } catch (e) { log(e.message); }
+      };
+
+      document.getElementById('triggerSidBtn').onclick = async () => {
+        const url = document.getElementById('serverUrl').value.trim();
+        if (!url) return log('enter server url');
+        if (!socket || !socket.connected) { alert('Connect first'); return; }
+        try {
+          const sid = socket.id;
+          const res = await fetch(`${url.replace(/\/$/, '')}/tasks/socket-test-by-sid?sid=${encodeURIComponent(sid)}`, { method: 'POST' });
+          const json = await res.json().catch(() => ({}));
+          log(['bySid', res.status, json]);
+        } catch (e) {
+          log(`bySid error: ${e.message}`);
+        }
+      };
+
+      document.getElementById('triggerBtn').onclick = async () => {
+        const url = document.getElementById('serverUrl').value.trim();
+        const jobId = document.getElementById('jobId').value.trim();
+        if (!url) return log('enter server url');
+        if (!jobId) return log('enter job id');
+        try {
+          const res = await fetch(`${url.replace(/\/$/, '')}/tasks/socket-test?job_id=${encodeURIComponent(jobId)}&message=${encodeURIComponent('hello-from-frontend')}`, { method: 'POST' });
+          const json = await res.json().catch(() => ({}));
+          log(['triggered', res.status, json]);
+        } catch (e) {
+          log(`trigger error: ${e.message}`);
+        }
+      };
+
+      document.getElementById('directBtn').onclick = async () => {
+        const url = document.getElementById('serverUrl').value.trim();
+        const jobId = document.getElementById('jobId').value.trim();
+        if (!url) return log('enter server url');
+        if (!jobId) return log('enter job id');
+        try {
+          const res = await fetch(`${url.replace(/\/$/, '')}/tasks/socket-direct?job_id=${encodeURIComponent(jobId)}&message=${encodeURIComponent('hello-from-direct')}`, { method: 'POST' });
+          const json = await res.json().catch(() => ({}));
+          log(['direct', res.status, json]);
+        } catch (e) {
+          log(`direct error: ${e.message}`);
+        }
+      };
+    </script>
+  </body>
+  </html>
+
+

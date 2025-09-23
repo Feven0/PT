@@ -7,6 +7,11 @@ using the flexible task tracking system.
 
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Query, Body
+from api.services.celery.socket_test_tasks import socket_test_task
+from celery import Celery as _Celery
+from api import config as _cfg
+from api.socket.core import emit_with_log
+from fastapi import Path
 
 from api.services.celery.task_tracker import task_tracker, TaskStatus, TaskType
 from api.pages.ipersona.models.task import (
@@ -186,6 +191,76 @@ async def get_task_statistics():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving statistics: {str(e)}")
 
+
+@router.post("/socket-test")
+async def enqueue_socket_test(
+    job_id: str = Query("123", description="Job id used to build room name: processing_<job_id>"),
+    message: str = Query("hello from api", description="Message to send in the socket_test event")
+):
+    """Enqueue a Celery task that emits a Socket.IO test event to the client's room.
+
+    The room name is built as processing_<job_id>. Ensure your frontend joins that room.
+    """
+    try:
+        room = f"processing_{job_id}"
+        # Use a lightweight client to avoid app-binding issues
+        _client = _Celery(broker=_cfg.cache.REDIS_URL, backend=_cfg.cache.REDIS_URL)
+        task_id = _client.send_task('socket_test_task', kwargs={"room": room, "message": message}, queue='celery')
+        print(f"[API] queued socket_test_task id={task_id} room={room}")
+        return {"status": "queued", "task_id": str(task_id), "room": room, "event": "socket_test"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to enqueue socket test task: {str(e)}")
+
+
+@router.post("/socket-direct")
+async def emit_socket_direct(
+    job_id: str = Query("123", description="Job id used to build room name: processing_<job_id>"),
+    message: str = Query("hello-from-direct", description="Message to send in the socket_test event")
+):
+    """Emit socket_test directly from FastAPI to verify client join/listener."""
+    try:
+        room = f"processing_{job_id}"
+        await emit_with_log("socket_test", {"message": "no matter what you print these", "via": "direct"}, room=room)
+        return {"status": "emitted", "room": room, "event": "socket_test"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to emit directly: {str(e)}")
+
+
+@router.post("/socket-test-fixed")
+async def enqueue_socket_test_fixed(
+    job_id: str = Query("123", description="Job id used to build room name: processing_<job_id>")
+):
+    """Enqueue Celery with a backend-defined message (ignores client input)."""
+    try:
+        room = f"processing_{job_id}"
+        fixed_message = "hello-from-backend-celery"
+        _client = _Celery(broker=_cfg.cache.REDIS_URL, backend=_cfg.cache.REDIS_URL)
+        task_id = _client.send_task('socket_test_task', kwargs={"room": room, "message": fixed_message}, queue='celery')
+        print(f"[API] queued FIXED socket_test_task id={task_id} room={room}")
+        return {"status": "queued", "task_id": str(task_id), "room": room, "event": "socket_test", "message": fixed_message}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to enqueue fixed socket test task: {str(e)}")
+
+
+@router.post("/socket-test-by-sid")
+async def enqueue_socket_test_by_sid(
+    sid: str | None = Query(None, description="Socket SID (preferred). If provided, used directly."),
+    client_id: str | None = Query(None, description="Optional client id previously registered via 'register'"),
+    message: str = Query("hello-from-celery-by-sid", description="Message to send in the socket_test event")
+):
+    """Enqueue Celery to emit to a specific client SID (no room/join needed)."""
+    try:
+        target = sid or client_id
+        if not target:
+            raise HTTPException(status_code=400, detail="Provide sid or client_id")
+        _client = _Celery(broker=_cfg.cache.REDIS_URL, backend=_cfg.cache.REDIS_URL)
+        task_id = _client.send_task('socket_test_task', kwargs={"room": None, "message": message, "sid": target}, queue='celery')
+        print(f"[API] queued BY_SID socket_test_task id={task_id} target={target}")
+        return {"status": "queued", "task_id": str(task_id), "target": target, "event": "socket_test"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to enqueue socket test by sid: {str(e)}")
 
 @router.delete("/target")
 async def delete_tasks_by_target(

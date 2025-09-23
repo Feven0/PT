@@ -171,6 +171,44 @@ services:
     ports:
       - "$port:$tport"
 
+  celery_worker:
+    container_name: celery_worker
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    image: celery_worker:latest
+    restart: unless-stopped
+    environment:
+      - STRAPI_STAGE=$STRAPI_STAGE
+      - PYTHONPATH=/app
+      - REDIS_URL=redis://redis.10academy.org:6379/0
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+    networks:
+      - ipersona_network
+    depends_on:
+      - $name
+
+  flower:
+    container_name: flower
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+    image: celery_worker:latest
+    restart: unless-stopped
+    environment:
+      - STRAPI_STAGE=$STRAPI_STAGE
+      - PYTHONPATH=/app
+      - REDIS_URL=redis://redis.10academy.org:6379/0
+    networks:
+      - ipersona_network
+    ports:
+      - "5555:5555"
+    command: ["/app/start_flower.sh"]
+    depends_on:
+      - celery_worker
+
 networks:
     ipersona_network:
         name: $name
@@ -198,8 +236,8 @@ docker stop "$name" 2>/dev/null || true
 docker rm "$name" 2>/dev/null || true
 
 docker-compose -p "$name" down --remove-orphans
-docker-compose -p "$name" build --no-cache $name
-docker-compose -p "$name" up -d --force-recreate $name
+docker-compose -p "$name" build --no-cache $name celery_worker flower
+docker-compose -p "$name" up -d --force-recreate $name celery_worker flower
 # --remove-orphans --force-recreate -d $name
 docker ps
 

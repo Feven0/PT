@@ -2947,25 +2947,77 @@ class IpersonaTinderTemplateSchema(LeapBaseClass):
 
     def flatten_prompt_data(self, data):
         try:
+            # If data isn't a dict (or is None), return it unchanged
+            if not isinstance(data, dict):
+                return data
+
             modified_template = copy.deepcopy(data)
-            metrics = modified_template["attributes"].get("smg_criterion_metrics", {}).get("data", [])
 
-            flattened_metrics = [
-                {
-                    "id": metric["id"],
-                    "title": metric["attributes"].get("title"),
-                    "tag": metric["attributes"].get("tag"),
-                    "content": metric["attributes"].get("content")
-                }
-                for metric in metrics
-            ]
-            modified_template["attributes"]["smg_criterion_metrics"]["data"] = flattened_metrics
+            # Ensure attributes exists as a dict
+            attributes = modified_template.get("attributes")
+            if not isinstance(attributes, dict):
+                modified_template["attributes"] = {}
+                modified_template["attributes"]["smg_criterion_metrics"] = {"data": []}
+                return modified_template
 
+            smg_metrics = attributes.get("smg_criterion_metrics")
+
+            # If smg_criterion_metrics is missing or not a dict, normalize to empty list structure
+            if not isinstance(smg_metrics, dict):
+                attributes["smg_criterion_metrics"] = {"data": []}
+                return modified_template
+
+            metrics_list = smg_metrics.get("data")
+
+            # If data is missing or not a list, normalize to empty list
+            if not isinstance(metrics_list, list):
+                attributes["smg_criterion_metrics"]["data"] = []
+                return modified_template
+
+            # Flatten each metric item defensively
+            flattened_metrics = []
+            for metric in metrics_list:
+                if not isinstance(metric, dict):
+                    continue
+                metric_attrs = metric.get("attributes") or {}
+                if not isinstance(metric_attrs, dict):
+                    metric_attrs = {}
+                flattened_metrics.append({
+                    "id": metric.get("id"),
+                    "title": metric_attrs.get("title"),
+                    "tag": metric_attrs.get("tag"),
+                    "content": metric_attrs.get("content")
+                })
+
+            attributes["smg_criterion_metrics"]["data"] = flattened_metrics
             return modified_template
 
         except Exception as e:
+            # On any unexpected error, log and return the original data to avoid breaking callers
             logger.error(f"Error flattening the cretrion prompt data: {str(e)}")
-            return {'error': f"Error flattening the cretrion prompt data: {str(e)}"}
+            return data
+    
+    # def flatten_prompt_data(self, data):
+    #     try:
+    #         modified_template = copy.deepcopy(data)
+    #         metrics = modified_template["attributes"].get("smg_criterion_metrics", {}).get("data", [])
+
+    #         flattened_metrics = [
+    #             {
+    #                 "id": metric["id"],
+    #                 "title": metric["attributes"].get("title"),
+    #                 "tag": metric["attributes"].get("tag"),
+    #                 "content": metric["attributes"].get("content")
+    #             }
+    #             for metric in metrics
+    #         ]
+    #         modified_template["attributes"]["smg_criterion_metrics"]["data"] = flattened_metrics
+
+    #         return modified_template
+
+    #     except Exception as e:
+    #         logger.error(f"Error flattening the cretrion prompt data: {str(e)}")
+    #         return {'error': f"Error flattening the cretrion prompt data: {str(e)}"}
 
     def get_all_templates(self, cursor={}, **kwargs):
         try:

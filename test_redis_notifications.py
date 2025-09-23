@@ -7,6 +7,7 @@ import json
 import time
 import asyncio
 from api import config
+from api.services.celery.socket_test_tasks import socket_test_task
 
 def test_redis_pubsub():
     """Test Redis pub/sub functionality"""
@@ -52,3 +53,9 @@ def test_redis_pubsub():
 
 if __name__ == "__main__":
     test_redis_pubsub()
+    # Also enqueue the socket test event to room processing_123
+    try:
+        res = socket_test_task.delay(room="processing_123", message="hello from test script")
+        print(f"📨 Enqueued socket_test_task: {res.id}")
+    except Exception as e:
+        print(f"❌ Failed to enqueue socket_test_task: {e}")

@@ -1,0 +1,46 @@
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends apt-utils
+RUN apt-get -y install curl
+RUN apt-get install libgomp1
+
+ENV STRAPI_STAGE=dev-prod
+
+RUN pip install --upgrade pip
+
+WORKDIR /app
+
+# Copy requirements and install dependencies
+COPY ./api/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir --upgrade -r ./requirements.txt
+
+# Install Celery and Flower
+RUN pip install celery==5.3.4 flower==2.0.1
+
+# Copy all application files
+COPY . .
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV STRAPI_STAGE=dev-prod
+
+# Create a startup script for Celery worker
+RUN echo '#!/bin/bash\n\
+echo "Starting Celery worker..."\n\
+celery -A api.services.celery.celery_worker_config worker \\\n\
+    --loglevel=info \\\n\
+    --queues=audio_processing,file_processing,default \\\n\
+    --concurrency=2 \\\n\
+    --hostname=worker@%h \\\n\
+    --time-limit=1800 \\\n\
+    --soft-time-limit=1500 \\\n\
+    --max-tasks-per-child=10 \\\n\
+    --prefetch-multiplier=1' > /app/start_celery.sh && chmod +x /app/start_celery.sh
+
+# Create a startup script for Flower
+RUN echo '#!/bin/bash\n\
+echo "Starting Flower monitoring web UI..."\n\
+celery -A api.services.celery.celery_worker_config flower --address=0.0.0.0 --port=5555' > /app/start_flower.sh && chmod +x /app/start_flower.sh
+
+# Default command runs Celery worker
+CMD ["/app/start_celery.sh"]

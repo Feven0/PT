@@ -690,10 +690,9 @@ async def process_question_generation_background(
             run_stage,
             current_attrs
         )
-        print("✅ [BACKGROUND] Question generation completed successfully")
+        logger.info("✅ [BACKGROUND] Question generation completed successfully")
     except Exception as e:
-        print(f"❌ [BACKGROUND] Question generation failed: {str(e)}")
-        logger.error(f"Background question generation failed: {str(e)}")
+        logger.error(f"❌ [BACKGROUND] Question generation failed: {str(e)}")
 
 async def calculate_template_time_limit_sync(
     response: str,
@@ -708,7 +707,7 @@ async def calculate_template_time_limit_sync(
     Returns the timelimit dict for immediate use in database save
     """
     try:
-        print("🔄 [SYNC] Starting synchronous time limit calculation...")
+        logger.info("🔄 [SYNC] Starting synchronous time limit calculation...")
         
         # Find the specific question in the section to get its time limit
         time_limit = None
@@ -725,15 +724,15 @@ async def calculate_template_time_limit_sync(
             return normalized
         
         response_norm = normalize(response)
-        print(f"🔄 [SYNC] Normalized response: '{response_norm}'")
+        logger.info(f"🔄 [SYNC] Normalized response: '{response_norm}'")
         
         # Search through sections to find matching question
-        print(f"🔄 [SYNC] Searching through {len(section)} section items...")
+        logger.info(f"🔄 [SYNC] Searching through {len(section)} section items...")
         for i, section_item in enumerate(section):
-            print(f"🔄 [SYNC] Section item {i}: {type(section_item)}")
+            logger.info(f"🔄 [SYNC] Section item {i}: {type(section_item)}")
             if isinstance(section_item, dict) and 'questions' in section_item:
                 questions = section_item.get('questions', [])
-                print(f"🔄 [SYNC] Found {len(questions)} questions in section {i}")
+                logger.info(f"🔄 [SYNC] Found {len(questions)} questions in section {i}")
                 for j, question in enumerate(questions):
                     if isinstance(question, dict):
                         question_text = question.get('question', '')
@@ -743,17 +742,16 @@ async def calculate_template_time_limit_sync(
                         if question_norm == response_norm or response_norm in question_norm:
                             time_limit = question.get('time_limit')
                             if time_limit:
-                                print(f"✅ [SYNC] Found time limit: {time_limit}")
                                 logger.info(f"[SYNC] Found matching question with time limit: {time_limit}")
                                 break
                 if time_limit:
                     break
             else:
-                print(f"🔄 [SYNC] Section item {i} is not a dict with questions or has no questions key")
+                logger.info(f"🔄 [SYNC] Section item {i} is not a dict with questions or has no questions key")
         
         # If no specific time limit found, use default value of 3 minutes
         if not time_limit or time_limit == '':
-            print("🔄 [SYNC] No specific time limit found, using default 3 minutes")
+            logger.info("🔄 [SYNC] No specific time limit found, using default 3 minutes")
             time_limit = "3"
         
         # Convert time limit to MM:SS format
@@ -784,11 +782,11 @@ async def calculate_template_time_limit_sync(
                 # Default fallback
                 return "03:00"
             except Exception as e:
-                print(f"❌ [SYNC] Error formatting time limit '{time_str}': {e}")
+                logger.error(f"❌ [SYNC] Error formatting time limit '{time_str}': {e}")
                 return "03:00"  # Default fallback
         
         formatted_time_limit = format_time_limit(time_limit)
-        print(f"🔄 [SYNC] Original time limit: '{time_limit}' -> Formatted: '{formatted_time_limit}'")
+        logger.info(f"🔄 [SYNC] Original time limit: '{time_limit}' -> Formatted: '{formatted_time_limit}'")
         
         # Emit the time limit to the socket
         message = [{
@@ -797,18 +795,15 @@ async def calculate_template_time_limit_sync(
             }
         }]
         
-        print(f"🔄 [SYNC] Emitting formatted time limit: {formatted_time_limit}")
         logger.info(f"[SYNC] Emitting formatted time limit {formatted_time_limit} to SID {sid}")
         
         await sio.emit("time_limit", message, room=sid)
-        print("✅ [SYNC] Time limit calculation and emission completed successfully")
         logger.info(f"[SYNC] Time limit emission completed successfully for SID {sid}")
         
         # Return the timelimit dict in the expected format
         return {"time_limit": formatted_time_limit}
         
     except Exception as e:
-        print(f"❌ [SYNC] Time limit calculation failed: {str(e)}")
         logger.error(f"Synchronous time limit calculation failed: {str(e)}")
         return {"time_limit": "03:00"}  # Default fallback
 

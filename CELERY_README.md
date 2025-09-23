@@ -1,39 +1,40 @@
-# Celery Setup for Tenx iPersona
+# Docker-based Celery Setup for Tenx iPersona
 
-This project now includes Celery integration for background task processing, providing better scalability and reliability compared to FastAPI's built-in background tasks.
+This project now includes Docker-based Celery integration for background task processing, providing better scalability, reliability, and isolation compared to FastAPI's built-in background tasks.
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Build Celery Docker Images
 ```bash
-make install-celery
+make build-celery
 ```
 
-### 2. Start Celery Worker
+### 2. Start All Services (FastAPI + Celery + Flower)
 ```bash
-make celery-start
+make dev-start
 ```
 
-### 3. Start FastAPI Server (in another terminal)
-```bash
-uvicorn app:app --host 0.0.0.0 --port 9990 --reload
-```
+### 3. Access Services
+- **FastAPI**: http://localhost:4900
+- **Flower (Celery Monitoring)**: http://localhost:5555
 
 ## Available Make Commands
 
 | Command | Description |
 |---------|-------------|
-| `make celery-start` | Start Celery worker in foreground |
-| `make celery-start-bg` | Start Celery worker in background |
-| `make celery-stop` | Stop Celery worker |
-| `make celery-restart` | Restart Celery worker |
-| `make celery-status` | Check worker status |
-| `make celery-monitor` | Monitor tasks and workers |
-| `make celery-flower` | Start Flower web UI (http://localhost:5555) |
-| `make celery-purge` | Purge all pending tasks |
-| `make celery-logs` | Show worker logs |
-| `make celery-test` | Test Celery connection |
-| `make dev-start` | Start Celery in background for development |
+| `make build-celery` | Build Celery Docker images |
+| `make celery-start` | Start Celery worker (Docker) |
+| `make celery-start-bg` | Start Celery worker in background (Docker) |
+| `make celery-stop` | Stop Celery worker (Docker) |
+| `make celery-restart` | Restart Celery worker (Docker) |
+| `make celery-status` | Check worker status (Docker) |
+| `make celery-monitor` | Monitor tasks and workers (Docker) |
+| `make celery-flower` | Start Flower web UI (Docker) |
+| `make celery-purge` | Purge all pending tasks (Docker) |
+| `make celery-logs` | Show worker logs (Docker) |
+| `make celery` | Test Celery connection (Docker) |
+| `make dev-start` | Start all services for development |
+| `make prod-start` | Start all services for production |
 
 ## New Endpoints
 
@@ -86,14 +87,17 @@ Celery is configured to use Redis as both broker and result backend:
 - **Broker**: `redis://redis.10academy.org:6379/0`
 - **Queues**: `audio_processing`, `file_processing`, `default`
 - **Concurrency**: 2 workers (configurable)
+- **Container**: Docker-based with automatic restart
 
 ## Benefits
 
+✅ **Containerized** - Isolated environment with consistent dependencies  
 ✅ **No interference** - Celery tasks run independently  
 ✅ **Scalable** - Can run multiple workers  
 ✅ **Persistent** - Tasks survive server restarts  
 ✅ **Monitorable** - Track progress via API and Flower  
 ✅ **Same logic** - Uses existing processing functions  
+✅ **Easy deployment** - Single docker-compose command  
 
 ## Troubleshooting
 
@@ -104,7 +108,7 @@ make celery-status
 
 ### Test connection
 ```bash
-make celery-test
+make celery
 ```
 
 ### View logs
@@ -115,4 +119,41 @@ make celery-logs
 ### Purge stuck tasks
 ```bash
 make celery-purge
+```
+
+### Rebuild containers
+```bash
+make build-celery
+make dev-start
+```
+
+### Clean up Docker resources
+```bash
+make celery-clean
+```
+
+## Docker Commands
+
+### Direct Docker Compose Commands
+```bash
+# Start all services
+docker-compose up -d
+
+# Start only Celery worker
+docker-compose up -d celery_worker
+
+# Start only Flower
+docker-compose up -d flower
+
+# View logs
+docker-compose logs -f celery_worker
+docker-compose logs -f flower
+
+# Stop services
+docker-compose stop celery_worker
+docker-compose stop flower
+
+# Rebuild and restart
+docker-compose build celery_worker flower
+docker-compose up -d
 ```
