@@ -24,7 +24,11 @@ const useMiddleSocket = () => {
   const [startchat, setChat] = useState<any>(false);
   const [isStarted, setIsStarted] = useState(false);  
   const { seconds, minutes, start, pause, reset } = useStopwatch({ autoStart: false});
-
+  const [openaiTranscript, setOpenaiTranscript] = useState<string>("");
+  const [whisperTranscript, setWhisperTranscript] = useState<string>("");
+  const [googleTranscript, setGoogleTranscript] = useState<string>("");
+  const [geminiTranscript, setGeminiTranscript] = useState<string>("");
+  const [fwTranscript, setFwTranscript] = useState<string>("");
 
     // In your React component
     useEffect(() => {
@@ -160,12 +164,17 @@ const useMiddleSocket = () => {
     useEffect(() => {
       if (socket) {
           socket.on('audio transcribe', (message: any) => {
-              setAssemblyTTS((prevMessages: any) => {
-                if (!prevMessages.some((m: any) => m.query === message.query)) {
-                  return [...prevMessages, ...message];
-                }
-                return prevMessages;
-              });
+              // Handle both AssemblyAI format (object with query) and simple string format
+              if (typeof message === 'string') {
+                setWhisperTranscript(prev => (prev ? prev + ' ' : '') + message);
+              } else if (message && typeof message === 'object') {
+                setAssemblyTTS((prevMessages: any) => {
+                  if (!prevMessages.some((m: any) => m.query === message.query)) {
+                    return [...prevMessages, ...message];
+                  }
+                  return prevMessages;
+                });
+              }
         });
       } 
     }, [socket, transcript]);
@@ -281,9 +290,84 @@ const useMiddleSocket = () => {
       });
     };
 
+
+
+
+
+    // --------------------------- OpenAI Realtime wiring (legacy) ---------------------------
+    useEffect(() => {
+      if (socket) {
+        socket.on('audio transcribe openai', (message: any) => {
+          if (typeof message === 'string') {
+            setOpenaiTranscript(prev => (prev ? prev + ' ' : '') + message);
+          }
+        });
+      }
+      return () => {
+        socket?.off?.('audio transcribe openai');
+      };
+    }, [socket]);
+
+    const handleOpenAITranscribe = async (data: any) => {
+      await socket?.emit('audio transcribe openai', {
+        user_session: data.latest,
+        audioblob: data.audioblob
+      });
+    };
+
+    const stopOpenAITranscribe = async () => {
+      await socket?.emit('audio transcribe openai', { audioblob: null });
+    };
+
+    // --------------------------- Whisper batch STT wiring ---------------------------
+    useEffect(() => {
+      if (socket) {
+        socket.on('audio transcribe whisper', (message: any) => {
+          if (typeof message === 'string') {
+            setWhisperTranscript(prev => (prev ? prev + ' ' : '') + message);
+          }
+        });
+      }
+      return () => {
+        socket?.off?.('audio transcribe whisper');
+      };
+    }, [socket]);
+
+    // --------------------------- Google STT streaming wiring ---------------------------
+    useEffect(() => {
+      if (socket) {
+        socket.on('audio transcribe google', (message: any) => {
+          if (typeof message === 'string') {
+            setGoogleTranscript(prev => (prev ? prev + ' ' : '') + message);
+          }
+          console.log('[GOOGLE][RX]', message);
+        });
+      }
+      return () => {
+        socket?.off?.('audio transcribe google');
+      };
+    }, [socket]);
+
+    // --------------------------- faster-whisper local wiring ---------------------------
+    useEffect(() => {
+      if (socket) {
+        socket.on('audio transcribe fw', (message: any) => {
+          if (typeof message === 'string') {
+            setFwTranscript(prev => (prev ? prev + ' ' : '') + message);
+          }
+          console.log('[FW][RX]', message);
+        });
+      }
+      return () => {
+        socket?.off?.('audio transcribe fw');
+      };
+    }, [socket]);
+
+
   
 
   return {
+    socket,
     audiointerview,
     setAudioInterview,
     setLoading,
@@ -319,6 +403,43 @@ const useMiddleSocket = () => {
     reset,
     isStarted, 
     setIsStarted,
+    openaiTranscript,
+    setOpenaiTranscript,
+    whisperTranscript,
+    setWhisperTranscript,
+    googleTranscript,
+    setGoogleTranscript,
+    geminiTranscript,
+    setGeminiTranscript,
+    fwTranscript,
+    setFwTranscript,
+    handleGoogleTranscribe: async (data: any) => {
+      await socket?.emit('audio transcribe google', {
+        user_session: data?.latest,
+        audioblob: data?.audioblob,
+      });
+    },
+    stopGoogleTranscribe: async () => {
+      await socket?.emit('audio transcribe google', { audioblob: null });
+    },
+    handleGeminiTranscribe: async (data: any) => {
+      await socket?.emit('audio transcribe gemini', {
+        user_session: data?.latest,
+        audioblob: data?.audioblob,
+      });
+    },
+    stopGeminiTranscribe: async () => {
+      await socket?.emit('audio transcribe gemini', { audioblob: null });
+    },
+    handleFwTranscribe: async (data: any) => {
+      await socket?.emit('audio transcribe fw', {
+        user_session: data?.latest,
+        audioblob: data?.audioblob,
+      });
+    },
+    stopFwTranscribe: async () => {
+      await socket?.emit('audio transcribe fw', { audioblob: null });
+    },
   };
 };
 
