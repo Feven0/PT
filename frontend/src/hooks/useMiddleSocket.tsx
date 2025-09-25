@@ -30,6 +30,7 @@ const useMiddleSocket = () => {
   const [geminiTranscript, setGeminiTranscript] = useState<string>("");
   const [fwTranscript, setFwTranscript] = useState<string>("");
 
+
     // In your React component
     useEffect(() => {
       if (socket) {
@@ -65,6 +66,21 @@ const useMiddleSocket = () => {
         });
       }
     }, [socket]);
+
+    // --------------------------- Gemini Live streaming wiring ---------------------------
+    useEffect(() => {
+      if (socket) {
+        socket.on('audio transcribe gemini', (message: any) => {
+          if (typeof message === 'string') {
+            setGeminiTranscript(prev => (prev ? prev + ' ' : '') + message);
+          }
+          console.log('[GEMINI][RX]', message);
+        });
+      }
+      return () => {
+        socket?.off?.('audio transcribe gemini');
+      };
+    }, [socket]);
   
     const handleInterview = async (data: any) => {
       const chat = [{
@@ -96,6 +112,75 @@ const useMiddleSocket = () => {
         template: false
       });
     };
+
+    // --------------------------- OpenAI Realtime wiring (legacy) ---------------------------
+    useEffect(() => {
+      if (socket) {
+        socket.on('audio transcribe openai', (message: any) => {
+          if (typeof message === 'string') {
+            setOpenaiTranscript(prev => (prev ? prev + ' ' : '') + message);
+          }
+        });
+      }
+      return () => {
+        socket?.off?.('audio transcribe openai');
+      };
+    }, [socket]);
+
+    const handleOpenAITranscribe = async (data: any) => {
+      await socket?.emit('audio transcribe openai', {
+        user_session: data.latest,
+        audioblob: data.audioblob
+      });
+    };
+
+    const stopOpenAITranscribe = async () => {
+      await socket?.emit('audio transcribe openai', { audioblob: null });
+    };
+
+    // --------------------------- Whisper batch STT wiring ---------------------------
+    useEffect(() => {
+      if (socket) {
+        socket.on('audio transcribe whisper', (message: any) => {
+          if (typeof message === 'string') {
+            setWhisperTranscript(prev => (prev ? prev + ' ' : '') + message);
+          }
+        });
+      }
+      return () => {
+        socket?.off?.('audio transcribe whisper');
+      };
+    }, [socket]);
+
+    // --------------------------- Google STT streaming wiring ---------------------------
+    useEffect(() => {
+      if (socket) {
+        socket.on('audio transcribe google', (message: any) => {
+          if (typeof message === 'string') {
+            setGoogleTranscript(prev => (prev ? prev + ' ' : '') + message);
+          }
+          console.log('[GOOGLE][RX]', message);
+        });
+      }
+      return () => {
+        socket?.off?.('audio transcribe google');
+      };
+    }, [socket]);
+
+    // --------------------------- faster-whisper local wiring ---------------------------
+    useEffect(() => {
+      if (socket) {
+        socket.on('audio transcribe fw', (message: any) => {
+          if (typeof message === 'string') {
+            setFwTranscript(prev => (prev ? prev + ' ' : '') + message);
+          }
+          console.log('[FW][RX]', message);
+        });
+      }
+      return () => {
+        socket?.off?.('audio transcribe fw');
+      };
+    }, [socket]);
 
     const handleTemplateInterview = async (data: any) => {
       const chat = [{
@@ -164,17 +249,12 @@ const useMiddleSocket = () => {
     useEffect(() => {
       if (socket) {
           socket.on('audio transcribe', (message: any) => {
-              // Handle both AssemblyAI format (object with query) and simple string format
-              if (typeof message === 'string') {
-                setWhisperTranscript(prev => (prev ? prev + ' ' : '') + message);
-              } else if (message && typeof message === 'object') {
-                setAssemblyTTS((prevMessages: any) => {
-                  if (!prevMessages.some((m: any) => m.query === message.query)) {
-                    return [...prevMessages, ...message];
-                  }
-                  return prevMessages;
-                });
-              }
+              setAssemblyTTS((prevMessages: any) => {
+                if (!prevMessages.some((m: any) => m.query === message.query)) {
+                  return [...prevMessages, ...message];
+                }
+                return prevMessages;
+              });
         });
       } 
     }, [socket, transcript]);
@@ -290,80 +370,6 @@ const useMiddleSocket = () => {
       });
     };
 
-
-
-
-
-    // --------------------------- OpenAI Realtime wiring (legacy) ---------------------------
-    useEffect(() => {
-      if (socket) {
-        socket.on('audio transcribe openai', (message: any) => {
-          if (typeof message === 'string') {
-            setOpenaiTranscript(prev => (prev ? prev + ' ' : '') + message);
-          }
-        });
-      }
-      return () => {
-        socket?.off?.('audio transcribe openai');
-      };
-    }, [socket]);
-
-    const handleOpenAITranscribe = async (data: any) => {
-      await socket?.emit('audio transcribe openai', {
-        user_session: data.latest,
-        audioblob: data.audioblob
-      });
-    };
-
-    const stopOpenAITranscribe = async () => {
-      await socket?.emit('audio transcribe openai', { audioblob: null });
-    };
-
-    // --------------------------- Whisper batch STT wiring ---------------------------
-    useEffect(() => {
-      if (socket) {
-        socket.on('audio transcribe whisper', (message: any) => {
-          if (typeof message === 'string') {
-            setWhisperTranscript(prev => (prev ? prev + ' ' : '') + message);
-          }
-        });
-      }
-      return () => {
-        socket?.off?.('audio transcribe whisper');
-      };
-    }, [socket]);
-
-    // --------------------------- Google STT streaming wiring ---------------------------
-    useEffect(() => {
-      if (socket) {
-        socket.on('audio transcribe google', (message: any) => {
-          if (typeof message === 'string') {
-            setGoogleTranscript(prev => (prev ? prev + ' ' : '') + message);
-          }
-          console.log('[GOOGLE][RX]', message);
-        });
-      }
-      return () => {
-        socket?.off?.('audio transcribe google');
-      };
-    }, [socket]);
-
-    // --------------------------- faster-whisper local wiring ---------------------------
-    useEffect(() => {
-      if (socket) {
-        socket.on('audio transcribe fw', (message: any) => {
-          if (typeof message === 'string') {
-            setFwTranscript(prev => (prev ? prev + ' ' : '') + message);
-          }
-          console.log('[FW][RX]', message);
-        });
-      }
-      return () => {
-        socket?.off?.('audio transcribe fw');
-      };
-    }, [socket]);
-
-
   
 
   return {
@@ -375,6 +381,13 @@ const useMiddleSocket = () => {
     setAudioHistory,
     transcript, 
     handleAssemblyTTS,
+    handleOpenAITranscribe,
+    openaiTranscript,
+    stopOpenAITranscribe,
+    whisperTranscript,
+    googleTranscript,
+    geminiTranscript,
+    fwTranscript,
     audioChunk, 
     setAudioInterviewChunk,
     handleAudioSentence,
@@ -403,16 +416,6 @@ const useMiddleSocket = () => {
     reset,
     isStarted, 
     setIsStarted,
-    openaiTranscript,
-    setOpenaiTranscript,
-    whisperTranscript,
-    setWhisperTranscript,
-    googleTranscript,
-    setGoogleTranscript,
-    geminiTranscript,
-    setGeminiTranscript,
-    fwTranscript,
-    setFwTranscript,
     handleGoogleTranscribe: async (data: any) => {
       await socket?.emit('audio transcribe google', {
         user_session: data?.latest,

@@ -1,4 +1,7 @@
 import asyncio, os, json
+import re
+import time
+import io, wave
 from openai import OpenAI
 import assemblyai as aai
 from typing import Dict, Any
@@ -16,6 +19,29 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
 import urllib.parse  
 from api.utils.logger import LLPackerLogger
 from api.socket.core import sio, get_socket_asgi_app
+import array
+from .stt_utils import (
+    WHISPER_MODEL,
+    WHISPER_TARGET_BYTES,
+    WHISPER_OVERLAP_BYTES,
+    WHISPER_RMS_THRESHOLD,
+    pcm16_mono_16k_to_wav_bytes,
+    is_silent_pcm16,
+)
+try:
+    from google.cloud import speech_v1 as speech
+except Exception:
+    speech = None
+try:
+    from google import genai as google_genai
+    from google.genai import types as genai_types
+except Exception:
+    google_genai = None
+    genai_types = None
+try:
+    from faster_whisper import WhisperModel
+except Exception:
+    WhisperModel = None
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
@@ -28,10 +54,492 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Improved transcriber management - track per session
 transcribers: Dict[str, Any] = {}
+whisper_buffers: Dict[str, bytearray] = {}
+google_streams: Dict[str, Any] = {}
+gemini_streams: Dict[str, Any] = {}
+fw_buffers: Dict[str, bytearray] = {}
+fw_model: Any = None
+gemini_last_ts: Dict[str, float] = {}
+
+ 
+
+def _pcm16_mono_16k_to_wav_bytes(pcm_bytes: bytes) -> bytes:
+    # Backward compatibility wrapper
+    return pcm16_mono_16k_to_wav_bytes(pcm_bytes)
+
+def _is_silent_pcm16(pcm_bytes: bytes, rms_threshold: int = WHISPER_RMS_THRESHOLD) -> bool:
+    # Backward compatibility wrapper
+    return is_silent_pcm16(pcm_bytes, rms_threshold)
+
+# -------------------------- Google Cloud STT Streaming -------------------------- #
+class GoogleStreamingSession:
+    def __init__(self, sid: str, language_code: str = None, sample_rate_hz: int = 16000, enable_interim_results: bool = True):
+        if speech is None:
+            raise RuntimeError("google-cloud-speech is not installed")
+        self.sid = sid
+        self.language_code = language_code or os.getenv("GOOGLE_STT_LANGUAGE", "en-US")
+        self.sample_rate_hz = sample_rate_hz
+        self.enable_interim_results = enable_interim_results
+        self.client = speech.SpeechClient()
+        self._queue: asyncio.Queue = asyncio.Queue()
+        self._stop = asyncio.Event()
+        self._task: asyncio.Task | None = None
+
+    async def start(self):
+        if self._task is None:
+            self._task = asyncio.create_task(self._run())
+
+    async def stop(self):
+        self._stop.set()
+        # Put sentinel to unblock generator
+        await self._queue.put(None)
+        if self._task:
+            try:
+                await self._task
+            except Exception:
+                pass
+
+    async def add_audio(self, audio_bytes: bytes):
+        await self._queue.put(audio_bytes)
+
+    async def _requests_generator(self):
+        streaming_config = speech.StreamingRecognitionConfig(
+            config=speech.RecognitionConfig(
+                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                sample_rate_hertz=self.sample_rate_hz,
+                language_code=self.language_code,
+                enable_automatic_punctuation=True,
+                model=os.getenv("GOOGLE_STT_MODEL", "latest_long"),
+            ),
+            interim_results=self.enable_interim_results,
+            single_utterance=False,
+        )
+        yield speech.StreamingRecognizeRequest(streaming_config=streaming_config)
+        while not self._stop.is_set():
+            chunk = await self._queue.get()
+            if chunk is None:
+                break
+            if chunk:
+                yield speech.StreamingRecognizeRequest(audio_content=chunk)
+
+    async def _run(self):
+        loop = asyncio.get_event_loop()
+        try:
+            responses = self.client.streaming_recognize(requests=self._requests_generator())
+            async for response in responses:  # type: ignore
+                for result in response.results:
+                    if not result.alternatives:
+                        continue
+                    transcript = result.alternatives[0].transcript
+                    if not transcript:
+                        continue
+                    # Emit interim/final similar to Assembly behavior
+                    if result.is_final:
+                        logger.info(f"[GOOGLE][FINAL] sid={self.sid} text='{transcript}'")
+                        asyncio.run_coroutine_threadsafe(
+                            sio.emit("audio transcribe google", transcript, room=self.sid),
+                            loop,
+                        )
+                    else:
+                        logger.info(f"[GOOGLE][INTERIM] sid={self.sid} text='{transcript}'")
+        except Exception as e:
+            logger.error(f"[GOOGLE] streaming error sid={self.sid}: {e}")
+
+
+@sio.on("audio transcribe google")
+async def audio_transcribe_google(sid, data):
+    """Realtime Google Cloud STT via gRPC; expects 16kHz mono PCM16 chunks. Send audioblob=None to stop."""
+    audioblob = data.get('audioblob') if isinstance(data, dict) else None
+
+    if audioblob is None:
+        # stop and cleanup
+        session: GoogleStreamingSession | None = google_streams.pop(sid, None)
+        if session is not None:
+            logger.info(f"[GOOGLE][STOP] sid={sid}")
+            try:
+                await session.stop()
+            except Exception as e:
+                logger.error(f"[GOOGLE] stop error sid={sid}: {e}")
+        else:
+            logger.info(f"[GOOGLE][STOP] no active session sid={sid}")
+        return
+
+    # normalize
+    try:
+        if hasattr(audioblob, 'buffer'):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, list):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, (bytes, bytearray, memoryview)):
+            audio_bytes = bytes(audioblob)
+        else:
+            audio_bytes = audioblob
+    except Exception:
+        audio_bytes = audioblob
+
+    # lazy-create session
+    if sid not in google_streams:
+        if speech is None:
+            logger.error("google-cloud-speech is not installed. Please add google-cloud-speech to requirements.txt")
+            return
+        logger.info(f"[GOOGLE][START] sid={sid} lang={os.getenv('GOOGLE_STT_LANGUAGE','en-US')}")
+        session = GoogleStreamingSession(sid=sid)
+        google_streams[sid] = session
+        await session.start()
+
+    session = google_streams[sid]
+    try:
+        await session.add_audio(audio_bytes)
+    except Exception as e:
+        logger.error(f"[GOOGLE] add_audio error sid={sid}: {e}")
+
+# -------------------------- faster-whisper Local Batch STT -------------------------- #
+def _get_fw_model() -> Any:
+    global fw_model
+    if fw_model is None:
+        if WhisperModel is None:
+            raise RuntimeError("faster-whisper is not installed")
+        device = os.getenv("FW_DEVICE", "cpu")
+        compute_type = os.getenv("FW_COMPUTE_TYPE", "int8")
+        model_size = os.getenv("FW_MODEL", "base")
+        fw_model = WhisperModel(model_size, device=device, compute_type=compute_type)
+        logger.info(f"[FW][INIT] model={model_size} device={device} compute_type={compute_type}")
+    return fw_model
+
+@sio.on("audio transcribe fw")
+async def audio_transcribe_fw(sid, data):
+    """Local faster-whisper batch on buffered chunks. Send audioblob=None to flush and stop."""
+    audioblob = data.get('audioblob') if isinstance(data, dict) else None
+
+    if sid not in fw_buffers:
+        fw_buffers[sid] = bytearray()
+
+    if audioblob is None:
+        buf = fw_buffers.get(sid, bytearray())
+        logger.info(f"[FW][STOP] sid={sid} final_flush_bytes={len(buf)}")
+        if len(buf) > 0:
+            try:
+                model = _get_fw_model()
+                # Write temp wav and transcribe
+                wav_bytes = _pcm16_mono_16k_to_wav_bytes(bytes(buf))
+                # faster-whisper expects file path or bytes via numpy array; use temp file for simplicity
+                with io.BytesIO(wav_bytes) as b:
+                    # Save to temp path to support large chunks
+                    tmp_path = os.path.join("/tmp", f"fw_{sid}.wav")
+                    with open(tmp_path, "wb") as f:
+                        f.write(b.getvalue())
+                segments, info = model.transcribe(tmp_path, language="en", beam_size=1)
+                text_parts = [seg.text for seg in segments]
+                text = (" ".join(text_parts)).strip()
+                logger.info(f"[FW][STOP][RECV] sid={sid} lang={getattr(info,'language','?')} text_len={len(text)}")
+                if text:
+                    await sio.emit("audio transcribe fw", text, room=sid)
+            except Exception as e:
+                logger.error(f"[FW] Final flush error: {e}")
+        fw_buffers.pop(sid, None)
+        return
+
+    # normalize
+    try:
+        if hasattr(audioblob, 'buffer'):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, list):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, (bytes, bytearray, memoryview)):
+            audio_bytes = bytes(audioblob)
+        else:
+            audio_bytes = audioblob
+    except Exception:
+        audio_bytes = audioblob
+
+    if _is_silent_pcm16(audio_bytes):
+        logger.info(f"[FW][SILENT] sid={sid} chunk_bytes={len(audio_bytes)} skipped")
+        return
+
+    fw_buffers[sid].extend(audio_bytes)
+    logger.info(f"[FW][APPEND] sid={sid} chunk_bytes={len(audio_bytes)} buffer_bytes={len(fw_buffers[sid])}")
+
+    target = int(os.getenv("FW_TARGET_BYTES", "96000"))
+    if len(fw_buffers[sid]) >= target:
+        buf = fw_buffers[sid]
+        fw_buffers[sid] = bytearray()
+        try:
+            model = _get_fw_model()
+            wav_bytes = _pcm16_mono_16k_to_wav_bytes(bytes(buf))
+            tmp_path = os.path.join("/tmp", f"fw_{sid}.wav")
+            with open(tmp_path, "wb") as f:
+                f.write(wav_bytes)
+            segments, info = model.transcribe(tmp_path, language="en", beam_size=1)
+            text_parts = [seg.text for seg in segments]
+            text = (" ".join(text_parts)).strip()
+            logger.info(f"[FW][RECV] sid={sid} text_len={len(text)}")
+            if text:
+                await sio.emit("audio transcribe fw", text, room=sid)
+        except Exception as e:
+            logger.error(f"[FW] Chunk transcription error: {e}")
+
+# -------------------------- Gemini Live API Streaming -------------------------- #
+class GeminiLiveSession:
+    def __init__(self, sid: str, model: str | None = None):
+        if google_genai is None or genai_types is None:
+            raise RuntimeError("google-genai is not installed")
+        self.sid = sid
+        self.model = model or os.getenv("GEMINI_LIVE_MODEL", "gemini-live-2.5-flash-preview")
+        # Use API key from central config
+        self.client = google_genai.Client(api_key=config.gemini.api_key)
+        self.session = None
+        self._queue: asyncio.Queue = asyncio.Queue()
+        self._stop = asyncio.Event()
+        self._task: asyncio.Task | None = None
+
+    async def start(self):
+        if self._task is None:
+            self._task = asyncio.create_task(self._run())
+
+    async def stop(self):
+        self._stop.set()
+        await self._queue.put(None)
+        if self._task:
+            try:
+                await self._task
+            except Exception:
+                pass
+        try:
+            if self.session is not None:
+                await self.session.aclose()
+        except Exception:
+            pass
+
+    async def add_audio(self, audio_bytes: bytes):
+        await self._queue.put(audio_bytes)
+
+    def _looks_english(self, text: str) -> bool:
+        letters = re.findall(r"[A-Za-z]", text)
+        if not text:
+            return False
+        ratio = (len(letters) / max(1, len(text)))
+        return ratio >= float(os.getenv("GEMINI_ENGLISH_RATIO", "0.8"))
+
+    async def _run(self):
+        loop = asyncio.get_event_loop()
+        config = {
+            "response_modalities": ["TEXT"],
+            "system_instruction": (
+                "You are a transcription engine. Transcribe VERBATIM in English only. "
+                "Do NOT translate or answer. If audio is not English, return nothing. "
+                "Return plain text only, no prefixes or extra words."
+            ),
+        }
+        response_interval = float(os.getenv("GEMINI_RESPONSE_INTERVAL_SEC", "1.0"))
+        keepalive_interval = float(os.getenv("GEMINI_KEEPALIVE_SEC", "5.0"))
+        silence_trigger_ms = int(os.getenv("GEMINI_SILENCE_TRIGGER_MS", "400"))
+        gemini_rms_th = int(os.getenv("GEMINI_RMS_THRESHOLD", "600"))
+        silence_bytes = b"\x00" * 3200  # ~100ms of silence @16kHz PCM16
+        watchdog_sec = float(os.getenv("GEMINI_WATCHDOG_SEC", "3.0"))
+        restart_silence_ms = int(os.getenv("GEMINI_RESTART_SILENCE_MS", "1200"))
+
+        while not self._stop.is_set():
+            last_response_ts = time.time()
+            last_keepalive_ts = time.time()
+            last_speech_ts = time.time()
+            in_flight_response = False
+            try:
+                async with self.client.aio.live.connect(model=self.model, config=config) as session:
+                    self.session = session
+                    missing_response_api_logged = False
+                    last_text_ts = time.time()
+                    last_chunk_ts = time.time()
+
+                    async def receiver():
+                        nonlocal last_text_ts
+                        try:
+                            async for message in session.receive():
+                                try:
+                                    server_content = getattr(message, "server_content", None)
+                                    if server_content and getattr(server_content, "model_turn", None):
+                                        parts = getattr(server_content.model_turn, "parts", []) or []
+                                        text_chunks = []
+                                        for part in parts:
+                                            text_val = getattr(part, "text", None)
+                                            if text_val:
+                                                text_chunks.append(text_val)
+                                        if text_chunks:
+                                            text = "".join(text_chunks).strip()
+                                            if text:
+                                                if not self._looks_english(text):
+                                                    logger.info(f"[GEMINI][TEXT][SKIP_NON_EN] sid={self.sid} sample='{text[:20]}'")
+                                                    continue
+                                                logger.info(f"[GEMINI][TEXT] sid={self.sid} len={len(text)}")
+                                                logger.info(f"[SOCKET EMIT] Sending final transcript to sid={self.sid}: '{text}'")
+                                                # mark last text time for watchdog
+                                                last_text_ts = time.time()
+                                                asyncio.run_coroutine_threadsafe(
+                                                    sio.emit("audio transcribe gemini", text, room=self.sid),
+                                                    loop,
+                                                )
+                                except Exception as parse_err:
+                                    logger.error(f"[GEMINI] parse error sid={self.sid}: {parse_err}")
+                        except Exception as recv_err:
+                            logger.error(f"[GEMINI] receive error sid={self.sid}: {recv_err}")
+
+                    recv_task = asyncio.create_task(receiver())
+
+                    while not self._stop.is_set():
+                        now = time.time()
+                        # Send keepalive occasionally
+                        if now - last_keepalive_ts >= keepalive_interval:
+                            try:
+                                await session.send_realtime_input(
+                                    audio=genai_types.Blob(
+                                        data=silence_bytes,
+                                        mime_type="audio/pcm;rate=16000",
+                                    )
+                                )
+                                logger.info(f"[GEMINI][KEEPALIVE] sid={self.sid} 100ms silence sent")
+                            except Exception as send_err:
+                                logger.error(f"[GEMINI] keepalive error sid={self.sid}: {send_err}")
+                            last_keepalive_ts = now
+
+                        # Drain at least one queued chunk if available
+                        try:
+                            chunk = await asyncio.wait_for(self._queue.get(), timeout=0.2)
+                        except asyncio.TimeoutError:
+                            chunk = None
+
+                        if chunk is not None:
+                            if chunk:
+                                # Log inter-arrival and size
+                                prev = gemini_last_ts.get(self.sid, now)
+                                gemini_last_ts[self.sid] = now
+                                dt_ms = int((now - prev) * 1000)
+                                logger.info(f"[GEMINI][CHUNK] sid={self.sid} bytes={len(chunk)} dt_ms={dt_ms}")
+                                last_chunk_ts = now
+                                # Update last_speech_ts based on RMS silence gate
+                                try:
+                                    if not is_silent_pcm16(chunk, gemini_rms_th):
+                                        last_speech_ts = now
+                                        logger.info(f"[GEMINI][VAD] sid={self.sid} speech_detected rms_th={gemini_rms_th}")
+                                    else:
+                                        logger.info(f"[GEMINI][VAD] sid={self.sid} silence rms_th={gemini_rms_th}")
+                                except Exception as vad_err:
+                                    logger.error(f"[GEMINI][VAD] error sid={self.sid}: {vad_err}")
+                                try:
+                                    await session.send_realtime_input(
+                                        audio=genai_types.Blob(
+                                            data=chunk,
+                                            mime_type="audio/pcm;rate=16000",
+                                        )
+                                    )
+                                except Exception as send_err:
+                                    logger.error(f"[GEMINI] send error sid={self.sid}: {send_err}")
+                            elif chunk is None:
+                                break
+
+                        # Trigger a response turn either on cadence or after brief silence, ensure single in-flight
+                        silence_ms = int((now - last_speech_ts) * 1000)
+                        should_request = (now - last_response_ts >= response_interval) or (silence_ms >= silence_trigger_ms)
+                        if should_request and not in_flight_response:
+                            try:
+                                # Commit buffered audio (if API is available), then request a response
+                                input_buf = getattr(session, "input_audio_buffer", None)
+                                if input_buf and hasattr(input_buf, "commit"):
+                                    try:
+                                        await input_buf.commit()
+                                        logger.info(f"[GEMINI][COMMIT] sid={self.sid} input_audio_buffer.commit sent")
+                                    except Exception as c_err:
+                                        logger.error(f"[GEMINI] commit error sid={self.sid}: {c_err}")
+                                # Prefer explicit response.create if available in SDK
+                                response_api = getattr(session, "response", None)
+                                if response_api and hasattr(response_api, "create"):
+                                    in_flight_response = True
+                                    logger.info(f"[GEMINI][REQUEST] sid={self.sid} reason={'cadence' if (now - last_response_ts >= response_interval) else 'silence'} silence_ms={silence_ms} response.create issued")
+                                    await response_api.create()
+                                    in_flight_response = False
+                                else:
+                                    if not missing_response_api_logged:
+                                        logger.error(f"[GEMINI] response API missing create() sid={self.sid} — relying on auto-turns after commit")
+                                        missing_response_api_logged = True
+                            except Exception as req_err:
+                                logger.error(f"[GEMINI] response request error sid={self.sid}: {req_err}")
+                                in_flight_response = False
+                            last_response_ts = now
+
+                        # Watchdog: if we keep receiving chunks but no text for too long, recycle session
+                        no_text_for = now - last_text_ts
+                        since_last_chunk = now - last_chunk_ts
+                        if no_text_for >= watchdog_sec and since_last_chunk < watchdog_sec * 2:
+                            logger.info(f"[GEMINI][RESTART] sid={self.sid} reason=watchdog no_text_for={no_text_for:.2f}s")
+                            break
+
+                        # Restart on long silence between speech segments
+                        if silence_ms >= restart_silence_ms:
+                            logger.info(f"[GEMINI][RESTART] sid={self.sid} reason=silence silence_ms={silence_ms}")
+                            break
+
+                    try:
+                        await recv_task
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.error(f"[GEMINI] session error sid={self.sid}: {e}")
+                if self._stop.is_set():
+                    break
+                # Auto-reconnect after brief delay
+                logger.info(f"[GEMINI][RECONNECT] sid={self.sid} retrying in 0.5s")
+                await asyncio.sleep(0.5)
+
+
+@sio.on("audio transcribe gemini")
+async def audio_transcribe_gemini(sid, data):
+    """Realtime Gemini Live API; expects 16kHz mono PCM16 chunks. Send audioblob=None to stop."""
+    audioblob = data.get('audioblob') if isinstance(data, dict) else None
+
+    if audioblob is None:
+        session: GeminiLiveSession | None = gemini_streams.pop(sid, None)
+        if session is not None:
+            logger.info(f"[GEMINI][STOP] sid={sid}")
+            try:
+                await session.stop()
+            except Exception as e:
+                logger.error(f"[GEMINI] stop error sid={sid}: {e}")
+        else:
+            logger.info(f"[GEMINI][STOP] no active session sid={sid}")
+        return
+
+    # normalize
+    try:
+        if hasattr(audioblob, 'buffer'):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, list):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, (bytes, bytearray, memoryview)):
+            audio_bytes = bytes(audioblob)
+        else:
+            audio_bytes = audioblob
+    except Exception:
+        audio_bytes = audioblob
+
+    if sid not in gemini_streams:
+        if google_genai is None:
+            logger.error("google-genai is not installed. Please add google-genai to requirements.txt and set GOOGLE_API_KEY env var")
+            return
+        logger.info(f"[GEMINI][START] sid={sid} model={os.getenv('GEMINI_LIVE_MODEL','gemini-live-2.5-flash-preview')}")
+        session = GeminiLiveSession(sid=sid)
+        gemini_streams[sid] = session
+        await session.start()
+
+    session = gemini_streams[sid]
+    try:
+        await session.add_audio(audio_bytes)
+    except Exception as e:
+        logger.error(f"[GEMINI] add_audio error sid={sid}: {e}")
 
 @sio.event
 async def connect(sid, environ):
     print(f"####### Socket Connected with SID: {sid} #######")
+    # Join the client to a room with its own SID for SID targeting
+    await sio.enter_room(sid, sid)
+    print(f"####### Client {sid} joined room {sid} #######")
     await sio.emit("initial connect", {"message": "socket connection started"}, room=sid)
     
     query_string = environ.get('QUERY_STRING', '')
@@ -104,7 +612,6 @@ async def disconnect(sid):
             logger.info(f"Session closed cleanly on disconnect (sid={sid})")
         except Exception as e:
             logger.warn(f"Error while closing session on disconnect (sid={sid}): {e}")
- 
 # Improved assembly streaming with proper session management
 @sio.on("audio transcribe")
 async def audio_endpoint(sid, data):
@@ -214,6 +721,73 @@ async def audio_endpoint(sid, data):
         logger.info(f"[AUDIO STREAM] Audio streamed successfully for sid={sid}")
     except Exception as e:
         logger.error(f"Error in audio streaming for sid={sid}: {str(e)}")
+
+# -------------------------- Whisper Batch Transcription -------------------------- #
+@sio.on("audio transcribe whisper")
+async def audio_transcribe_whisper(sid, data):
+    audioblob = data.get('audioblob')
+
+    if sid not in whisper_buffers:
+        whisper_buffers[sid] = bytearray()
+
+    if audioblob is None:
+        buf = whisper_buffers.get(sid, bytearray())
+        logger.info(f"[WHISPER][STOP] sid={sid} final_flush_bytes={len(buf)}")
+        if len(buf) > 0:
+            wav_bytes = _pcm16_mono_16k_to_wav_bytes(bytes(buf))
+            try:
+                result = client.audio.transcriptions.create(
+                    model=WHISPER_MODEL,
+                    file=("chunk.wav", wav_bytes, "audio/wav"),
+                    language="en",
+                )
+                text = getattr(result, 'text', None) or (result.get('text') if isinstance(result, dict) else None)
+                logger.info(f"[WHISPER][STOP] sid={sid} transcript_len={len(text or '')}")
+                if text:
+                    await sio.emit("audio transcribe whisper", text, room=sid)
+            except Exception as e:
+                logger.error(f"[WHISPER] Final flush error: {e}")
+        whisper_buffers.pop(sid, None)
+        return
+
+    try:
+        if hasattr(audioblob, 'buffer'):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, list):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, (bytes, bytearray, memoryview)):
+            audio_bytes = bytes(audioblob)
+        else:
+            audio_bytes = audioblob
+    except Exception:
+        audio_bytes = audioblob
+
+    # Skip silent chunks to avoid hallucinations on silence
+    if _is_silent_pcm16(audio_bytes):
+        logger.info(f"[WHISPER][SILENT] sid={sid} chunk_bytes={len(audio_bytes)} skipped (rms<th={WHISPER_RMS_THRESHOLD})")
+        return
+
+    whisper_buffers[sid].extend(audio_bytes)
+    logger.info(f"[WHISPER][APPEND] sid={sid} chunk_bytes={len(audio_bytes)} buffer_bytes={len(whisper_buffers[sid])}")
+
+    if len(whisper_buffers[sid]) >= WHISPER_TARGET_BYTES:
+        buf = whisper_buffers[sid]
+        carry = buf[-WHISPER_OVERLAP_BYTES:] if len(buf) > WHISPER_OVERLAP_BYTES else buf[:]
+        whisper_buffers[sid] = bytearray(carry)
+        wav_bytes = _pcm16_mono_16k_to_wav_bytes(bytes(buf))
+        try:
+            logger.info(f"[WHISPER][SEND] sid={sid} wav_bytes={len(wav_bytes)} pcm_bytes={len(buf)}")
+            result = client.audio.transcriptions.create(
+                model=WHISPER_MODEL,
+                file=("chunk.wav", wav_bytes, "audio/wav"),
+                language="en",
+            )
+            text = getattr(result, 'text', None) or (result.get('text') if isinstance(result, dict) else None)
+            logger.info(f"[WHISPER][RECV] sid={sid} transcript_len={len(text or '')}")
+            if text:
+                await sio.emit("audio transcribe whisper", text.strip(), room=sid)
+        except Exception as e:
+            logger.error(f"[WHISPER] Chunk transcription error: {e}")
 
 # executor = ThreadPoolExecutor(max_workers=105)  
 

@@ -60,10 +60,10 @@ const OpenAIRealtimeTest: React.FC = () => {
     if (streamProvider === 'gemini') (socketHook as any).geminiTranscript = "";
     if (streamProvider === 'fw') (socketHook as any).fwTranscript = "";
     await setupAudio((pcm) => {
-      if (streamProvider === 'whisper') socketHook?.socket?.emit?.('audio transcribe whisper', { latest, audioblob: pcm });
-      if (streamProvider === 'google') socketHook?.socket?.emit?.('audio transcribe google', { latest, audioblob: pcm });
-      if (streamProvider === 'gemini') socketHook?.socket?.emit?.('audio transcribe gemini', { latest, audioblob: pcm });
-      if (streamProvider === 'fw') socketHook?.socket?.emit?.('audio transcribe fw', { latest, audioblob: pcm });
+      if (streamProvider === 'whisper') socketHook.socket?.emit?.('audio transcribe whisper', { latest, audioblob: pcm });
+      if (streamProvider === 'google') socketHook.socket?.emit?.('audio transcribe google', { latest, audioblob: pcm });
+      if (streamProvider === 'gemini') socketHook.socket?.emit?.('audio transcribe gemini', { latest, audioblob: pcm });
+      if (streamProvider === 'fw') socketHook.socket?.emit?.('audio transcribe fw', { latest, audioblob: pcm });
     });
     setIsRecording(true);
   };
@@ -104,9 +104,9 @@ const OpenAIRealtimeTest: React.FC = () => {
       const API_BASE_RAW = (ENV.VITE_REACT_APP_BACKEND_URL).toString();
       const API_BASE = API_BASE_RAW ? API_BASE_RAW.replace(/\/$/, '') : '';
       const base = API_BASE ? `${API_BASE}` : '';
-      let path = '/api/stt/whisper-upload';
-      if (uploadProvider === 'gemini') path = '/api/stt/gemini-upload';
-      if (uploadProvider === 'openai') path = '/api/stt/openai-upload';
+      let path = '/api/stt/upload';
+      if (uploadProvider === 'gemini') path = '/api/stt-gemini/upload';
+      if (uploadProvider === 'openai') path = '/api/stt-openai/upload';
       const qp = uploadLang.trim() ? `?language=${encodeURIComponent(uploadLang.trim())}` : '';
       const res = await fetch(`${base}${path}${qp}`, { method: 'POST', body: form });
       const json = await res.json();

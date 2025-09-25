@@ -34,7 +34,6 @@ from fastapi.staticfiles import StaticFiles
 from api.pages.base import api_router as pages_router
 from api.pages.ipersona.routers.ipersona_routes import routes
 from api.pages.ipersona.socket.ipersona_socket import get_socketio_app
-# from api.pages.ipersona.routers.celery_task import router as tasks_router
 from api.utils.logger import LLPackerLogger
 
 logger = LLPackerLogger(__file__)
@@ -132,8 +131,6 @@ def start_application():
     )
 
     fast_app.mount("/api", routes)
-    # Expose task testing endpoints (e.g., /tasks/socket-test)
-    # fast_app.include_router(tasks_router)
 
  
     return fast_app

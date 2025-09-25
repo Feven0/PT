@@ -66,6 +66,289 @@ routes = FastAPI(
 # In-memory status store (for demonstration; replace with persistent store for production)
 audio_processing_status = {}
 
+# ====================== STT routes (migrated from models_routes.py) ======================
+from fastapi import UploadFile, File, HTTPException, Form  # ensure decorators work
+from typing import Optional
+import base64, subprocess, tempfile
+import httpx, asyncio, os
+from api.utils.logger import LLPackerLogger
+from api import config
+
+stt_logger = LLPackerLogger(__file__)
+
+try:
+    from google import genai as genai_mod
+    from google.genai import types as genai_types
+except Exception:
+    genai_mod = None
+    genai_types = None
+
+try:
+    from faster_whisper import WhisperModel
+except Exception:
+    WhisperModel = None
+
+from api.utils.audio_utils import AudioUtils
+from pydub import AudioSegment
+
+_fw_model = None
+
+def _get_fw_model():
+    global _fw_model
+    if _fw_model is not None:
+        return _fw_model
+    if WhisperModel is None:
+        raise HTTPException(status_code=500, detail="faster-whisper not installed")
+    model_size = os.getenv("FW_MODEL", "base")
+    device = os.getenv("FW_DEVICE", "cpu")
+    compute_type = os.getenv("FW_COMPUTE_TYPE", "int8")
+    stt_logger.info(f"[FW][INIT] model={model_size} device={device} compute={compute_type}")
+    _fw_model = WhisperModel(model_size, device=device, compute_type=compute_type)
+    return _fw_model
+
+@routes.post("/stt/whisper-upload")
+async def stt_upload(file: UploadFile = File(...), language: Optional[str] = None):
+    if file is None:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty file")
+    try:
+        model = _get_fw_model()
+        lang_norm: Optional[str] = None
+        if language:
+            l = language.strip().lower()
+            name_to_code = {
+                "english": "en","eng": "en","arabic": "ar","spanish": "es","french": "fr",
+                "german": "de","italian": "it","portuguese": "pt","russian": "ru","chinese": "zh",
+                "japanese": "ja","korean": "ko","hindi": "hi",
+            }
+            if len(l) >= 2 and "-" in l:
+                l = l.split("-")[0]
+            lang_norm = name_to_code.get(l, l if len(l) == 2 else None)
+        stt_logger.info(f"[FW][UPLOAD] name={file.filename} bytes={len(contents)} lang={lang_norm or language or 'auto'}")
+        with tempfile.NamedTemporaryFile(delete=True, suffix=f"_{file.filename}") as tmp:
+            tmp.write(contents)
+            tmp.flush()
+            segments, info = model.transcribe(tmp.name, language=lang_norm)
+        text_parts = []
+        for seg in segments:
+            text_parts.append(seg.text.strip())
+        transcript = " ".join([t for t in text_parts if t])
+        stt_logger.info(f"[FW][RESULT] len={len(transcript)}")
+        return JSONResponse({"text": transcript, "language": info.language, "language_probability": getattr(info, 'language_probability', None)})
+    except HTTPException:
+        raise
+    except Exception as e:
+        stt_logger.error(f"[FW][ERROR] {e}")
+        if language:
+            return JSONResponse(status_code=400, content={"error": str(e),"hint": "Use ISO 639-1 code like 'en' (not 'english'). Examples: en, es, fr.",})
+        raise HTTPException(status_code=500, detail=str(e))
+
+@routes.post("/stt/gemini-upload")
+async def stt_gemini_upload(file: UploadFile = File(...), language: Optional[str] = None):
+    if not file:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    try:
+        api_key = config.gemini.api_key
+        if not api_key:
+            raise HTTPException(status_code=500, detail="Missing GOOGLE_GEMINI_API_KEY")
+        client = genai_mod.Client(api_key=api_key)
+        model = os.getenv("GEMINI_BATCH_MODEL", "gemini-1.5-flash")
+        instruction = (
+            "Transcribe the user's speech verbatim in English. "
+            "Return plain text only, no extra words. If not English, return nothing."
+        )
+        with tempfile.NamedTemporaryFile(delete=True, suffix=f"_{file.filename}") as tmp:
+            tmp.write(data)
+            tmp.flush()
+            gfile = None
+            try:
+                gfile = client.files.upload(path=tmp.name, display_name=file.filename)
+            except TypeError:
+                gfile = client.files.upload(file=tmp.name)
+        name = getattr(gfile, "name", None)
+        if not name:
+            raise HTTPException(status_code=500, detail="Gemini upload missing file name")
+        for _ in range(30):
+            f = client.files.get(name=name)
+            state = getattr(f, "state", None)
+            if state == "ACTIVE":
+                gfile = f
+                break
+            await asyncio.sleep(1)
+        if getattr(gfile, "state", None) != "ACTIVE":
+            raise HTTPException(status_code=500, detail="Gemini file not ready")
+        file_uri = getattr(gfile, "uri", None) or getattr(gfile, "file_uri", None)
+        if not file_uri:
+            raise HTTPException(status_code=500, detail="Gemini file upload missing uri")
+        mime = file.content_type or "audio/mpeg"
+        contents = [
+            genai_types.Content(
+                role="user",
+                parts=[
+                    genai_types.Part(text=instruction),
+                    genai_types.Part(file_data=genai_types.FileData(file_uri=file_uri, mime_type=mime)),
+                ],
+            )
+        ]
+        res = client.models.generate_content(model=model, contents=contents)
+        text = getattr(res, "text", None)
+        if not text:
+            cands = getattr(res, "candidates", []) or []
+            for c in cands:
+                content = getattr(c, "content", None)
+                parts = getattr(content, "parts", None) if content else None
+                if isinstance(parts, list) and parts:
+                    chunks = []
+                    for p in parts:
+                        val = getattr(p, "text", None)
+                        if val:
+                            chunks.append(val)
+                    if chunks:
+                        text = " ".join(chunks).strip()
+                        break
+        return JSONResponse({"text": (text or "").strip()})
+    except HTTPException:
+        raise
+    except Exception as e:
+        stt_logger.error(f"[GEMINI][ERROR] {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@routes.post("/stt/openai-upload")
+async def stt_openai_upload(file: UploadFile = File(...)):
+    if file is None:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    content_type = file.content_type or "audio/mpeg"
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file.filename}") as tmp:
+            tmp.write(data)
+            tmp_path = tmp.name
+        stt_logger.info(f"[OAI][UPLOAD] name={file.filename} bytes={len(data)} ctype={content_type} path={tmp_path}")
+        final_path = tmp_path
+        final_ctype = content_type
+        try:
+            size_mb = len(data) / (1024*1024)
+            if content_type.startswith("video/") or size_mb > 10:
+                aud = AudioSegment.from_file(tmp_path)
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as mp3tmp:
+                    aud.export(mp3tmp.name, format="mp3", bitrate="64k")
+                    final_path = mp3tmp.name
+                    final_ctype = "audio/mpeg"
+                stt_logger.info(f"[OAI][CONVERT] -> {final_path} ctype={final_ctype}")
+        except Exception as ce:
+            stt_logger.warn(f"[OAI][CONVERT][SKIP] {ce}")
+        au = AudioUtils()
+        result = au.audio_transcription_logics(filename=file.filename, audio_path=final_path, content_type=final_ctype)
+        stt_logger.info(f"[OAI][RESULT] keys={list(result.keys())}")
+        return JSONResponse(result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        stt_logger.error(f"[OAI][ERROR] {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        try:
+            if 'tmp_path' in locals() and os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            if 'final_path' in locals() and final_path != tmp_path and os.path.exists(final_path):
+                os.remove(final_path)
+        except Exception:
+            pass
+
+def _infer_google_encoding(filename: str) -> Optional[str]:
+    name = filename.lower()
+    if name.endswith(".wav"):
+        return None
+    if name.endswith(".flac"):
+        return "FLAC"
+    if name.endswith(".mp3"):
+        return "MP3"
+    if name.endswith(".ogg") or name.endswith(".oga"):
+        return "OGG_OPUS"
+    if name.endswith(".webm"):
+        return "WEBM_OPUS"
+    if name.endswith(".amr"):
+        return "AMR"
+    if name.endswith(".awb"):
+        return "AMR_WB"
+    return None
+
+@routes.post("/stt/google-upload")
+async def google_stt_upload(file: UploadFile = File(...), language: str = Form("")):
+    api_key = getattr(getattr(config, "cloud", None), "api_key", None)
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Google API key not configured (config.cloud.api_key)")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty file")
+    encoding = _infer_google_encoding(file.filename or "")
+    lang = (language or os.getenv("GOOGLE_STT_LANGUAGE") or "en-US").strip()
+    if len(raw) > 9_500_000:
+        try:
+            with tempfile.NamedTemporaryFile(suffix=os.path.splitext(file.filename or 'in')[1] or '.wav', delete=True) as src, \
+                 tempfile.NamedTemporaryFile(suffix='.flac', delete=True) as dst:
+                src.write(raw)
+                src.flush()
+                cmd = ['ffmpeg','-y','-i',src.name,'-ac','1','-ar','16000','-vn','-acodec','flac',dst.name]
+                proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                if proc.returncode == 0 and os.path.exists(dst.name):
+                    with open(dst.name,'rb') as f:
+                        raw = f.read()
+                    encoding = 'FLAC'
+        except Exception:
+            pass
+    if len(raw) > 9_500_000:
+        raise HTTPException(status_code=400, detail="Audio too large for inline recognize. Reduce size or provide a GCS URI (requires Google Cloud credentials).")
+    cfg: dict = {"languageCode": lang, "enableAutomaticPunctuation": True}
+    if encoding:
+        cfg["encoding"] = encoding
+    b64 = base64.b64encode(raw).decode("ascii")
+    payload = {"config": cfg, "audio": {"content": b64}}
+    recognize_url = f"https://speech.googleapis.com/v1/speech:recognize?key={api_key}"
+    longrun_url = f"https://speech.googleapis.com/v1/speech:longrunningrecognize?key={api_key}"
+    async with httpx.AsyncClient(timeout=180) as client:
+        if len(raw) <= 9_500_000:
+            resp = await client.post(recognize_url, json=payload)
+            if resp.status_code != 200:
+                raise HTTPException(status_code=resp.status_code, detail=resp.text[:500])
+            data = resp.json()
+        else:
+            start = await client.post(longrun_url, json=payload)
+            if start.status_code != 200:
+                raise HTTPException(status_code=start.status_code, detail=start.text[:500])
+            op = start.json().get("name")
+            if not op:
+                raise HTTPException(status_code=500, detail="Missing operation name from longrunningrecognize")
+            operations_url = f"https://speech.googleapis.com/v1/operations/{op}?key={api_key}"
+            for _ in range(60):
+                status = await client.get(operations_url)
+                if status.status_code != 200:
+                    raise HTTPException(status_code=status.status_code, detail=status.text[:500])
+                body = status.json()
+                if body.get("done"):
+                    data = body.get("response") or {}
+                    break
+                await asyncio.sleep(2)
+            else:
+                raise HTTPException(status_code=504, detail="Google longrunningrecognize timed out")
+    results = data.get("results") or []
+    transcripts = []
+    for r in results:
+        alts = r.get("alternatives") or []
+        if alts:
+            t = (alts[0].get("transcript") or "").strip()
+            if t:
+                transcripts.append(t)
+    text = " ".join(transcripts).strip()
+    return JSONResponse({"text": text, "results": results, "language": lang, "status_code": 200, "message": "Transcript extracted successfully" if text else "No transcript",})
+
 @routes.get("/health", tags=["Health Check"])
 async def health_check():
     try:
