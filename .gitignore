@@ -4,6 +4,10 @@
 Dockerfile
 docker-compose.*
 
+# Ignore all YAML files
+*.yml
+*.yaml
+
 # ignore all local configuration
 conf/local/**
 !conf/local/.gitkeep
