@@ -12,7 +12,7 @@ class RedisBase:
         self.redis = redis.Redis(
             host=config.cache.REDIS_HOST,
             port=config.cache.REDIS_PORT,
-            password="D1BxSM9&t!wSGM",
+            password=REDIS_PASSWORD,
             # ssl = True,
             # decode_responses=False  
         )

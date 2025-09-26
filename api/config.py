@@ -136,6 +136,13 @@ def get_openapi_token(
 
     return apikey
 
+def get_secret_key(
+    ssmkey,
+    envvar=None,
+    fconfig=None,
+):
+    return get_auth(ssmkey=ssmkey, envvar=envvar, fconfig=fconfig)
+
 def rapidapi_header(ssmkey="RAPIDAPI_API_KEY",
                     envvar="rapidapi_api_key",
                     fconfig=".env/rapidapi_apikey.json",
@@ -569,7 +576,7 @@ class cache:
     MEMCACHED_PORT = os.getenv("MEMCACHED_PORT", 11211)
     REDIS_HOST = "redis.10academy.org"
     REDIS_PORT = 6379
-    REDIS_PASSWORD = "D1BxSM9&t!wSGM"
+    REDIS_PASSWORD = get_secret_key('REDIS_PASSWORD')
     REDIS_URL = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}"
     
 @dataclass
@@ -622,11 +629,11 @@ def get_openapi_token(
       
 @dataclass
 class assemblyai:
-    api_key = "af1b742664d64a40a7429081cd7cdc35"  
+    api_key = get_secret_key('ASSEMBLY_AI_API_KEY')  
 
 @dataclass
 class gemini:
-    api_key = "AIzaSyBUMqiCrgxx3VQeaV1nbAdEcoJJr4DczKY"
+    api_key = get_secret_key('GOOGLE_GEMINI_API_KEY')
     
 @dataclass
 class openai:
