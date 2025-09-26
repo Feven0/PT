@@ -168,7 +168,7 @@ class AudioUtils:
             dict: {"valid": bool, "reason": str}
         """
         try:
-            logger.debug(f"Starting AI validation for transcript ({len(transcript)} characters)")
+            print(f"🤖 [DEBUG] Starting AI validation for transcript length: {len(transcript)}")
             
             # Basic length check first
             if len(transcript.strip()) < 50:
@@ -215,16 +215,16 @@ class AudioUtils:
             }}
             """
             
-            logger.debug("Sending validation prompt to AI")
+            print(f"📤 [DEBUG] Sending validation prompt to GPT")
             response = gpt.openai_gpt_assistant_without_streaming(validation_prompt)
             
-            logger.debug("Received AI validation response")
+            print(f"📥 [DEBUG] Received GPT response for validation")
             
             # Extract JSON from response
             validation_result = util.extract_json(response, quite=False)
             
             if not validation_result:
-                logger.warn("Failed to extract JSON from validation response")
+                print(f"❌ [DEBUG] Failed to extract JSON from validation response")
                 return {
                     "valid": False,
                     "reason": "AI validation failed - unable to process response"
@@ -253,15 +253,17 @@ class AudioUtils:
                     validation_result["content_type"] = validation_result.get("content_type", "incomplete")
                     validation_result["conversation_completeness"] = "one_sided"
                     validation_result["reason"] = (
-                        "Detected mostly interviewer questions with insufficient candidate responses"
+                        f"Detected mostly interviewer questions (indicators={qi}, '?'={question_mark_ratio}) "
+                        f"with insufficient candidate responses (indicators={ai})."
                     )
             except Exception:
                 pass
 
-            logger.debug("AI validation completed successfully")
+            print(f"✅ [DEBUG] AI validation completed successfully")
             return validation_result
             
         except Exception as e:
+            print(f"❌ [DEBUG] AI validation process failed: {str(e)}")
             logger.error(f"AI validation process failed: {str(e)}")
             return {
                 "valid": False,
@@ -402,7 +404,8 @@ class AudioUtils:
                     validation_result["content_type"] = "mostly_questions"
                     validation_result["answer_completeness"] = "none"
                     validation_result["reason"] = (
-                        "Detected mostly questions with insufficient answer content"
+                        f"Detected mostly questions (indicators={qi}, '?'={question_marks}) "
+                        f"with insufficient answer content (answer_indicators={ai})"
                     )
                 
                 # If mostly minimal responses, reduce confidence
@@ -411,7 +414,8 @@ class AudioUtils:
                     validation_result["content_type"] = "incomplete_answers"
                     validation_result["answer_completeness"] = "minimal"
                     validation_result["reason"] = (
-                        "Detected mostly minimal responses without substantive answer content"
+                        f"Detected mostly minimal responses (minimal_indicators={mi}) "
+                        f"without substantive answer content (answer_indicators={ai})"
                     )
                     
             except Exception as e:
@@ -465,13 +469,15 @@ class AudioUtils:
         template_id,
         all_user_id,
         external,
-        run_stage):
+        run_stage,
+        user_sid=None):
+        print(f"🚀 [DEBUG] process_upload_external_audio STARTED")
         
         try:
             redis = RedisBase()
-            logger.debug("Redis connection established")
+            print(f"🔗 [DEBUG] Redis connection established")
         except Exception as e:
-            logger.error(f"Failed to establish Redis connection: {str(e)}")
+            print(f"❌ [DEBUG] Failed to establish Redis connection: {str(e)}")
             return 'Redis connection failed'
         
         # S3 helpers - only use tenx-parrot-assets
@@ -483,191 +489,226 @@ class AudioUtils:
                     raise Exception("tenx-parrot-assets bucket not found or not accessible")
                 return 'tenx-parrot-assets'
         except Exception as e:
-            logger.error(f"S3 setup failed: {str(e)}")
+            print(f"❌ [DEBUG] S3 setup failed: {str(e)}")
             return f'S3 setup failed: {str(e)}'
 
         s3_audio_url = None
         s3_text_url = None
        
         try:
-            logger.info(f"Starting audio processing for file: {filename}")
-            
-            # Set initial processing status
-            task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-            task_redis_key = self._get_task_redis_key(task_type, task_id)
-            
+            print(f"🔊 [DEBUG] Starting audio processing for file: {filename}")
             try:
+                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
                 redis.set(task_redis_key, {"status": "processing", "message": ""})
-                logger.debug(f"Set Redis status to processing for {task_type}:{task_id}")
+                print(f"📝 [DEBUG] Set Redis status to 'processing' using key: {task_redis_key} (task_type: {task_type}, task_id: {task_id})")
             except Exception as e:
-                logger.error(f"Failed to set Redis status: {str(e)}")
+                print(f"❌ [DEBUG] Failed to set Redis status: {str(e)}")
 
-            # Initialize processing variables
-            message = ''
-            template = False
-            challenge = False  
-            mode = None
-            
-            if "audio" in content_type or "video" in content_type:
-                logger.info(f"Processing audio/video file with content type: {content_type}")
+            try:
+                message = ''
+                template = False
+                challenge = False  
+                mode = None
+                print(f"🔧 [DEBUG] Initialized variables: template_id={template_id}, template={template}, challenge={challenge}, mode={mode}")
                 
-                try:
-                    original_format = content_type.split("/")[-1].lower()
-                    logger.debug(f"Detected format: {original_format}")
-                except Exception as e:
-                    logger.error(f"Failed to extract format: {str(e)}")
-                    return 'Format extraction failed'
-                
-                # Handle audio file processing (conversion + upload)
-                try:
-                    # Step 1: Convert to MP3 if needed
-                    if original_format != "mpeg" and original_format != "mp3":
-                        logger.info(f"Converting media file from {original_format} to mp3")
-                        
-                        # Read and convert file
-                        normalized_audio_path = self._normalize_audio_path(audio_path)
-                        with open(normalized_audio_path, "rb") as f:
-                            contents = f.read()
-                        
-                        contents = util.convert_to_mp3(contents, original_format)
-                        logger.info(f"MP3 conversion completed, new size: {len(contents)} bytes")
-                        
-                        # Save converted MP3 locally for transcription
-                        converted_filename = filename.rsplit(".", 1)[0] + ".mp3"
-                        converted_path = util.audio_path(converted_filename)
-                        with open(converted_path, "wb") as f:
-                            f.write(contents)
-                        
-                        # Update audio_path to point to converted file
-                        audio_path = converted_path
-                        filename = converted_filename
-                        
-                        # Upload converted file
-                        bucket = _pick_bucket()
-                        url, key = _s3h.upload_bytes_and_get_url(bucket, contents, key=f"audio/{converted_filename}")
-                        s3_audio_url = url
-                        logger.success(f"Converted and uploaded to S3: {url}")
-                    else:
-                        logger.info("File already in mp3 format. Skipping conversion.")
-                        url = None  # Not uploading existing MP3 files yet
-                        s3_audio_url = url
-                        logger.debug("Skipped upload for existing MP3 file")
-                        
-                except Exception as e:
-                    logger.error(f"Audio processing and upload failed: {str(e)}")
-                    return f'Audio processing failed: {str(e)}'
-
-                # Step 2: Transcribe the audio
-                try:
-                    logger.info("Starting audio transcription")
-                    # Use normalized path for Docker compatibility
-                    normalized_audio_path = self._normalize_audio_path(audio_path)
-                    result = self.audio_transcription_logics(
-                        filename=filename,
-                        audio_path=normalized_audio_path,
-                        content_type="audio/mpeg",
-                    )
-                    
-                    if "error" in result:
-                        error_msg = result.get('error')
-                        logger.error(f"Transcription failed: {error_msg}")
-                        redis.set(task_redis_key, {
-                            "status": "failed",
-                            "message": error_msg,
-                            "details": result.get("details", "")
-                        })
-                        raise Exception("Transcription failed")
-                    
-                    transcript = result.get("content", "No transcription returned")
-                    logger.success(f"Transcription completed: {len(transcript)} characters")
-                    
-                except Exception as e:
-                    logger.error(f"Audio transcription failed: {str(e)}")
-                    return 'Transcription failed'
-
-                # Step 3: Validate content and complete
-                try:
-                    # AI-Powered Content Validation (using sample for testing)
-                    # import os
-                    # project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                    # transcript_path = os.path.join(project_root, "api", "utils", "sample_transcriptions", "gibberish.txt")
-                    # test_transcript = util.file_reader(transcript_path)
-                    
-                    logger.info("Starting AI-powered content validation")
-                    validation_result = self.ai_validate_interview_content(transcript)
-                    
-                    if not validation_result.get('valid', False):
-                        error_reason = validation_result.get('reason', 'Content validation failed')
-                        logger.warn(f"Content validation failed: {error_reason}")
-                        
-                        # Emit failure event and update Redis
-                        from api.socket.core import emit_with_log
-                        await emit_with_log(
-                            "processing_update_failed",
-                            {"status": f"Invalid interview content: {error_reason}"}
-                        )
-                        
-                        redis.set(task_redis_key, {
-                            "status": "failed",
-                            "message": f"Invalid interview content: {error_reason}"
-                        })
-                        logger.debug(f"Invalid interview content: {error_reason}")
-                        return f"Invalid interview content: {error_reason}"
-                    
-                    # Success: Mark transcription as complete
-                    redis.set(task_redis_key, {
-                        "status": "done",
-                        "message": "Transcription complete",
-                        "content": transcript
-                    })
-                    logger.success("Audio processing completed successfully")
-                    
-                except Exception as e:
-                    logger.error(f"Content validation failed: {str(e)}")
-                    redis.set(task_redis_key, {
-                        "status": "failed",
-                        "message": f"Content validation failed: {str(e)}"
-                    })
-                    return f"Content validation failed: {str(e)}"
-
-            elif any(x in content_type for x in ["text", "pdf", "msword", "officedocument"]):                    
+                if "audio" in content_type or "video" in content_type:
+                    print(f"🎵 [DEBUG] Detected audio/video content type: {content_type}")
                     try:
-                        # Read and upload document
+                        original_format = content_type.split("/")[-1].lower()
+                        print(f"📁 [DEBUG] Extracted original format: {original_format}")
+                    except Exception as e:
+                        print(f"❌ [DEBUG] Failed to extract original format: {str(e)}")
+                        return 'Format extraction failed'
+                    
+                    if original_format != "mpeg" and original_format != "mp3":
+                        print(f"🔄 [DEBUG] Converting media file from {original_format} to mp3")
+                        # Normalize audio path for both localhost and Docker environments
                         normalized_audio_path = self._normalize_audio_path(audio_path)
-                        with open(normalized_audio_path, "rb") as f:
-                            contents = f.read()
-                        logger.debug(f"Read file contents, size: {len(contents)} bytes")
+                        print(f"🔧 [DEBUG] Normalized audio path: {audio_path} -> {normalized_audio_path}")
                         
-                        # Upload original document to S3
-                        bucket = _pick_bucket()
-                        url, key = _s3h.upload_file_and_get_url(bucket, audio_path, key=f"documents/{filename}")
-                        s3_text_url = url
-                        text_size_bytes = len(contents)
-                        logger.info(f"Document uploaded to S3: {url}")
+                        try:
+                            with open(normalized_audio_path, "rb") as f:
+                                contents = f.read()
+                            print(f"📖 [DEBUG] Read file contents, size: {len(contents)} bytes")
+                        except Exception as e:
+                            print(f"❌ [DEBUG] Failed to read audio file: {str(e)}")
+                            return 'File read failed'
+                        
+                        try:
+                            print(f"🔄 [DEBUG] Calling util.convert_to_mp3 with format: {original_format}")
+                            contents = util.convert_to_mp3(contents, original_format)
+                            print(f"✅ [DEBUG] MP3 conversion completed, new size: {len(contents)} bytes")
+                        except Exception as e:
+                            print(f"❌ [DEBUG] MP3 conversion failed: {str(e)}")
+                            return 'MP3 conversion failed'
+                        
+                        # try:
+                        #     # Upload converted audio directly to S3 (no local save)
+                        #     bucket = _pick_bucket()
+                        #     converted_filename = filename.rsplit(".", 1)[0] + ".mp3"
+                        #     url, key = _s3h.upload_bytes_and_get_url(bucket, contents, key=f"audio/{converted_filename}")
+                        #     s3_audio_url = url
+                        #     print(f"☁️ [DEBUG] Uploaded converted audio to S3: {url}")
+                        #     logger.success(f"🎧 MP3 uploaded to S3: {url}")
+                        # except Exception as e:
+                        #     print(f"❌ [DEBUG] S3 upload failed (converted audio): {str(e)}")
+                        #     return f'S3 upload failed: {str(e)}'
+                    else:
+                        print(f"✅ [DEBUG] File already in mp3 format. Skipping conversion.")
+                        logger.info("✅ File already in mp3 format. Skipping conversion.")
+                        # Upload existing mp3 to S3
+                        try:
+                            # bucket = _pick_bucket()
+                            # url, key = _s3h.upload_file_and_get_url(bucket, audio_path, key=f"audio/{filename}")
+                            url = None
+                            s3_audio_url = url
+                            print(f"☁️ [DEBUG] Uploaded audio (mp3) to S3: {url}")
+                        except Exception as e:
+                            print(f"❌ [DEBUG] S3 upload failed (existing mp3): {str(e)}")
+                            return f'S3 upload failed: {str(e)}'
+
+                    # try:
+                    #     print(f"🎤 [DEBUG] Calling audio_transcription_logics")
+                    #     result = self.audio_transcription_logics(
+                    #         filename=filename,
+                    #         audio_path=audio_path,
+                    #         content_type="audio/mpeg",
+                    #     )
+                    #     # print(f"📊 [DEBUG] Transcription result: {result}")
+                    # except Exception as e:
+                    #     print(f"❌ [DEBUG] Audio transcription failed: {str(e)}")
+                    #     return 'Transcription failed'
+
+                    # if "error" in result:
+                    #     print(f"❌ [DEBUG] Transcription failed with error: {result.get('error')}")
+                    #     try:
+                    #         redis.set(f"parrot_celery_tasks:audio_status:{job_profile_id}", {
+                    #             "status": "failed",
+                    #             "message": result.get("error"),
+                    #             "details": result.get("details", "")
+                    #         })
+                    #         print(f"📝 [DEBUG] Set Redis status to 'failed'")
+                    #     except Exception as e:
+                    #         print(f"❌ [DEBUG] Failed to set Redis error status: {str(e)}")
+                    #     raise Exception("Transcription failed")
+
+                    # try:
+                    #     transcript = result.get("content", "No transcription returned")
+                    #     print(f"📝 [DEBUG] Extracted transcript: {transcript[:50]}..." if len(str(transcript)) > 100 else f"📝 [DEBUG] Extracted transcript")
+                    #     logger.success("Initializing transcription")
+                    # except Exception as e:
+                    #     print(f"❌ [DEBUG] Failed to extract transcript: {str(e)}")
+                    #     raise Exception('Transcript extraction failed')
+
+                    # AI-Powered Content Validation
+                    try:
+                        # Use relative path that works in both localhost and Docker
+                        import os
+                        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                        transcript_path = os.path.join(project_root, "api", "utils", "sample_transcriptions", "gibberish.txt")
+                        transcript = util.file_reader(transcript_path)
+                        print(f"[DEBUG] Starting AI-powered content validation", transcript)
+                        validation_result = self.ai_validate_interview_content(transcript)
+                        print(f"📊 [DEBUG] Validation result: {validation_result}")
+                        
+                        if not validation_result.get('valid', False):
+                            error_reason = validation_result.get('reason', 'Content validation failed')
+                            print(f"❌ [DEBUG] Content validation failed: {error_reason}")
+                            try:
+                                from api.socket.core import emit_with_log
+                                await emit_with_log(
+                                    "processing_update_failed",
+                                    {"status": f"Invalid interview content: {error_reason}"}
+                                )
+                                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                                redis.set(task_redis_key, {
+                                    "status": "failed",
+                                    "message": f"Invalid interview content: {error_reason}"
+                                })
+                                print(f"📝 [DEBUG] Set Redis status to 'failed' for validation error using key: {task_redis_key}")
+                            except Exception as e:
+                                print(f"❌ [DEBUG] Failed to set Redis validation error status: {str(e)}")
+                            return f"Invalid interview content: {error_reason}"
+                        
+                        print(f"✅ [DEBUG] Content validation passed")
+                        logger.success("Content validation passed")
                         
                     except Exception as e:
-                        logger.error(f"Failed to process document: {str(e)}")
-                        return f'Document processing failed: {str(e)}'
-                    
-                    # Extract text content
+                        print(f"❌ [DEBUG] Content validation process failed: {str(e)}")
+                        try:
+                            task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                            redis.set(task_redis_key, {
+                                "status": "failed",
+                                "message": f"Content validation failed: {str(e)}"
+                            })
+                            print(f"📝 [DEBUG] Set Redis status to 'failed' for validation process error using key: {task_redis_key}")
+                        except Exception as redis_e:
+                            print(f"❌ [DEBUG] Failed to set Redis validation error status: {str(redis_e)}")
+                        return f"Content validation failed: {str(e)}"
+
                     try:
-                        logger.info("Extracting text content from document")
+                        task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                        redis.set(task_redis_key, {
+                            "status": "done",
+                            "message": "Transcription complete",
+                            "content": transcript
+                        })
+                        print(f"📝 [DEBUG] Set Redis status to 'done' with transcript using key: {task_redis_key}")
+                    except Exception as e:
+                        print(f"❌ [DEBUG] Failed to set Redis success status: {str(e)}")
+
+                elif any(x in content_type for x in ["text", "pdf", "msword", "officedocument"]):
+                    print(f"📄 [DEBUG] Detected text-based content type: {content_type}")
+                    logger.info(f"📝 Text-based file detected: {filename}")
+                    try:
+                        normalized_audio_path = self._normalize_audio_path(audio_path)
+                        with open(normalized_audio_path, "rb") as f:
+                            contents = f.read()
+                        print(f"📖 [DEBUG] Read text file contents, size: {len(contents)} bytes")
+                        # Upload original document to S3
+                        try:
+                            bucket = _pick_bucket()
+                            url, key = _s3h.upload_file_and_get_url(bucket, audio_path, key=f"documents/{filename}")
+                            s3_text_url = url
+                            text_size_bytes = len(contents)
+                            print(f"☁️ [DEBUG] Uploaded document to S3: {url}")
+                        except Exception as e:
+                            print(f"❌ [DEBUG] S3 upload failed (document): {str(e)}")
+                            return f'S3 upload failed: {str(e)}'
+                    except Exception as e:
+                        print(f"❌ [DEBUG] Failed to read text file: {str(e)}")
+                        return 'Text file read failed'
+                    
+                    try:
+                        print(f"🔍 [DEBUG] Calling content_extraction_logics")
                         result = self.content_extraction_logics(filename, contents, content_type)
-                        
-                        if "error" in result:
-                            logger.error(f"Text extraction failed: {result['error']}")
+                        print(f"📊 [DEBUG] Content extraction result: {result}")
+                    except Exception as e:
+                        print(f"❌ [DEBUG] Content extraction failed: {str(e)}")
+                        return 'Content extraction failed'
+                    
+                    if "error" in result:
+                        print(f"❌ [DEBUG] Text extraction failed: {result['error']}")
+                        logger.error(f"❌ Text extraction failed: {result['error']}")
+                        try:
+                            task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
                             redis.set(task_redis_key, {
                                 "status": "failed",
                                 "message": result.get("error")
                             })
-                            return
-                    except Exception as e:
-                        logger.error(f"Content extraction failed: {str(e)}")
-                        return 'Content extraction failed'
+                            print(f"📝 [DEBUG] Set Redis status to 'failed' using key: {task_redis_key}")
+                        except Exception as e:
+                            print(f"❌ [DEBUG] Failed to set Redis error status: {str(e)}")
+                        return
                     
                     try:
                         transcript = result.get("content", "No content returned")
-                        logger.info(f"📝 [DEBUG] Extracted content: {transcript[:50]}..." if len(str(transcript)) > 100 else f"📝 [DEBUG] Extracted content: {transcript}")
+                        print(f"📝 [DEBUG] Extracted content: {transcript[:50]}..." if len(str(transcript)) > 100 else f"📝 [DEBUG] Extracted content: {transcript}")
                         logger.success(f"✅ Text extraction successful: {filename}")
                     except Exception as e:
                         print(f"❌ [DEBUG] Failed to extract content: {str(e)}")
@@ -675,40 +716,43 @@ class AudioUtils:
 
                     # AI-Powered Content Validation for Text Documents
                     try:
+                        print(f"🔍 [DEBUG] Starting AI-powered content validation for text document")
                         validation_result = self.ai_validate_interview_content(transcript)
-                        logger.info(f"📊 [DEBUG] Validation result: {validation_result}")
+                        print(f"📊 [DEBUG] Validation result: {validation_result}")
                         
                         if not validation_result.get('valid', False):
                             error_reason = validation_result.get('reason', 'Content validation failed')
-                            logger.error(f"❌ [DEBUG] Content validation failed: {error_reason}")
+                            print(f"❌ [DEBUG] Content validation failed: {error_reason}")
                             try:
                                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
                                 redis.set(task_redis_key, {
                                     "status": "failed",
                                     "message": f"Invalid interview content: {error_reason}"
                                 })
-                                logger.info(f"📝 [DEBUG] Set Redis status to 'failed' for validation error using key: {task_redis_key}")
+                                print(f"📝 [DEBUG] Set Redis status to 'failed' for validation error using key: {task_redis_key}")
                             except Exception as e:
-                                logger.error(f"❌ [DEBUG] Failed to set Redis validation error status: {str(e)}")
+                                print(f"❌ [DEBUG] Failed to set Redis validation error status: {str(e)}")
                             return f"Invalid interview content: {error_reason}"
                         
-                        logger.success("✅ [SUCCESS] Content validation passed")
+                        print(f"✅ [DEBUG] Content validation passed")
+                        logger.success("Content validation passed")
                         
                     except Exception as e:
+                        print(f"❌ [DEBUG] Content validation process failed: {str(e)}")
                         try:
                             redis.set(f"parrot_celery_tasks:audio_status:{job_profile_id}", {
                                 "status": "failed",
                                 "message": f"Content validation failed: {str(e)}"
                             })
-                            logger.error(f"📝 [ERROR] Set Redis status to 'failed' for validation process error")
+                            print(f"📝 [DEBUG] Set Redis status to 'failed' for validation process error")
                         except Exception as redis_e:
-                            logger.error(f"❌ [DEBUG] Failed to set Redis validation error status: {str(redis_e)}")
+                            print(f"❌ [DEBUG] Failed to set Redis validation error status: {str(redis_e)}")
                         return f"Content validation failed: {str(e)}"
                         
                     try:
                         task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                        task_redis_key = self._get_task_redis_key(task_type, task_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
                         redis.set(task_redis_key, {
                             "status": "done",
                             "message": "Text content extracted successfully",
@@ -717,215 +761,248 @@ class AudioUtils:
                             "size_bytes": text_size_bytes if 'text_size_bytes' in locals() else None,
                             "duration_secs": None
                         })
-                        logger.info(f"📝 [DEBUG] Set Redis status to 'done' with content using key: {task_redis_key}")
+                        print(f"📝 [DEBUG] Set Redis status to 'done' with content using key: {task_redis_key}")
                     except Exception as e:
-                        logger.error(f"❌ [DEBUG] Failed to set Redis success status: {str(e)}")
-            else:
-                logger.warn(f"🚫 Unsupported file type: {content_type}")
+                        print(f"❌ [DEBUG] Failed to set Redis success status: {str(e)}")
+                else:
+                    print(f"🚫 [DEBUG] Unsupported file type: {content_type}")
+                    logger.warn(f"🚫 Unsupported file type: {content_type}")
+                    try:
+                        redis.set(f"parrot_celery_tasks:audio_status:{job_profile_id}", {
+                            "status": "failed",
+                            "message": f"Unsupported file type: {content_type}"
+                        })
+                        print(f"📝 [DEBUG] Set Redis status to 'failed' for unsupported type")
+                    except Exception as e:
+                        print(f"❌ [DEBUG] Failed to set Redis error status: {str(e)}")
+                    return
+                    
+            except Exception as conversion_error:
+                print(f"❌ [DEBUG] MP3 conversion failed: {conversion_error}")
+                logger.error(f"❌ MP3 conversion failed: {conversion_error}", exc_info=True)
                 try:
-                    redis.set(f"parrot_celery_tasks:audio_status:{job_profile_id}", {
+                    task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                    redis.set(task_redis_key, {
                         "status": "failed",
-                        "message": f"Unsupported file type: {content_type}"
+                        "message": f"MP3 conversion failed: {conversion_error}"
                     })
-                    logger.info(f"📝 [DEBUG] Set Redis status to 'failed' for unsupported type")
+                    print(f"📝 [DEBUG] Set Redis status to 'failed' for conversion error using key: {task_redis_key}")
                 except Exception as e:
-                    logger.error(f"❌ [DEBUG] Failed to set Redis error status: {str(e)}")
+                    print(f"❌ [DEBUG] Failed to set Redis error status: {str(e)}")
+                return
+            except Exception as e:
+                print(f"❌ [DEBUG] Audio processing failed: {str(e)}")
+                logger.error(f"❌ Audio processing failed: {str(e)}")
+                try:
+                    task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                    redis.set(task_redis_key, {
+                        "status": "failed",
+                        "message": f"Audio processing failed: {str(e)}"
+                    })
+                    print(f"📝 [DEBUG] Set Redis status to 'failed' for audio processing error using key: {task_redis_key}")
+                except Exception as redis_e:
+                    print(f"❌ [DEBUG] Failed to set Redis error status: {str(redis_e)}")
                 return 'Audio processing failed'
 
 
 
 
             # --- Existing logic continues here ---
-            try:
-                logger.info("Fetching trainee profile data")
-                ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-                trainee_profile_data = ipersona_user.filter_by_alluser_id(
-                    all_user_id=all_user_id, nopp=True, dataframe=False
-                )
-            except Exception as e:
-                logger.error(f"Failed to fetch trainee profile data: {str(e)}")
-                return 'Profile fetch failed'
+        #     try:
+        #         print(f"👤 [DEBUG] Fetching trainee profile data for all_user_id: {all_user_id}")
+        #         logger.debug("Fetching trainee profile data")
+        #         ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+        #         trainee_profile_data = ipersona_user.filter_by_alluser_id(
+        #             all_user_id=all_user_id, nopp=True, dataframe=False
+        #         )
+        #         # print(f"📊 [DEBUG] Trainee profile data: {trainee_profile_data}")
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Failed to fetch trainee profile data: {str(e)}")
+        #         return 'Profile fetch failed'
             
-            if not trainee_profile_data:
-                logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
-                return
+        #     if not trainee_profile_data:
+        #         print(f"⚠️ [DEBUG] No trainee user profiles found for all_user_id: {all_user_id}")
+        #         logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
+        #         return
 
-            try:
-                tinder_user_profile_id = trainee_profile_data.get('id')
-                logger.debug(f"Extracted tinder_user_profile_id: {tinder_user_profile_id}")
-            except Exception as e:
-                logger.error(f"Failed to extract tinder_user_profile_id: {str(e)}")
-                return 'Profile ID extraction failed'
+        #     try:
+        #         tinder_user_profile_id = trainee_profile_data.get('id')
+        #         print(f"🆔 [DEBUG] Extracted tinder_user_profile_id: {tinder_user_profile_id}")
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Failed to extract tinder_user_profile_id: {str(e)}")
+        #         return 'Profile ID extraction failed'
                 
-            if not tinder_user_profile_id:
-                logger.error("Invalid trainee profile: missing ID")
-                return
+        #     if not tinder_user_profile_id:
+        #         print(f"❌ [DEBUG] Invalid trainee profile: missing ID")
+        #         logger.error("Invalid trainee profile: missing ID")
+        #         return
 
-            try:
-                logger.debug("Reading external audio analysis prompt")
-                external_audio_prompt = util.file_reader(util.prompt_path('external_audio_analysis.txt'))
-                realtime_prompt = util.file_reader(util.prompt_path('realtime_evaluation.txt'))
-                logger.debug(f"Loaded prompts - external_audio_prompt length: {len(external_audio_prompt)}, realtime_prompt length: {len(realtime_prompt)}")
-            except Exception as e:
-                logger.error(f"Failed to read prompts: {str(e)}")
-                return 'Prompt reading failed'
+        #     try:
+        #         print(f"📖 [DEBUG] Reading external audio analysis prompt")
+        #         logger.debug("Reading external audio analysis prompt")
+        #         external_audio_prompt = util.file_reader(util.prompt_path('external_audio_analysis.txt'))
+        #         realtime_prompt = util.file_reader(util.prompt_path('realtime_evaluation.txt'))
+        #         print(f"📝 [DEBUG] Loaded prompts - external_audio_prompt length: {len(external_audio_prompt)}, realtime_prompt length: {len(realtime_prompt)}")
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Failed to read prompts: {str(e)}")
+        #         return 'Prompt reading failed'
 
-            try:
-                logger.debug("Replacing placeholders in prompts")
-                external_aud_prompt = external_audio_prompt.replace("{transcription}", str(transcript)).replace("{realtime}", str(realtime_prompt))
-                logger.debug(f"Final prompt length: {len(external_aud_prompt)}")
-            except Exception as e:
-                logger.error(f"Failed to replace prompt placeholders: {str(e)}")
-                return 'Prompt processing failed'
+        #     try:
+        #         print(f"🔧 [DEBUG] Replacing placeholders in prompts")
+        #         logger.debug("Replacing placeholders in prompts")
+        #         external_aud_prompt = external_audio_prompt.replace("{transcription}", str(transcript)).replace("{realtime}", str(realtime_prompt))
+        #         print(f"📝 [DEBUG] Final prompt length: {len(external_aud_prompt)}")
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Failed to replace prompt placeholders: {str(e)}")
+        #         return 'Prompt processing failed'
 
-            try:
-                logger.debug("Sending prompt to GPT for analysis")
-                data = gpt.openai_gpt_assistant_without_streaming(external_aud_prompt)
-            except Exception as e:
-                logger.error(f"GPT analysis failed: {str(e)}")
-                return 'GPT analysis failed'
+        #     try:
+        #         print(f"🤖 [DEBUG] Sending prompt to GPT for analysis")
+        #         logger.debug("Sending prompt to GPT for analysis", external_aud_prompt)
+        #         data = gpt.openai_gpt_assistant_without_streaming(external_aud_prompt)
+        #         # print(f"📊 [DEBUG] Raw GPT response: {data[:100]}...") 
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] GPT analysis failed: {str(e)}")
+        #         return 'GPT analysis failed'
                 
-            try:
-                # Extract JSON from the llm_client response (handled automatically by extract_json)
-                response = util.extract_json(data, quite=False)
-                logger.debug("Response from GPT", response)
-            except Exception as e:
-                logger.error(f"Failed to extract JSON from GPT response: {str(e)}")
-                return 'JSON extraction failed'
+        #     try:
+        #         # Extract JSON from the llm_client response (handled automatically by extract_json)
+        #         response = util.extract_json(data, quite=False)
+        #         print(f"📋 [DEBUG] Extracted JSON response: {response}")
+        #         logger.debug("Response from GPT", response)
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Failed to extract JSON from GPT response: {str(e)}")
+        #         return 'JSON extraction failed'
             
-            if not response:
-                logger.error("❌ Failed to process upload file: No data returned from transcription")
-                return
+        #     if not response:
+        #         print(f"❌ [DEBUG] Failed to process upload file: No data returned from transcription")
+        #         logger.error("❌ Failed to process upload file: No data returned from transcription")
+        #         return
 
-            try:
-                logger.debug("Creating session for audio processing")
+        #     try:
+        #         print(f"💾 [DEBUG] Creating session for audio processing")
+        #         logger.debug("Creating session for audio processing")
 
-                base_meta = self._build_upload_meta(
-                    s3_url=s3_audio_url or s3_text_url,
-                    content_type=content_type,
-                    filename=filename,
-                    audio_path=audio_path,
-                    contents=contents if 'contents' in locals() else None,
-                    text_size_bytes=text_size_bytes if 'text_size_bytes' in locals() else None,
-                )
+        #         base_meta = self._build_upload_meta(
+        #             s3_url=s3_audio_url or s3_text_url,
+        #             content_type=content_type,
+        #             filename=filename,
+        #             audio_path=audio_path,
+        #             contents=contents if 'contents' in locals() else None,
+        #             text_size_bytes=text_size_bytes if 'text_size_bytes' in locals() else None,
+        #         )
 
-                upload_metadata = {
-                    "mode": "combined_mode",
-                    **base_meta,
-                    "source": "uploaded_file"
-                }
+        #         upload_metadata = {
+        #             "mode": "combined_mode",
+        #             **base_meta,
+        #             "source": "uploaded_file"
+        #         }
 
-                saved_session = util.create_session(
-                    run_stage,
-                    mode,
-                    template,
-                    external,
-                    challenge,
-                    all_user_id,
-                    tinder_user_profile_id,
-                    job_profile_id,
-                    template_id,
-                    challenge_id,
-                    message,
-                    upload_metadata
-                )
-                logger.debug(f"Session creation result: {saved_session}")
-            except Exception as e:
-                logger.error(f"Session creation failed: {str(e)}")
-                return 'Session creation failed'
+        #         saved_session = util.create_session(
+        #             run_stage,
+        #             mode,
+        #             template,
+        #             external,
+        #             challenge,
+        #             all_user_id,
+        #             tinder_user_profile_id,
+        #             job_profile_id,
+        #             template_id,
+        #             challenge_id,
+        #             message,
+        #             upload_metadata
+        #         )
+        #         print(f"📊 [DEBUG] Session creation result: {saved_session}")
+        #     except Exception as e:
+        #         print(f"❌ [DEBUG] Session creation failed: {str(e)}")
+        #         return 'Session creation failed'
 
-            if saved_session and isinstance(saved_session, dict):
-                try:
-                    sessionId = saved_session['id']
-                    logger.info(f"📥 Session created successfully with ID: {sessionId}")
-                except Exception as e:
-                    logger.error(f"Failed to extract session ID: {str(e)}")
-                    return 'Session ID extraction failed'
+        #     if saved_session and isinstance(saved_session, dict):
+        #         try:
+        #             sessionId = saved_session['id']
+        #             print(f"✅ [DEBUG] Session created successfully with ID: {sessionId}")
+        #             logger.info(f"📥 Session created successfully with ID: {sessionId}")
+        #         except Exception as e:
+        #             print(f"❌ [DEBUG] Failed to extract session ID: {str(e)}")
+        #             return 'Session ID extraction failed'
                     
-                try:
-                    logger.debug("Saving transcribed chat to database")
-                    saved = strapi.save_messages_to_db(response, sessionId)
-                    logger.debug(f"Save message result: {saved}")
-                except Exception as e:
-                    logger.error(f"Failed to save message to database: {str(e)}")
-                    return 'Message save failed'
+        #         try:
+        #             print(f"💾 [DEBUG] Saving transcribed chat to database")
+        #             logger.debug("Saving transcribed chat to database")
+        #             # saved = await strapi.sav e_message(sessionId, response)
+        #             saved = strapi.save_messages_to_db(response, sessionId)
+        #             print(f"📊 [DEBUG] Save message result: {saved}")
+        #         except Exception as e:
+        #             print(f"❌ [DEBUG] Failed to save message to database: {str(e)}")
+        #             return 'Message save failed'
 
-                try:
-                    logger.debug("Starting overall evaluation in a separate thread")
-                    def run_overall():
-                        try:
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                            logger.debug("Created new event loop for overall evaluation")
-                            overall = loop.run_until_complete(
-                                self.overall_interview_evaluations_external(
-                                    run_stage,
-                                    response,
-                                    'External',
-                                    sessionId,
-                                    all_user_id,
-                                    tinder_user_profile_id,
-                                    job_profile_id,
-                                    challenge_id,
-                                    template_id,
-                                    'job_interview_config'
-                                )
-                            )
+        #         try:
+        #             logger.debug("Starting overall evaluation in a separate thread")
+        #             def run_overall():
+        #                 try:
+        #                     loop = asyncio.new_event_loop()
+        #                     asyncio.set_event_loop(loop)
+        #                     print(f"🔄 [DEBUG] Created new event loop for overall evaluation")
+        #                     overall = loop.run_until_complete(
+        #                         self.overall_interview_evaluations_external(
+        #                             run_stage,
+        #                             response,
+        #                             'External',
+        #                             sessionId,
+        #                             all_user_id,
+        #                             tinder_user_profile_id,
+        #                             job_profile_id,
+        #                             challenge_id,
+        #                             template_id,
+        #                             'job_interview_config'
+        #                         )
+        #                     )
 
-                            if overall:
-                                logger.info("✅ Overall evaluation completed successfully")
-                                redis.set(f"parrot_celery_tasks:audio_status:{job_profile_id}", {
-                                    "status": "done",
-                                    "message": "Chat Saved Successfully",
-                                    "chat": saved,
-                                    "overall": overall
-                                })
-                                    # Emit success event for template answer completion
-                                try:
-                                    from api.socket.core import emit_with_log
-                                    loop.run_until_complete(emit_with_log(
-                                        "processing_update_success",
-                                        {"status": "✅ Uploaded file analysis completed successfully!"}
-                                    ))
-                                except Exception as emit_error:
-                                    logger.error(f"Failed to emit success event: {str(emit_error)}")
-                            else:
-                                logger.error("❌ Overall evaluation failed")
-                        except Exception as e:
-                            logger.error(f"Error in overall evaluation: {str(e)}")
+        #                     if overall:
+        #                         logger.info("✅ Overall evaluation completed successfully")
+        #                         redis.set(f"parrot_celery_tasks:audio_status:{job_profile_id}", {
+        #                             "status": "done",
+        #                             "message": "Chat Saved Successfully",
+        #                             "chat": saved,
+        #                             "overall": overall
+        #                         })
+        #                     else:
+        #                         logger.error("❌ Overall evaluation failed")
+        #                 except Exception as e:
+        #                     print(f"❌ [DEBUG] Error in overall evaluation: {str(e)}")
+        #                     logger.error(f"Error in overall evaluation: {str(e)}")
 
-                    t = threading.Thread(target=run_overall)
-                    t.start()
-                    logger.success("🎉 EXTERNAL AUDIO PROCESSED AND SAVED SUCCESSFULLY!")
-               
-                except Exception as e:
-                    logger.error(f"❌ [ERROR] Failed to start overall evaluation thread: {str(e)}")
-                    return 'Threading failed'
-            elif isinstance(saved_session, str):
-                logger.error(f"Session creation returned error string: {saved_session}")
-                return f'Session creation failed: {saved_session}'
-            else:
-                logger.error(f"Session creation returned invalid result: {saved_session}")
-                return 'Session creation returned invalid result'
+        #             t = threading.Thread(target=run_overall)
+        #             t.start()
+        #             print(f"🔄 [DEBUG] Overall evaluation thread started")
+        #             logger.success("🎉 EXTERNAL AUDIO PROCESSED AND SAVED SUCCESSFULLY!")
+        #         except Exception as e:
+        #             print(f"❌ [DEBUG] Failed to start overall evaluation thread: {str(e)}")
+        #             return 'Threading failed'
+        #     elif isinstance(saved_session, str):
+        #         print(f"❌ [DEBUG] Session creation returned error string: {saved_session}")
+        #         return f'Session creation failed: {saved_session}'
+        #     else:
+        #         print(f"❌ [DEBUG] Session creation returned invalid result: {saved_session}")
+        #         return 'Session creation returned invalid result'
 
         except Exception as e:
-            # Only log if this is an unexpected system error, not a validation failure
-            if "No Valuable matched question-answer data" not in str(e):
-                logger.error(f"Critical error in audio processing: {str(e)}")
-            
+            print(f"🔥 [DEBUG] Critical error in background audio processing: {str(e)}")
+            print(f"🔥 [DEBUG] Error type: {type(e).__name__}")
+            print(f"🔥 [DEBUG] Error details: {str(e)}")
+            # logger.error(f"🔥 Error in background audio processing: {str(e)}")
             try:
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
                 redis.set(task_redis_key, {"status": "failed", "message": str(e)})
-                if "No Valuable matched question-answer data" not in str(e):
-                    logger.debug(f"Updated Redis status to failed for {task_type}:{task_id}")
+                print(f"📝 [DEBUG] Set Redis status to 'failed' for critical error using key: {task_redis_key}")
             except Exception as redis_error:
-                logger.error(f"Failed to update Redis status: {str(redis_error)}")
-            
+                print(f"❌ [DEBUG] Failed to set Redis error status: {str(redis_error)}")
             # Re-raise the exception so Celery knows the task failed
             raise e
-            
-        logger.info("External audio processing completed successfully")
+        print(f"🏁 [DEBUG] process_upload_external_audio COMPLETED")
         return 'done'
 
     async def process_upload_external_files(
@@ -1026,6 +1103,7 @@ class AudioUtils:
             answer_question_matching = util.file_reader(util.prompt_path('answer_question_match.txt'))
             realtime_prompt = util.file_reader(util.prompt_path('realtime_evaluation.txt'))
 
+            logger.info("Replacing placeholders in prompts")
             logger.success(f"📋 [DEBUG] Question transcript: {question_transcript}")
             logger.success(f"📋 [DEBUG] Answer transcript: {answer_transcript}")
             logger.success(f"📋 [DEBUG] Answer transcript length: {len(str(answer_transcript))}")
@@ -1038,6 +1116,7 @@ class AudioUtils:
             if data and hasattr(data, 'content'):
                 data = data.content.text
             response = util.extract_json(data, quite=False)
+            print(f"📋 [DEBUG] Raw LLM response: {response}")
 
             # Filter out items with relevance_score >= 90
             filtered_data = []
@@ -1051,7 +1130,7 @@ class AudioUtils:
                         })
                 except (ValueError, TypeError):
                     # If relevance_score is not a valid number, skip this item
-                    logger.warn(f"Skipping item with invalid relevance_score: {item.get('relevance_score')}")
+                    logger.warning(f"Skipping item with invalid relevance_score: {item.get('relevance_score')}")
                     continue
 
             print(f"📋 [DEBUG] Filtered data count: {len(filtered_data)}")
@@ -1060,16 +1139,17 @@ class AudioUtils:
             if not filtered_data:
                 error_msg = "❌ Failed to process upload files: No Valuable matched question-answer data returned from LLM analysis"
                 from api.socket.core import emit_with_log
-                await emit_with_log(
-                    "processing_update_failed",
-                    {"status": f"No valuable matches found between the question and answer files you just uploaded. Please re-upload a clear interview file, then try again."}
-                )
+                # await emit_with_log(
+                #     "processing_update_failed",
+                #     {"status": f"❌ No valuable matches found between the question and answer files for Job with id: {job_profile_id}. Please re-upload a clear interview file, then try again."}
+                # )
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
                 redis.set(task_redis_key, {"status": "failed", "message": "No analysis data returned from LLM"})
                 raise Exception(error_msg)
 
+            logger.debug("Replacing placeholders in prompts")
             external_audio_prompt = external_audio_prompt.replace("{question_answer_data}", str(filtered_data))\
                                                            .replace("{realtime}", str(realtime_prompt))
             # print(f"📋 [DEBUG] External audio prompt: {external_audio_prompt}")
@@ -1128,7 +1208,7 @@ class AudioUtils:
                     logger.error(f"❌ Invalid session data returned: {type(saved_session)} - {saved_session}")
                     logger.error("❌ Failed to save session - invalid session data")
                     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                    task_redis_key = self._get_task_redis_key(task_type, task_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
                     redis.set(task_redis_key, {"status": "failed", "message": "Invalid session data returned"})
                     return
 
@@ -1156,7 +1236,7 @@ class AudioUtils:
                         if overall:
                             logger.info("✅ Overall evaluation completed successfully")
                             task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                            task_redis_key = self._get_task_redis_key(task_type, task_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
                             redis.set(task_redis_key, {
                                 "status": "done",
                                 "message": "Chat Saved Successfully",
@@ -1164,16 +1244,7 @@ class AudioUtils:
                                 "overall": overall,
                                 "emit_success": True  # Flag for socket emission
                             })
-                            
-                            # Emit success event for template answer completion
-                            try:
-                                from api.socket.core import emit_with_log
-                                loop.run_until_complete(emit_with_log(
-                                    "processing_update_success",
-                                    {"status": "✅ Uploaded file analysis completed successfully!"}
-                                ))
-                            except Exception as emit_error:
-                                logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
+                            return True  # Indicate success
                         else:
                             logger.error("❌ Overall evaluation failed")
                             return False
@@ -1182,7 +1253,7 @@ class AudioUtils:
                     except Exception as e:
                         logger.error(f"Error in overall evaluation thread: {str(e)}", exc_info=True)
                         task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                        task_redis_key = self._get_task_redis_key(task_type, task_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
                         redis.set(task_redis_key, {"status": "failed", "message": str(e)})
 
                 t = threading.Thread(target=run_overall_sync_wrapper)
@@ -1195,7 +1266,17 @@ class AudioUtils:
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
                 status_data = redis.get(task_redis_key)
-            
+                if status_data and status_data.get("emit_success"):
+                    try:
+                        from api.socket.core import emit_with_log
+                        await emit_with_log(
+                            "processing_update_success",
+                            {"status": f"✅ Background Task completed successfully"}
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to emit success event: {e}")
+                
+                logger.success("🎉 EXTERNAL DUAL AUDIO PROCESSED AND SAVED SUCCESSFULLY!")
             else:
                 logger.error("❌ Failed to save session")
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
@@ -1203,11 +1284,13 @@ class AudioUtils:
                 redis.set(task_redis_key, {"status": "failed", "message": "Session Not Saved"})
 
         except Exception as e:
+            logger.error(f"🔥 Critical error in dual audio background processing: {str(e)}", exc_info=True)
             if job_profile_id:
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
                 redis.set(task_redis_key, {"status": "failed", "message": f"System error: {str(e)}"})
             # Re-raise the exception so Celery knows the task failed
+            raise e 
  
     async def process_upload_external_answer_with_template(
         self,
@@ -1359,7 +1442,7 @@ class AudioUtils:
                         })
                 except (ValueError, TypeError):
                     # If relevance_score is not a valid number, skip this item
-                    logger.warn(f"Skipping item with invalid relevance_score: {item.get('relevance_score')}")
+                    logger.warning(f"Skipping item with invalid relevance_score: {item.get('relevance_score')}")
                     continue
 
             print(f"📋 [DEBUG] Filtered data count: {len(filtered_data)}")
@@ -1415,7 +1498,7 @@ class AudioUtils:
                     logger.error(f"❌ Invalid session data returned: {type(saved_session)} - {saved_session}")
                     logger.error("❌ Failed to save session - invalid session data")
                     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                    task_redis_key = self._get_task_redis_key(task_type, task_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
                     redis.set(task_redis_key, {"status": "failed", "message": "Invalid session data returned"})
                     return
 
@@ -1439,33 +1522,23 @@ class AudioUtils:
                                 'job_interview_config'
                             )
                         )
-
+                        print(f"🎉 [DEBUG] Overall evaluation result: {overall}")
                         if overall:
                             logger.info("✅ Overall evaluation completed successfully")
                             task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                            task_redis_key = self._get_task_redis_key(task_type, task_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
                             redis.set(task_redis_key, {
                                 "status": "done",
                                 "message": "Chat Saved Successfully",
                                 "chat": saved,
                                 "overall": overall
                             })
-                            
-                            # Emit success event for template answer completion
-                            try:
-                                from api.socket.core import emit_with_log
-                                loop.run_until_complete(emit_with_log(
-                                    "processing_update_success",
-                                    {"status": "✅ Uploaded file analysis completed successfully!"}
-                                ))
-                            except Exception as emit_error:
-                                logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
                         else:
                             logger.error("❌ Overall evaluation failed")
                     except Exception as e:
                         logger.error(f"Error in overall evaluation thread: {str(e)}", exc_info=True)
                         task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                        task_redis_key = self._get_task_redis_key(task_type, task_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
                         redis.set(task_redis_key, {"status": "failed", "message": str(e)})
 
                 t = threading.Thread(target=run_overall_sync_wrapper)
@@ -1478,13 +1551,13 @@ class AudioUtils:
                 redis.set(task_redis_key, {"status": "failed", "message": "Session Not Saved"})
 
         except Exception as e:
-            logger.error(f"🔥 Critical error in template answer background processing: {str(e)}")
+            logger.error(f"🔥 Critical error in template answer background processing: {str(e)}", exc_info=True)
             if job_profile_id:
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
                 redis.set(task_redis_key, {"status": "failed", "message": f"System error: {str(e)}"})
             # Re-raise the exception so Celery knows the task failed
-            # raise e 
+            raise e 
 
     def convert_template_questions_to_text(self, template_questions):
         """
@@ -1548,47 +1621,35 @@ class AudioUtils:
         
         # Check file size
         file_size = os.path.getsize(audio_path)
-        logger.info(f"📏 [DEBUG] Audio file size: {file_size / (1024*1024):.2f} MB")
+        print(f"📏 [DEBUG] Audio file size: {file_size / (1024*1024):.2f} MB")
         
         if file_size > max_file_size:
-            logger.info(f"⚠️ [DEBUG] File size ({file_size / (1024*1024):.2f} MB) exceeds limit ({max_file_size / (1024*1024):.2f} MB)")
-            logger.info(f"🔄 [DEBUG] Attempting to compress audio file...")
+            print(f"⚠️ [DEBUG] File size ({file_size / (1024*1024):.2f} MB) exceeds limit ({max_file_size / (1024*1024):.2f} MB)")
+            print(f"🔄 [DEBUG] Attempting to compress audio file...")
             
             try:
                 # Compress the audio file to reduce size
-                logger.info(f"🔄 [DEBUG] Loading audio file: {audio_path}")
-                
-                # Detect file format and load accordingly
-                if audio_path.lower().endswith('.mp4'):
-                    audio = AudioSegment.from_file(audio_path, format="mp4")
-                elif audio_path.lower().endswith('.mp3'):
-                    audio = AudioSegment.from_mp3(audio_path)
-                else:
-                    # Try to auto-detect format
-                    audio = AudioSegment.from_file(audio_path)
-                
-                logger.info(f"🔄 [DEBUG] Audio loaded successfully, duration: {len(audio)/1000:.2f}s")
-                
+                print(f"🔄 [DEBUG] Loading audio file: {audio_path}")
+                audio = AudioSegment.from_mp3(audio_path)
+                print(f"🔄 [DEBUG] Audio loaded successfully, duration: {len(audio)/1000:.2f}s")
                 # Reduce quality to decrease file size
                 compressed_audio = audio.export(format="mp3", bitrate="64k")
-                
-                # Create proper compressed filename
-                base_name = audio_path.rsplit(".", 1)[0]
-                compressed_path = f"{base_name}_compressed.mp3"
-                logger.info(f"🔄 [DEBUG] Writing compressed file to: {compressed_path}")
-                
+                compressed_path = audio_path.replace(".mp3", "_compressed.mp3")
+                print(f"🔄 [DEBUG] Writing compressed file to: {compressed_path}")
                 with open(compressed_path, "wb") as f:
                     f.write(compressed_audio.read())
                 
                 compressed_size = os.path.getsize(compressed_path)
-                logger.info(f"✅ [DEBUG] Compressed file size: {compressed_size / (1024*1024):.2f} MB")
+                print(f"✅ [DEBUG] Compressed file size: {compressed_size / (1024*1024):.2f} MB")
                 audio_path = compressed_path
-                filename = f"{filename.rsplit('.', 1)[0]}_compressed.mp3"
+                filename = filename.replace(".mp3", "_compressed.mp3")
                 
             except Exception as e:
                 error_msg = f"Failed to compress audio file: {str(e)}"
-                logger.error(f"❌ [DEBUG] {error_msg}")
-            
+                print(f"❌ [DEBUG] {error_msg}")
+                print(f"❌ [DEBUG] Exception type: {type(e).__name__}")
+                import traceback
+                traceback.print_exc()
                 return {
                     "error": error_msg,
                     "status_code": 500
@@ -1597,8 +1658,8 @@ class AudioUtils:
         for attempt in range(max_retries):
             try:
                 endpoint_url = "https://content-extractor.10academy.org/content-extractor/audio_transcript"
-                # audio_path is already normalized when passed to this method
-                with open(audio_path, 'rb') as audio_file:
+                normalized_audio_path = self._normalize_audio_path(audio_path)
+                with open(normalized_audio_path, 'rb') as audio_file:
                     files = {
                         'file': (filename, audio_file, content_type)
                     }
@@ -1610,18 +1671,21 @@ class AudioUtils:
                         'llm_model': 'gpt-4o'
                     }
                     logger.debug(f"Sending audio file to external transcription endpoint... (Attempt {attempt + 1}/{max_retries})")
+                    print(f"🔄 [DEBUG] Transcription attempt {attempt + 1}/{max_retries} with timeout: {base_timeout}s")
                     
                     # Exponential backoff timeout
                     current_timeout = base_timeout * (2 ** attempt)
                     response = requests.post(endpoint_url, files=files, data=data, timeout=current_timeout)
                     response.raise_for_status()
                     result = response.json()
+                    print(f"✅ [DEBUG] Transcription successful on attempt {attempt + 1}")
                     return result
                     
             except requests.exceptions.Timeout as e:
+                print(f"⏰ [DEBUG] Transcription timeout on attempt {attempt + 1}: {str(e)}")
                 if attempt < max_retries - 1:
                     wait_time = 2 ** attempt  # 1, 2, 4 seconds
-                    logger.info(f"⏳ [DEBUG] Waiting {wait_time}s before retry...")
+                    print(f"⏳ [DEBUG] Waiting {wait_time}s before retry...")
                     time.sleep(wait_time)
                     continue
                 else:
@@ -1632,10 +1696,10 @@ class AudioUtils:
                     }
                     
             except requests.exceptions.HTTPError as e:
-                logger.error(f"❌ [DEBUG] HTTP error on attempt {attempt + 1}: {str(e)}")
+                print(f"❌ [DEBUG] HTTP error on attempt {attempt + 1}: {str(e)}")
                 if e.response.status_code == 504 and attempt < max_retries - 1:
                     wait_time = 2 ** attempt
-                    logger.info(f"⏳ [DEBUG] Gateway timeout, waiting {wait_time}s before retry...")
+                    print(f"⏳ [DEBUG] Gateway timeout, waiting {wait_time}s before retry...")
                     time.sleep(wait_time)
                     continue
                 else:
@@ -1646,10 +1710,10 @@ class AudioUtils:
                     }
                     
             except Exception as e:
-                logger.error(f"❌ [DEBUG] Unexpected error on attempt {attempt + 1}: {str(e)}")
+                print(f"❌ [DEBUG] Unexpected error on attempt {attempt + 1}: {str(e)}")
                 if attempt < max_retries - 1:
                     wait_time = 2 ** attempt
-                    logger.info(f"⏳ [DEBUG] Unexpected error, waiting {wait_time}s before retry...")
+                    print(f"⏳ [DEBUG] Unexpected error, waiting {wait_time}s before retry...")
                     time.sleep(wait_time)
                     continue
                 else:
@@ -1672,47 +1736,35 @@ class AudioUtils:
         
         # Check file size
         file_size = os.path.getsize(audio_path)
-        logger.info(f"📏 [DEBUG] Audio file size: {file_size / (1024*1024):.2f} MB")
+        print(f"📏 [DEBUG] Audio file size: {file_size / (1024*1024):.2f} MB")
         
         if file_size > max_file_size:
-            logger.info(f"⚠️ [DEBUG] File size ({file_size / (1024*1024):.2f} MB) exceeds limit ({max_file_size / (1024*1024):.2f} MB)")
-            logger.info(f"🔄 [DEBUG] Attempting to compress audio file...")
+            print(f"⚠️ [DEBUG] File size ({file_size / (1024*1024):.2f} MB) exceeds limit ({max_file_size / (1024*1024):.2f} MB)")
+            print(f"🔄 [DEBUG] Attempting to compress audio file...")
             
             try:
                 # Compress the audio file to reduce size
-                logger.info(f"🔄 [DEBUG] Loading audio file: {audio_path}")
-                
-                # Detect file format and load accordingly
-                if audio_path.lower().endswith('.mp4'):
-                    audio = AudioSegment.from_file(audio_path, format="mp4")
-                elif audio_path.lower().endswith('.mp3'):
-                    audio = AudioSegment.from_mp3(audio_path)
-                else:
-                    # Try to auto-detect format
-                    audio = AudioSegment.from_file(audio_path)
-                
-                logger.info(f"🔄 [DEBUG] Audio loaded successfully, duration: {len(audio)/1000:.2f}s")
-                
+                print(f"🔄 [DEBUG] Loading audio file: {audio_path}")
+                audio = AudioSegment.from_mp3(audio_path)
+                print(f"🔄 [DEBUG] Audio loaded successfully, duration: {len(audio)/1000:.2f}s")
                 # Reduce quality to decrease file size
                 compressed_audio = audio.export(format="mp3", bitrate="64k")
-                
-                # Create proper compressed filename
-                base_name = audio_path.rsplit(".", 1)[0]
-                compressed_path = f"{base_name}_compressed.mp3"
-                logger.info(f"🔄 [DEBUG] Writing compressed file to: {compressed_path}")
-                
+                compressed_path = audio_path.replace(".mp3", "_compressed.mp3")
+                print(f"🔄 [DEBUG] Writing compressed file to: {compressed_path}")
                 with open(compressed_path, "wb") as f:
                     f.write(compressed_audio.read())
                 
                 compressed_size = os.path.getsize(compressed_path)
-                logger.info(f"✅ [DEBUG] Compressed file size: {compressed_size / (1024*1024):.2f} MB")
+                print(f"✅ [DEBUG] Compressed file size: {compressed_size / (1024*1024):.2f} MB")
                 audio_path = compressed_path
-                filename = f"{filename.rsplit('.', 1)[0]}_compressed.mp3"
+                filename = filename.replace(".mp3", "_compressed.mp3")
                 
             except Exception as e:
                 error_msg = f"Failed to compress audio file: {str(e)}"
-                logger.error(f"❌ [DEBUG] {error_msg}")
-         
+                print(f"❌ [DEBUG] {error_msg}")
+                print(f"❌ [DEBUG] Exception type: {type(e).__name__}")
+                import traceback
+                traceback.print_exc()
                 return {
                     "error": error_msg,
                     "status_code": 500
@@ -1911,6 +1963,103 @@ class AudioUtils:
             logger.error(f"❌ Error in {file_type_label} file processing: {e}", exc_info=True)
             return None, f"Processing failed for {file_type_label}: {e}"
 
+    def process_audio_and_celery(self, filename, content_type, audio_path, job_profile_id):
+        redis = RedisBase()
+        try:
+            logger.info(f"🔊 Processing audio file: {filename}")
+            task_type, task_id = self._get_active_task_id(job_profile_id, None, None, None)
+            task_redis_key = self._get_task_redis_key(task_type, task_id, "audio_status")
+            redis.set(task_redis_key, {"status": "processing", "message": ""})
+            try:
+                if "audio" in content_type or "video" in content_type:
+                    original_format = content_type.split("/")[-1].lower()
+                    if original_format != "mpeg" and original_format != "mp3":
+                        logger.info(f"🔄 Converting media file from {original_format} to mp3")
+                        normalized_audio_path = self._normalize_audio_path(audio_path)
+                        with open(normalized_audio_path, "rb") as f:
+                            contents = f.read()
+                        contents = util.convert_to_mp3(contents, original_format)
+                        converted_filename = filename.rsplit(".", 1)[0] + ".mp3"
+                        audio_path = audio_path.replace(filename, converted_filename)
+                        normalized_audio_path_write = self._normalize_audio_path(audio_path)
+                        with open(normalized_audio_path_write, "wb") as f:
+                            f.write(contents)
+                        logger.success(f"🎧 MP3 file saved to: {audio_path}")
+                    else:
+                        logger.info("✅ File already in mp3 format. Skipping conversion.")
+
+                    result = self.audio_transcription_logics(
+                        filename=filename,
+                        audio_path=audio_path,
+                        content_type="audio/mpeg",
+                    )
+
+                    if "error" in result:
+                        task_type, task_id = self._get_active_task_id(job_profile_id, None, None, None)
+            task_redis_key = self._get_task_redis_key(task_type, task_id, "audio_status")
+                        redis.set(task_redis_key, {
+                            "status": "failed",
+                            "message": result.get("error"),
+                            "details": result.get("details", "")
+                        })
+                        return
+
+                    transcript = result.get("content", "No transcription returned")
+
+                    task_type, task_id = self._get_active_task_id(job_profile_id, None, None, None)
+            task_redis_key = self._get_task_redis_key(task_type, task_id, "audio_status")
+                    redis.set(task_redis_key, {
+                        "status": "done",
+                        "message": "Transcription complete",
+                        "content": transcript
+                    })
+
+                elif any(x in content_type for x in ["text", "pdf", "msword", "officedocument"]):
+                    logger.info(f"📝 Text-based file detected: {filename}")
+                    normalized_audio_path = self._normalize_audio_path(audio_path)
+                    with open(normalized_audio_path, "rb") as f:
+                        contents = f.read()
+                    result = self.content_extraction_logics(filename, contents, content_type)
+                    if "error" in result:
+                        logger.error(f"❌ Text extraction failed: {result['error']}")
+                        task_type, task_id = self._get_active_task_id(job_profile_id, None, None, None)
+            task_redis_key = self._get_task_redis_key(task_type, task_id, "audio_status")
+                        redis.set(task_redis_key, {
+                            "status": "failed",
+                            "message": result.get("error")
+                        })
+                        return
+                    logger.success(f"✅ Text extraction successful: {filename}")
+                    task_type, task_id = self._get_active_task_id(job_profile_id, None, None, None)
+            task_redis_key = self._get_task_redis_key(task_type, task_id, "audio_status")
+                    redis.set(task_redis_key, {
+                        "status": "done",
+                        "message": "Text content extracted successfully",
+                        "content": result.get("content")
+                    })
+                else:
+                    logger.warning(f"🚫 Unsupported file type: {content_type}")
+                    task_type, task_id = self._get_active_task_id(job_profile_id, None, None, None)
+            task_redis_key = self._get_task_redis_key(task_type, task_id, "audio_status")
+                    redis.set(task_redis_key, {
+                        "status": "failed",
+                        "message": f"Unsupported file type: {content_type}"
+                    })
+            except Exception as conversion_error:
+                logger.error(f"❌ MP3 conversion failed: {conversion_error}", exc_info=True)
+                task_type, task_id = self._get_active_task_id(job_profile_id, None, None, None)
+            task_redis_key = self._get_task_redis_key(task_type, task_id, "audio_status")
+                redis.set(task_redis_key, {
+                    "status": "failed",
+                    "message": f"MP3 conversion failed: {conversion_error}"
+                })
+                return
+        except Exception as e:
+            logger.error(f"🔥 Error in background audio processing: {str(e)}", exc_info=True)
+            task_type, task_id = self._get_active_task_id(job_profile_id, None, None, None)
+            task_redis_key = self._get_task_redis_key(task_type, task_id, "audio_status")
+            redis.set(task_redis_key, {"status": "failed", "message": str(e)})
+        return 'done'
 
     async def overall_interview_evaluations_external(
             self,

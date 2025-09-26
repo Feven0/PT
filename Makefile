@@ -1,7 +1,7 @@
 # Makefile for Tenx iPersona Docker-based Celery Management
 # Usage: make <command>
 
-.PHONY: help celery-start celery-stop celery-restart celery-status celery-monitor celery-flower celery-purge celery-logs build-celery run-worker run-flower dev-start prod-start stop-all logs-all restart-all
+.PHONY: help celery-start celery-stop celery-restart celery-status celery-monitor celery-flower celery-purge celery-logs build-celery run-worker run-flower dev-start prod-start stop-all logs-all restart-all workwea
 
 # Default target
 help:
@@ -20,6 +20,7 @@ help:
 	@echo "  make run-flower       - Run Flower on 0.0.0.0:5555 (Docker)"
 	@echo "  make celery-purge     - Purge all pending tasks"
 	@echo "  make celery-logs      - Show Celery worker logs"
+	@echo "  make workwea          - Kill all Celery processes and start worker logs"
 	@echo "  make dev-start        - Start all services for development"
 	@echo "  make prod-start       - Start all services for production"
 	@echo "  make stop-all         - Stop all services"
@@ -63,8 +64,8 @@ celery-status:
 	@echo "Checking Celery worker status (Docker)..."
 	@if docker-compose ps celery_worker | grep -q "Up"; then \
 		echo "✅ Celery worker is running"; \
-		docker-compose exec celery_worker celery -A api.services.celery.celery_worker_config inspect active; \
-		docker-compose exec celery_worker celery -A api.services.celery.celery_worker_config inspect stats; \
+			docker-compose exec celery_worker celery -A api.services.celery.celery_config inspect active; \
+			docker-compose exec celery_worker celery -A api.services.celery.celery_config inspect stats; \
 	else \
 		echo "❌ Celery worker is not running"; \
 	fi
@@ -78,19 +79,19 @@ celery-monitor:
 	@echo "📝 This terminal shows worker status and task management"
 	@echo ""
 	@echo "Active Tasks:"
-	@docker-compose exec celery_worker celery -A api.services.celery.celery_worker_config inspect active
+	@docker-compose exec celery_worker celery -A api.services.celery.celery_config inspect active
 	@echo ""
 	@echo "Scheduled Tasks:"
-	@docker-compose exec celery_worker celery -A api.services.celery.celery_worker_config inspect scheduled
+	@docker-compose exec celery_worker celery -A api.services.celery.celery_config inspect scheduled
 	@echo ""
 	@echo "Reserved Tasks:"
-	@docker-compose exec celery_worker celery -A api.services.celery.celery_worker_config inspect reserved
+	@docker-compose exec celery_worker celery -A api.services.celery.celery_config inspect reserved
 	@echo ""
 	@echo "Worker Stats:"
-	@docker-compose exec celery_worker celery -A api.services.celery.celery_worker_config inspect stats
+	@docker-compose exec celery_worker celery -A api.services.celery.celery_config inspect stats
 	@echo ""
 	@echo "Registered Tasks:"
-	@docker-compose exec celery_worker celery -A api.services.celery.celery_worker_config inspect registered
+	@docker-compose exec celery_worker celery -A api.services.celery.celery_config inspect registered
 
 # Start Flower (Celery monitoring web UI)
 celery-flower:
@@ -111,7 +112,7 @@ flower:
 # Purge all pending tasks
 celery-purge:
 	@echo "Purging all pending tasks (Docker)..."
-	@docker-compose exec celery_worker celery -A api.services.celery.celery_worker_config purge -f
+	@docker-compose exec celery_worker celery -A api.services.celery.celery_config purge -f
 	@echo "All pending tasks purged!"
 
 # Show Celery worker logs
@@ -122,7 +123,7 @@ celery-logs:
 # Test Celery connection
 celery:
 	@echo "Testing Celery connection (Docker)..."
-	@docker-compose exec celery_worker python -c "from api.services.celery.celery_worker_config import celery_app; print('✅ Celery app loaded successfully'); print('Broker:', celery_app.conf.broker_url)"
+	@docker-compose exec celery_worker python -c "from api.services.celery.celery_config import celery_app; print('✅ Celery app loaded successfully'); print('Broker:', celery_app.conf.broker_url)"
 
 # Clean up Celery files
 celery-clean:
@@ -178,9 +179,51 @@ workers:
 	@echo "Starting Celery worker (stdout logs; parrot env)..."
 	@PYTHONPATH=/home/rehmet/tenx_ipersona /opt/miniconda/envs/parrot/bin/celery -A api.services.celery.celery_worker:celery_app worker -l info
 
-# Minimal worker that only imports the socket test task.
-# Usage: make socket_worker PORT=9990
-socket_worker:
-	@echo "Starting Socket-Only Celery worker (parrot env)..."
-	@SOCKETIO_SERVER_URL=http://localhost:9990 PYTHONPATH=/home/rehmet/tenx_ipersona \
-	/opt/miniconda/envs/parrot/bin/celery -A api.services.celery.celery_socket_only worker -l info
+# --- Flower (Dockerized) ---
+flower-build:
+	@echo "Building Flower image..."
+	@docker build -f docker.flower -t tenx/flower:latest .
+
+flower-run:
+	@echo "Running Flower..."
+	@docker rm -f flower || true
+	@docker run -d --name flower \
+		-p 5555:5555 \
+		-e CELERY_BROKER_URL=${CELERY_BROKER_URL} \
+		-e CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND} \
+		tenx/flower:latest
+
+flower-logs:
+	@docker logs -f flower | cat
+
+flower-stop:
+	@docker rm -f flower || true
+
+# Kill all Celery processes and start worker logs
+work:
+	@echo "🔥 Killing all running Celery processes..."
+	@echo "==========================================="
+	@echo ""
+	@echo "1️⃣ Stopping Docker Celery worker..."
+	@docker-compose stop celery_worker 2>/dev/null || echo "   ℹ️ No Docker Celery worker running"
+	@echo ""
+	@echo "2️⃣ Removing Docker Celery container..."
+	@docker-compose rm -f celery_worker 2>/dev/null || echo "   ℹ️ No Docker Celery container to remove"
+	@echo ""
+	@echo "3️⃣ Killing local Celery processes..."
+	@ps aux | grep -E 'celery.*worker' | grep -v grep | grep -v "make work" | awk '{print $$2}' | xargs -r kill -TERM 2>/dev/null || echo "   ℹ️ No local Celery worker processes found"
+	@ps aux | grep -E 'celery.*beat' | grep -v grep | grep -v "make work" | awk '{print $$2}' | xargs -r kill -TERM 2>/dev/null || echo "   ℹ️ No local Celery beat processes found"
+	@ps aux | grep -E 'celery.*flower' | grep -v grep | grep -v "make work" | awk '{print $$2}' | xargs -r kill -TERM 2>/dev/null || echo "   ℹ️ No local Celery flower processes found"
+	@echo ""
+	@echo "4️⃣ Force killing any remaining stubborn processes..."
+	@ps aux | grep -E 'python.*celery' | grep -v grep | grep -v "make work" | awk '{print $$2}' | xargs -r kill -9 2>/dev/null || echo "   ℹ️ No remaining Python Celery processes found"
+	@echo ""
+	@echo "⏳ Waiting 2 seconds for processes to fully terminate..."
+	@sleep 2
+	@echo ""
+	@echo "✅ All Celery processes terminated!"
+	@echo ""
+	@echo "🚀 Starting Celery worker with logs..."
+	@echo "======================================"
+	@PYTHONPATH=/home/rehmet/tenx_ipersona /opt/miniconda/envs/parrot/bin/celery -A api.services.celery.celery_worker:celery_app worker -l info
+

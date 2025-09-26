@@ -152,24 +152,35 @@ async def stt_gemini_upload(file: UploadFile = File(...), language: Optional[str
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="Empty file")
+
     try:
+        # Create Gemini client using same env var as the app’s config.GEMINI
         api_key = config.gemini.api_key
         if not api_key:
             raise HTTPException(status_code=500, detail="Missing GOOGLE_GEMINI_API_KEY")
         client = genai_mod.Client(api_key=api_key)
-        model = os.getenv("GEMINI_BATCH_MODEL", "gemini-1.5-flash")
+
+        # Model: keep consistent with app (text: gemini-1.5-flash)
+        model = os.getenv("GEMINI_BATCH_MODEL", "gemini-2.5-flash")
+
         instruction = (
             "Transcribe the user's speech verbatim in English. "
             "Return plain text only, no extra words. If not English, return nothing."
         )
+
+        # Upload to Gemini Files API
         with tempfile.NamedTemporaryFile(delete=True, suffix=f"_{file.filename}") as tmp:
             tmp.write(data)
             tmp.flush()
+            # prefer 'path=' in newer SDKs
             gfile = None
             try:
                 gfile = client.files.upload(path=tmp.name, display_name=file.filename)
             except TypeError:
                 gfile = client.files.upload(file=tmp.name)
+
+        # Wait until file is processed/active (important for audio)
+        # Depending on SDK, 'state' is on the file object or retrieved via files.get()
         name = getattr(gfile, "name", None)
         if not name:
             raise HTTPException(status_code=500, detail="Gemini upload missing file name")
@@ -182,20 +193,29 @@ async def stt_gemini_upload(file: UploadFile = File(...), language: Optional[str
             await asyncio.sleep(1)
         if getattr(gfile, "state", None) != "ACTIVE":
             raise HTTPException(status_code=500, detail="Gemini file not ready")
+
         file_uri = getattr(gfile, "uri", None) or getattr(gfile, "file_uri", None)
         if not file_uri:
             raise HTTPException(status_code=500, detail="Gemini file upload missing uri")
+
         mime = file.content_type or "audio/mpeg"
+
+        # Build contents with instruction + file_data part
         contents = [
             genai_types.Content(
                 role="user",
                 parts=[
                     genai_types.Part(text=instruction),
-                    genai_types.Part(file_data=genai_types.FileData(file_uri=file_uri, mime_type=mime)),
+                    genai_types.Part(
+                        file_data=genai_types.FileData(file_uri=file_uri, mime_type=mime)
+                    ),
                 ],
             )
         ]
+
         res = client.models.generate_content(model=model, contents=contents)
+
+        # Extract plain text
         text = getattr(res, "text", None)
         if not text:
             cands = getattr(res, "candidates", []) or []
@@ -211,11 +231,12 @@ async def stt_gemini_upload(file: UploadFile = File(...), language: Optional[str
                     if chunks:
                         text = " ".join(chunks).strip()
                         break
+
         return JSONResponse({"text": (text or "").strip()})
     except HTTPException:
         raise
     except Exception as e:
-        stt_logger.error(f"[GEMINI][ERROR] {e}")
+        logger.error(f"[GEMINI][ERROR] {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @routes.post("/stt/openai-upload")
@@ -3030,7 +3051,7 @@ async def audio_upload_external_celery(
     target: Optional[str] = Form(None),
     external: bool = Form(True),
     run_stage: str = Form('dev')
-):
+    ):
     """
     Celery-based replica of audio_upload_external endpoint
     Uses Celery tasks instead of FastAPI background tasks
@@ -3052,7 +3073,6 @@ async def audio_upload_external_celery(
         if target:
             try:
                 target_data = json.loads(target)
-                # Extract all supported target types
                 job_profile_id = target_data.get("job_profile_id")
                 challenge_id = target_data.get("challenge_id")
                 template_id = target_data.get("template_id")
@@ -3105,7 +3125,8 @@ async def files_upload_external_celery(
     answer_file: UploadFile = File(...),
     target: Optional[str] = Form(None),
     external: bool = Form(True),
-    run_stage: str = Form('dev')
+    run_stage: str = Form('dev'),
+    user_sid: Optional[str] = Form(None)
 ):
     try:
         # 1. Input Validation for both files
@@ -3177,7 +3198,8 @@ async def files_upload_external_celery(
                 session_id=session_id,
                 all_user_id=all_user_id,
                 external=external,
-                run_stage=run_stage
+                run_stage=run_stage,
+                user_sid=user_sid
             )
 
             logger.info("After calling celery task")
@@ -3199,7 +3221,8 @@ async def files_upload_external_celery(
     answer_file: UploadFile = File(...),
     target: Optional[str] = Form(None),
     external: bool = Form(True),
-    run_stage: str = Form('dev')
+    run_stage: str = Form('dev'),
+    user_sid: Optional[str] = Form(None)
 ):
     try:
         # 1. Input Validation for both files
@@ -3258,7 +3281,8 @@ async def files_upload_external_celery(
                 session_id=session_id,
                 all_user_id=all_user_id,
                 external=external,
-                run_stage=run_stage
+                run_stage=run_stage,
+                user_sid=user_sid
             )
         
             logger.info("After calling celery task")

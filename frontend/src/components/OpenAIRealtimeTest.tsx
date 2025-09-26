@@ -104,9 +104,9 @@ const OpenAIRealtimeTest: React.FC = () => {
       const API_BASE_RAW = (ENV.VITE_REACT_APP_BACKEND_URL).toString();
       const API_BASE = API_BASE_RAW ? API_BASE_RAW.replace(/\/$/, '') : '';
       const base = API_BASE ? `${API_BASE}` : '';
-      let path = '/api/stt/upload';
-      if (uploadProvider === 'gemini') path = '/api/stt-gemini/upload';
-      if (uploadProvider === 'openai') path = '/api/stt-openai/upload';
+      let path = '/api/stt/whisper-upload';
+      if (uploadProvider === 'gemini') path = '/api/stt/gemini-upload';
+      if (uploadProvider === 'openai') path = '/api/stt/openai-upload';
       const qp = uploadLang.trim() ? `?language=${encodeURIComponent(uploadLang.trim())}` : '';
       const res = await fetch(`${base}${path}${qp}`, { method: 'POST', body: form });
       const json = await res.json();
@@ -152,8 +152,8 @@ const OpenAIRealtimeTest: React.FC = () => {
               <label>Provider</label>
               <select value={streamProvider} onChange={(e) => { const v = e.target.value as any; setStreamProvider(v); setActiveTranscriptSource(v); }} style={{ width: '100%', margin: '6px 0 10px' }}>
                 <option value="whisper">OpenAI Whisper (socket)</option>
-                <option value="google">Google STT (streaming)</option>
-                <option value="gemini">Gemini Live (experimental)</option>
+                {/* <option value="google">Google STT (streaming)</option> */}
+                {/* <option value="gemini">Gemini Live (experimental)</option> */}
                 <option value="fw">faster-whisper (local)</option>
               </select>
               {!isRecording ? (
@@ -182,8 +182,8 @@ const OpenAIRealtimeTest: React.FC = () => {
             <select value={activeTranscriptSource} onChange={(e) => setActiveTranscriptSource(e.target.value as any)} style={{ width: '100%', marginTop: 6 }}>
               <optgroup label="Realtime">
                 <option value="whisper">OpenAI Whisper</option>
-                <option value="google">Google STT</option>
-                <option value="gemini">Gemini Live</option>
+                {/* <option value="google">Google STT</option> */}
+                {/* <option value="gemini">Gemini Live</option> */}
                 <option value="fw">faster-whisper</option>
               </optgroup>
               <optgroup label="Uploads">

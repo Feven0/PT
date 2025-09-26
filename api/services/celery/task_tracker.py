@@ -38,7 +38,8 @@ class TaskTracker:
     
     def __init__(self):
         self.redis = RedisBase()
-        self.task_prefix = "task_tracker"
+        # Centralized folder structure for all Celery task data
+        self.task_prefix = "parrot_celery_tasks:tracking"
     
     def detect_active_target(self, target: Dict[str, Any]) -> Tuple[str, str]:
         """

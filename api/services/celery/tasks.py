@@ -51,7 +51,7 @@ def process_audio_and_save_external_celery(self, filename, content_type, content
             "message": "Starting audio processing...",
             "job_profile_id": job_profile_id
         }
-        redis_client.setex(f"task_status_{self.request.id}", 3600, json.dumps(task_status))
+        redis_client.setex(f"parrot_celery_tasks:task_status:{self.request.id}", 3600, json.dumps(task_status))
         
         # Publish task started notification to Redis
         try:
@@ -62,7 +62,7 @@ def process_audio_and_save_external_celery(self, filename, content_type, content
                 "filename": filename,
                 "timestamp": time.time()
             }
-            redis_client.publish("celery_notifications", json.dumps(notification))
+            redis_client.publish("parrot_celery_tasks:notifications", json.dumps(notification))
             logger.info(f"🎵 [CELERY TASK] Published task started notification")
         except Exception as e:
             logger.warning(f"🎵 [CELERY TASK] Failed to publish notification: {e}")
@@ -100,7 +100,7 @@ def process_audio_and_save_external_celery(self, filename, content_type, content
             "job_profile_id": job_profile_id,
             "result": result_data
         }
-        redis_client.setex(f"task_status_{self.request.id}", 3600, json.dumps(task_status))
+        redis_client.setex(f"parrot_celery_tasks:task_status:{self.request.id}", 3600, json.dumps(task_status))
         
         # Publish task completed notification to Redis
         try:
@@ -111,7 +111,7 @@ def process_audio_and_save_external_celery(self, filename, content_type, content
                 "filename": filename,
                 "timestamp": time.time()
             }
-            redis_client.publish("celery_notifications", json.dumps(notification))
+            redis_client.publish("parrot_celery_tasks:notifications", json.dumps(notification))
             logger.info(f"🎵 [CELERY TASK] Published task completed notification")
         except Exception as e:
             logger.warning(f"🎵 [CELERY TASK] Failed to publish completion notification: {e}")
@@ -130,7 +130,7 @@ def process_audio_and_save_external_celery(self, filename, content_type, content
                     "message": str(e),
                     "job_profile_id": job_profile_id
                 }
-                redis_client.setex(f"task_status_{self.request.id}", 3600, json.dumps(task_status))
+                redis_client.setex(f"parrot_celery_tasks:task_status:{self.request.id}", 3600, json.dumps(task_status))
         except:
             pass  # Don't fail if Redis is not available
         
@@ -166,7 +166,7 @@ def process_upload_external_files_celery(self, question_filename, question_conte
             "message": "Starting dual file processing...",
             "job_profile_id": job_profile_id
         }
-        redis_client.setex(f"task_status_{self.request.id}", 3600, json.dumps(task_status))
+        redis_client.setex(f"parrot_celery_tasks:task_status:{self.request.id}", 3600, json.dumps(task_status))
         
         logger.info(f"📁 [CELERY TASK] Calling existing process_upload_external_files function...")
         
@@ -192,7 +192,7 @@ def process_upload_external_files_celery(self, question_filename, question_conte
             "job_profile_id": job_profile_id,
             "result": result
         }
-        redis_client.setex(f"task_status_{self.request.id}", 3600, json.dumps(task_status))
+        redis_client.setex(f"parrot_celery_tasks:task_status:{self.request.id}", 3600, json.dumps(task_status))
         
         return result
             
@@ -208,7 +208,7 @@ def process_upload_external_files_celery(self, question_filename, question_conte
                     "message": str(e),
                     "job_profile_id": job_profile_id
                 }
-                redis_client.setex(f"task_status_{self.request.id}", 3600, json.dumps(task_status))
+                redis_client.setex(f"parrot_celery_tasks:task_status:{self.request.id}", 3600, json.dumps(task_status))
         except:
             pass  # Don't fail if Redis is not available
         
@@ -221,7 +221,7 @@ def get_task_status(task_id: str) -> Optional[dict]:
         if not redis_client:
             return None
         
-        data = redis_client.get(f"task_status_{task_id}")
+        data = redis_client.get(f"parrot_celery_tasks:task_status:{task_id}")
         return json.loads(data) if data else None
     except:
         return None

@@ -9,7 +9,7 @@ def process_upload_external_audio_task(
     self,
     filename, content_type, audio_path, 
     job_profile_id, challenge_id, template_id, 
-    session_id, all_user_id, external, run_stage
+    session_id, all_user_id, external, run_stage, user_sid=None
 ):
     # Register task with tracker - now supporting all target types
     target = task_tracker.create_target_dict(
@@ -107,7 +107,7 @@ def process_upload_external_files_task(
     question_filename, question_content_type, question_audio_path, question_contents,
     answer_filename, answer_content_type, answer_audio_path, answer_contents,
     job_profile_id, challenge_id, template_id, session_id, all_user_id, 
-    external, run_stage
+    external, run_stage, user_sid=None
 ):
     # Register task with tracker - now supporting all target types
     target = task_tracker.create_target_dict(
@@ -173,7 +173,8 @@ def process_upload_external_files_task(
             template_id,
             all_user_id, 
             external, 
-            run_stage
+            run_stage,
+            user_sid=user_sid
         ))
         
         # Update status to completed
@@ -212,7 +213,7 @@ def process_upload_external_answer_file_task(
     question_filename, question_content_type, question_audio_path, question_contents,
     answer_filename, answer_content_type, answer_audio_path, answer_contents,
     job_profile_id, challenge_id, template_id, session_id, all_user_id, 
-    external, run_stage
+    external, run_stage, user_sid=None
 ):
     # Register task with tracker - now supporting all target types
     target = task_tracker.create_target_dict(
@@ -277,7 +278,8 @@ def process_upload_external_answer_file_task(
             challenge_id, 
             all_user_id, 
             external, 
-            run_stage
+            run_stage,
+            user_sid=user_sid
         ))
         
         # Update status to completed
@@ -315,7 +317,7 @@ def process_upload_external_answer_with_template_task(
     self,
     answer_filename, answer_content_type, answer_audio_path, answer_contents,
     job_profile_id, challenge_id, template_id, session_id, all_user_id,
-    external, run_stage
+    external, run_stage, user_sid=None
 ):
     # Register task with tracker - now supporting all target types
     target = task_tracker.create_target_dict(
@@ -410,7 +412,8 @@ def process_upload_external_answer_with_template_task(
             template_id,
             all_user_id, 
             external, 
-            run_stage
+            run_stage,
+            user_sid=user_sid
         ))
         
         # Update status to completed

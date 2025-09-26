@@ -26,44 +26,6 @@ services:
     ports:
       - "4900:4900"
 
-  celery_worker:
-    container_name: celery_worker
-    build:
-      context: .
-      dockerfile: Dockerfile.celery
-    image: celery_worker:latest
-    restart: unless-stopped
-    environment:
-      - STRAPI_STAGE=dev-prod
-      - PYTHONPATH=/app
-      - REDIS_URL=redis://redis.10academy.org:6379/0
-      - AWS_ACCESS_KEY_ID=AKIARAUQOUIFYWMG4XLG
-      - AWS_SECRET_ACCESS_KEY=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
-      - AWS_DEFAULT_REGION=us-east-1
-    networks:
-      - ipersona_network
-    depends_on:
-      - ipersona_prod
-
-  flower:
-    container_name: flower
-    build:
-      context: .
-      dockerfile: Dockerfile.celery
-    image: celery_worker:latest
-    restart: unless-stopped
-    environment:
-      - STRAPI_STAGE=dev-prod
-      - PYTHONPATH=/app
-      - REDIS_URL=redis://redis.10academy.org:6379/0
-    networks:
-      - ipersona_network
-    ports:
-      - "5555:5555"
-    command: ["/app/start_flower.sh"]
-    depends_on:
-      - celery_worker
-
 networks:
     ipersona_network:
         name: ipersona_prod
