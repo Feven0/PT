@@ -2,11 +2,9 @@
 # KEDRO PROJECT
 
 Dockerfile
-docker-compose.*
 
-# Ignore all YAML files
-*.yml
-*.yaml
+# Ignore specific docker-compose files
+docker-compose-celery.yml
 
 # ignore all local configuration
 conf/local/**

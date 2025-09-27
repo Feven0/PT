@@ -1,0 +1,1372 @@
+openapi: 3.0.0
+info:
+  title: Parrot API Doc (REST + Socket)
+  version: 1.0.0
+  description: |
+    This documentation covers both the REST API and the Socket Events for tenx parrot app.
+    
+    ## REST API
+    See the sidebar for all REST endpoints.
+    
+    ## Socket Events
+    See the `/socket-events` section in the sidebar for full details on all WebSocket/socket.io events, including payloads and examples.
+servers:
+  - url: https://test-ipersona.10academy.org/api
+paths:
+# ==== BEGIN REST API PATHS (copied from openapi.yaml) ====
+  /audio_upload:
+    post:
+      tags: [Audio Endpoints]
+      summary: Upload audio file and transcribe to text
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+            example:
+              file: "<binary-audio-file>"
+      responses:
+        '200':
+          description: Transcription result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transcription:
+                    type: string
+                  status:
+                    type: integer
+                  message:
+                    type: string
+              example:
+                transcription: "This is the transcribed text."
+                status: 200
+                message: ""
+        '400':
+          description: Invalid file or error
+          content:
+            application/json:
+              example:
+                transcription: "Failed"
+                status: 400
+                message: "No file provided or invalid file"
+  /create_user_session:
+    post:
+      tags: [Session Endpoints]
+      summary: Create a user session and generate interview questions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSessionRequestRecieved'
+            example:
+              all_user_id: 123
+              job_profile_id: 456
+              run_stage: "dev"
+              template: true
+              external: false
+              challenge: false
+              template_id: 789
+              challenge_id: 101
+      responses:
+        '200':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSessionResponse'
+              example:
+                id: 1
+                status: "Incomplete"
+                template_id: 789
+                challenge_id: 101
+        '400':
+          description: Missing required parameters
+          content:
+            application/json:
+              example:
+                error: "Missing required parameters"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Failed to generate interview questions"
+  /clarify:
+    post:
+      tags: [Session Endpoints]
+      summary: Clarify a given question
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClarificationRequestRecieved'
+            example:
+              question: "Can you clarify what you mean by 'agile'?"
+      responses:
+        '200':
+          description: Clarification result
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                clarification: "Agile refers to a set of principles for software development under which requirements and solutions evolve through the collaborative effort of cross-functional teams."
+        '400':
+          description: Invalid or missing question
+          content:
+            application/json:
+              example:
+                error: "Invalid or missing question."
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Key error: 'question'"
+  /delete_session:
+    post:
+      tags: [Session Endpoints]
+      summary: Mark an interview session as deleted
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionIdRequestRecieved'
+            example:
+              sessionId: 1
+              run_stage: "dev"
+      responses:
+        '200':
+          description: Session deleted
+          content:
+            application/json:
+              example:
+                success: "Session deleted successfully"
+        '400':
+          description: Missing session ID
+          content:
+            application/json:
+              example:
+                error: "Session ID is required"
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              example:
+                error: "Session not found or could not be updated"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error deleting session: <details>"
+  /close_session:
+    post:
+      tags: [Session Endpoints]
+      summary: Close an interview session and perform final evaluations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClosedDataRequestRecieved'
+            example:
+              run_stage: "dev"
+              data:
+                sessionId: 1
+                evaluation: { ... }
+      responses:
+        '200':
+          description: Session closed and evaluated
+          content:
+            application/json:
+              example:
+                success: { "score": 95, "feedback": "Great session." }
+        '400':
+          description: Missing session data
+          content:
+            application/json:
+              example:
+                error: "Session data is required"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error closing session: <details>"
+  /calculate_session_overall_progress:
+    post:
+      tags: [Session Endpoints]
+      summary: Fetch overall progress metrics for a job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OverallRequestRecieved'
+            example:
+              run_stage: "dev"
+              all_user_id: 123
+              job_profile_id: 456
+      responses:
+        '200':
+          description: Overall progress metrics
+          content:
+            application/json:
+              example:
+                progress: { "completed": 80, "total": 100 }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Unexpected error: <details>"
+  /calculate_allstat_progress:
+    post:
+      tags: [Session Endpoints]
+      summary: Calculates overall users' progress metrics for all job types
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllUserIdRecieved'
+            example:
+              run_stage: "dev"
+              all_user_id: 123
+      responses:
+        '200':
+          description: Progress metrics
+          content:
+            application/json:
+              example:
+                metrics: { "average": 85 }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Unexpected error occurred: <details>"
+  /engagement_jobs_status:
+    post:
+      tags: [Session Endpoints]
+      summary: Calculate interview engagement status for a user across all job types
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllUserSessionRequestRecieved'
+            example:
+              run_stage: "dev"
+              all_user_id: 123
+              filter: {}
+              return_skip: false
+              information_level: "basic"
+              since: 1
+              limit: 10
+              cursor: {}
+      responses:
+        '200':
+          description: Engagement summary
+          content:
+            application/json:
+              example:
+                all_user_id: 123
+                jobs: [ { job_id: 1, status: "completed" } ]
+                status: 200
+                message: ""
+        '400':
+          description: Missing user ID
+          content:
+            application/json:
+              example:
+                all_user_id: []
+                jobs: []
+                status: 400
+                message: "User ID is required"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                all_user_id: 123
+                jobs: []
+                status: 500
+                message: "<error details>"
+  /engagement_challenge_status:
+    post:
+      tags: [Session Endpoints]
+      summary: Calculate interview engagement status for a user across all challenges
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllUserSessionRequestRecieved'
+            example:
+              run_stage: "dev"
+              all_user_id: 123
+              filter: {}
+              return_skip: false
+              information_level: "basic"
+              since: 1
+              limit: 10
+              cursor: {}
+      responses:
+        '200':
+          description: Engagement summary
+          content:
+            application/json:
+              example:
+                all_user_id: 123
+                challenges: [ { challenge_id: 1, status: "completed" } ]
+                status: 200
+                message: ""
+        '400':
+          description: Missing user ID
+          content:
+            application/json:
+              example:
+                all_user_id: []
+                challenges: []
+                status: 400
+                message: "User ID is required"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                all_user_id: 123
+                challenges: []
+                status: 500
+                message: "<error details>"
+  /admin_overview_status:
+    post:
+      tags: [Admin Endpoints]
+      summary: Calculate an overview of all interview sessions for admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              filter: {}
+              return_skip: false
+              information_level: "summary"
+              since: 1
+              limit: 10
+              cursor: {}
+      responses:
+        '200':
+          description: Admin overview metrics
+          content:
+            application/json:
+              example:
+                data: [ { session_id: 1, score: 90 } ]
+                cursor: {}
+                status: 200
+                message: ""
+        '404':
+          description: No data found
+          content:
+            application/json:
+              example:
+                data: []
+                cursor: []
+                status: 404
+                message: "No data found with the given parameters"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                data: []
+                cursor: []
+                status: 500
+                message: "Error processing data: <details>"
+  /admin_allusers_data:
+    post:
+      tags: [Admin Endpoints]
+      summary: Calculate admin data for all users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              filter: {}
+              return_skip: false
+              information_level: "summary"
+              since: 1
+              limit: 10
+              cursor: {}
+      responses:
+        '200':
+          description: Admin all users data
+          content:
+            application/json:
+              example:
+                data: [ { user_id: 1, sessions: 5 } ]
+                cursor: {}
+                status: 200
+                message: ""
+        '404':
+          description: No data found
+          content:
+            application/json:
+              example:
+                data: []
+                cursor: []
+                status: 404
+                message: "No data found with the given parameters"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                data: []
+                cursor: []
+                status: 500
+                message: "Error processing data: <details>"
+  /admin_alljobs_data:
+    post:
+      tags: [Admin Endpoints]
+      summary: Calculate admin data for all jobs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              filter: {}
+              return_skip: false
+              information_level: "summary"
+              since: 1
+              limit: 10
+              cursor: {}
+      responses:
+        '200':
+          description: Admin all jobs data
+          content:
+            application/json:
+              example:
+                data: [ { job_id: 1, sessions: 3 } ]
+                cursor: {}
+                status: 200
+                message: ""
+        '404':
+          description: No data found
+          content:
+            application/json:
+              example:
+                data: []
+                cursor: []
+                status: 404
+                message: "No data found with the given parameters"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                data: []
+                cursor: []
+                status: 500
+                message: "Error processing data: <details>"
+  /admin_each_job_overview_data:
+    post:
+      tags: [Admin Endpoints]
+      summary: Calculate admin data for each job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              job_profile_id: 1
+              filter: {}
+              since: 1
+              limit: 10
+              cursor: {}
+      responses:
+        '200':
+          description: Admin each job overview data
+          content:
+            application/json:
+              example:
+                trainees: [ { user_id: 1, score: 88 } ]
+                cursor: {}
+                status: 200
+                message: ""
+        '404':
+          description: No data found
+          content:
+            application/json:
+              example:
+                trainees: []
+                cursor: []
+                status: 404
+                message: "No data found with the given parameters"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                status: 500
+                message: "Error processing data: <details>"
+  /admin_allusers_performance_data:
+    post:
+      tags: [Admin Endpoints]
+      summary: Calculate performance metrics for all users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              filter: {}
+              return_skip: false
+              information_level: "performance"
+              since: 1
+              limit: 10
+              cursor: {}
+      responses:
+        '200':
+          description: Admin all users performance data
+          content:
+            application/json:
+              example:
+                data: [ { user_id: 1, performance: 95 } ]
+                cursor: {}
+                status: 200
+                message: ""
+        '404':
+          description: No data found
+          content:
+            application/json:
+              example:
+                data: []
+                cursor: []
+                status: 404
+                message: "No data found with the given parameters"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                data: []
+                cursor: []
+                status: 500
+                message: "Error processing data: <details>"
+  /admin_job_by_template_id:
+    post:
+      tags: [Admin Endpoints]
+      summary: Calculate admin job by template ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              template_id: 123
+              filter: {}
+              since: 1
+              limit: 10
+              cursor: {}
+      responses:
+        '200':
+          description: Admin job by template ID data
+          content:
+            application/json:
+              example:
+                jobs: [ { job_id: 1, template_id: 123 } ]
+                cursor: {}
+                status: 200
+                message: ""
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                jobs: []
+                cursor: []
+                status: 500
+                message: "Error processing data: <details>"
+  /admin_challenge_by_template_id:
+    post:
+      tags: [Admin Endpoints]
+      summary: Calculate admin challenge by template ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              template_id: 123
+              filter: {}
+              since: 1
+              limit: 10
+              cursor: {}
+      responses:
+        '200':
+          description: Admin challenge by template ID data
+          content:
+            application/json:
+              example:
+                challenges: [ { challenge_id: 1, template_id: 123 } ]
+                cursor: {}
+                status: 200
+                message: ""
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                challenges: []
+                cursor: []
+                status: 500
+                message: "Error processing data: <details>"
+  /admin_interview_by_template:
+    post:
+      tags: [Admin Endpoints]
+      summary: Calculate admin interview by template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              template_id: 123
+              status: "completed"
+              filter: {}
+              since: 1
+              limit: 10
+              cursor: {}
+      responses:
+        '200':
+          description: Admin interview by template data
+          content:
+            application/json:
+              example:
+                interviews: [ { interview_id: 1, template_id: 123, status: "completed" } ]
+                cursor: {}
+                status: 200
+                message: ""
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                interviews: []
+                cursor: []
+                status: 500
+                message: "Error processing data: <details>"
+  /fetch_user_session:
+    post:
+      tags: [Session Endpoints]
+      summary: Fetch session data for a specific user and job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              all_user_id: 123
+              job_profile_id: 456
+              template_id: 789
+              challenge_id: 101
+              since: 1
+      responses:
+        '200':
+          description: User session data
+          content:
+            application/json:
+              example:
+                session: { id: 1, user_id: 123, job_profile_id: 456 }
+        '404':
+          description: No session data found
+          content:
+            application/json:
+              example:
+                message: "No session data found for user ID: 123 and job ID: 456"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error fetching user session: <details>"
+  /fetch_chat_history:
+    post:
+      tags: [Session Endpoints]
+      summary: Fetch chat message history for a specific session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              sessionId: 1
+      responses:
+        '200':
+          description: Chat history
+          content:
+            application/json:
+              example:
+                chat: [ { message_id: 1, text: "Hello" } ]
+        '404':
+          description: No chat history found
+          content:
+            application/json:
+              example:
+                message: "No chat history found for session ID: 1"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error fetching chat history: <details>"
+  /fetch_user_all_observer:
+    post:
+      tags: [Session Endpoints]
+      summary: Fetch all observers for a specific session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              sessionId: 1
+      responses:
+        '200':
+          description: Observer data
+          content:
+            application/json:
+              example:
+                observers: [ { observer_id: 1, name: "John" } ]
+        '404':
+          description: No observers found
+          content:
+            application/json:
+              example:
+                message: "No observers found for session ID: 1"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error fetching observers: <details>"
+  /fetch_single_session:
+    post:
+      tags: [Session Endpoints]
+      summary: Fetch data for a single session by its ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              sessionId: 1
+      responses:
+        '200':
+          description: Single session data
+          content:
+            application/json:
+              example:
+                session: { id: 1, user_id: 123, status: "active" }
+        '404':
+          description: No session found
+          content:
+            application/json:
+              example:
+                message: "No session found for session ID: 1"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error fetching session: <details>"
+  /save_tinder_template:
+    post:
+      tags: [Template Endpoints]
+      summary: Save a new tinder template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              name: "Software Engineer Template"
+              type: "job"
+              tag: "engineering"
+              description: "A template for software engineering interviews."
+              template_questions: [ { question: "What is OOP?" } ]
+              job_profile_ids: [1,2]
+              prompt_ids: [10]
+              challenge_ids: [100]
+      responses:
+        '200':
+          description: Template saved
+          content:
+            application/json:
+              example:
+                template: { id: 1, name: "Software Engineer Template" }
+                success: 200
+                message: "Template Fetched Successfully."
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error saving template: <details>"
+  /get_tinder_templates:
+    post:
+      tags: [Template Endpoints]
+      summary: Get tinder templates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              job_profile_id: 1
+              challenge_id: 100
+              prompt_id: 10
+              type: "job"
+              filter: {}
+              since: 1
+              limit: 10
+              cursor: {}
+      responses:
+        '200':
+          description: Tinder templates
+          content:
+            application/json:
+              example:
+                template: [ { id: 1, name: "Software Engineer Template" } ]
+                cursor: {}
+                success: 200
+                message: "Templates Fetched Successfully for Job Profile ID."
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error processing template request: <details>"
+  /get_a_template:
+    post:
+      tags: [Template Endpoints]
+      summary: Get a single tinder template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              template_id: 1
+      responses:
+        '200':
+          description: Single template
+          content:
+            application/json:
+              example:
+                template: { id: 1, name: "Software Engineer Template" }
+                success: 200
+                message: "Template Fetched Successfully."
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error processing getting template: <details>"
+  /update_tinder_template:
+    post:
+      tags: [Template Endpoints]
+      summary: Update a tinder template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              template_id: 1
+              name: "Updated Template"
+              type: "job"
+              tag: "engineering"
+              description: "Updated description."
+              template_questions: [ { question: "What is OOP?" } ]
+              job_profile_ids: [1,2]
+              prompt_ids: [10]
+              challenge_ids: [100]
+      responses:
+        '200':
+          description: Template updated
+          content:
+            application/json:
+              example:
+                template: { id: 1, name: "Updated Template" }
+                success: 200
+                message: "Template Updated Sucessfully."
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error processing template update: <details>"
+  /attach_job_id_to_template:
+    post:
+      tags: [Template Endpoints]
+      summary: Attach job ID to a template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              template_id: 1
+              job_profile_ids: [1,2]
+              prompt_ids: [10]
+              challenge_ids: [100]
+              session_ids: [5,6]
+      responses:
+        '200':
+          description: Job ID attached to template
+          content:
+            application/json:
+              example:
+                template: { id: 1, name: "Software Engineer Template" }
+                success: 200
+                message: "Job Id is attached to the template successfully."
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error attaching id to template: <details>"
+  /create_template_by_llm:
+    post:
+      tags: [Template Endpoints]
+      summary: Create a template using LLM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              context: "Interview context"
+              all_user_id: 123
+              job_profile_ids: [1,2]
+              challenge_ids: [100]
+              run_stage: "dev"
+      responses:
+        '200':
+          description: Template created by LLM
+          content:
+            application/json:
+              example:
+                response: [ { question: "What is OOP?", number: 1 } ]
+                success: 200
+                message: "Process Failed"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error attaching id to template: <details>"
+  /audio_upload_external:
+    post:
+      tags: [Audio Endpoints]
+      summary: Upload external audio file and transcribe to text
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+            example:
+              file: "<binary-audio-file>"
+      responses:
+        '200':
+          description: External transcription result
+          content:
+            application/json:
+              example:
+                chat: [ { message_id: 1, text: "Hello" } ]
+                status: 200
+                message: "Audio Successfully Transcribed"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                transcription: "Failed"
+                status: 500
+                message: "System error: <details>"
+  /external_data_saving:
+    post:
+      tags: [Audio Endpoints]
+      summary: Save external audio chat data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              run_stage: "dev"
+              transcribe_chat: [ { message_id: 1, text: "Hello" } ]
+              all_user_id: 123
+              job_profile_id: 456
+      responses:
+        '200':
+          description: External data saved
+          content:
+            application/json:
+              example:
+                chat: [ { message_id: 1, text: "Hello" } ]
+                overall: { score: 90 }
+                status: 200
+                message: "Chat Saved Successfully"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error processing user session: <details>"
+  /get_all_challenges:
+    post:
+      tags: [Challenge Endpoints]
+      summary: Get all challenges
+      responses:
+        '200':
+          description: All challenges
+          content:
+            application/json:
+              example:
+                challenges: [ { id: 1, name: "Coding Challenge" } ]
+                success: 200
+                message: "Challenges are Fetched Successfully."
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error processing user session: <details>"
+  /get_a_challenge:
+    post:
+      tags: [Challenge Endpoints]
+      summary: Get a single challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              challenge_id: 1
+      responses:
+        '200':
+          description: Single challenge
+          content:
+            application/json:
+              example:
+                challenge: { id: 1, name: "Coding Challenge" }
+                success: 200
+                message: "Challenge Fetched Successfully."
+        '500':
+          description: Server error
+          content:
+            application/json:
+              example:
+                error: "Error processing user session: <details>"
+
+  /socket-events:
+    get:
+      summary: Socket Events Documentation
+      description: |
+        ## Socket.io Events for tenx_ipersona
+
+        This section documents all main socket.io events for both text and audio interview flows, including payloads and examples.
+
+        ### Connection Events
+
+        **connect**
+        - Client: No payload (may include query string, e.g. `run_stage`)
+          - Example: `https://test-ipersona.10academy.org:8011`
+        - Server: No direct response
+
+        **disconnect**
+        - Client: No payload
+        - Server: No direct response
+
+        **initial connect**
+        - Client emits:
+          ```json
+          { "run_stage": "dev" }
+          ```
+        - Server: No direct response
+
+        ### Audio Interview Events
+
+        **audio transcribe**
+        - Client emits:
+          ```json
+          { "audioblob": "<base64-encoded-audio>" }
+          ```
+        - Server emits:
+          ```json
+          "This is the transcribed text."
+          ```
+
+        **audio chat sentence**
+        - Client emits:
+          ```json
+          {
+            "response": "Yes, I have experience with Python.",
+            "user_session": { "id": 123, "attributes": { } },
+            "template_id": "456",
+            "challenge_id": "789"
+          }
+          ```
+        - Server emits:
+          - `audio chat sentence`:
+            ```json
+            [
+              {
+                "user_type": "assistant",
+                "content_type": "question",
+                "content": {
+                  "chunk_response": ['Can', 'you', 'tell', 'me', 'about', 'a', 'time', 'you', 'solved','a', 'difficult', 'problem?'],
+                  "full_response": "Can you tell me about a time you solved a difficult problem?",
+                  "final": false,
+                  "realtime_evaluation": null,
+                  "time_limit": "60"
+                }
+              }
+            ]
+            ```
+          - `audio_time_limit`:
+            ```json
+            { "content": { "time_limit": "60" } }
+            ```
+          - `audio_base64_chunks`:
+            ```json
+            { "content": { "audio_data": "UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=" } }
+            ```
+          - `audio-single-chunk`: (binary audio data)
+          - `audio-one-chunk`: (binary audio data)
+          - `audio-single-chunk-sentence`:
+            ```json
+            "This is a sentence from the audio."
+            ```
+          - `audio-single-text-chunk`:
+            ```json
+            "This is a text chunk."
+            ```
+          - `audio-single-text-chunk-done`: (no payload)
+          - `audio_realtime`:
+            ```json
+            { "content": { "realtime_evaluation": "Good answer, clear and concise.", "full_response": "Yes, I have experience with Python." } }
+            ```
+          - `last_audio_realtime_evaluation`:
+            ```json
+            { "content": { "realtime_evaluation": "Excellent overall performance.", "full_response": "[full interview transcript]" } }
+            ```
+          - `interview done`:
+            ```json
+            { "message": "Interview complete." }
+            ```
+
+        ### Text Interview Events
+
+        **interview chat**
+        - Client emits:
+          ```json
+          {
+            "response": "I am a software engineer.",
+            "user_session": { "id": 123, "attributes": { } },
+            "template_id": "456",
+            "challenge_id": "789"
+          }
+          ```
+        - Server emits:
+          - `interview chat`:
+            ```json
+            [
+              {
+                "user_type": "assistant",
+                "content_type": "question",
+                "content": {
+                  "chunk_response": ['What', 'programming', 'languages', 'are', 'you', 'most', 'comfortable', 'with?'],
+                  "full_response": "What programming languages are you most comfortable with?",
+                  "final": false,
+                  "realtime_evaluation": null,
+                  "time_limit": "60"
+                }
+              }
+            ]
+            ```
+          - `time_limit`:
+            ```json
+            { "content": { "time_limit": "60" } }
+            ```
+          - `realtime`:
+            ```json
+            { "content": { "realtime_evaluation": "Answer was relevant.", "full_response": "I am a software engineer." } }
+            ```
+          - `last_realtime_evaluation`:
+            ```json
+            { "content": { "realtime_evaluation": "Great interview.", "full_response": "[full interview transcript]" } }
+            ```
+          - `interview done`:
+            ```json
+            { "message": "Interview complete." }
+            ```
+
+        ### Error Events
+
+        **error**
+        - Server emits:
+          ```json
+          { "error": "Session not found." }
+          ```
+          (on validation or processing errors)
+
+        **Note:**
+        - All events use socket.io and expect JSON payloads unless otherwise noted.
+        - Some events (like chunked audio) may use raw binary or string payloads.
+        - For exact payload structure, refer to backend and frontend code, but the above covers the main expected/response patterns.
+      responses:
+        '200':
+          description: OK
+
+components:
+  schemas:
+    UserSessionRequestRecieved:
+      type: object
+      properties:
+        all_user_id:
+          type: integer
+        job_profile_id:
+          type: integer
+        run_stage:
+          type: string
+        template:
+          type: boolean
+        external:
+          type: boolean
+        challenge:
+          type: boolean
+        template_id:
+          type: integer
+        challenge_id:
+          type: integer
+    UserSessionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        template_id:
+          type: integer
+        challenge_id:
+          type: integer
+    ClarificationRequestRecieved:
+      type: object
+      properties:
+        question:
+          type: string
+    SessionIdRequestRecieved:
+      type: object
+      properties:
+        sessionId:
+          type: integer
+        run_stage:
+          type: string
+    ClosedDataRequestRecieved:
+      type: object
+      properties:
+        run_stage:
+          type: string
+        data:
+          type: object
+    OverallRequestRecieved:
+      type: object
+      properties:
+        run_stage:
+          type: string
+        all_user_id:
+          type: integer
+        job_profile_id:
+          type: integer
+    AllUserIdRecieved:
+      type: object
+      properties:
+        run_stage:
+          type: string
+        all_user_id:
+          type: integer
+    AllUserSessionRequestRecieved:
+      type: object
+      properties:
+        run_stage:
+          type: string
+        all_user_id:
+          type: integer
+        filter:
+          type: object
+        return_skip:
+          type: boolean
+        information_level:
+          type: string
+        since:
+          type: integer
+        limit:
+          type: integer
+        cursor:
+          type: object 
+ 
