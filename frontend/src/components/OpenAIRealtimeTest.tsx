@@ -152,8 +152,8 @@ const OpenAIRealtimeTest: React.FC = () => {
               <label>Provider</label>
               <select value={streamProvider} onChange={(e) => { const v = e.target.value as any; setStreamProvider(v); setActiveTranscriptSource(v); }} style={{ width: '100%', margin: '6px 0 10px' }}>
                 <option value="whisper">OpenAI Whisper (socket)</option>
-                {/* <option value="google">Google STT (streaming)</option> */}
-                {/* <option value="gemini">Gemini Live (experimental)</option> */}
+                <option value="google">Google STT (streaming)</option>
+                <option value="gemini">Gemini Live (experimental)</option>
                 <option value="fw">faster-whisper (local)</option>
               </select>
               {!isRecording ? (
@@ -182,8 +182,8 @@ const OpenAIRealtimeTest: React.FC = () => {
             <select value={activeTranscriptSource} onChange={(e) => setActiveTranscriptSource(e.target.value as any)} style={{ width: '100%', marginTop: 6 }}>
               <optgroup label="Realtime">
                 <option value="whisper">OpenAI Whisper</option>
-                {/* <option value="google">Google STT</option> */}
-                {/* <option value="gemini">Gemini Live</option> */}
+                <option value="google">Google STT</option>
+                <option value="gemini">Gemini Live</option>
                 <option value="fw">faster-whisper</option>
               </optgroup>
               <optgroup label="Uploads">

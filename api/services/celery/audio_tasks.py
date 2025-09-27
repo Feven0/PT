@@ -9,7 +9,7 @@ def process_upload_external_audio_task(
     self,
     filename, content_type, audio_path, 
     job_profile_id, challenge_id, template_id, 
-    session_id, all_user_id, external, run_stage, user_sid=None
+    session_id, all_user_id, external, run_stage
 ):
     # Register task with tracker - now supporting all target types
     target = task_tracker.create_target_dict(

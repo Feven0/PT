@@ -89,8 +89,8 @@ EOF
 #=========================================
 cat <<EOF > .env
 NODE_ENV=${NODE_ENV}
-VITE_REACT_APP_BACKEND_URL=https://dev-frog-ipersona.10academy.org
-VITE_REACT_APP_SOCKET_URL=https://dev-frog-ipersona.10academy.org:6789
+VITE_REACT_APP_BACKEND_URL=https://ipersona.10academy.org
+VITE_REACT_APP_SOCKET_URL=https://ipersona.10academy.org:8011
 EOF
 
 #=========================================
