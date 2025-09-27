@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Api from '../Services/Services';
 import "../styles/AudioRecorder/audiorecorder.css";
 import { Button } from 'antd'; 
@@ -9,7 +9,7 @@ const AudioUpload = () => {
     const [audioFile, setAudioFile] = useState<File | null>(null);
     const [audioURL, setAudioURL] = useState<string | null>(null);
     const [loading, setLoad] = useState(false);
-    const [jobProfileId, setJobProfileId] = useState<string>('1894');
+    const [jobProfileId, _setJobProfileId] = useState<string>('1894');
 
     // Initialize WebSocket connection
     const { 
@@ -17,9 +17,6 @@ const AudioUpload = () => {
         startListening, 
         stopListening, 
         getJobStatus, 
-        isJobInProgress, 
-        isJobCompleted, 
-        isJobFailed,
         getJobProgress 
     } = useProcessingWebSocket('http://localhost:9990');
 

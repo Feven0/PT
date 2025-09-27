@@ -4,7 +4,6 @@ import fade from '../assets/fade-circles.svg';
 import useMiddleSocket from '../hooks/useMiddleSocket';
 import {
     ChatAudioRecorder, 
-    OverallFeedbackModal, 
     LoadingSpinner, 
     Messages,
     CancelModal,
@@ -40,14 +39,14 @@ const InterviewChat = () => {
     const charLimit = 1200; 
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [mode, setMode] = useState<any>('Audio');
+    const [mode, _setMode] = useState<any>('Audio');
     const [questions, setQuestions] = useState<any>([]); 
     const handleClose = () => setShowCancelModal(false);
     const handleShow = () => setShowCancelModal(true);
     
     const [template_id, setTemplateId] = useState<number>(0);
     const [challenge_id, setChallengId] = useState<number>(0);
-    const [job_profile_id, setJobProfileId] = useState<number>(46); // Keep as-is if 46 is default
+    const [job_profile_id, _setJobProfileId] = useState<number>(46); // Keep as-is if 46 is default
 
    
     const buttonStyle = {
@@ -316,7 +315,7 @@ const InterviewChat = () => {
     const [showModal, setShowModal] = useState(false); // Modal for the two options
     const [showTemplateModal, setShowTemplateModal] = useState(false); // Modal for templates
     const [showChallengeModal, setShowChallengeModal] = useState(false); 
-    const [templates, setTemplates] = useState([]);
+    const [templates, setTemplates] = useState<any>([]);
     const [challenges, setChallenges] = useState([]);
 
 
@@ -352,7 +351,7 @@ const InterviewChat = () => {
         setChallenges(response?.data?.challenges)
     }
 
-    const chooseTemplate = async (id: any) => {
+    const chooseTemplate = async (_id: any) => {
         setLoad(true)
         const data = {
             job_profile_id: 0,
@@ -558,7 +557,7 @@ const InterviewChat = () => {
                         {/* Display userjob sessions */}
                         {(Array.isArray(sessions) && sessions.length > 0) && (
                             <div>
-                                {sessions.map((session: any, index: any) => (
+                                {sessions.map((session: any, _index: any) => (
                                     session?.attributes?.status !== 'Deleted' && (  // Condition to check before rendering
                                         <div 
                                             key={session.id} 

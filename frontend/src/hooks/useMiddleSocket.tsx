@@ -174,7 +174,7 @@ const useMiddleSocket = () => {
           if (typeof message === 'string') {
             setFwTranscript(prev => (prev ? prev + ' ' : '') + message);
           }
-          console.log('[FW][RX]', message);
+          // console.log('[FW][RX]', message);
         });
       }
       return () => {

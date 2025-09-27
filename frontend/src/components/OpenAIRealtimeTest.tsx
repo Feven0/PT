@@ -35,7 +35,7 @@ const OpenAIRealtimeTest: React.FC = () => {
       for (let i = 0; i < inputBuffer.length; i++) {
         pcmData[i] = Math.max(-32768, Math.min(32767, inputBuffer[i] * 32767));
       }
-      console.log('[REC][CHUNK]', { samples: pcmData.length, bytes: pcmData.byteLength });
+      // console.log('[REC][CHUNK]', { samples: pcmData.length, bytes: pcmData.byteLength });
       onProcess(pcmData.buffer);
     };
     source.connect(processor);
@@ -152,8 +152,8 @@ const OpenAIRealtimeTest: React.FC = () => {
               <label>Provider</label>
               <select value={streamProvider} onChange={(e) => { const v = e.target.value as any; setStreamProvider(v); setActiveTranscriptSource(v); }} style={{ width: '100%', margin: '6px 0 10px' }}>
                 <option value="whisper">OpenAI Whisper (socket)</option>
-                <option value="google">Google STT (streaming)</option>
-                <option value="gemini">Gemini Live (experimental)</option>
+                {/* <option value="google">Google STT (streaming)</option>
+                <option value="gemini">Gemini Live (experimental)</option> */}
                 <option value="fw">faster-whisper (local)</option>
               </select>
               {!isRecording ? (

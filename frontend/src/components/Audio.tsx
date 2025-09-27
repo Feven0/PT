@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { AudioOverallFeedbackModal, LoadingSpinner } from './index'
+import { LoadingSpinner } from './index'
 import { Card, Button, Spin, Collapse, Row, Col } from 'antd';
 const { Panel } = Collapse;
 import WaveSurfer from 'wavesurfer.js';
@@ -29,14 +29,14 @@ const Audio = () => {
     const audioQueue = useRef<any>([]); 
     const isPlayingRef = useRef<any>(false); 
     const previousLengthRef = useRef<any>(0); 
-    const [sessions, setSession] = useState<any>();
+    const [_sessions, setSession] = useState<any>();
     const [startfetching, setStartFetch] = useState(true);
     let timerValue: any;
 
     console.log("audio-interview", audiointerview)
     console.log("audio-history", audioHistory)
     
-    const chooseTemplate = async (id: any) => {
+    const chooseTemplate = async (_id: any) => {
         const data = {
             job_profile_id: 46,
             all_user_id: 1959,
@@ -66,7 +66,7 @@ const Audio = () => {
 
     }
 
-    const chooseChallenge = async(id: any) => {
+    const chooseChallenge = async(_id: any) => {
         const data = {
             job_profile_id: 0,
             all_user_id: 1959,
@@ -95,9 +95,9 @@ const Audio = () => {
     }
 
         
-    const [template_id, setTemplateId] = useState<number>(50);
-    const [challenge_id, setChallengId] = useState<number>(0);
-    const [job_profile_id, setJobProfileId] = useState<number>(46); 
+    const [template_id, _setTemplateId] = useState<number>(50);
+    const [challenge_id, _setChallengId] = useState<number>(0);
+    const [job_profile_id, _setJobProfileId] = useState<number>(46); 
 
     const ExecuteInterview = (audioTranscript: any) => {
         setAudioInterview([])
@@ -148,7 +148,7 @@ const Audio = () => {
         setInput('');
     }
 
-    const ExecutiveChallenge = async (id: any, audioTranscript:any) => {
+    const ExecutiveChallenge = async (_id: any, audioTranscript:any) => {
         setAudioInterview([])
         timerValue = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         const user_session = latest;   
