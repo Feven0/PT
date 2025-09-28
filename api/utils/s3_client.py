@@ -91,10 +91,10 @@ def upload_bytes_and_get_url(
     bucket_name: str,
     data: bytes,
     key: Optional[str] = None,
-    expires_in_seconds: int = 900,
+    expires_in_seconds: int = 31536000,  # 1 year in seconds
 ) -> Tuple[str, str]:
     """
-    Upload in-memory bytes to S3 and return a presigned GET URL.
+    Upload in-memory bytes to S3 and return a long-term presigned URL.
     """
     s3 = get_s3_client()
 
@@ -104,6 +104,7 @@ def upload_bytes_and_get_url(
 
     s3.put_object(Bucket=bucket_name, Key=key, Body=data)
 
+    # Return long-term presigned URL (1 year expiration)
     url = s3.generate_presigned_url(
         ClientMethod="get_object",
         Params={"Bucket": bucket_name, "Key": key},

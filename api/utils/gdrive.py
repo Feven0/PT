@@ -106,7 +106,7 @@ class google_api():
 
         if not os.path.exists(self.fauth):
             self.fauth = '/tmp/gclass_credentials.json'
-            auth = get_auth(ssmkey='gspread/config',
+            auth = get_auth(ssmkey='googleservice/tenxsaas',
                             envvar='GSPREAD_CONFIG',
                             fconfig=self.fauth)
         else:

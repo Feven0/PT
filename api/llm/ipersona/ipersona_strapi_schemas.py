@@ -2331,7 +2331,7 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
             logger.error(f"Error fetching all session messages: {str(e)}")
             return {'error': f"Error fetching all session messages: {str(e)}"}
    
-        
+       
     def save_message(self, params, **kwargs):
         try:
             if not params:
@@ -2339,9 +2339,8 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
                 return None
             
             session_json = self.save_or_update_object(params, **kwargs)
-
+      
             session = self.get_extracted_data(session_json)
-
             if session is None:
                 logger.warn("No data extracted from saved session.")
                 return None
@@ -2352,14 +2351,34 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
             logger.error(f"Error saving message: {str(e)}")
             return {'error': f"Error saving message: {str(e)}"}
 
-    
+    def update_session_message(self, params, **kwargs):
+        try:
+            if self.id_name() not in params:
+                logger.error("Id is missing for update!")
+                return []
+            
+            return self.save_or_update_object(params, **kwargs)
+
+        except Exception as e:
+            logger.error(f"Error updating session: {str(e)}")
+            return {'error': f"Error updating session: {str(e)}"}
+
     def get_extracted_data(self, session_json):
         try:
             if isinstance(session_json, list) and len(session_json) > 0:  
                 first_item = session_json[0]
+                
+                # Original structure: createIPersonaMessage
                 if 'data' in first_item and 'createIPersonaMessage' in first_item['data']:
                     session = first_item['data']['createIPersonaMessage']['data']
                     return session
+                
+                # New structure: direct data with id and attributes
+                elif 'data' in first_item and isinstance(first_item['data'], dict):
+                    data = first_item['data']
+                    if 'id' in data and 'attributes' in data:
+                        session = data
+                        return session
 
             logger.warn("No valid extracted data found.")
             return None

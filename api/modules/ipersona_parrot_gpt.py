@@ -700,7 +700,8 @@ async def calculate_template_time_limit_sync(
     sessionId: str,
     run_stage: str,
     sio,
-    sid: str
+    sid: str,
+    chat: bool
 ):
     """
     Synchronous calculation of time limit for template questions
@@ -708,7 +709,7 @@ async def calculate_template_time_limit_sync(
     """
     try:
         logger.info("🔄 [SYNC] Starting synchronous time limit calculation...")
-        
+        print(response)
         # Find the specific question in the section to get its time limit
         time_limit = None
         
@@ -788,6 +789,7 @@ async def calculate_template_time_limit_sync(
         formatted_time_limit = format_time_limit(time_limit)
         logger.info(f"🔄 [SYNC] Original time limit: '{time_limit}' -> Formatted: '{formatted_time_limit}'")
         
+        
         # Emit the time limit to the socket
         message = [{
             "content": {
@@ -797,7 +799,11 @@ async def calculate_template_time_limit_sync(
         
         logger.info(f"[SYNC] Emitting formatted time limit {formatted_time_limit} to SID {sid}")
         
-        await sio.emit("time_limit", message, room=sid)
+        if chat:
+            await sio.emit("time_limit", message, room=sid)
+        else:
+            await sio.emit("audio_time_limit", message, room=sid)
+
         logger.info(f"[SYNC] Time limit emission completed successfully for SID {sid}")
         
         # Return the timelimit dict in the expected format
@@ -807,117 +813,117 @@ async def calculate_template_time_limit_sync(
         logger.error(f"Synchronous time limit calculation failed: {str(e)}")
         return {"time_limit": "03:00"}  # Default fallback
 
-async def process_time_limit_calculation_background(
-    response: str,
-    section: list,
-    sessionId: str,
-    run_stage: str,
-    sio,
-    sid: str
-):
-    """
-    Background task to calculate time limit for template questions
-    """
-    try:
+# async def process_time_limit_calculation_background(
+#     response: str,
+#     section: list,
+#     sessionId: str,
+#     run_stage: str,
+#     sio,
+#     sid: str
+# ):
+#     """
+#     Background task to calculate time limit for template questions
+#     """
+#     try:
     
-        # Find the specific question in the section to get its time limit
-        time_limit = None
+#         # Find the specific question in the section to get its time limit
+#         time_limit = None
         
-        # Normalize the response text for matching
-        def normalize(text: str) -> str:
-            if text is None:
-                return ""
-            # Remove trailing question marks and normalize whitespace
-            normalized = " ".join(str(text).strip().split()).lower()
-            # Remove trailing question mark for better matching
-            if normalized.endswith('?'):
-                normalized = normalized[:-1]
-            return normalized
+#         # Normalize the response text for matching
+#         def normalize(text: str) -> str:
+#             if text is None:
+#                 return ""
+#             # Remove trailing question marks and normalize whitespace
+#             normalized = " ".join(str(text).strip().split()).lower()
+#             # Remove trailing question mark for better matching
+#             if normalized.endswith('?'):
+#                 normalized = normalized[:-1]
+#             return normalized
         
-        response_norm = normalize(response)
-        print(f"🔄 [BACKGROUND] Normalized response: '{response_norm}'")
+#         response_norm = normalize(response)
+#         print(f"🔄 [BACKGROUND] Normalized response: '{response_norm}'")
         
-        # Search through sections to find matching question
-        print(f"🔄 [BACKGROUND] Searching through {len(section)} section items...")
-        for i, section_item in enumerate(section):
-            print(f"🔄 [BACKGROUND] Section item {i}: {type(section_item)}")
-            if isinstance(section_item, dict) and 'questions' in section_item:
-                questions = section_item.get('questions', [])
-                print(f"🔄 [BACKGROUND] Found {len(questions)} questions in section {i}")
-                for j, question in enumerate(questions):
-                    if isinstance(question, dict):
-                        question_text = question.get('question', '')
-                        question_norm = normalize(question_text)
-                        # Check if this question matches the response
-                        if question_norm == response_norm or response_norm in question_norm:
-                            time_limit = question.get('time_limit')
-                            if time_limit:
-                                print(f"✅ [BACKGROUND] Found time limit: {time_limit}")
-                                logger.info(f"[BACKGROUND] Found matching question with time limit: {time_limit}")
-                                break
-                if time_limit:
-                    break
-            else:
-                print(f"🔄 [BACKGROUND] Section item {i} is not a dict with questions or has no questions key")
+#         # Search through sections to find matching question
+#         print(f"🔄 [BACKGROUND] Searching through {len(section)} section items...")
+#         for i, section_item in enumerate(section):
+#             print(f"🔄 [BACKGROUND] Section item {i}: {type(section_item)}")
+#             if isinstance(section_item, dict) and 'questions' in section_item:
+#                 questions = section_item.get('questions', [])
+#                 print(f"🔄 [BACKGROUND] Found {len(questions)} questions in section {i}")
+#                 for j, question in enumerate(questions):
+#                     if isinstance(question, dict):
+#                         question_text = question.get('question', '')
+#                         question_norm = normalize(question_text)
+#                         # Check if this question matches the response
+#                         if question_norm == response_norm or response_norm in question_norm:
+#                             time_limit = question.get('time_limit')
+#                             if time_limit:
+#                                 print(f"✅ [BACKGROUND] Found time limit: {time_limit}")
+#                                 logger.info(f"[BACKGROUND] Found matching question with time limit: {time_limit}")
+#                                 break
+#                 if time_limit:
+#                     break
+#             else:
+#                 print(f"🔄 [BACKGROUND] Section item {i} is not a dict with questions or has no questions key")
         
-        # If no specific time limit found, use default value of 3 minutes
-        if not time_limit or time_limit == '':
-            print("🔄 [BACKGROUND] No specific time limit found, using default 3 minutes")
-            time_limit = "3"
+#         # If no specific time limit found, use default value of 3 minutes
+#         if not time_limit or time_limit == '':
+#             print("🔄 [BACKGROUND] No specific time limit found, using default 3 minutes")
+#             time_limit = "3"
         
-        # Convert time limit to MM:SS format
-        def format_time_limit(time_str):
-            """Convert time limit to MM:SS format"""
-            try:
-                # Handle different input formats
-                if time_str in ['null', None, '']:
-                    return "03:00"  # Default 3 minutes
+#         # Convert time limit to MM:SS format
+#         def format_time_limit(time_str):
+#             """Convert time limit to MM:SS format"""
+#             try:
+#                 # Handle different input formats
+#                 if time_str in ['null', None, '']:
+#                     return "03:00"  # Default 3 minutes
                 
-                # If it's already a number (string), treat as minutes
-                if time_str.isdigit():
-                    minutes = int(time_str)
-                    return f"{minutes:02d}:00"
+#                 # If it's already a number (string), treat as minutes
+#                 if time_str.isdigit():
+#                     minutes = int(time_str)
+#                     return f"{minutes:02d}:00"
                 
-                # If it contains 'min' or 'mins', extract the number
-                if 'min' in str(time_str).lower():
-                    import re
-                    match = re.search(r'(\d+)', str(time_str))
-                    if match:
-                        minutes = int(match.group(1))
-                        return f"{minutes:02d}:00"
+#                 # If it contains 'min' or 'mins', extract the number
+#                 if 'min' in str(time_str).lower():
+#                     import re
+#                     match = re.search(r'(\d+)', str(time_str))
+#                     if match:
+#                         minutes = int(match.group(1))
+#                         return f"{minutes:02d}:00"
                 
-                # If it's already in MM:SS format, return as is
-                if ':' in str(time_str):
-                    return str(time_str)
+#                 # If it's already in MM:SS format, return as is
+#                 if ':' in str(time_str):
+#                     return str(time_str)
                 
-                # Default fallback
-                return "03:00"
-            except Exception as e:
-                print(f"❌ [BACKGROUND] Error formatting time limit '{time_str}': {e}")
-                return "03:00"  # Default fallback
+#                 # Default fallback
+#                 return "03:00"
+#             except Exception as e:
+#                 print(f"❌ [BACKGROUND] Error formatting time limit '{time_str}': {e}")
+#                 return "03:00"  # Default fallback
         
-        formatted_time_limit = format_time_limit(time_limit)
-        print(f"🔄 [BACKGROUND] Original time limit: '{time_limit}' -> Formatted: '{formatted_time_limit}'")
+#         formatted_time_limit = format_time_limit(time_limit)
+#         print(f"🔄 [BACKGROUND] Original time limit: '{time_limit}' -> Formatted: '{formatted_time_limit}'")
         
-        # Emit the time limit to the socket
-        message = [{
-            "content": {
-                "time_limit": formatted_time_limit,
-            }
-        }]
+#         # Emit the time limit to the socket
+#         message = [{
+#             "content": {
+#                 "time_limit": formatted_time_limit,
+#             }
+#         }]
         
-        print(f"🔄 [BACKGROUND] Emitting formatted time limit: {formatted_time_limit}")
-        print(f"🔄 [BACKGROUND] Message: {message}")
-        print(f"🔄 [BACKGROUND] SID: {sid}")
-        logger.info(f"[BACKGROUND] Emitting formatted time limit {formatted_time_limit} to SID {sid}")
+#         print(f"🔄 [BACKGROUND] Emitting formatted time limit: {formatted_time_limit}")
+#         print(f"🔄 [BACKGROUND] Message: {message}")
+#         print(f"🔄 [BACKGROUND] SID: {sid}")
+#         logger.info(f"[BACKGROUND] Emitting formatted time limit {formatted_time_limit} to SID {sid}")
         
-        await sio.emit("time_limit", message, room=sid)
-        print("✅ [BACKGROUND] Time limit calculation and emission completed successfully")
-        logger.info(f"[BACKGROUND] Time limit emission completed successfully for SID {sid}")
+#         await sio.emit("time_limit", message, room=sid)
+#         print("✅ [BACKGROUND] Time limit calculation and emission completed successfully")
+#         logger.info(f"[BACKGROUND] Time limit emission completed successfully for SID {sid}")
         
-    except Exception as e:
-        print(f"❌ [BACKGROUND] Time limit calculation failed: {str(e)}")
-        logger.error(f"Background time limit calculation failed: {str(e)}")
+#     except Exception as e:
+#         print(f"❌ [BACKGROUND] Time limit calculation failed: {str(e)}")
+#         logger.error(f"Background time limit calculation failed: {str(e)}")
 
 async def append_asked_question_number_from_sections(
     asked_numbers: list,
@@ -934,18 +940,9 @@ async def append_asked_question_number_from_sections(
     Returns: updated_asked_list: list
     """
     try:
-        print("=== DEBUG: Starting append_asked_question_number_from_sections ===")
-        print(f"DEBUG: picked_question_text = '{picked_question_text}'")
-        print(f"DEBUG: session_id = '{session_id}'")
-        print(f"DEBUG: run_stage = '{run_stage}'")
-        print(f"DEBUG: sections type = {type(sections)}")
-        print(f"DEBUG: sections length = {len(sections) if sections else 0}")
-        print(f"DEBUG: Current session attributes = {current_attrs}")
-        print(f"DEBUG: Current asked_question_numbers = {asked_numbers}")
-        
         # Ensure it's a list of strings
         asked_numbers = [str(x) for x in asked_numbers] if isinstance(asked_numbers, list) else []
-        print(f"DEBUG: Normalized asked_numbers = {asked_numbers}")
+        logger.info(f"DEBUG: Normalized asked_numbers = {asked_numbers}")
         
         def normalize(text: str) -> str:
             if text is None:
@@ -955,138 +952,130 @@ async def append_asked_question_number_from_sections(
             return t[:-1] if t.endswith("?") else t
 
         picked_norm = normalize(picked_question_text)
-        print(f"DEBUG: Normalized picked question = '{picked_norm}'")
+        logger.info(f"DEBUG: Normalized picked question = '{picked_norm}'")
 
         # Flatten questions from sections
         flat_questions = []
-        print(f"DEBUG: Processing sections for flattening...")
+        logger.info(f"DEBUG: Processing sections for flattening...")
         
         # Check if sections is a flat list of questions or nested structure
         if sections and isinstance(sections, list):
             # Check if first item has 'questions' key (nested structure)
             if sections[0] and isinstance(sections[0], dict) and 'questions' in sections[0]:
-                print(f"DEBUG: Detected nested structure with 'questions' key")
+                logger.info(f"DEBUG: Detected nested structure with 'questions' key")
                 # Nested structure: [{"questions": [...]}]
                 for i, section in enumerate(sections):
-                    print(f"DEBUG: Section {i}: {type(section)} - {section}")
+                    logger.info(f"DEBUG: Section {i}: {type(section)} - {section}")
                     if isinstance(section, dict):
                         questions = section.get("questions", [])
-                        print(f"DEBUG: Section {i} has {len(questions)} questions")
+                        logger.info(f"DEBUG: Section {i} has {len(questions)} questions")
                         for j, q in enumerate(questions or []):
-                            print(f"DEBUG: Question {j}: {q}")
+                            logger.info(f"DEBUG: Question {j}: {q}")
                             if isinstance(q, dict):
                                 flat_questions.append(q)
-                                print(f"DEBUG: Added question {j} to flat_questions")
+                                logger.info(f"DEBUG: Added question {j} to flat_questions")
             else:
-                print(f"DEBUG: Detected flat structure - each item is a question")
+                logger.info(f"DEBUG: Detected flat structure - each item is a question")
                 # Flat structure: [{"question": "...", "question_number": 1}, ...]
                 for i, question in enumerate(sections):
-                    print(f"DEBUG: Question {i}: {type(question)} - {question}")
+                    logger.info(f"DEBUG: Question {i}: {type(question)} - {question}")
                     if isinstance(question, dict):
                         flat_questions.append(question)
-                        print(f"DEBUG: Added question {i} to flat_questions")
+                        logger.info(f"DEBUG: Added question {i} to flat_questions")
         
-        print(f"DEBUG: Total flattened questions: {len(flat_questions)}")
+        logger.info(f"DEBUG: Total flattened questions: {len(flat_questions)}")
         for i, q in enumerate(flat_questions):
-            print(f"DEBUG: Flat question {i}: question_number={q.get('question_number')}, question='{q.get('question', '')[:50]}...'")
+            logger.info(f"DEBUG: Flat question {i}: question_number={q.get('question_number')}, question='{q.get('question', '')[:50]}...'")
 
         # Collect exact normalized matches (prefer exact over fuzzy)
         matches = []
-        print(f"DEBUG: Starting exact match comparison...")
+        logger.info(f"DEBUG: Starting exact match comparison...")
         for i, q in enumerate(flat_questions):
             q_text = q.get("question")
             qn = q.get("question_number")
             qn_norm = normalize(q_text)
             is_exact_match = qn_norm == picked_norm
-            print(f"DEBUG: Question {i} (qn={qn}): '{qn_norm}' == '{picked_norm}' ? {is_exact_match}")
+            logger.info(f"DEBUG: Question {i} (qn={qn}): '{qn_norm}' == '{picked_norm}' ? {is_exact_match}")
             if is_exact_match:
                 if qn is not None:
                     try:
                         matches.append(int(qn))
-                        print(f"DEBUG: EXACT MATCH FOUND! Added question_number {qn} to matches")
+                        logger.info(f"DEBUG: EXACT MATCH FOUND! Added question_number {qn} to matches")
                     except Exception as e:
-                        print(f"DEBUG: Error converting question_number {qn} to int: {e}")
+                        logger.info(f"DEBUG: Error converting question_number {qn} to int: {e}")
                         pass
                 else:
-                    print(f"DEBUG: Question {i} has no question_number, skipping")
+                    logger.info(f"DEBUG: Question {i} has no question_number, skipping")
 
-        print(f"DEBUG: Exact matches found: {matches}")
+        logger.info(f"DEBUG: Exact matches found: {matches}")
 
         # Fallback: containment-based match if exact failed
         if not matches:
-            print(f"DEBUG: No exact matches found, trying containment matching...")
+            logger.info(f"DEBUG: No exact matches found, trying containment matching...")
             for i, q in enumerate(flat_questions):
                 q_text = q.get("question")
                 qn = q.get("question_number")
                 if qn is None:
-                    print(f"DEBUG: Question {i} has no question_number, skipping containment check")
+                    logger.info(f"DEBUG: Question {i} has no question_number, skipping containment check")
                     continue
                 qn_norm = normalize(q_text)
                 is_containment_match = picked_norm and (qn_norm.startswith(picked_norm) or picked_norm.startswith(qn_norm) or picked_norm in qn_norm)
-                print(f"DEBUG: Question {i} (qn={qn}): containment check '{qn_norm}' vs '{picked_norm}' ? {is_containment_match}")
+                logger.info(f"DEBUG: Question {i} (qn={qn}): containment check '{qn_norm}' vs '{picked_norm}' ? {is_containment_match}")
                 if is_containment_match:
                     try:
                         matches.append(int(qn))
-                        print(f"DEBUG: CONTAINMENT MATCH FOUND! Added question_number {qn} to matches")
+                        logger.info(f"DEBUG: CONTAINMENT MATCH FOUND! Added question_number {qn} to matches")
                     except Exception as e:
-                        print(f"DEBUG: Error converting question_number {qn} to int: {e}")
+                        logger.info(f"DEBUG: Error converting question_number {qn} to int: {e}")
                         pass
-            print(f"DEBUG: Containment matches found: {matches}")
+            logger.info(f"DEBUG: Containment matches found: {matches}")
         else:
-            print(f"DEBUG: Skipping containment matching since exact matches were found")
+            logger.info(f"DEBUG: Skipping containment matching since exact matches were found")
 
         matched_number = None
         if matches:
             # If duplicates exist, choose the lowest number deterministically
             matched_number = str(min(matches))
-            print(f"DEBUG: Selected matched_number = '{matched_number}' from matches {matches}")
+            logger.info(f"DEBUG: Selected matched_number = '{matched_number}' from matches {matches}")
         else:
-            print(f"DEBUG: No matches found, matched_number = None")
+            logger.info(f"DEBUG: No matches found, matched_number = None")
 
         # Append to asked list if found and update session
         if matched_number is not None and matched_number not in asked_numbers:
-            print(f"DEBUG: matched_number '{matched_number}' is not in asked_numbers {asked_numbers}, proceeding with update")
+            logger.info(f"DEBUG: matched_number '{matched_number}' is not in asked_numbers {asked_numbers}, proceeding with update")
             asked_numbers.append(matched_number)
-            print(f"DEBUG: After append, asked_numbers = {asked_numbers}")
+            logger.info(f"DEBUG: After append, asked_numbers = {asked_numbers}")
             
             # Update session attributes - current_attrs is the inner attributes object
             current_attrs['asked_question_numbers'] = asked_numbers
-            print(f"DEBUG: Updated current_attrs = {current_attrs}")
+            logger.info(f"DEBUG: Updated current_attrs = {current_attrs}")
             
             # Update the session in database
             update_data = {
                 "i_persona_session_id": session_id,
                 "attributes": current_attrs
             }
-            print(f"DEBUG: Update data structure = {update_data}")
+            logger.info(f"DEBUG: Update data structure = {update_data}")
             
             ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-            print(f"DEBUG: Calling update_session with params...")
+            logger.info(f"DEBUG: Calling update_session with params...")
             updated_session = ipersona_session.update_session(
                 params=update_data, 
                 nopp=True, 
                 dataframe=False, 
                 return_object=True
             )
-            print(f"DEBUG: update_session returned: {updated_session}")
-            print(f"DEBUG: update_session type: {type(updated_session)}")
             
-            if updated_session:
-                logger.info(f"Updated session===== {session_id} with asked_question_numbers: {asked_numbers}")
-                print(f"DEBUG: SUCCESS! Session updated successfully")
-            else:
-                logger.error(f"Failed to update session {session_id}")
-                print(f"DEBUG: FAILURE! Session update returned None/False")
         else:
             if matched_number is None:
-                print(f"DEBUG: No matched_number found, skipping update")
+                logger.info(f"DEBUG: No matched_number found, skipping update")
             elif matched_number in asked_numbers:
-                print(f"DEBUG: matched_number '{matched_number}' already in asked_numbers {asked_numbers}, skipping update")
+                logger.info(f"DEBUG: matched_number '{matched_number}' already in asked_numbers {asked_numbers}, skipping update")
             else:
-                print(f"DEBUG: Unexpected condition, skipping update")
+                logger.info(f"DEBUG: Unexpected condition, skipping update")
 
-        print(f"DEBUG: Final asked_numbers to return: {asked_numbers}")
-        print("=== DEBUG: Ending append_asked_question_number_from_sections ===")
+        logger.info(f"DEBUG: Final asked_numbers to return: {asked_numbers}")
+        logger.info("=== DEBUG: Ending append_asked_question_number_from_sections ===")
         return asked_numbers
         
     except Exception as e:

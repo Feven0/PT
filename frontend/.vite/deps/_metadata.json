@@ -1,8 +1,172 @@
 {
-  "hash": "01cbd477",
-  "configHash": "ef05d2b3",
-  "lockfileHash": "e3b0c442",
-  "browserHash": "ecea971c",
-  "optimized": {},
-  "chunks": {}
+  "hash": "66021177",
+  "configHash": "d5a47bc3",
+  "lockfileHash": "f7b07c46",
+  "browserHash": "9cce30f7",
+  "optimized": {
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "088bdac4",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "8de59fdf",
+      "needsInterop": true
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.js",
+      "file": "react-router-dom.js",
+      "fileHash": "d8fdc73a",
+      "needsInterop": false
+    },
+    "socket.io-client": {
+      "src": "../../node_modules/socket.io-client/build/esm/index.js",
+      "file": "socket__io-client.js",
+      "fileHash": "a127d728",
+      "needsInterop": false
+    },
+    "react-icons/cg": {
+      "src": "../../node_modules/react-icons/cg/index.mjs",
+      "file": "react-icons_cg.js",
+      "fileHash": "c51322cd",
+      "needsInterop": false
+    },
+    "antd": {
+      "src": "../../node_modules/antd/es/index.js",
+      "file": "antd.js",
+      "fileHash": "4d5d4bf3",
+      "needsInterop": false
+    },
+    "react-timer-hook": {
+      "src": "../../node_modules/react-timer-hook/dist/index.js",
+      "file": "react-timer-hook.js",
+      "fileHash": "c6974acd",
+      "needsInterop": true
+    },
+    "react-icons/fa": {
+      "src": "../../node_modules/react-icons/fa/index.mjs",
+      "file": "react-icons_fa.js",
+      "fileHash": "267fe2de",
+      "needsInterop": false
+    },
+    "react-icons/fa6": {
+      "src": "../../node_modules/react-icons/fa6/index.mjs",
+      "file": "react-icons_fa6.js",
+      "fileHash": "fbf04dfd",
+      "needsInterop": false
+    },
+    "@ant-design/plots": {
+      "src": "../../node_modules/@ant-design/plots/es/index.js",
+      "file": "@ant-design_plots.js",
+      "fileHash": "695f12b2",
+      "needsInterop": false
+    },
+    "react-markdown": {
+      "src": "../../node_modules/react-markdown/index.js",
+      "file": "react-markdown.js",
+      "fileHash": "4118bf83",
+      "needsInterop": false
+    },
+    "wavesurfer.js": {
+      "src": "../../node_modules/wavesurfer.js/dist/wavesurfer.esm.js",
+      "file": "wavesurfer__js.js",
+      "fileHash": "63664974",
+      "needsInterop": false
+    },
+    "react-loading-indicators": {
+      "src": "../../node_modules/react-loading-indicators/esm/index.js",
+      "file": "react-loading-indicators.js",
+      "fileHash": "e907d0a1",
+      "needsInterop": false
+    },
+    "react-chartjs-2": {
+      "src": "../../node_modules/react-chartjs-2/dist/index.js",
+      "file": "react-chartjs-2.js",
+      "fileHash": "54ad582c",
+      "needsInterop": false
+    },
+    "chart.js": {
+      "src": "../../node_modules/chart.js/dist/chart.js",
+      "file": "chart__js.js",
+      "fileHash": "e3567d51",
+      "needsInterop": false
+    },
+    "victory": {
+      "src": "../../node_modules/victory/es/index.js",
+      "file": "victory.js",
+      "fileHash": "dc389ced",
+      "needsInterop": false
+    },
+    "@ant-design/icons": {
+      "src": "../../node_modules/@ant-design/icons/es/index.js",
+      "file": "@ant-design_icons.js",
+      "fileHash": "c340257e",
+      "needsInterop": false
+    },
+    "react-select": {
+      "src": "../../node_modules/react-select/dist/react-select.esm.js",
+      "file": "react-select.js",
+      "fileHash": "1506024e",
+      "needsInterop": false
+    },
+    "world-countries": {
+      "src": "../../node_modules/world-countries/index.mjs",
+      "file": "world-countries.js",
+      "fileHash": "fd043f9e",
+      "needsInterop": false
+    },
+    "moment": {
+      "src": "../../node_modules/moment/dist/moment.js",
+      "file": "moment.js",
+      "fileHash": "6802c490",
+      "needsInterop": false
+    },
+    "dayjs": {
+      "src": "../../node_modules/dayjs/dayjs.min.js",
+      "file": "dayjs.js",
+      "fileHash": "165ba382",
+      "needsInterop": true
+    },
+    "axios": {
+      "src": "../../node_modules/axios/index.js",
+      "file": "axios.js",
+      "fileHash": "1ac7c458",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-UTUR5RRZ": {
+      "file": "chunk-UTUR5RRZ.js"
+    },
+    "chunk-Y64MITSN": {
+      "file": "chunk-Y64MITSN.js"
+    },
+    "chunk-GYHWLT52": {
+      "file": "chunk-GYHWLT52.js"
+    },
+    "chunk-NGYBCDRD": {
+      "file": "chunk-NGYBCDRD.js"
+    },
+    "chunk-SEO67AJJ": {
+      "file": "chunk-SEO67AJJ.js"
+    },
+    "chunk-7PPEYBD6": {
+      "file": "chunk-7PPEYBD6.js"
+    },
+    "chunk-YEGEUSQR": {
+      "file": "chunk-YEGEUSQR.js"
+    },
+    "chunk-JAFEEV4H": {
+      "file": "chunk-JAFEEV4H.js"
+    },
+    "chunk-7JZAKNLV": {
+      "file": "chunk-7JZAKNLV.js"
+    },
+    "chunk-2TUXWMP5": {
+      "file": "chunk-2TUXWMP5.js"
+    }
+  }
 }

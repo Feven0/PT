@@ -3288,7 +3288,7 @@ async def files_upload_external_celery(
             logger.info("After calling celery task")
             return {
                 "status": 200,
-                    "message": "Uploaded file received and is being processed in the background."
+                "message": "Uploaded file received and is being processed in the background."
             }
 
         except Exception as e:

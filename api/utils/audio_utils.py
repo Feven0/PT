@@ -284,7 +284,7 @@ class AudioUtils:
             dict: {"valid": bool, "reason": str, "confidence": float}
         """
         try:
-            print(f"🤖 [DEBUG] Starting AI answer validation for transcript length: {len(answer_transcript)}")
+            logger.debug(f"🤖 [DEBUG] Starting AI answer validation for transcript length: {len(answer_transcript)}")
             
             # Basic length check first
             if len(answer_transcript.strip()) < 30:
@@ -303,42 +303,45 @@ class AudioUtils:
                     questions_list.append(f"{i}. {question_text}")
                 questions_context = f"\n\nExpected Questions Context:\n" + "\n".join(questions_list)
             
-            # AI validation prompt specifically for answer content
+            # AI validation prompt specifically for answer content - LENIENT APPROACH
             validation_prompt = f"""
-            Analyze this transcript and determine if it contains PROPER ANSWERS suitable for interview evaluation.
+            Analyze this transcript and determine if it contains REASONABLE ANSWERS suitable for interview evaluation.
             
             Answer Transcript: {answer_transcript}
             {questions_context}
             
-            STRICT ANSWER VALIDATION CRITERIA (ALL MUST BE TRUE TO BE VALID):
-            1. Contains substantive responses/answers (not just questions or prompts)
+            LENIENT ANSWER VALIDATION CRITERIA (BE GENEROUS - ACCEPT BASIC ANSWERS):
+            1. Contains any reasonable responses/answers (not just questions or prompts)
             2. Responses are more than single words or "yes/no" replies
-            3. Shows candidate providing detailed explanations, examples, or descriptions
-            4. Content demonstrates thoughtful responses to interview-type questions
+            3. Shows candidate attempting to answer questions (even if basic)
+            4. Content demonstrates some effort to respond to interview-type questions
             5. NOT primarily composed of interviewer questions or prompts
             
-            AUTOMATICALLY INVALID IF ANY OF THE FOLLOWING IS TRUE:
+            AUTOMATICALLY INVALID ONLY IF ANY OF THE FOLLOWING IS TRUE:
             - Mostly or only interviewer questions without candidate responses
-            - Only brief acknowledgments like "yes", "okay", "sure", "mm-hmm"
-            - Fragmented or incomplete responses
-            - No clear answer patterns or substantive content
+            - Only brief acknowledgments like "yes", "okay", "sure", "mm-hmm" (with no actual answers)
+            - Complete silence, background noise, or non-verbal content only
             - Primarily consists of question prompts like "Can you tell me...", "How would you..."
-            - Silence, background noise, or non-verbal content only
+            - Completely irrelevant content (not related to interview questions)
             
-            Examples of VALID answer content:
-            "I have five years of experience in software development, primarily working with Python and JavaScript. In my current role at XYZ Company, I led a team of four developers..."
-            "When I encountered that challenging bug, I first reproduced the issue in a test environment, then used debugging tools to trace the problem..."
-            "My leadership style focuses on collaborative decision-making. For example, when we had to choose between two architectural approaches..."
+            Examples of VALID answer content (BE LENIENT):
+            "I have some experience with Python and JavaScript. I worked on a few projects at my previous job."
+            "I think I would handle pressure by staying organized and asking for help when needed."
+            "My experience with Power BI is basic, but I've used it to create some simple dashboards."
+            "I believe in teamwork and communication. I try to be helpful to my colleagues."
             
             Examples of INVALID answer content:
             "Can you tell me about your experience? What technologies have you worked with? How do you handle pressure?"
-            "Yes. Okay. Sure. I think so."
+            "Yes. Okay. Sure. I think so." (with no actual answers)
             "The audio quality is poor and I cannot make out the responses clearly."
+            
+            IMPORTANT: Be generous in validation. Accept basic answers even if they lack depth or examples.
+            Focus on content validity, not interview performance quality.
             
             Return your analysis in this exact JSON format:
             {{
                 "valid": true/false,
-                "reason": "Specific explanation focusing on answer quality and completeness",
+                "reason": "Specific explanation focusing on answer validity (be lenient)",
                 "confidence": 0.0-1.0,
                 "content_type": "proper_answers/mostly_questions/incomplete_answers/poor_quality/mixed_content",
                 "has_substantive_answers": true/false,
@@ -348,16 +351,16 @@ class AudioUtils:
             }}
             """
             
-            print(f"📤 [DEBUG] Sending answer validation prompt to GPT")
+            logger.debug(f"📤 [DEBUG] Sending answer validation prompt to GPT")
             response = gpt.openai_gpt_assistant_without_streaming(validation_prompt)
             
-            print(f"📥 [DEBUG] Received GPT response for answer validation")
+            logger.debug(f"📥 [DEBUG] Received GPT response for answer validation")
             
             # Extract JSON from response
             validation_result = util.extract_json(response, quite=False)
             
             if not validation_result:
-                print(f"❌ [DEBUG] Failed to extract JSON from answer validation response")
+                logger.debug(f"❌ [DEBUG] Failed to extract JSON from answer validation response")
                 return {
                     "valid": False,
                     "reason": "Answer validation failed - unable to process AI response",
@@ -394,35 +397,35 @@ class AudioUtils:
                 mi = sum(1 for k in minimal_indicators if k in lower_tx)
                 question_marks = lower_tx.count('?')
                 
-                # If many questions but few answer indicators, force invalid
-                if (qi >= 4 and ai <= 1) or (question_marks >= 3 and ai <= 1):
+                # If many questions but few answer indicators, force invalid (MORE LENIENT)
+                if (qi >= 6 and ai <= 0) or (question_marks >= 5 and ai <= 0):
                     validation_result["valid"] = False
                     validation_result["has_substantive_answers"] = False
                     validation_result["suitable_for_evaluation"] = False
                     validation_result["content_type"] = "mostly_questions"
                     validation_result["answer_completeness"] = "none"
                     validation_result["reason"] = (
-                        "Detected mostly questions with insufficient answer content"
+                        "Detected mostly questions with no answer content"
                     )
                 
-                # If mostly minimal responses, reduce confidence
-                elif mi >= 5 and ai <= 2:
+                # If mostly minimal responses, reduce confidence (MORE LENIENT)
+                elif mi >= 8 and ai <= 1:
                     validation_result["valid"] = False
                     validation_result["content_type"] = "incomplete_answers"
                     validation_result["answer_completeness"] = "minimal"
                     validation_result["reason"] = (
-                        "Detected mostly minimal responses without substantive answer content"
+                        "Detected mostly minimal responses without any answer content"
                     )
                     
             except Exception as e:
-                print(f"⚠️ [DEBUG] Heuristic check failed: {str(e)}")
+                logger.debug(f"⚠️ [DEBUG] Heuristic check failed: {str(e)}")
                 pass
 
-            print(f"✅ [DEBUG] AI answer validation completed successfully")
+            logger.debug(f"✅ [DEBUG] AI answer validation completed successfully")
             return validation_result
             
         except Exception as e:
-            print(f"❌ [DEBUG] AI answer validation process failed: {str(e)}")
+            logger.debug(f"❌ [DEBUG] AI answer validation process failed: {str(e)}")
             logger.error(f"AI answer validation process failed: {str(e)}")
             return {
                 "valid": False,
@@ -453,7 +456,7 @@ class AudioUtils:
                     progress=progress
                 )
         except Exception as e:
-            print(f"⚠️ Failed to update task progress: {e}")
+            logger.debug(f"⚠️ Failed to update task progress: {e}")
 
     async def process_upload_external_audio(
         self,
@@ -548,10 +551,17 @@ class AudioUtils:
                         s3_audio_url = url
                         logger.success(f"Converted and uploaded to S3: {url}")
                     else:
-                        logger.info("File already in mp3 format. Skipping conversion.")
-                        url = None  # Not uploading existing MP3 files yet
+                        logger.info("File already in mp3 format. Skipping conversion, uploading to S3.")
+                        # Read existing MP3 file
+                        normalized_audio_path = self._normalize_audio_path(audio_path)
+                        with open(normalized_audio_path, "rb") as f:
+                            contents = f.read()
+                        
+                        # Upload existing MP3 file to S3
+                        bucket = _pick_bucket()
+                        url, key = _s3h.upload_bytes_and_get_url(bucket, contents, key=f"audio/{filename}")
                         s3_audio_url = url
-                        logger.debug("Skipped upload for existing MP3 file")
+                        logger.success(f"Uploaded existing MP3 to S3: {url}")
                         
                 except Exception as e:
                     logger.error(f"Audio processing and upload failed: {str(e)}")
@@ -585,7 +595,7 @@ class AudioUtils:
                     logger.error(f"Audio transcription failed: {str(e)}")
                     return 'Transcription failed'
 
-                # Step 3: Validate content and complete
+                # # Step 3: Validate content and complete
                 try:
                     # AI-Powered Content Validation (using sample for testing)
                     # import os
@@ -670,7 +680,7 @@ class AudioUtils:
                         logger.info(f"📝 [DEBUG] Extracted content: {transcript[:50]}..." if len(str(transcript)) > 100 else f"📝 [DEBUG] Extracted content: {transcript}")
                         logger.success(f"✅ Text extraction successful: {filename}")
                     except Exception as e:
-                        print(f"❌ [DEBUG] Failed to extract content: {str(e)}")
+                        logger.debug(f"❌ [DEBUG] Failed to extract content: {str(e)}")
                         return 'Content extraction failed'
 
                     # AI-Powered Content Validation for Text Documents
@@ -811,8 +821,8 @@ class AudioUtils:
 
                 upload_metadata = {
                     "mode": "combined_mode",
-                    **base_meta,
-                    "source": "uploaded_file"
+                    "source": "uploaded_file",
+                    "content": base_meta
                 }
 
                 saved_session = util.create_session(
@@ -962,11 +972,11 @@ class AudioUtils:
                 raise Exception(error_msg)
 
             # --- Process Answer File using helper ---
-            print(f"🔊 [DEBUG] Processing answer file: {answer_filename}, content_type: {answer_content_type}, size: {len(answer_contents)} bytes")
+            logger.debug(f"🔊 [DEBUG] Processing answer file: {answer_filename}, content_type: {answer_content_type}, size: {len(answer_contents)} bytes")
             answer_transcript, answer_error_msg = await self.process_and_transcribe_file(
                 answer_filename, answer_content_type, answer_contents, "Answer"
             )
-            print(f"🔊 [DEBUG] Answer processing result - transcript: {answer_transcript[:100] if answer_transcript else 'None'}..., error: {answer_error_msg}")
+            logger.debug(f"🔊 [DEBUG] Answer processing result - transcript: {answer_transcript[:100] if answer_transcript else 'None'}..., error: {answer_error_msg}")
             
             if answer_error_msg:
                 error_msg = f"Answer file processing failed: {answer_error_msg}"
@@ -1011,7 +1021,7 @@ class AudioUtils:
                 raise Exception(error_msg)
 
             tinder_user_profile_id = trainee_profile_data.get('id')
-            print(f"📋 [DEBUG] Tinder user profile ID: {tinder_user_profile_id}")
+            logger.debug(f"📋 [DEBUG] Tinder user profile ID: {tinder_user_profile_id}")
             if not tinder_user_profile_id:
                 error_msg = "Invalid trainee profile: missing ID"
                 logger.error(error_msg)
@@ -1033,7 +1043,7 @@ class AudioUtils:
                                                            .replace("{answers_data}", answer_transcript)
 
             logger.debug("Sending prompt to GPT for analysis")
-            # print(f"📋 [DEBUG] Answer question match scoring: {answer_question_match_scoring}")
+            # logger.debug(f"📋 [DEBUG] Answer question match scoring: {answer_question_match_scoring}")
             data = gpt.openai_gpt_assistant_without_streaming(answer_question_match_scoring)
             if data and hasattr(data, 'content'):
                 data = data.content.text
@@ -1054,11 +1064,11 @@ class AudioUtils:
                     logger.warn(f"Skipping item with invalid relevance_score: {item.get('relevance_score')}")
                     continue
 
-            print(f"📋 [DEBUG] Filtered data count: {len(filtered_data)}")
-            print(f"📋 [DEBUG] All relevance scores: {[item.get('relevance_score', 'N/A') for item in response]}")
+            logger.debug(f"📋 [DEBUG] Filtered data count: {len(filtered_data)}")
+            logger.debug(f"📋 [DEBUG] All relevance scores: {[item.get('relevance_score', 'N/A') for item in response]}")
 
             if not filtered_data:
-                error_msg = "❌ Failed to process upload files: No Valuable matched question-answer data returned from LLM analysis"
+                error_msg = "Failed to process upload files: No Valuable matched question-answer data returned from the analysis"
                 from api.socket.core import emit_with_log
                 await emit_with_log(
                     "processing_update_failed",
@@ -1072,11 +1082,11 @@ class AudioUtils:
 
             external_audio_prompt = external_audio_prompt.replace("{question_answer_data}", str(filtered_data))\
                                                            .replace("{realtime}", str(realtime_prompt))
-            # print(f"📋 [DEBUG] External audio prompt: {external_audio_prompt}")
+            # logger.debug(f"📋 [DEBUG] External audio prompt: {external_audio_prompt}")
             data = gpt.openai_gpt_assistant_without_streaming(external_audio_prompt)
             response = util.extract_json(data, quite=False)
             logger.info("Matched question-answer data returned from LLM analysis with the new interview structure")
-            print(f"📋 [DEBUG] Q Response: {response}")
+            logger.debug(f"📋 [DEBUG] Q Response: {response}")
            
             # Initialize these for util.create_session (as per original logic)
             message = ''
@@ -1087,20 +1097,23 @@ class AudioUtils:
             # Build upload metadata with distinct URLs, optional durations, and sizes
             upload_metadata = {
                 "mode": "qa_split_mode",
-                "question_url": question_url,
-                "answer_url": answer_url,
-                "question_content_type": question_content_type,
-                "answer_content_type": answer_content_type,
-                "question_original_filename": question_filename,
-                "answer_original_filename": answer_filename,
-                "question_duration_secs": q_duration,
-                "answer_duration_secs": a_duration,
-                "question_size_bytes": q_size,
-                "answer_size_bytes": a_size,
-                "source": "uploaded_file"
+                "source": "uploaded_file",
+                "question": {
+                    "url": question_url,
+                    "content_type": question_content_type,
+                    "original_filename": question_filename,
+                    "duration_secs": q_duration,
+                    "size_bytes": q_size
+                },
+                "answer": {
+                    "url": answer_url,
+                    "content_type": answer_content_type,
+                    "original_filename": answer_filename,
+                    "duration_secs": a_duration,
+                    "size_bytes": a_size
+                }
             }
-          
-
+                        
             saved_session = util.create_session(
                 run_stage,
                 mode,
@@ -1232,11 +1245,11 @@ class AudioUtils:
         try:
      
             # Process Answer File using helper
-            print(f"🔊 [DEBUG] Processing answer file: {answer_filename}, content_type: {answer_content_type}, size: {len(answer_contents)} bytes")
+            logger.debug(f"🔊 [DEBUG] Processing answer file: {answer_filename}, content_type: {answer_content_type}, size: {len(answer_contents)} bytes")
             answer_transcript, answer_error_msg = await self.process_and_transcribe_file(
                 answer_filename, answer_content_type, answer_contents, "Answer"
             )
-            print(f"🔊 [DEBUG] Answer processing result - transcript: {answer_transcript[:100] if answer_transcript else 'None'}..., error: {answer_error_msg}")
+            logger.debug(f"🔊 [DEBUG] Answer processing result - transcript: {answer_transcript[:100] if answer_transcript else 'None'}..., error: {answer_error_msg}")
             
             if answer_error_msg:
                 error_msg = f"Answer file processing failed: {answer_error_msg}"
@@ -1255,9 +1268,9 @@ class AudioUtils:
             logger.info("✅ Answer file processed successfully.")
 
             # AI Validation: Check if answer content is suitable for evaluation
-            print(f"🤖 [DEBUG] Starting AI validation for answer content")
+            logger.debug(f"🤖 [DEBUG] Starting AI validation for answer content")
             answer_validation = self.ai_validate_answer_content(answer_transcript, template_questions)
-            print(f"🤖 [DEBUG] Answer validation result: {answer_validation}")
+            logger.debug(f"🤖 [DEBUG] Answer validation result: {answer_validation}")
             
             if not answer_validation.get("valid", False):
                 error_msg = f"Answer content validation failed: {answer_validation.get('reason', 'Unknown validation error')}"
@@ -1283,15 +1296,20 @@ class AudioUtils:
                 answer_url, a_duration, a_size = self._upload_and_get_duration(
                     answer_filename, answer_content_type, answer_contents
                 )
+                
                 upload_metadata = {
                     "mode": "answer_only_mode",
-                    "answer_url": answer_url,
-                    "answer_content_type": answer_content_type,
-                    "answer_original_filename": answer_filename,
-                    "duration_secs": a_duration,
-                    "answer_size_bytes": a_size,
-                    "source": "uploaded_file"
+                    "source": "uploaded_file",
+                    "answer": {
+                        "url": answer_url,
+                        "content_type": answer_content_type,
+                        "original_filename": answer_filename,
+                        "duration_secs": a_duration,
+                        "size_bytes": a_size
+                    }
                 }
+                 
+                 
             except Exception as s3e:
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
@@ -1317,7 +1335,7 @@ class AudioUtils:
                 raise Exception(error_msg)
 
             tinder_user_profile_id = trainee_profile_data.get('id')
-            print(f"📋 [DEBUG] Tinder user profile ID: {tinder_user_profile_id}")
+            logger.debug(f"📋 [DEBUG] Tinder user profile ID: {tinder_user_profile_id}")
             if not tinder_user_profile_id:
                 error_msg = "Invalid trainee profile: missing ID"
                 logger.error(error_msg)
@@ -1328,7 +1346,6 @@ class AudioUtils:
 
             logger.info("Reading external audio analysis prompt")
             external_audio_prompt = util.file_reader(util.prompt_path('external_audio_analysis_for_separate_inputs.txt'))
-            external_all_file_prompt = util.file_reader(util.prompt_path('external_audio_analysis.txt'))
             answer_question_matching = util.file_reader(util.prompt_path('answer_question_match.txt'))
             realtime_prompt = util.file_reader(util.prompt_path('realtime_evaluation.txt'))
 
@@ -1345,14 +1362,14 @@ class AudioUtils:
             if data and hasattr(data, 'content'):
                 data = data.content.text
             response = util.extract_json(data, quite=False)
-            print(f"📋 [DEBUG] Raw LLM response: {response}")
+            logger.debug(f"📋 [DEBUG] Raw LLM response: {response}")
 
             # Filter out items with relevance_score >= 90
             filtered_data = []
             for item in response:
                 try:
                     relevance_score = int(item.get('relevance_score', 0))
-                    if relevance_score >= 90:
+                    if relevance_score >= 60:
                         filtered_data.append({
                             'question': item['question'], 
                             'answer': item['answer']
@@ -1362,11 +1379,16 @@ class AudioUtils:
                     logger.warn(f"Skipping item with invalid relevance_score: {item.get('relevance_score')}")
                     continue
 
-            print(f"📋 [DEBUG] Filtered data count: {len(filtered_data)}")
-            print(f"📋 [DEBUG] All relevance scores: {[item.get('relevance_score', 'N/A') for item in response]}")
+            logger.debug(f"📋 [DEBUG] Filtered data count: {len(filtered_data)}")
+            logger.debug(f"📋 [DEBUG] All relevance scores: {[item.get('relevance_score', 'N/A') for item in response]}")
             
             if not filtered_data:
-                error_msg = "❌ Failed to process template answer: No Valuable matched question-answer data returned from LLM analysis"
+                error_msg = "Failed to process template answer: No Valuable matched question-answer data returned from the analysis"
+                from api.socket.core import emit_with_log
+                await emit_with_log(
+                    "processing_update_failed",
+                    {"status": f"{error_msg}"}
+                )
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
@@ -1379,7 +1401,7 @@ class AudioUtils:
             data = gpt.openai_gpt_assistant_without_streaming(external_audio_prompt)
             response = util.extract_json(data, quite=False)
             logger.info("Matched question-answer data returned from LLM analysis with the new interview structure")
-            print(f"📋 [DEBUG] Q Response: {response}")
+            logger.debug(f"📋 [DEBUG] Q Response: {response}")
            
             # Initialize these for util.create_session (as per original logic)
             message = ''
@@ -1401,19 +1423,16 @@ class AudioUtils:
                 message,
                 upload_metadata
             )
-            print(f"📋 [DEBUG] Saved session========: {saved_session}")
-            logger.success(f"📋 [DEBUG] Saved session:::::::: {saved_session}")
+
             if saved_session:
                 # Check if saved_session is a valid dictionary with an 'id' field
                 if isinstance(saved_session, dict) and 'id' in saved_session:
                     sessionId = saved_session['id']
                     logger.info(f"📥 Session created successfully with ID: {sessionId}")
-                    logger.debug("Saving analyzed chat to database")
                     saved = strapi.save_messages_to_db(response, sessionId)
                 else:
                     # Handle case where saved_session is not a valid session object
                     logger.error(f"❌ Invalid session data returned: {type(saved_session)} - {saved_session}")
-                    logger.error("❌ Failed to save session - invalid session data")
                     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                     task_redis_key = self._get_task_redis_key(task_type, task_id)
                     redis.set(task_redis_key, {"status": "failed", "message": "Invalid session data returned"})
@@ -1734,21 +1753,21 @@ class AudioUtils:
                         'overwrite': 'false'
                     }
                     logger.debug(f"Sending audio file to external transcription endpoint... (Attempt {attempt + 1}/{max_retries})")
-                    print(f"🔄 [DEBUG] Transcription attempt {attempt + 1}/{max_retries} with timeout: {base_timeout}s")
+                    logger.debug(f"🔄 [DEBUG] Transcription attempt {attempt + 1}/{max_retries} with timeout: {base_timeout}s")
                     
                     # Exponential backoff timeout
                     current_timeout = base_timeout * (2 ** attempt)
                     response = requests.post(endpoint_url, files=files, data=data, timeout=current_timeout)
                     response.raise_for_status()
                     result = response.json()
-                    print(f"✅ [DEBUG] Transcription successful on attempt {attempt + 1}")
+                    logger.debug(f"✅ [DEBUG] Transcription successful on attempt {attempt + 1}")
                     return result
                     
             except requests.exceptions.Timeout as e:
-                print(f"⏰ [DEBUG] Transcription timeout on attempt {attempt + 1}: {str(e)}")
+                logger.debug(f"⏰ [DEBUG] Transcription timeout on attempt {attempt + 1}: {str(e)}")
                 if attempt < max_retries - 1:
                     wait_time = 2 ** attempt  # 1, 2, 4 seconds
-                    print(f"⏳ [DEBUG] Waiting {wait_time}s before retry...")
+                    logger.debug(f"⏳ [DEBUG] Waiting {wait_time}s before retry...")
                     time.sleep(wait_time)
                     continue
                 else:
@@ -1759,10 +1778,10 @@ class AudioUtils:
                     }
                     
             except requests.exceptions.HTTPError as e:
-                print(f"❌ [DEBUG] HTTP error on attempt {attempt + 1}: {str(e)}")
+                logger.debug(f"❌ [DEBUG] HTTP error on attempt {attempt + 1}: {str(e)}")
                 if e.response.status_code == 504 and attempt < max_retries - 1:
                     wait_time = 2 ** attempt
-                    print(f"⏳ [DEBUG] Gateway timeout, waiting {wait_time}s before retry...")
+                    logger.debug(f"⏳ [DEBUG] Gateway timeout, waiting {wait_time}s before retry...")
                     time.sleep(wait_time)
                     continue
                 else:
@@ -1773,10 +1792,10 @@ class AudioUtils:
                     }
                     
             except Exception as e:
-                print(f"❌ [DEBUG] Unexpected error on attempt {attempt + 1}: {str(e)}")
+                logger.debug(f"❌ [DEBUG] Unexpected error on attempt {attempt + 1}: {str(e)}")
                 if attempt < max_retries - 1:
                     wait_time = 2 ** attempt
-                    print(f"⏳ [DEBUG] Unexpected error, waiting {wait_time}s before retry...")
+                    logger.debug(f"⏳ [DEBUG] Unexpected error, waiting {wait_time}s before retry...")
                     time.sleep(wait_time)
                     continue
                 else:
@@ -1797,8 +1816,8 @@ class AudioUtils:
             transcript: Optional[str] = None
             if "audio" in content_type or "video" in content_type:
                 original_format = content_type.split("/")[-1].lower()
-                print(f"🔄 [DEBUG] {file_type_label} file format: {original_format}, content_type: {content_type}")
-                print(f"🔄 [DEBUG] Supported formats check: {original_format} in {['mpeg', 'mp3', 'wav', 'mp4', 'webm']}")
+                logger.debug(f"🔄 [DEBUG] {file_type_label} file format: {original_format}, content_type: {content_type}")
+                logger.debug(f"🔄 [DEBUG] Supported formats check: {original_format} in {['mpeg', 'mp3', 'wav', 'mp4', 'webm']}")
                 
                 if original_format not in ["mpeg", "mp3", "wav"]:
                     # Convert MP4, webm, and other formats to MP3 for consistent processing
@@ -1808,11 +1827,11 @@ class AudioUtils:
                     with open(final_file_path, "wb") as f:
                         f.write(contents)
                     logger.success(f"🎧 {file_type_label} MP3 file saved to: {final_file_path}")
-                    print(f"🔄 [DEBUG] Converted to MP3: {final_file_path}")
+                    logger.debug(f"🔄 [DEBUG] Converted to MP3: {final_file_path}")
                 else:
                     logger.info(f"✅ {file_type_label} file already in supported audio format. Skipping re-saving.")
                     final_file_path = util.audio_path(filename)
-                    print(f"🔄 [DEBUG] Using original file path: {final_file_path}")
+                    logger.debug(f"🔄 [DEBUG] Using original file path: {final_file_path}")
                 result = self.audio_transcription_logics(
                     filename=filename,
                     audio_path=final_file_path,
@@ -1969,7 +1988,7 @@ class AudioUtils:
                 except (ValueError, TypeError):
                     template_id_int = None
             
-            print(f"🔍 [DEBUG] ID values - job_profile_id: '{job_profile_id}' -> {job_profile_id_int}, challenge_id: '{challenge_id}' -> {challenge_id_int}, template_id: '{template_id}' -> {template_id_int}")
+            logger.debug(f"🔍 [DEBUG] ID values - job_profile_id: '{job_profile_id}' -> {job_profile_id_int}, challenge_id: '{challenge_id}' -> {challenge_id_int}, template_id: '{template_id}' -> {template_id_int}")
             
             history_str = '\n'.join(str(item) for item in data)   
             overall_evaluation_msg = util.read_prompt_overall_evaluation(type, history_str)   
@@ -1985,11 +2004,11 @@ class AudioUtils:
             overall_interview_metrics_json = util.extract_json(overall_interview_metrics_response, quite=False)
 
             relevancy = util.filter_the_relevancies_external(data)
-            print(f"[DEBUG] relevancy: {relevancy}...")
+            logger.debug(f"[DEBUG] relevancy: {relevancy}...")
             
             # Handle case where relevancy is an error object
             if isinstance(relevancy, dict) and 'error' in relevancy:
-                print(f"[ERROR] Relevancy calculation failed: {relevancy['error']}")
+                logger.debug(f"[ERROR] Relevancy calculation failed: {relevancy['error']}")
                 # Use default values
                 relevancy = {
                     "relevancy": [],
@@ -2002,12 +2021,12 @@ class AudioUtils:
             try:
                 overall_evaluation = overall_evaluation_response_json["overall_evaluation"]
             except KeyError as e:
-                print(f"[ERROR] KeyError accessing 'overall_evaluation': {e}")
+                logger.debug(f"[ERROR] KeyError accessing 'overall_evaluation': {e}")
                 return {'error': str(e)}
             try:
                 evaluation_metrics = overall_interview_metrics_json["evaluation_metrics"]
             except KeyError as e:
-                print(f"[ERROR] KeyError accessing 'evaluation_metrics': {e}")
+                logger.debug(f"[ERROR] KeyError accessing 'evaluation_metrics': {e}")
                 return {'error': str(e)}
 
             overall_evaluation["message"] = percent_term["term"]
@@ -2096,7 +2115,7 @@ class AudioUtils:
                 "overall_interview_metrics": overall_interview_metrics_json,
                 "overall_evaluation_response": overall_evaluation_response_json
             }
-            print(f"[DEBUG] Final response keys: {list(response.keys())}")
+            logger.debug(f"[DEBUG] Final response keys: {list(response.keys())}")
             return response
         
         except Exception as e:
@@ -2222,7 +2241,7 @@ class AudioUtils:
             session_chatobserver = None
     
             if job_profile_id_int and job_profile_id_int != 0: 
-                print(f"🎯 [DEBUG] Taking JOB_PROFILE path - job_profile_id: {job_profile_id_int}")
+                logger.debug(f"🎯 [DEBUG] Taking JOB_PROFILE path - job_profile_id: {job_profile_id_int}")
                 session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(
                     user_profile_id = tinder_user_profile_id, 
                     job_profile_id = job_profile_id_int, 
@@ -2230,7 +2249,7 @@ class AudioUtils:
                     dataframe=False)
                 
             elif challenge_id_int and challenge_id_int != 0:
-                print(f"🎯 [DEBUG] Taking CHALLENGE path - challenge_id: {challenge_id_int}")
+                logger.debug(f"🎯 [DEBUG] Taking CHALLENGE path - challenge_id: {challenge_id_int}")
                 session_chatobserver = ipersona_overall.filter_by_with_user_and_challenge_id(
                     user_profile_id = tinder_user_profile_id, 
                     challenge_id = challenge_id_int, 
@@ -2238,7 +2257,7 @@ class AudioUtils:
                     dataframe=False)   
 
             elif template_id_int and template_id_int != 0:
-                print(f"🎯 [DEBUG] Taking TEMPLATE path - template_id: {template_id_int}")
+                logger.debug(f"🎯 [DEBUG] Taking TEMPLATE path - template_id: {template_id_int}")
                 session_chatobserver = ipersona_overall.filter_by_with_user_and_template_id(
                     user_profile_id = tinder_user_profile_id, 
                     template_id = template_id_int, 

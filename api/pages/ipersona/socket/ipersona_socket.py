@@ -2,6 +2,7 @@ import asyncio, os, json
 import re
 import time
 import io, wave
+import queue
 from openai import OpenAI
 import assemblyai as aai
 from typing import Dict, Any
@@ -30,8 +31,10 @@ from .stt_utils import (
 )
 try:
     from google.cloud import speech_v1 as speech
+    from google.api_core.client_options import ClientOptions
 except Exception:
     speech = None
+    ClientOptions = None
 try:
     from google import genai as google_genai
     from google.genai import types as genai_types
@@ -54,6 +57,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Improved transcriber management - track per session
 transcribers: Dict[str, Any] = {}
+assemblyai_streams: Dict[str, Any] = {}
 whisper_buffers: Dict[str, bytearray] = {}
 google_streams: Dict[str, Any] = {}
 gemini_streams: Dict[str, Any] = {}
@@ -72,79 +76,265 @@ def _is_silent_pcm16(pcm_bytes: bytes, rms_threshold: int = WHISPER_RMS_THRESHOL
     return is_silent_pcm16(pcm_bytes, rms_threshold)
 
 # -------------------------- Google Cloud STT Streaming -------------------------- #
+def check_speech_api_status():
+    """Check if Speech-to-Text API is enabled for the project"""
+    try:
+        from api.utils.gdrive import google_api
+        from google.cloud import serviceusage_v1
+        
+        # Get credentials and project info
+        gapi = google_api()
+        
+        # Set environment variables
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = gapi.fauth
+        
+        # Extract project ID from service account file
+        try:
+            with open(gapi.fauth, 'r') as f:
+                service_account_data = json.load(f)
+            project_id = service_account_data.get('project_id')
+            if not project_id:
+                raise ValueError("No project_id found in service account file")
+            os.environ['GOOGLE_CLOUD_PROJECT'] = project_id
+            logger.info(f"[GOOGLE][API_STATUS] Extracted project_id: {project_id}")
+        except Exception as e:
+            logger.error(f"[GOOGLE][API_STATUS] Failed to extract project_id: {e}")
+            return {"error": f"Failed to extract project_id: {e}"}
+        
+        # Check API status
+        client = serviceusage_v1.ServiceUsageClient()
+        service_name = f"projects/{project_id}/services/speech.googleapis.com"
+        
+        try:
+            service = client.get_service(name=service_name)
+            state = service.state.name
+            logger.info(f"[GOOGLE][API_STATUS] Project: {project_id}, State: {state}")
+            return {"project_id": project_id, "api_enabled": state == "ENABLED", "state": state}
+        except Exception as e:
+            logger.error(f"[GOOGLE][API_STATUS] Error checking API: {e}")
+            return {"project_id": project_id, "api_enabled": False, "error": str(e)}
+            
+    except Exception as e:
+        logger.error(f"[GOOGLE][API_STATUS] Failed to check API status: {e}")
+        return {"error": str(e)}
+
 class GoogleStreamingSession:
     def __init__(self, sid: str, language_code: str = None, sample_rate_hz: int = 16000, enable_interim_results: bool = True):
         if speech is None:
             raise RuntimeError("google-cloud-speech is not installed")
+        if ClientOptions is None:
+            raise RuntimeError("google-api-core is not installed")
+            
         self.sid = sid
         self.language_code = language_code or os.getenv("GOOGLE_STT_LANGUAGE", "en-US")
         self.sample_rate_hz = sample_rate_hz
         self.enable_interim_results = enable_interim_results
-        self.client = speech.SpeechClient()
-        self._queue: asyncio.Queue = asyncio.Queue()
+        
+        # Stream restart logic
+        self.streaming_limit = 300  # 5 minutes
+        self.restart_counter = 0
+        self.audio_input = []
+        self.last_audio_input = []
+        self.bridging_offset = 0
+        self.result_end_time = 0
+        self.is_final_end_time = 0
+        self.final_request_end_time = 0
+        self.new_stream = True
+        self.last_transcript_was_final = False
+        self._restart_timer = None
+        
+        # Initialize Google Cloud Speech client with proper credentials
+        try:
+            from api.utils.gdrive import google_api
+            gapi = google_api()
+            
+            # Set environment variables for Google Cloud
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = gapi.fauth
+            
+            # Extract project ID from service account file
+            try:
+                with open(gapi.fauth, 'r') as f:
+                    service_account_data = json.load(f)
+                project_id = service_account_data.get('project_id')
+                if not project_id:
+                    raise ValueError("No project_id found in service account file")
+                os.environ['GOOGLE_CLOUD_PROJECT'] = project_id
+                logger.info(f"[GOOGLE][INIT] Extracted project_id: {project_id}")
+            except Exception as e:
+                logger.error(f"[GOOGLE][INIT] Failed to extract project_id: {e}")
+                raise RuntimeError(f"Failed to extract project_id from service account: {e}")
+            
+            # Initialize client with explicit project ID
+            try:
+                client_options = ClientOptions(quota_project_id=project_id)
+                self.client = speech.SpeechClient(client_options=client_options)
+                logger.info(f"[GOOGLE][INIT] Client initialized with project: {project_id}")
+            except Exception as e:
+                logger.warn(f"[GOOGLE][INIT] ClientOptions failed, using default: {e}")
+                # Fallback to dictionary format
+                try:
+                    client_options = {"quota_project_id": project_id}
+                    self.client = speech.SpeechClient(client_options=client_options)
+                    logger.info(f"[GOOGLE][INIT] Client initialized with dict options, project: {project_id}")
+                except Exception as e2:
+                    logger.warn(f"[GOOGLE][INIT] Dict options failed, using default client: {e2}")
+                    self.client = speech.SpeechClient()
+                    logger.info(f"[GOOGLE][INIT] Client initialized with default settings")
+                    
+        except Exception as e:
+            logger.error(f"[GOOGLE][INIT] Failed to initialize client: {e}")
+            raise RuntimeError(f"Failed to initialize Google Speech client: {e}")
+        
+        # Use synchronous queue for compatibility with Google's streaming API
+        self._queue: queue.Queue = queue.Queue()
         self._stop = asyncio.Event()
         self._task: asyncio.Task | None = None
 
     async def start(self):
         if self._task is None:
             self._task = asyncio.create_task(self._run())
+            # Start periodic restart timer
+            self._restart_timer = asyncio.create_task(self._periodic_restart())
 
     async def stop(self):
         self._stop.set()
         # Put sentinel to unblock generator
-        await self._queue.put(None)
+        self._queue.put(None)
         if self._task:
             try:
                 await self._task
             except Exception:
                 pass
+        # Cancel restart timer
+        if self._restart_timer:
+            self._restart_timer.cancel()
 
     async def add_audio(self, audio_bytes: bytes):
-        await self._queue.put(audio_bytes)
+        # Validate chunk size (10MB limit)
+        if len(audio_bytes) > 10 * 1024 * 1024:
+            logger.warn(f"[GOOGLE][CHUNK_SIZE] Chunk too large: {len(audio_bytes)} bytes, skipping")
+            return
+            
+        # Store audio for bridging
+        self.audio_input.append(audio_bytes)
+        self._queue.put(audio_bytes)
 
-    async def _requests_generator(self):
-        streaming_config = speech.StreamingRecognitionConfig(
-            config=speech.RecognitionConfig(
-                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-                sample_rate_hertz=self.sample_rate_hz,
-                language_code=self.language_code,
-                enable_automatic_punctuation=True,
-                model=os.getenv("GOOGLE_STT_MODEL", "latest_long"),
-            ),
-            interim_results=self.enable_interim_results,
-            single_utterance=False,
-        )
-        yield speech.StreamingRecognizeRequest(streaming_config=streaming_config)
+    def _requests_generator(self):
+        """Synchronous generator for streaming requests"""
         while not self._stop.is_set():
-            chunk = await self._queue.get()
-            if chunk is None:
+            try:
+                chunk = self._queue.get(timeout=0.1)
+                if chunk is None:
+                    break
+                if chunk:
+                    # Handle bridging for stream restarts
+                    if self.bridging_offset > 0:
+                        # Send bridging audio
+                        for audio_chunk in self.last_audio_input:
+                            yield speech.StreamingRecognizeRequest(audio_content=audio_chunk)
+                        self.bridging_offset = 0
+                    
+                    yield speech.StreamingRecognizeRequest(audio_content=chunk)
+            except queue.Empty:
+                continue
+            except Exception as e:
+                logger.error(f"[GOOGLE][GENERATOR] Error: {e}")
                 break
-            if chunk:
-                yield speech.StreamingRecognizeRequest(audio_content=chunk)
 
     async def _run(self):
         loop = asyncio.get_event_loop()
         try:
-            responses = self.client.streaming_recognize(requests=self._requests_generator())
-            async for response in responses:  # type: ignore
+            # Create streaming config
+            streaming_config = speech.StreamingRecognitionConfig(
+                config=speech.RecognitionConfig(
+                    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                    sample_rate_hertz=self.sample_rate_hz,
+                    language_code=self.language_code,
+                    enable_automatic_punctuation=True,
+                    model=os.getenv("GOOGLE_STT_MODEL", "latest_long"),
+                ),
+                interim_results=self.enable_interim_results,
+                single_utterance=False,
+            )
+            
+            # Use correct method signature: streaming_config, requests_generator
+            responses = self.client.streaming_recognize(streaming_config, self._requests_generator())
+            
+            for response in responses:
+                if self._stop.is_set():
+                    break
+                    
                 for result in response.results:
                     if not result.alternatives:
                         continue
+                        
                     transcript = result.alternatives[0].transcript
                     if not transcript:
                         continue
-                    # Emit interim/final similar to Assembly behavior
+                    
+                    # Update timing for stream restart logic
+                    if result.result_end_time.seconds > 0:
+                        self.result_end_time = result.result_end_time.seconds + result.result_end_time.nanos * 1e-9
+                    
                     if result.is_final:
+                        self.is_final_end_time = self.result_end_time
+                        self.last_transcript_was_final = True
                         logger.info(f"[GOOGLE][FINAL] sid={self.sid} text='{transcript}'")
                         asyncio.run_coroutine_threadsafe(
                             sio.emit("audio transcribe google", transcript, room=self.sid),
                             loop,
                         )
                     else:
+                        self.last_transcript_was_final = False
                         logger.info(f"[GOOGLE][INTERIM] sid={self.sid} text='{transcript}'")
+                        
         except Exception as e:
             logger.error(f"[GOOGLE] streaming error sid={self.sid}: {e}")
+            # Handle stream restart on specific errors
+            if hasattr(e, 'code') and e.code == 11:  # RESOURCE_EXHAUSTED
+                logger.info(f"[GOOGLE][RESTART] Stream exhausted, restarting sid={self.sid}")
+                await self._restart_stream()
 
+    async def _restart_stream(self):
+        """Restart the streaming session with bridging"""
+        self.restart_counter += 1
+        logger.info(f"[GOOGLE][RESTART] Restarting stream #{self.restart_counter} for sid={self.sid}")
+        
+        # Reset timing variables
+        self.result_end_time = 0
+        self.is_final_end_time = 0
+        self.final_request_end_time = 0
+        self.new_stream = True
+        
+        # Copy current audio input for bridging
+        self.last_audio_input = self.audio_input.copy()
+        self.bridging_offset = self.final_request_end_time
+        
+        # Restart the run task
+        if self._task:
+            self._task.cancel()
+        self._task = asyncio.create_task(self._run())
+
+    async def _periodic_restart(self):
+        """Periodically restart the stream to avoid timeout"""
+        while not self._stop.is_set():
+            await asyncio.sleep(self.streaming_limit)
+            if not self._stop.is_set():
+                logger.info(f"[GOOGLE][PERIODIC_RESTART] Restarting stream for sid={self.sid}")
+                await self._restart_stream()
+
+
+@sio.on("check google speech api")
+async def check_google_speech_api(sid, data):
+    """Check Google Speech API status"""
+    try:
+        result = check_speech_api_status()
+        await sio.emit("google speech api status", result, room=sid)
+        logger.info(f"[GOOGLE][API_CHECK] Result sent to sid={sid}: {result}")
+    except Exception as e:
+        error_result = {"error": str(e)}
+        await sio.emit("google speech api status", error_result, room=sid)
+        logger.error(f"[GOOGLE][API_CHECK] Error for sid={sid}: {e}")
 
 @sio.on("audio transcribe google")
 async def audio_transcribe_google(sid, data):
@@ -536,30 +726,30 @@ async def audio_transcribe_gemini(sid, data):
 
 @sio.event
 async def connect(sid, environ):
-    print(f"####### Socket Connected with SID: {sid} #######")
+    logger.info(f"####### Socket Connected with SID: {sid} #######")
     # Join the client to a room with its own SID for SID targeting
     await sio.enter_room(sid, sid)
-    print(f"####### Client {sid} joined room {sid} #######")
+    logger.info(f"####### Client {sid} joined room {sid} #######")
     await sio.emit("initial connect", {"message": "socket connection started"}, room=sid)
     
     query_string = environ.get('QUERY_STRING', '')
-    print(f"Query string: {query_string}")
+    logger.info(f"Query string: {query_string}")
     
     asgi_scope = environ.get('asgi.scope', {})
     scope_query = asgi_scope.get('query_string', b'').decode('utf-8')
-    print(f"ASGI scope query string: {scope_query}")
+    logger.info(f"ASGI scope query string: {scope_query}")
     
     parsed_query = urllib.parse.parse_qs(query_string)
     run_stage = parsed_query.get('run_stage', [''])[0]
-    print(f"Parsed run_stage: {run_stage}")
+    logger.info(f"Parsed run_stage: {run_stage}")
         
     # Also try the session method
     try:
         await sio.save_session(sid, {'run_stage': run_stage})
         session = await sio.get_session(sid)
-        print(f"Session after save: {session}")
+        logger.info(f"Session after save: {session}")
     except Exception as e:
-        print(f"Session error: {e}")
+        logger.info(f"Session error: {e}")
 
 @sio.on("subscribe_to_processing")
 async def subscribe_to_processing(sid, data):
@@ -582,7 +772,7 @@ async def subscribe_to_processing(sid, data):
             "room": room,
             "message": f"Subscribed to processing updates for job {job_id}, user {user_id}"
         }, room=sid)
-        print(f"📡 [DEBUG] User {user_id} subscribed to room {room} for job {job_id}")
+        logger.info(f"📡 [DEBUG] User {user_id} subscribed to room {room} for job {job_id}")
     else:
         await sio.emit("processing_error", {
             "error": f"Missing job_id or user_id for subscription. Got job_id={job_id}, user_id={user_id}"
@@ -590,7 +780,7 @@ async def subscribe_to_processing(sid, data):
     
 @sio.on("initial connect")
 async def connect(sid):
-    print("####### Socket Connected #######")
+    logger.info("####### Socket Connected #######")
     await sio.emit(
         "initial connect",
         {"message": "socket connection started"}, 
@@ -612,32 +802,300 @@ async def disconnect(sid):
             logger.info(f"Session closed cleanly on disconnect (sid={sid})")
         except Exception as e:
             logger.warn(f"Error while closing session on disconnect (sid={sid}): {e}")
+    
+    # Clean up AssemblyAI Universal-Streaming sessions
+    logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Cleaning up AssemblyAI session for sid={sid}")
+    logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Current AssemblyAI sessions: {list(assemblyai_streams.keys())}")
+    
+    assemblyai_session = assemblyai_streams.pop(sid, None)
+    if assemblyai_session is not None:
+        try:
+            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Found session, calling disconnect for sid={sid}")
+            await assemblyai_session.disconnect()
+            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] AssemblyAI session closed cleanly on disconnect (sid={sid})")
+        except Exception as e:
+            logger.warn(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Error while closing AssemblyAI session on disconnect (sid={sid}): {e}")
+            logger.warn(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Error type: {type(e)}")
+    else:
+        logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] No AssemblyAI session found for sid={sid}")
+# -------------------------- S3 Background Upload -------------------------- #
+async def upload_audio_to_s3_background(accumulated_audio, sid, sessionId, message_id):
+    """Background task to upload audio to S3 and update the specific message with URL."""
+    try:
+        from api.utils import s3_client as _s3h
+        from datetime import datetime
+        
+        # Combine all audio chunks
+        complete_audio = b''.join(accumulated_audio)
+        logger.info(f"[S3 UPLOAD] Background upload started for sid={sid}, sessionId={sessionId}, message_id={message_id}, total_size={len(complete_audio)} bytes")
+        
+        # Generate unique filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"audio_{sid}_{timestamp}.wav"
+        
+        # Pick bucket
+        def _pick_bucket():
+            buckets = _s3h.list_buckets()
+            if 'tenx-parrot-assets' not in buckets:
+                raise Exception("tenx-parrot-assets bucket not found or not accessible")
+            return 'tenx-parrot-assets'
+        bucket = _pick_bucket()
+        
+        # Set prefix and key for audio files
+        prefix = "audio"
+        key = f"{prefix}/{filename}"
+        
+        # Upload using s3_client.upload_bytes_and_get_url
+        audio_url, _ = _s3h.upload_bytes_and_get_url(bucket, complete_audio, key=key)
+        logger.info(f"[S3 UPLOAD] Background upload completed for sid={sid}, sessionId={sessionId}, message_id={message_id}, URL: {audio_url}")
+        
+        # Update the specific message with the audio URL
+        try:
+            from api.llm.ipersona import ipersona_strapi as strapi
+            success = strapi.update_message_with_audio_url(message_id, audio_url)
+            if success:
+                logger.info(f"[S3 UPLOAD] Successfully updated message {message_id} with audio URL")
+            else:
+                logger.error(f"[S3 UPLOAD] Failed to update message {message_id} with audio URL")
+        except Exception as db_error:
+            logger.error(f"[S3 UPLOAD] Failed to update database for message_id={message_id}: {db_error}")
+        
+    except Exception as e:
+        logger.error(f"[S3 UPLOAD] Background upload failed for sid={sid}, sessionId={sessionId}, message_id={message_id}: {e}")
+
+# -------------------------- AssemblyAI Universal-Streaming -------------------------- #
+class AssemblyAIStreamingSession:
+    def __init__(self, sid: str):
+        try:
+            from assemblyai.streaming.v3 import (
+                StreamingClient,
+                StreamingClientOptions,
+                StreamingParameters,
+                StreamingEvents,
+                BeginEvent,
+                TurnEvent,
+                TerminationEvent,
+                StreamingError,
+            )
+            self.sid = sid
+            self.connected = False
+            self.client = None
+            self.main_loop = None
+            self._setup_client()
+        except ImportError as e:
+            logger.error(f"[ASSEMBLYAI] Failed to import Universal-Streaming: {e}")
+            raise RuntimeError("AssemblyAI Universal-Streaming not available")
+
+    def _setup_client(self):
+        """Create a new StreamingClient instance"""
+        from assemblyai.streaming.v3 import (
+            StreamingClient,
+            StreamingClientOptions,
+            StreamingEvents,
+            BeginEvent,
+            TurnEvent,
+            TerminationEvent,
+            StreamingError,
+        )
+        
+        # Store reference to main event loop
+        try:
+            self.main_loop = asyncio.get_running_loop()
+            logger.info(f"[ASSEMBLYAI][DEBUG] Captured main event loop for sid={self.sid}")
+        except RuntimeError:
+            logger.warn(f"[ASSEMBLYAI][DEBUG] No running event loop found for sid={self.sid}")
+            self.main_loop = None
+        
+        logger.info(f"[ASSEMBLYAI][DEBUG] Creating new StreamingClient for sid={self.sid}")
+        logger.info(f"[ASSEMBLYAI][DEBUG] API Key present: {bool(config.assemblyai.api_key)}")
+        logger.info(f"[ASSEMBLYAI][DEBUG] API Host: streaming.assemblyai.com")
+        
+        # Create a fresh client instance
+        self.client = StreamingClient(
+            StreamingClientOptions(
+                api_key=config.assemblyai.api_key,
+                api_host="streaming.assemblyai.com",
+            )
+        )
+        
+        logger.info(f"[ASSEMBLYAI][DEBUG] StreamingClient created successfully for sid={self.sid}")
+        
+        def on_begin(client, event: BeginEvent):
+            logger.info(f"[ASSEMBLYAI][DEBUG][BEGIN] sid={self.sid} session_id={event.id}")
+            logger.info(f"[ASSEMBLYAI][DEBUG][BEGIN] Setting connected=True for sid={self.sid}")
+            self.connected = True
+
+        def on_turn(client, event: TurnEvent):
+            try:
+                logger.info(f"[ASSEMBLYAI][DEBUG][TURN] sid={self.sid} received turn event")
+                logger.info(f"[ASSEMBLYAI][DEBUG][TURN] transcript='{event.transcript}' end_of_turn={event.end_of_turn}")
+                logger.info(f"[ASSEMBLYAI][DEBUG][TURN] turn_is_formatted={event.turn_is_formatted}")
+                
+                if not event.transcript:
+                    logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Empty transcript, skipping emit for sid={self.sid}")
+                    return
+                
+                # Only emit final formatted transcripts to avoid repetition
+                if event.end_of_turn and event.turn_is_formatted:
+                    logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Emitting FINAL formatted transcript to UI for sid={self.sid}")
+                    
+                    # Use stored main event loop to emit to socket
+                    if self.main_loop and not self.main_loop.is_closed():
+                        logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Using stored main event loop for sid={self.sid}")
+                        
+                        asyncio.run_coroutine_threadsafe(
+                            sio.emit("audio transcribe", event.transcript, room=self.sid),
+                            self.main_loop
+                        )
+                        logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Final transcript emitted successfully for sid={self.sid}")
+                        
+                        # Log end of turn but don't emit completion signal here
+                        logger.info(f"[ASSEMBLYAI][DEBUG][TURN] End of turn detected for sid={self.sid}")
+                    else:
+                        logger.warn(f"[ASSEMBLYAI][DEBUG][TURN] No valid main event loop available for sid={self.sid}")
+                        logger.warn(f"[ASSEMBLYAI][DEBUG][TURN] Skipping emit - final transcript: '{event.transcript}'")
+                else:
+                    # Log interim transcripts but don't emit them
+                    if event.end_of_turn and not event.turn_is_formatted:
+                        logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Skipping interim transcript (waiting for formatted): '{event.transcript}'")
+                    elif not event.end_of_turn:
+                        logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Skipping partial transcript (not end of turn): '{event.transcript}'")
+                    
+            except Exception as emit_err:
+                logger.error(f"[ASSEMBLYAI][DEBUG][TURN] Emit error sid={self.sid}: {emit_err}")
+                logger.error(f"[ASSEMBLYAI][DEBUG][TURN] Error type: {type(emit_err)}")
+
+        def on_terminated(client, event: TerminationEvent):
+            logger.info(f"[ASSEMBLYAI][DEBUG][TERMINATED] sid={self.sid} duration={event.audio_duration_seconds}s")
+            logger.info(f"[ASSEMBLYAI][DEBUG][TERMINATED] Setting connected=False for sid={self.sid}")
+            self.connected = False
+            
+            # Emit completion signal when transcription is fully terminated
+            if self.main_loop:
+                logger.info(f"[ASSEMBLYAI][DEBUG][TERMINATED] Emitting transcription_complete for sid={self.sid}")
+                asyncio.run_coroutine_threadsafe(
+                    sio.emit("transcription_complete", {
+                        "status": "completed",
+                        "message": "Audio transcription finished"
+                    }, room=self.sid), self.main_loop
+                )
+                logger.info(f"[ASSEMBLYAI][DEBUG][TERMINATED] transcription_complete emitted successfully for sid={self.sid}")
+            else:
+                logger.warn(f"[ASSEMBLYAI][DEBUG][TERMINATED] No valid main event loop available for sid={self.sid}")
+
+        def on_error(client, error: StreamingError):
+            logger.error(f"[ASSEMBLYAI][DEBUG][ERROR] sid={self.sid}: {error}")
+            logger.error(f"[ASSEMBLYAI][DEBUG][ERROR] Error type: {type(error)}")
+
+        # Register event handlers
+        logger.info(f"[ASSEMBLYAI][DEBUG] Registering event handlers for sid={self.sid}")
+        self.client.on(StreamingEvents.Begin, on_begin)
+        self.client.on(StreamingEvents.Turn, on_turn)
+        self.client.on(StreamingEvents.Termination, on_terminated)
+        self.client.on(StreamingEvents.Error, on_error)
+        logger.info(f"[ASSEMBLYAI][DEBUG] Event handlers registered successfully for sid={self.sid}")
+
+    async def connect(self):
+        """Connect to AssemblyAI streaming service"""
+        try:
+            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Attempting to connect for sid={self.sid}")
+            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Current connected state: {self.connected}")
+            
+            if self.connected:
+                logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Already connected for sid={self.sid}")
+                return
+                
+            from assemblyai.streaming.v3 import StreamingParameters
+            
+            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Creating StreamingParameters for sid={self.sid}")
+            params = StreamingParameters(
+                sample_rate=16000,
+                format_turns=True,
+            )
+            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] StreamingParameters created: sample_rate=16000, format_turns=True")
+            
+            # Connect only once per client instance
+            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Calling client.connect() for sid={self.sid}")
+            self.client.connect(params)
+            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] client.connect() completed for sid={self.sid}")
+            # Note: connected state will be set to True in on_begin event handler
+            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Connection initiated for sid={self.sid}, waiting for on_begin event")
+        except Exception as e:
+            logger.error(f"[ASSEMBLYAI][DEBUG][CONNECT] Failed for sid={self.sid}: {e}")
+            logger.error(f"[ASSEMBLYAI][DEBUG][CONNECT] Error type: {type(e)}")
+            raise
+
+    async def stream_audio(self, audio_bytes: bytes):
+        """Stream audio data to AssemblyAI"""
+        try:
+            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Starting stream_audio for sid={self.sid}")
+            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Audio bytes length: {len(audio_bytes)}")
+            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Current connected state: {self.connected}")
+            
+            # Connect only if not already connected
+            if not self.connected:
+                logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Not connected, calling connect() for sid={self.sid}")
+                await self.connect()
+                logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Connect completed, connected state: {self.connected}")
+            
+            # Send raw audio bytes directly to Universal-Streaming API
+            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Sending raw audio bytes for sid={self.sid}")
+            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Audio bytes type: {type(audio_bytes)}, length: {len(audio_bytes)}")
+            
+            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Calling client.stream() for sid={self.sid}")
+            self.client.stream(audio_bytes)
+            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] client.stream() completed for sid={self.sid}")
+            
+        except Exception as e:
+            logger.error(f"[ASSEMBLYAI][DEBUG][STREAM] Error for sid={self.sid}: {e}")
+            logger.error(f"[ASSEMBLYAI][DEBUG][STREAM] Error type: {type(e)}")
+            # If connection failed, don't try to reconnect - create new session instead
+            if "threads can only be started once" in str(e):
+                logger.error(f"[ASSEMBLYAI][DEBUG][STREAM] Threading error detected for sid={self.sid}, will create new session on next audio chunk")
+
+    async def disconnect(self):
+        """Disconnect from AssemblyAI streaming service"""
+        try:
+            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Attempting to disconnect for sid={self.sid}")
+            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Current connected state: {self.connected}")
+            
+            if not self.connected:
+                logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Already disconnected for sid={self.sid}")
+                return
+                
+            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Calling client.disconnect(terminate=True) for sid={self.sid}")
+            self.client.disconnect(terminate=True)
+            self.connected = False
+            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Disconnected for sid={self.sid}")
+        except Exception as e:
+            logger.error(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Error for sid={self.sid}: {e}")
+            logger.error(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Error type: {type(e)}")
+            self.connected = False
+
 # Improved assembly streaming with proper session management
 @sio.on("audio transcribe")
 async def audio_endpoint(sid, data):
-    """Handle audio transcribe event with improved session management."""
-    loop = asyncio.get_event_loop()
+    """Handle audio transcribe event with improved session management using Universal-Streaming."""
+    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] ===== AUDIO TRANSCRIBE EVENT START =====")
+    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] sid={sid}")
+    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] data keys: {list(data.keys()) if data else 'None'}")
+    
     audioblob = data.get('audioblob')
 
     # Log incoming audio data
     if audioblob:
         blob_length = len(audioblob) if hasattr(audioblob, '__len__') else 'unknown'
-        logger.info(f"[AUDIO RECEIVED] sid={sid}, audioblob length={blob_length}, type={type(audioblob)}")
+        logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] audioblob length={blob_length}, type={type(audioblob)}")
     else:
-        logger.info(f"[AUDIO RECEIVED] sid={sid}, audioblob=None (stop signal)")
+        logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] audioblob=None (stop signal)")
 
     # Treat None audioblob as an explicit stop signal from client
     if audioblob is None:
         logger.info(f"Stop requested by client (sid={sid}). Closing session if active...")
-        existing = transcribers.pop(sid, None)
-        if existing is not None:
+        session = assemblyai_streams.pop(sid, None)
+        if session is not None:
             try:
-                if hasattr(existing, 'close') and callable(getattr(existing, 'close')):
-                    existing.close()
-                elif hasattr(existing, 'disconnect') and callable(getattr(existing, 'disconnect')):
-                    existing.disconnect()
-                elif hasattr(existing, 'terminate') and callable(getattr(existing, 'terminate')):
-                    existing.terminate()
+                await session.disconnect()
                 logger.info(f"Session closed cleanly after stop (sid={sid})")
             except Exception as e:
                 logger.warn(f"Error while closing session on stop (sid={sid}): {e}")
@@ -663,64 +1121,48 @@ async def audio_endpoint(sid, data):
     normalized_length = len(audio_bytes) if hasattr(audio_bytes, '__len__') else 'unknown'
     logger.info(f"[AUDIO NORMALIZED] sid={sid}, normalized_length={normalized_length}")
 
-    def on_open(session_opened: aai.RealtimeSessionOpened):
-        logger.info(f"Session opened: {session_opened.session_id} (sid={sid})")
-
-    def on_data(transcript: aai.RealtimeTranscript):
-        try:
-            if not transcript.text:
-                return
-            # Preserve legacy behavior: emit bare string only on final
-            if isinstance(transcript, aai.RealtimeFinalTranscript):
-                logger.info(f"Final transcript (sid={sid}): {transcript.text}")
-                logger.info(f"[SOCKET EMIT] Sending final transcript to sid={sid}: '{transcript.text}'")
-                asyncio.run_coroutine_threadsafe(
-                    sio.emit("audio transcribe", transcript.text, room=sid),
-                    loop
-                )
-                logger.info(f"[SOCKET EMIT] Final transcript sent successfully to sid={sid}")
-                
-            else:
-                # Interim log (lighter)
-                logger.info(f"Interim transcript (sid={sid}): {transcript.text}")
-        except Exception as emit_err:
-            logger.error(f"Emit error: {emit_err}")
-
-    def on_error(error: aai.RealtimeError):
-        logger.error(f"An error occurred: {error}")
-
-    def on_close():
-        logger.info(f"Closing Session (sid={sid})")
-        transcribers.pop(sid, None)
-
-        asyncio.run_coroutine_threadsafe(
-            sio.emit("transcription_complete", {
-                "status": "completed",
-                "message": "Audio transcription finished"
-            }, room=sid), loop
-        )
-        logger.info(f"[SOCKET EMIT] transcription_complete sent successfully to sid={sid}")
-
     # Create a session-scoped transcriber if missing
-    if sid not in transcribers or transcribers.get(sid) is None:
-        logger.info(f"Creating new transcriber for sid={sid}")
-        transcribers[sid] = aai.RealtimeTranscriber(
-            sample_rate=16000,
-            on_data=on_data,
-            on_error=on_error,
-            on_open=on_open,
-            on_close=on_close
-        )
-        transcribers[sid].connect()
-        logger.info(f"Transcriber connected for sid={sid}")
+    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Checking if session exists for sid={sid}")
+    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Current sessions: {list(assemblyai_streams.keys())}")
+    
+    if sid not in assemblyai_streams or assemblyai_streams.get(sid) is None:
+        try:
+            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Creating new AssemblyAI Universal-Streaming session for sid={sid}")
+            session = AssemblyAIStreamingSession(sid=sid)
+            assemblyai_streams[sid] = session
+            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Session created and stored for sid={sid}")
+            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Updated sessions: {list(assemblyai_streams.keys())}")
+            # Don't connect immediately - let stream_audio handle connection
+            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] AssemblyAI session created for sid={sid}")
+        except Exception as e:
+            logger.error(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Failed to create AssemblyAI session for sid={sid}: {e}")
+            logger.error(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Error type: {type(e)}")
+            return
+    else:
+        logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Using existing session for sid={sid}")
 
     # Stream audio chunk for this sid
     try:
-        logger.info(f"[AUDIO STREAM] Streaming audio to transcriber for sid={sid}, length={normalized_length}")
-        transcribers[sid].stream(audio_bytes)
-        logger.info(f"[AUDIO STREAM] Audio streamed successfully for sid={sid}")
+        logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Starting audio stream for sid={sid}")
+        logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Audio bytes length: {normalized_length}")
+        logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Session object: {assemblyai_streams[sid]}")
+        
+        await assemblyai_streams[sid].stream_audio(audio_bytes)
+        logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Audio streamed successfully for sid={sid}")
     except Exception as e:
-        logger.error(f"Error in audio streaming for sid={sid}: {str(e)}")
+        logger.error(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Error in audio streaming for sid={sid}: {str(e)}")
+        logger.error(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Error type: {type(e)}")
+        # If threading error, remove the session so a new one will be created
+        if "threads can only be started once" in str(e):
+            logger.warn(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Threading error detected, removing corrupted session for sid={sid}")
+            assemblyai_streams.pop(sid, None)
+            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Session removed, will create new one on next audio chunk")
+        elif "Attempted to send invalid message" in str(e):
+            logger.warn(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Invalid message error detected, removing corrupted session for sid={sid}")
+            assemblyai_streams.pop(sid, None)
+            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Session removed due to invalid message error")
+    
+    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] ===== AUDIO TRANSCRIBE EVENT END =====")
 
 # -------------------------- Whisper Batch Transcription -------------------------- #
 @sio.on("audio transcribe whisper")
@@ -792,7 +1234,6 @@ async def audio_transcribe_whisper(sid, data):
 # executor = ThreadPoolExecutor(max_workers=105)  
 
 async def synthesize_text(text):
-    print("Received text for synthesis:", text)
     try:
         response = client.audio.speech.create(
             model="tts-1",
@@ -819,9 +1260,9 @@ async def audio_end_point(sid, data):
     run_stage = session.get('run_stage', None)  
 
     if run_stage is None:
-        print(f"Run stage not found in session for sid: {sid}")
+        logger.info(f"Run stage not found in session for sid: {sid}")
     else:
-        print(f"Run stage retrieved: {run_stage}")
+        logger.info(f"Run stage retrieved: {run_stage}")
         
     logger.info("audio socket response", data["response"], data['user_session']['id'])
     try:
@@ -1051,12 +1492,13 @@ async def audio_end_point(sid, data):
                     
                     # Calculate time limit synchronously
                     timelimit = await util.calculate_template_time_limit_sync(
-                        accumulated_message,
+                        full_accumulated_message,
                         section,
                         sessionId,
                         run_stage,
                         sio,
-                        sid
+                        sid,
+                        chat=False
                     )
                     
                     logger.info(f"[SYNC] Time limit calculated: {timelimit}")
@@ -1080,10 +1522,17 @@ async def audio_end_point(sid, data):
                
             audio_chunks = await asyncio.gather(*tasks)
             
+            # Accumulate audio data for S3 upload
+            accumulated_audio = []
+            
             for i, audio_data in enumerate(audio_chunks):
                 if isinstance(audio_data, dict) and 'error' in audio_data:
-                    print(f"Error: {audio_data['error']}")
+                    logger.error(f"Error: {audio_data['error']}")
                     continue
+                
+                # Accumulate audio data
+                if audio_data:
+                    accumulated_audio.append(audio_data)
                 
                 # Log blob length instead of full content
                 blob_length = len(audio_data) if audio_data else 0
@@ -1104,6 +1553,9 @@ async def audio_end_point(sid, data):
             logger.info(f"[SOCKET EMIT] Sending audio-single-text-chunk-done to sid={sid}")
             await sio.emit("audio-single-text-chunk-done", room=sid)
             logger.info(f"[SOCKET EMIT] audio-single-text-chunk-done sent successfully to sid={sid}")
+            
+            # Prepare for background S3 upload
+            audio_upload_data = accumulated_audio if accumulated_audio else None
 
             # Perform real-time response evaluation if applicable
             if data['response'] is not [None, ""]:
@@ -1133,18 +1585,24 @@ async def audio_end_point(sid, data):
        
         # Insert the message or conclude the interview if the chat count exceeds the limit
         if chat_count < total_questions + 1:
-            print("Full MESSAGE -=====")
-            print(full_accumulated_message)
-            print("Full MESSAGE -=====")
             final = 'false'
-            strapi.step2_insert_message(
+            # Save message first and get message ID
+            message_id = strapi.step2_insert_message(
                 run_stage, 
                 data, 
                 timelimit, 
                 full_accumulated_message, 
                 realtime_evaluation, 
                 final,
-                sessionId)
+                sessionId,
+                None)  # No audio URL initially
+            
+            # Start background S3 upload if we have audio data
+            if audio_upload_data and message_id:
+                upload_task = asyncio.create_task(
+                    upload_audio_to_s3_background(audio_upload_data, sid, sessionId, message_id)
+                )
+                logger.info(f"[S3 UPLOAD] Started background upload task for sid={sid}, sessionId={sessionId}, message_id={message_id}")
         else:
             message = 'interview over'
             logger.info(f"[SOCKET EMIT] Sending interview done to sid={sid}: {message}")
@@ -1255,7 +1713,6 @@ async def interview_endpoint(sid, data):
 
         try:
             if data.get('template'):
-                print("Template flag is set, processing template-based interview")
                 try:
                     template_id = data.get('template_id')
                     if not template_id:
@@ -1467,7 +1924,8 @@ async def interview_endpoint(sid, data):
                             sessionId,
                             run_stage,
                             sio,
-                            sid
+                            sid,
+                            chat=True
                         )
                         
                         logger.info(f"[SYNC] Time limit calculated: {timelimit}")
@@ -1536,14 +1994,19 @@ async def interview_endpoint(sid, data):
             if chat_count < total_questions + 1:
                 final = 'false'
                 try:
-                    strapi.step2_insert_message(
+                    # Save message first and get message ID
+                    message_id = strapi.step2_insert_message(
                         run_stage, 
                         data, 
                         timelimit, 
                         accumulated_message, 
                         realtime_evaluation, 
                         final,
-                        sessionId)
+                        sessionId,
+                        None)  # No audio URL initially
+                    
+                    # Note: No S3 upload for interview endpoint as it doesn't handle audio
+                        
                 except Exception as insert_message_error:
                     logger.error(f"Failed to insert assistant message: {str(insert_message_error)}")
 

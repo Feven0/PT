@@ -8,10 +8,16 @@ Your task is to match each candidate **answer** to its **best matching** questio
 IMPORTANT:
 - You MUST treat each full answer (i.e., each item in the answers list) as ONE unit.
 - DO NOT split or break the answer into pieces. Do not assign parts of the same answer to different questions.
+- DO NOT split the question, each of them are separately presentend so address them as they are
 - Each answer must be matched with at most ONE question (its strongest match).
 - A question may be unmatched if no suitable answer exists.
 
 MATCHING INSTRUCTIONS:
+- A valid match should directly address the specific topic or concept asked in the question.
+- The answer must show understanding of what was specifically asked, not just the general area.
+- Accept answers that demonstrate knowledge of the specific topic, even if basic or beginner-level.
+- Reject answers that only discuss the broader field without addressing the specific question.
+- Example: If asked about "reinforcement learning", an answer only about "machine learning in general" without specifically addressing reinforcement learning should score 40-50 (rejected) because it doesn't address the specific question asked.
 
 1. **Do not rely on order**. Match answers to questions by meaning, not position.
 2. Each answer can be matched to only one question (best match).
@@ -43,7 +49,10 @@ For each matched pair, assign a relevance_score between 0 and 100.
 
 
 OUTPUT FORMAT:
-Return a JSON list of matched pairs like this:
+Return a JSON list that includes ALL questions from the questions list. For each question:
+
+1. If there's a matching answer (score ≥ 60), include the matched pair
+2. If there's no matching answer, include the question with score 0
 
 ```json
 [
@@ -55,8 +64,14 @@ Return a JSON list of matched pairs like this:
   },
   {
     "question": "put the question",
-    "answer": "put the answer",
-    "relevance_score": "put a relevance score result if the answer address the question",
-    "reason": "put a reason for why u gave the score"
+    "answer": null,
+    "relevance_score": 0,
+    "reason": "No answer provided for this question"
   }
 ]
+```
+
+IMPORTANT: 
+- Include ALL questions from the questions list in the output
+- Unanswered questions should have "answer": null and "relevance_score": 0
+- Only return matched pairs with score ≥ 60 for answered questions
