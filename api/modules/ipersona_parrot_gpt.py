@@ -501,13 +501,10 @@ async def helper_func(
         interview_question_json = None
         realtime_evaluation = None
         status = None
-        print("QUESTION COUNT *******************************************", count, question_count)  
-        print("CHAT COUNT *******************************************", chat_count, template_id)
+
         if chat_count < question_count + 2:
             if data['response']:
-                print("data['response'] is not none *******************************************")
                 if count is not None:
-                    print("count is not none *******************************************")
                     interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type, template_id, sessionId, run_stage) 
                   
                     # await append_asked_question_number_from_sections(
@@ -516,25 +513,13 @@ async def helper_func(
                     #     sessionId,
                     #     run_stage)
                 else:
-                    print("count is None - entering followup logic *******************************************")
-                    print("DEBUG: template_id check - not template_itemmplate =", template)
                     if not template:
-                        print("template_id is falsy - checking followup *******************************************")
                         response = await check_if_followup(data['response'], type)
-                        print("response is followup *******************************************", response)
                         if not response:
-                            # print("response is not none *******************************************")
                             interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type, template_id, sessionId, run_stage)
-                            # print("interview_question_json is *******************************************")
-                            # print(section)
-                            # print("interview_question_json is *******************************************") 
                         else:
-                            # print("response is true, generating followup *******************************************")
                             interview_question_json = await generate_followup(data, type)
-                            # print(interview_question_json)
-                            print("interview_question_json is *******************************************")
                     else:
-                        print("template_id is truthy - skipping followup logic *******************************************")
                         interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type, template_id, sessionId, run_stage)
                         # await append_asked_question_number_from_sections(
                         #     interview_question_json, 
@@ -544,7 +529,6 @@ async def helper_func(
 
                         
             else:
-                # print("data is none *******************************************")
                 interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type, template_id, sessionId, run_stage) 
                 # await append_asked_question_number_from_sections(
                 #         interview_question_json, 
@@ -553,7 +537,6 @@ async def helper_func(
                 #         run_stage)
    
         else:  
-            print("Final else part ******************************************* question_count", question_count)
             realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId, type)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
             logger.info(f"Realtime evaluation is: {realtime_evaluation}")

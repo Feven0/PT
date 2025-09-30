@@ -17,7 +17,7 @@ def calculate_time_limit(response):
         return {'error': str(e)}  
  
 
-def step1_insert_message(run_stage, data, sessionId):
+def step1_insert_message(run_stage, data, sessionId, audio_url=None):
     try:
         # sessionId =  data['user_session']['id']      
         
@@ -29,7 +29,8 @@ def step1_insert_message(run_stage, data, sessionId):
                     "content": {
                         "response": data['response'],
                         "time_taken": data['time_taken'],
-                        "realtime_evaluation": "null"
+                        "realtime_evaluation": "null",
+                        "url": audio_url
                     }
                 },
             },
@@ -37,8 +38,25 @@ def step1_insert_message(run_stage, data, sessionId):
         }
 
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
-        ipersona_message.save_message(params=message_data, nopp=True, dataframe=False)
-        
+        saved_message = ipersona_message.save_message(params=message_data, nopp=True, dataframe=False)
+        # Return the message ID for background S3 upload
+        # The response structure is: {'data': {'id': '18442', 'attributes': {...}}}
+        if saved_message and isinstance(saved_message, dict):
+            if 'id' in saved_message:
+                message_id = saved_message['id']
+                logger.info(f"[STEP2_INSERT][DEBUG] Message saved with ID: {message_id}")
+                return message_id
+            elif 'data' in saved_message and isinstance(saved_message['data'], dict) and 'id' in saved_message['data']:
+                message_id = saved_message['data']['id']
+                logger.info(f"[STEP2_INSERT][DEBUG] Message saved with ID: {message_id}")
+                return message_id
+            else:
+                logger.warn(f"[STEP2_INSERT][DEBUG] Could not extract message ID from saved message structure: {saved_message}")
+                return None
+        else:
+            logger.warn(f"[STEP2_INSERT][DEBUG] Could not extract message ID from saved message: {saved_message}")
+            return None
+            
     except Exception as e:
         logger.error(f"Saving to db failed: ${str(e)}")
         return {'error': str(e)}

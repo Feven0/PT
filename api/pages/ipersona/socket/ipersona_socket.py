@@ -867,20 +867,14 @@ async def upload_audio_to_s3_background(accumulated_audio, sid, sessionId, messa
 class AssemblyAIStreamingSession:
     def __init__(self, sid: str):
         try:
-            from assemblyai.streaming.v3 import (
-                StreamingClient,
-                StreamingClientOptions,
-                StreamingParameters,
-                StreamingEvents,
-                BeginEvent,
-                TurnEvent,
-                TerminationEvent,
-                StreamingError,
-            )
             self.sid = sid
             self.connected = False
             self.client = None
             self.main_loop = None
+            # Accumulate raw audio bytes for the current turn; cleared at end_of_turn
+            self.turn_buffer: bytearray = bytearray()
+            # Accumulate all raw audio bytes across the session until stop/termination
+            self.session_buffer: bytearray = bytearray()
             self._setup_client()
         except ImportError as e:
             logger.error(f"[ASSEMBLYAI] Failed to import Universal-Streaming: {e}")
@@ -906,10 +900,6 @@ class AssemblyAIStreamingSession:
             logger.warn(f"[ASSEMBLYAI][DEBUG] No running event loop found for sid={self.sid}")
             self.main_loop = None
         
-        logger.info(f"[ASSEMBLYAI][DEBUG] Creating new StreamingClient for sid={self.sid}")
-        logger.info(f"[ASSEMBLYAI][DEBUG] API Key present: {bool(config.assemblyai.api_key)}")
-        logger.info(f"[ASSEMBLYAI][DEBUG] API Host: streaming.assemblyai.com")
-        
         # Create a fresh client instance
         self.client = StreamingClient(
             StreamingClientOptions(
@@ -917,42 +907,42 @@ class AssemblyAIStreamingSession:
                 api_host="streaming.assemblyai.com",
             )
         )
-        
-        logger.info(f"[ASSEMBLYAI][DEBUG] StreamingClient created successfully for sid={self.sid}")
-        
+                
         def on_begin(client, event: BeginEvent):
-            logger.info(f"[ASSEMBLYAI][DEBUG][BEGIN] sid={self.sid} session_id={event.id}")
-            logger.info(f"[ASSEMBLYAI][DEBUG][BEGIN] Setting connected=True for sid={self.sid}")
             self.connected = True
 
         def on_turn(client, event: TurnEvent):
             try:
-                logger.info(f"[ASSEMBLYAI][DEBUG][TURN] sid={self.sid} received turn event")
-                logger.info(f"[ASSEMBLYAI][DEBUG][TURN] transcript='{event.transcript}' end_of_turn={event.end_of_turn}")
-                logger.info(f"[ASSEMBLYAI][DEBUG][TURN] turn_is_formatted={event.turn_is_formatted}")
                 
                 if not event.transcript:
-                    logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Empty transcript, skipping emit for sid={self.sid}")
                     return
                 
                 # Only emit final formatted transcripts to avoid repetition
                 if event.end_of_turn and event.turn_is_formatted:
-                    logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Emitting FINAL formatted transcript to UI for sid={self.sid}")
                     
                     # Use stored main event loop to emit to socket
                     if self.main_loop and not self.main_loop.is_closed():
-                        logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Using stored main event loop for sid={self.sid}")
                         
                         asyncio.run_coroutine_threadsafe(
                             sio.emit("audio transcribe", event.transcript, room=self.sid),
                             self.main_loop
                         )
                         logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Final transcript emitted successfully for sid={self.sid}")
+                        # Log accumulated bytes for this final transcript, then clear for next turn
+                        try:
+                            total_bytes = len(self.turn_buffer)
+                            logger.info(f"[ASSEMBLYAI][DEBUG][TURN][BYTES] sid={self.sid} final_turn_audio_bytes={total_bytes}")
+                        except Exception as be:
+                            logger.warn(f"[ASSEMBLYAI][DEBUG][TURN][BYTES] Failed to compute length sid={self.sid}: {be}")
+                        finally:
+                            try:
+                                self.turn_buffer.clear()
+                            except Exception:
+                                pass
                         
                         # Log end of turn but don't emit completion signal here
                         logger.info(f"[ASSEMBLYAI][DEBUG][TURN] End of turn detected for sid={self.sid}")
                     else:
-                        logger.warn(f"[ASSEMBLYAI][DEBUG][TURN] No valid main event loop available for sid={self.sid}")
                         logger.warn(f"[ASSEMBLYAI][DEBUG][TURN] Skipping emit - final transcript: '{event.transcript}'")
                 else:
                     # Log interim transcripts but don't emit them
@@ -962,17 +952,24 @@ class AssemblyAIStreamingSession:
                         logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Skipping partial transcript (not end of turn): '{event.transcript}'")
                     
             except Exception as emit_err:
-                logger.error(f"[ASSEMBLYAI][DEBUG][TURN] Emit error sid={self.sid}: {emit_err}")
                 logger.error(f"[ASSEMBLYAI][DEBUG][TURN] Error type: {type(emit_err)}")
 
         def on_terminated(client, event: TerminationEvent):
-            logger.info(f"[ASSEMBLYAI][DEBUG][TERMINATED] sid={self.sid} duration={event.audio_duration_seconds}s")
-            logger.info(f"[ASSEMBLYAI][DEBUG][TERMINATED] Setting connected=False for sid={self.sid}")
             self.connected = False
+            # Log total accumulated session bytes and clear the buffer
+            try:
+                total_session_bytes = len(self.session_buffer)
+                logger.info(f"[ASSEMBLYAI][DEBUG][TERMINATED][BYTES] sid={self.sid} total_session_audio_bytes={total_session_bytes}")
+            except Exception as se:
+                logger.warn(f"[ASSEMBLYAI][DEBUG][TERMINATED][BYTES] Failed to compute session bytes sid={self.sid}: {se}")
+            finally:
+                try:
+                    self.session_buffer.clear()
+                except Exception:
+                    pass
             
             # Emit completion signal when transcription is fully terminated
             if self.main_loop:
-                logger.info(f"[ASSEMBLYAI][DEBUG][TERMINATED] Emitting transcription_complete for sid={self.sid}")
                 asyncio.run_coroutine_threadsafe(
                     sio.emit("transcription_complete", {
                         "status": "completed",
@@ -985,10 +982,8 @@ class AssemblyAIStreamingSession:
 
         def on_error(client, error: StreamingError):
             logger.error(f"[ASSEMBLYAI][DEBUG][ERROR] sid={self.sid}: {error}")
-            logger.error(f"[ASSEMBLYAI][DEBUG][ERROR] Error type: {type(error)}")
 
         # Register event handlers
-        logger.info(f"[ASSEMBLYAI][DEBUG] Registering event handlers for sid={self.sid}")
         self.client.on(StreamingEvents.Begin, on_begin)
         self.client.on(StreamingEvents.Turn, on_turn)
         self.client.on(StreamingEvents.Termination, on_terminated)
@@ -998,8 +993,6 @@ class AssemblyAIStreamingSession:
     async def connect(self):
         """Connect to AssemblyAI streaming service"""
         try:
-            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Attempting to connect for sid={self.sid}")
-            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Current connected state: {self.connected}")
             
             if self.connected:
                 logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Already connected for sid={self.sid}")
@@ -1007,30 +1000,21 @@ class AssemblyAIStreamingSession:
                 
             from assemblyai.streaming.v3 import StreamingParameters
             
-            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Creating StreamingParameters for sid={self.sid}")
             params = StreamingParameters(
                 sample_rate=16000,
                 format_turns=True,
             )
-            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] StreamingParameters created: sample_rate=16000, format_turns=True")
             
             # Connect only once per client instance
-            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Calling client.connect() for sid={self.sid}")
             self.client.connect(params)
-            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] client.connect() completed for sid={self.sid}")
             # Note: connected state will be set to True in on_begin event handler
-            logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Connection initiated for sid={self.sid}, waiting for on_begin event")
         except Exception as e:
             logger.error(f"[ASSEMBLYAI][DEBUG][CONNECT] Failed for sid={self.sid}: {e}")
-            logger.error(f"[ASSEMBLYAI][DEBUG][CONNECT] Error type: {type(e)}")
             raise
 
     async def stream_audio(self, audio_bytes: bytes):
         """Stream audio data to AssemblyAI"""
         try:
-            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Starting stream_audio for sid={self.sid}")
-            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Audio bytes length: {len(audio_bytes)}")
-            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Current connected state: {self.connected}")
             
             # Connect only if not already connected
             if not self.connected:
@@ -1039,16 +1023,19 @@ class AssemblyAIStreamingSession:
                 logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Connect completed, connected state: {self.connected}")
             
             # Send raw audio bytes directly to Universal-Streaming API
-            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Sending raw audio bytes for sid={self.sid}")
-            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Audio bytes type: {type(audio_bytes)}, length: {len(audio_bytes)}")
-            
-            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Calling client.stream() for sid={self.sid}")
+            try:
+                # Append to current-turn accumulator for later logging at end_of_turn
+                self.turn_buffer.extend(audio_bytes)
+            except Exception as acc_err:
+                logger.warn(f"[ASSEMBLYAI][DEBUG][STREAM][BYTES] Accumulate failed sid={self.sid}: {acc_err}")
+            try:
+                # Append to session-wide accumulator to represent entire recording until stop
+                self.session_buffer.extend(audio_bytes)
+            except Exception as sess_acc_err:
+                logger.warn(f"[ASSEMBLYAI][DEBUG][STREAM][BYTES] Session accumulate failed sid={self.sid}: {sess_acc_err}")
             self.client.stream(audio_bytes)
-            logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] client.stream() completed for sid={self.sid}")
             
         except Exception as e:
-            logger.error(f"[ASSEMBLYAI][DEBUG][STREAM] Error for sid={self.sid}: {e}")
-            logger.error(f"[ASSEMBLYAI][DEBUG][STREAM] Error type: {type(e)}")
             # If connection failed, don't try to reconnect - create new session instead
             if "threads can only be started once" in str(e):
                 logger.error(f"[ASSEMBLYAI][DEBUG][STREAM] Threading error detected for sid={self.sid}, will create new session on next audio chunk")
@@ -1056,19 +1043,14 @@ class AssemblyAIStreamingSession:
     async def disconnect(self):
         """Disconnect from AssemblyAI streaming service"""
         try:
-            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Attempting to disconnect for sid={self.sid}")
-            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Current connected state: {self.connected}")
-            
+          
             if not self.connected:
                 logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Already disconnected for sid={self.sid}")
                 return
                 
-            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Calling client.disconnect(terminate=True) for sid={self.sid}")
             self.client.disconnect(terminate=True)
             self.connected = False
-            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Disconnected for sid={self.sid}")
         except Exception as e:
-            logger.error(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Error for sid={self.sid}: {e}")
             logger.error(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Error type: {type(e)}")
             self.connected = False
 
@@ -1076,9 +1058,6 @@ class AssemblyAIStreamingSession:
 @sio.on("audio transcribe")
 async def audio_endpoint(sid, data):
     """Handle audio transcribe event with improved session management using Universal-Streaming."""
-    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] ===== AUDIO TRANSCRIBE EVENT START =====")
-    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] sid={sid}")
-    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] data keys: {list(data.keys()) if data else 'None'}")
     
     audioblob = data.get('audioblob')
 
@@ -1119,51 +1098,28 @@ async def audio_endpoint(sid, data):
 
     # Log normalized audio data
     normalized_length = len(audio_bytes) if hasattr(audio_bytes, '__len__') else 'unknown'
-    logger.info(f"[AUDIO NORMALIZED] sid={sid}, normalized_length={normalized_length}")
-
-    # Create a session-scoped transcriber if missing
-    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Checking if session exists for sid={sid}")
-    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Current sessions: {list(assemblyai_streams.keys())}")
     
     if sid not in assemblyai_streams or assemblyai_streams.get(sid) is None:
         try:
-            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Creating new AssemblyAI Universal-Streaming session for sid={sid}")
             session = AssemblyAIStreamingSession(sid=sid)
             assemblyai_streams[sid] = session
-            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Session created and stored for sid={sid}")
-            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Updated sessions: {list(assemblyai_streams.keys())}")
-            # Don't connect immediately - let stream_audio handle connection
-            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] AssemblyAI session created for sid={sid}")
         except Exception as e:
-            logger.error(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Failed to create AssemblyAI session for sid={sid}: {e}")
-            logger.error(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Error type: {type(e)}")
             return
     else:
         logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Using existing session for sid={sid}")
 
     # Stream audio chunk for this sid
     try:
-        logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Starting audio stream for sid={sid}")
-        logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Audio bytes length: {normalized_length}")
-        logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Session object: {assemblyai_streams[sid]}")
-        
         await assemblyai_streams[sid].stream_audio(audio_bytes)
         logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Audio streamed successfully for sid={sid}")
     except Exception as e:
-        logger.error(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Error in audio streaming for sid={sid}: {str(e)}")
-        logger.error(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Error type: {type(e)}")
         # If threading error, remove the session so a new one will be created
         if "threads can only be started once" in str(e):
-            logger.warn(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Threading error detected, removing corrupted session for sid={sid}")
             assemblyai_streams.pop(sid, None)
-            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Session removed, will create new one on next audio chunk")
         elif "Attempted to send invalid message" in str(e):
-            logger.warn(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Invalid message error detected, removing corrupted session for sid={sid}")
             assemblyai_streams.pop(sid, None)
-            logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Session removed due to invalid message error")
+            logger.warn(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Session removed due to invalid message error")
     
-    logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] ===== AUDIO TRANSCRIBE EVENT END =====")
-
 # -------------------------- Whisper Batch Transcription -------------------------- #
 @sio.on("audio transcribe whisper")
 async def audio_transcribe_whisper(sid, data):
