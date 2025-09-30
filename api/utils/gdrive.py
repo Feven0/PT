@@ -90,12 +90,17 @@ class google_api():
         if fauth is None:
             fauth = 'gclass_credentials.json'
 
-        if os.path.exists(f'~/.env/{fauth}'):
-            path = '~/.env'
+        if os.path.exists(fauth):
+            print(f'using fauth from {fauth}')
+            self.fauth = fauth
+            path = os.path.dirname(fauth)
         else:
-            path = os.path.join(self.HOME, '.credentials')
+            if os.path.exists(f'~/.env/{fauth}'):
+                path = '~/.env'
+            else:
+                path = os.path.join(self.HOME, '.credentials')
             
-        self.fauth = os.path.join(path, fauth)            
+            self.fauth = os.path.join(path, fauth)            
 
         self.token_file = os.path.join(path, 'gtoken',token_file)
         #print('token file',self.token_file)

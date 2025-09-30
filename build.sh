@@ -103,7 +103,7 @@ if [[ $branch_name == "prod" ]] || [[ $branch_name == "worker" ]]; then
     tport=4500
     make_general_dockerfile $port $pyreq
     #make_gunicorn_dockerfile $port $pyreq
-elif [[ $branch_name == "dev" ]]; then
+elif [[ $branch_name == "dev" ]] || true; then
     pyreq="./api"
     echo "DEV: Using Gunicorn multi workers... "
     name="ipersona"
@@ -184,12 +184,24 @@ EOF
 #-----------------------------------------------
 #---- build image ------------
 #-----------------------------------------------
+# Create alias if docker-compose command doesn't exist
+if ! command -v docker-compose &> /dev/null; then
+    if ! command -v docker-compose &> /dev/null; then
+        if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+            docker-compose() { docker compose "$@"; }
+        else
+            echo "Error: Neither docker-compose nor docker compose command found"
+            exit 1
+        fi
+    fi
+fi
+
 # docker-compose down --remove-orphans -t 0 $name
 
-# res=$(docker ps -aq)
-# if [[ ! -z $res ]]; then
-#     docker rm $res
-# fi
+res=$(docker ps -aq)
+if [[ ! -z $res ]]; then
+    docker rm $res
+fi
 
 export PORT=$tport
 export PORT=$tport
@@ -197,24 +209,33 @@ export PORT=$tport
 # Clean up any existing container for this service/project and conflicting names
 docker stop "$name" 2>/dev/null || true
 docker rm "$name" 2>/dev/null || true
-docker rm -f celery_worker 2>/dev/null || true
-docker rm -f flower 2>/dev/null || true
 
-docker-compose -p "$name" down --remove-orphans
+
+docker-compose -p "$name" down --remove-orphans || true
+
+# docker rm -f celery_worker 2>/dev/null || true
+# docker rm -f flower 2>/dev/null || true
+if true; then
+docker-compose -p "$name" build --no-cache $name
+docker-compose -p "$name" up -d --force-recreate $name
+else
 docker-compose -p "$name" build --no-cache $name celery_worker flower
 docker-compose -p "$name" up -d --force-recreate $name celery_worker flower
+fi
+
+
 # --remove-orphans --force-recreate -d $name
-docker ps
+# docker ps
 
-echo "----- Logs so far ..-----"
-echo "docker logs -f $(docker ps | head -2 | tail -1 | cut -d " " -f 1)"
-docker logs -f $(docker ps | head -2 | tail -1 | cut -d " " -f 1)
+# echo "----- Logs so far ..-----"
+# echo "docker logs -f $(docker ps | head -2 | tail -1 | cut -d " " -f 1)"
+# docker logs -f $(docker ps | head -2 | tail -1 | cut -d " " -f 1)
 
-#test
-if [ $buildtype == "lambda" ]; then 
-    echo "Pinging webserver endpoint: "
-    payload="{"""resource""": """/""", """path""": """/""", """httpMethod""": """GET""", """requestContext""": {}, """multiValueQueryStringParameters""": null}"
-    curl "http://localhost:${port}/2015-03-31/functions/function/invocations" -d $payload
-fi  
+# #test
+# if [ $buildtype == "lambda" ]; then 
+#     echo "Pinging webserver endpoint: "
+#     payload="{"""resource""": """/""", """path""": """/""", """httpMethod""": """GET""", """requestContext""": {}, """multiValueQueryStringParameters""": null}"
+#     curl "http://localhost:${port}/2015-03-31/functions/function/invocations" -d $payload
+# fi  
 
-echo ""
+# echo ""

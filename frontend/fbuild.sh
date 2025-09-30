@@ -128,6 +128,17 @@ EOF
 
 echo "******Done!******"
 
+# Create alias if docker-compose command doesn't exist
+if ! command -v docker-compose &> /dev/null; then
+    if ! command -v docker-compose &> /dev/null; then
+        if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+            docker-compose() { docker compose "$@"; }
+        else
+            echo "Error: Neither docker-compose nor docker compose command found"
+            exit 1
+        fi
+    fi
+fi
 
 echo "******Building Docker Image: $name******"
 docker-compose down || echo "$name instance is not running"

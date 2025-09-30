@@ -1,66 +1,227 @@
-# Makefile for Tenx iPersona Docker-based Celery Management
-# Usage: make <command>
+###############################################################################
+# Tenx iPersona - Makefile (modeled after tenx_parrot)                        #
+###############################################################################
 
-.PHONY: help celery-start celery-stop celery-restart celery-status celery-monitor celery-flower celery-purge celery-logs build-celery run-worker run-flower dev-start prod-start stop-all logs-all restart-all workwea
+.SILENT:
 
-# Default target
-help:
-	@echo "Tenx iPersona Docker-based Celery Management"
-	@echo "==========================================="
-	@echo ""
-	@echo "Available commands:"
-	@echo "  make build-celery     - Build Celery Docker images"
-	@echo "  make celery-start     - Start Celery worker (Docker)"
-	@echo "  make celery-stop      - Stop Celery worker (Docker)"
-	@echo "  make celery-restart   - Restart Celery worker (Docker)"
-	@echo "  make celery-status    - Check Celery worker status"
-	@echo "  make celery-monitor   - Monitor Celery tasks and workers"
-	@echo "  make celery-flower    - Start Flower (Celery monitoring web UI)"
-	@echo "  make run-worker       - Run worker with stdout logs (Docker)"
-	@echo "  make run-flower       - Run Flower on 0.0.0.0:5555 (Docker)"
-	@echo "  make celery-purge     - Purge all pending tasks"
-	@echo "  make celery-logs      - Show Celery worker logs"
-	@echo "  make workwea          - Kill all Celery processes and start worker logs"
-	@echo "  make dev-start        - Start all services for development"
-	@echo "  make prod-start       - Start all services for production"
-	@echo "  make stop-all         - Stop all services"
-	@echo "  make logs-all         - Show logs for all services"
-	@echo "  make restart-all      - Restart all services"
-	@echo "  make help            - Show this help message"
-	@echo ""
+# Environment
+SHELL := /bin/bash
+PYTHON := python3
+PYTHON_VERSION := 3.12
+VENV := .venv
+VENV_BIN := $(VENV)/bin
 
-# Build Celery Docker images
-build-celery:
+# Stage
+ENV_STAGE ?= dev
+
+# Colors
+BLUE=\033[0;34m
+PINK=\033[0;35m
+GREEN=\033[0;32m
+YELLOW=\033[1;33m
+RED=\033[0;31m
+NC=\033[0m
+
+# Directories
+BACKEND_DIR = $(shell pwd)
+SCRIPTS_DIR := $(BACKEND_DIR)/scripts
+FRONTEND_DIR := $(BACKEND_DIR)/frontend
+TEST_DIR = $(BACKEND_DIR)/tests
+
+# Pytest
+PYTEST_ARGS ?=
+PYTEST_BASE_CMD := PYTHONPATH=$(BACKEND_DIR) pytest --import-mode=importlib
+
+# Venv helpers (use uv as per project convention)
+define activate_venv
+	@if [ ! -d "$(VENV)" ]; then \
+		echo -e "${YELLOW}Virtual environment not found. Creating one...${NC}"; \
+		uv venv $(VENV) --python $(PYTHON_VERSION); \
+	fi
+	@echo -e "${GREEN}Activating virtual environment...${NC}"
+	@source $(VENV_BIN)/activate || exit 1
+endef
+
+define run_in_venv
+	source $(VENV_BIN)/activate && \
+	$1
+endef
+
+.PHONY: help install-deps test test-unit test-integration test-watch test-coverage \
+        format lint security clean run docker-compose docker-build docker-run \
+        celery-start celery-stop celery-restart celery-status celery-monitor \
+        celery-flower worker flower celery-purge celery-logs celery celery-clean \
+        dev-start prod-start stop-all logs-all restart-all workers flower-build \
+        flower-run flower-logs flower-stop work
+
+help: ## Show this help message
+	@echo -e 'Usage: make [target]'
+	@echo -e ''
+	@echo -e 'Targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+install-deps: ## Install dependencies (uv)
+	@echo -e "${BLUE}Installing dependencies...${NC}"
+	$(call activate_venv)
+	$(call run_in_venv,uv pip install -r requirements.txt)
+
+test: ## Run tests (if any)
+	@echo -e "${BLUE}Running tests...${NC}"
+	$(call activate_venv)
+	$(call run_in_venv,$(PYTEST_BASE_CMD) -v $(TEST_DIR) $(PYTEST_ARGS))
+
+test-unit: ## Run unit tests
+	@echo -e "${BLUE}Running unit tests...${NC}"
+	$(call activate_venv)
+	$(call run_in_venv,$(PYTEST_BASE_CMD) -v -m "unit" $(TEST_DIR))
+
+test-integration: ## Run integration tests
+	@echo -e "${BLUE}Running integration tests...${NC}"
+	$(call activate_venv)
+	$(call run_in_venv,$(PYTEST_BASE_CMD) -v -m "integration" $(TEST_DIR))
+
+test-watch: ## Run tests in watch mode
+	@echo -e "${BLUE}Running tests in watch mode...${NC}"
+	$(call activate_venv)
+	$(call run_in_venv,ptw $(TEST_DIR) -- -v)
+
+test-coverage: ## Generate coverage report
+	@echo -e "${BLUE}Generating coverage report...${NC}"
+	$(call activate_venv)
+	$(call run_in_venv,$(PYTEST_BASE_CMD) \
+		--cov=api \
+		--cov-report=term-missing \
+		--cov-report=html:coverage \
+		--cov-report=xml:coverage/coverage.xml \
+		-v $(TEST_DIR))
+
+format: ## Format code
+	@echo -e "${BLUE}Formatting code...${NC}"
+	$(call activate_venv)
+	$(call run_in_venv,black .)
+	$(call run_in_venv,isort .)
+
+lint: ## Run linters
+	@echo -e "${BLUE}Running linters...${NC}"
+	$(call activate_venv)
+	$(call run_in_venv,ruff check .)
+	$(call run_in_venv,mypy .)
+
+security: ## Run security checks
+	@echo -e "${BLUE}Running security checks...${NC}"
+	$(call activate_venv)
+	$(call run_in_venv,bandit -r api)
+	$(call run_in_venv,safety check)
+
+clean: ## Clean build/test artifacts
+	@echo -e "${BLUE}Cleaning up...${NC}"
+	@find . -type d -name "__pycache__" -exec rm -rf {} +
+	@find . -type f -name "*.pyc" -delete
+	@find . -type f -name "*.pyo" -delete
+	@find . -type f -name ".coverage" -delete
+	@find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	@find . -type d -name ".mypy_cache" -exec rm -rf {} +
+	@find . -type d -name ".ruff_cache" -exec rm -rf {} +
+	@find . -type d -name "coverage" -exec rm -rf {} +
+
+.PHONY: check-node
+check-node: ## Check if Node.js and npm are installed
+	@if ! command -v node > /dev/null; then \
+		echo -e "Node.js is not installed. Please install Node.js first."; \
+		exit 1; \
+	fi
+	@if ! command -v npm > /dev/null; then \
+		echo -e "npm is not installed. Please install npm first."; \
+		exit 1; \
+	fi
+
+# ---------------------- Environment ----------------------
+
+.PHONY: generate-env
+generate-env: ## Generate environment configuration
+	@echo -e "${BLUE}Generating environment configuration for $(ENV_STAGE)...${NC}"
+	$(call activate_venv)
+	$(call run_in_venv,$(PYTHON) $(SCRIPTS_DIR)/generate_env.py --stage $(ENV_STAGE))
+
+# ---------------------- Setup ----------------------
+
+.PHONY: setup-env
+setup-env: ## Set up environment (dev/test/prod)
+	@echo -e "${BLUE}Setting up $(ENV_STAGE) environment...${NC}"
+	$(call activate_venv)
+	@echo -e "${GREEN}Python venv ready for $(ENV_STAGE).${NC}"
+
+.PHONY: setup-backend
+setup-backend: ## Setup backend Python deps
+	@echo -e "${BLUE}Setting up backend...${NC}"
+	$(call activate_venv)
+	$(call run_in_venv,uv pip install -r api/requirements.txt)
+
+.PHONY: setup-frontend
+setup-frontend: check-node ## Setup frontend Node deps
+	@echo -e "${BLUE}Setting up frontend...${NC}"
+	@cd $(FRONTEND_DIR) && \
+	if command -v pnpm > /dev/null && [ -f "pnpm-lock.yaml" ]; then \
+		echo "Using pnpm with frozen lockfile"; \
+		pnpm install --frozen-lockfile; \
+	elif [ -f "package-lock.json" ]; then \
+		echo "Using npm ci (lockfile detected)"; \
+		npm ci --no-audit --no-fund; \
+	else \
+		echo "Using npm install (no lockfile)"; \
+		npm install --no-audit --no-fund; \
+	fi
+
+.PHONY: setup
+setup: setup-backend setup-frontend ## Setup both backend and frontend
+
+# ---------------------- Start ----------------------
+
+start-backend: ## Run FastAPI app (ENV_STAGE=prod for gunicorn)
+	@echo -e "${BLUE}Running application in $(ENV_STAGE) mode...${NC}"
+	$(call activate_venv)
+	source $(VENV_BIN)/activate && uvicorn app:app --reload --host 0.0.0.0 --port 9990 --lifespan on; 
+	
+start-frontend: ## Run frontend app
+	@echo -e "${BLUE}Running frontend application...${NC}"
+	@cd $(FRONTEND_DIR) && npm run dev
+
+
+# ---------------------- Docker ----------------------
+
+docker-build: ## Build project docker images
+	@echo -e "${BLUE}Building Docker images...${NC}"
+	@./build.sh
+
+
+# ---------------------- Celery (Component) ----------------------
+
+build-celery: ## Build Celery-related images/scripts
 	@echo "Building all Docker images (including Celery)..."
 	@./build.sh
 	@echo "All Docker images built successfully!"
 
-# Start Celery worker
-celery-start:
+celery-start: ## Start Celery worker (docker-compose)
 	@echo "Starting Celery worker (Docker)..."
 	docker-compose up -d celery_worker
 	@echo "Celery worker started successfully!"
 
-# Start Celery worker in background (same as celery-start for Docker)
-celery-start-bg:
+celery-start-bg: ## Start Celery worker in background
 	@echo "Starting Celery worker in background (Docker)..."
 	docker-compose up -d celery_worker
 	@echo "Celery worker started in background!"
 
-# Stop Celery worker
-celery-stop:
+celery-stop: ## Stop Celery worker
 	@echo "Stopping Celery worker (Docker)..."
 	docker-compose stop celery_worker
 	@echo "Celery worker stopped!"
 
-# Restart Celery worker
-celery-restart:
+celery-restart: ## Restart Celery worker
 	@echo "Restarting Celery worker (Docker)..."
 	docker-compose restart celery_worker
 	@echo "Celery worker restarted!"
 
-# Check Celery worker status
-celery-status:
+celery-status: ## Celery worker status and stats
 	@echo "Checking Celery worker status (Docker)..."
 	@if docker-compose ps celery_worker | grep -q "Up"; then \
 		echo "✅ Celery worker is running"; \
@@ -70,13 +231,9 @@ celery-status:
 		echo "❌ Celery worker is not running"; \
 	fi
 
-# Monitor Celery tasks and workers
-celery-monitor:
+celery-monitor: ## Show Celery active/scheduled/reserved/stats/registered
 	@echo "Monitoring Celery tasks and workers (Docker)..."
 	@echo "============================================="
-	@echo ""
-	@echo "📝 NOTE: Task processing logs appear in Docker container logs"
-	@echo "📝 This terminal shows worker status and task management"
 	@echo ""
 	@echo "Active Tasks:"
 	@docker-compose exec celery_worker celery -A api.services.celery.celery_config inspect active
@@ -93,98 +250,75 @@ celery-monitor:
 	@echo "Registered Tasks:"
 	@docker-compose exec celery_worker celery -A api.services.celery.celery_config inspect registered
 
-# Start Flower (Celery monitoring web UI)
-celery-flower:
+celery-flower: ## Start Flower (docker-compose)
 	@echo "Starting Flower monitoring web UI (Docker)..."
 	@echo "Flower will be available at: http://localhost:5555"
 	docker-compose up -d flower
 
-# Exact run: Celery worker with stdout logs (Docker)
-worker:
+worker: ## Run Celery worker (foreground)
 	@echo "Starting Celery worker (stdout logs; Docker)..."
 	docker-compose up celery_worker
 
-# Exact run: Flower on 0.0.0.0:5555 (Docker)
-flower:
+flower: ## Run Flower (foreground)
 	@echo "Starting Flower on 0.0.0.0:5555 (Docker)..."
 	docker-compose up flower
 
-# Purge all pending tasks
-celery-purge:
+celery-purge: ## Purge all pending Celery tasks
 	@echo "Purging all pending tasks (Docker)..."
 	@docker-compose exec celery_worker celery -A api.services.celery.celery_config purge -f
 	@echo "All pending tasks purged!"
 
-# Show Celery worker logs
-celery-logs:
+celery-logs: ## Tail Celery worker logs
 	@echo "Showing Celery worker logs (Docker)..."
 	@docker-compose logs -f celery_worker
 
-# Test Celery connection
-celery:
+celery: ## Test Celery app load
 	@echo "Testing Celery connection (Docker)..."
 	@docker-compose exec celery_worker python -c "from api.services.celery.celery_config import celery_app; print('✅ Celery app loaded successfully'); print('Broker:', celery_app.conf.broker_url)"
 
-# Clean up Celery files
-celery-clean:
+celery-clean: ## Clean Celery containers/images
 	@echo "Cleaning up Celery containers and images..."
 	@docker-compose down celery_worker flower
 	@docker rmi celery_worker:latest 2>/dev/null || true
 	@echo "Celery Docker resources cleaned up!"
 
-# Development mode - start both FastAPI and Celery
-dev-start:
+dev-start: ## Build and start all services (dev)
 	@echo "Starting development environment (Docker)..."
-	@echo "Building and starting all services..."
 	@./build.sh
 	@echo "All services started. FastAPI available at http://localhost:4500"
 	@echo "Flower available at http://localhost:5555"
 
-# Production mode - start all services
-prod-start:
+prod-start: ## Build and start all services (prod)
 	@echo "Starting production environment (Docker)..."
-	@echo "Building and starting all services..."
 	@./build.sh
 	@echo "Production environment started!"
 	@echo "FastAPI: http://localhost:4500"
 	@echo "Flower: http://localhost:5555"
 
-# Stop all services
-stop-all:
+stop-all: ## Stop all services (docker-compose down)
 	@echo "Stopping all services..."
 	@docker-compose down
 	@echo "All services stopped!"
 
-# View all logs
-logs-all:
+logs-all: ## Tail all service logs
 	@echo "Showing logs for all services..."
 	@docker-compose logs -f
 
-# Restart all services
-restart-all:
+restart-all: ## Restart all services
 	@echo "Restarting all services..."
 	@docker-compose restart
 	@echo "All services restarted!"
 
-
-
-# # Start Flower (Celery monitoring web UI)
-# celery-flower:
-# 	@echo "Starting Flower monitoring web UI..."
-# 	@echo "Flower will be available at: http://localhost:5555"
-# 	celery -A api.services.celery.celery_config flower --port=5555
-
-# Exact run: Celery worker with stdout logs
-workers:
+# Legacy direct-exec/diagnostic targets retained as requested
+workers: ## Start Celery worker via explicit path (legacy)
 	@echo "Starting Celery worker (stdout logs; parrot env)..."
 	@PYTHONPATH=/home/rehmet/tenx_ipersona /opt/miniconda/envs/parrot/bin/celery -A api.services.celery.celery_worker:celery_app worker -l info
 
-# --- Flower (Dockerized) ---
-flower-build:
+flower-build: ## Build Flower docker image (docker.flower)
 	@echo "Building Flower image..."
 	@docker build -f docker.flower -t tenx/flower:latest .
 
-flower-run:
+flower-run: ## Run Flower container directly
 	@echo "Running Flower..."
 	@docker rm -f flower || true
 	@docker run -d --name flower \
@@ -193,14 +327,13 @@ flower-run:
 		-e CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND} \
 		tenx/flower:latest
 
-flower-logs:
+flower-logs: ## Tail Flower logs
 	@docker logs -f flower | cat
 
-flower-stop:
+flower-stop: ## Stop Flower container
 	@docker rm -f flower || true
 
-# Kill all Celery processes and start worker logs
-work:
+work: ## Kill Celery processes locally and start worker (legacy)
 	@echo "🔥 Killing all running Celery processes..."
 	@echo "==========================================="
 	@echo ""

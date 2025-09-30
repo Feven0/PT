@@ -1,13 +1,13 @@
 pexist=
 if [ -f ~/.aws/config ]; then
-    pexist=$(grep tenac ~/.aws/config)
+    pexist=$(grep ustenac ~/.aws/config)
 fi
 
 
 function get_aws_profile() {
     region=${1:-"us-east-1"}
-    if [ ! -z ${pexist} ]; then
-	prof="--profile kifiya --region $region"
+    if [[ ! -z ${pexist} ]]; then
+	prof="--profile ustenac --region $region"
 	if [ ! -z $profile_name ]; then prof="--profile $profile_name --region $region"; fi
     else
 	prof="--region $region"

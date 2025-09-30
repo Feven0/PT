@@ -83,7 +83,8 @@ def check_speech_api_status():
         from google.cloud import serviceusage_v1
         
         # Get credentials and project info
-        gapi = google_api()
+        gapi = google_api('.envdir/tenx-saas-3ff848c57fc5.json')
+        print(f'gapi.fauth: {gapi.fauth}')
         
         # Set environment variables
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = gapi.fauth
@@ -146,7 +147,8 @@ class GoogleStreamingSession:
         # Initialize Google Cloud Speech client with proper credentials
         try:
             from api.utils.gdrive import google_api
-            gapi = google_api()
+            gapi = google_api(fauth='.envdir/tenx-saas-3ff848c57fc5.json')
+            print(f'gapi.fauth: {gapi.fauth}')
             
             # Set environment variables for Google Cloud
             os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = gapi.fauth

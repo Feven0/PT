@@ -1,20 +1,20 @@
 version: "3"
 services:
-  ipersona_prod:
-    container_name: ipersona_prod
+  ipersona:
+    container_name: ipersona
     build: .
-    image: ipersona_prod:latest
+    image: ipersona:latest
     restart: unless-stopped
     environment:
       - STRAPI_STAGE=dev-prod
-      - PORT=4900
+      - PORT=4500
       - APP_MODULE=app:app
       - WORKERS_PER_CORE=0.5
       - TIMEOUT=120
       - KEEP_ALIVE=60
       - LOG_LEVEL=info      
-      - AWS_ACCESS_KEY_ID=AKIARAUQOUIFYWMG4XLG
-      - AWS_SECRET_ACCESS_KEY=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
+      - AWS_ACCESS_KEY_ID=
+      - AWS_SECRET_ACCESS_KEY=
       - AWS_DEFAULT_REGION=us-east-1
 
     networks:
@@ -22,12 +22,13 @@ services:
     # volumes:
     #   - /mnt/efs:/mnt/efs
     expose:
-      - 4900 
+      - 4500 
     ports:
-      - "4900:4900"
+      - "4500:4500"
+
 
 networks:
     ipersona_network:
-        name: ipersona_prod
+        name: ipersona
         driver: bridge      
 
