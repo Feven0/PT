@@ -6,7 +6,7 @@ import queue
 from openai import OpenAI
 import assemblyai as aai
 from typing import Dict, Any
-
+import api.utils.parrot_utils as parrot_utils
 from api import config
 import api.modules.ipersona_parrot_gpt as util
 import api.llm.ipersona.ipersona_strapi as strapi
@@ -64,6 +64,7 @@ gemini_streams: Dict[str, Any] = {}
 fw_buffers: Dict[str, bytearray] = {}
 fw_model: Any = None
 gemini_last_ts: Dict[str, float] = {}
+audio_wav_storage: Dict[str, bytes] = {}
 
  
 
@@ -83,8 +84,7 @@ def check_speech_api_status():
         from google.cloud import serviceusage_v1
         
         # Get credentials and project info
-        gapi = google_api('.envdir/tenx-saas-3ff848c57fc5.json')
-        print(f'gapi.fauth: {gapi.fauth}')
+        gapi = google_api()
         
         # Set environment variables
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = gapi.fauth
@@ -147,8 +147,7 @@ class GoogleStreamingSession:
         # Initialize Google Cloud Speech client with proper credentials
         try:
             from api.utils.gdrive import google_api
-            gapi = google_api(fauth='.envdir/tenx-saas-3ff848c57fc5.json')
-            print(f'gapi.fauth: {gapi.fauth}')
+            gapi = google_api()
             
             # Set environment variables for Google Cloud
             os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = gapi.fauth
@@ -820,50 +819,73 @@ async def disconnect(sid):
             logger.warn(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Error type: {type(e)}")
     else:
         logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] No AssemblyAI session found for sid={sid}")
-# -------------------------- S3 Background Upload -------------------------- #
-async def upload_audio_to_s3_background(accumulated_audio, sid, sessionId, message_id):
-    """Background task to upload audio to S3 and update the specific message with URL."""
+
+# -------------------------- Whisper Batch Transcription -------------------------- #
+@sio.on("audio transcribe whisper")
+async def audio_transcribe_whisper(sid, data):
+    audioblob = data.get('audioblob')
+
+    if sid not in whisper_buffers:
+        whisper_buffers[sid] = bytearray()
+
+    if audioblob is None:
+        buf = whisper_buffers.get(sid, bytearray())
+        logger.info(f"[WHISPER][STOP] sid={sid} final_flush_bytes={len(buf)}")
+        if len(buf) > 0:
+            wav_bytes = _pcm16_mono_16k_to_wav_bytes(bytes(buf))
+            try:
+                result = client.audio.transcriptions.create(
+                    model=WHISPER_MODEL,
+                    file=("chunk.wav", wav_bytes, "audio/wav"),
+                    language="en",
+                )
+                text = getattr(result, 'text', None) or (result.get('text') if isinstance(result, dict) else None)
+                logger.info(f"[WHISPER][STOP] sid={sid} transcript_len={len(text or '')}")
+                if text:
+                    await sio.emit("audio transcribe whisper", text, room=sid)
+            except Exception as e:
+                logger.error(f"[WHISPER] Final flush error: {e}")
+        whisper_buffers.pop(sid, None)
+        return
+
     try:
-        from api.utils import s3_client as _s3h
-        from datetime import datetime
-        
-        # Combine all audio chunks
-        complete_audio = b''.join(accumulated_audio)
-        logger.info(f"[S3 UPLOAD] Background upload started for sid={sid}, sessionId={sessionId}, message_id={message_id}, total_size={len(complete_audio)} bytes")
-        
-        # Generate unique filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"audio_{sid}_{timestamp}.wav"
-        
-        # Pick bucket
-        def _pick_bucket():
-            buckets = _s3h.list_buckets()
-            if 'tenx-parrot-assets' not in buckets:
-                raise Exception("tenx-parrot-assets bucket not found or not accessible")
-            return 'tenx-parrot-assets'
-        bucket = _pick_bucket()
-        
-        # Set prefix and key for audio files
-        prefix = "audio"
-        key = f"{prefix}/{filename}"
-        
-        # Upload using s3_client.upload_bytes_and_get_url
-        audio_url, _ = _s3h.upload_bytes_and_get_url(bucket, complete_audio, key=key)
-        logger.info(f"[S3 UPLOAD] Background upload completed for sid={sid}, sessionId={sessionId}, message_id={message_id}, URL: {audio_url}")
-        
-        # Update the specific message with the audio URL
+        if hasattr(audioblob, 'buffer'):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, list):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, (bytes, bytearray, memoryview)):
+            audio_bytes = bytes(audioblob)
+        else:
+            audio_bytes = audioblob
+    except Exception:
+        audio_bytes = audioblob
+
+    # Skip silent chunks to avoid hallucinations on silence
+    if _is_silent_pcm16(audio_bytes):
+        logger.info(f"[WHISPER][SILENT] sid={sid} chunk_bytes={len(audio_bytes)} skipped (rms<th={WHISPER_RMS_THRESHOLD})")
+        return
+
+    whisper_buffers[sid].extend(audio_bytes)
+    logger.info(f"[WHISPER][APPEND] sid={sid} chunk_bytes={len(audio_bytes)} buffer_bytes={len(whisper_buffers[sid])}")
+
+    if len(whisper_buffers[sid]) >= WHISPER_TARGET_BYTES:
+        buf = whisper_buffers[sid]
+        carry = buf[-WHISPER_OVERLAP_BYTES:] if len(buf) > WHISPER_OVERLAP_BYTES else buf[:]
+        whisper_buffers[sid] = bytearray(carry)
+        wav_bytes = _pcm16_mono_16k_to_wav_bytes(bytes(buf))
         try:
-            from api.llm.ipersona import ipersona_strapi as strapi
-            success = strapi.update_message_with_audio_url(message_id, audio_url)
-            if success:
-                logger.info(f"[S3 UPLOAD] Successfully updated message {message_id} with audio URL")
-            else:
-                logger.error(f"[S3 UPLOAD] Failed to update message {message_id} with audio URL")
-        except Exception as db_error:
-            logger.error(f"[S3 UPLOAD] Failed to update database for message_id={message_id}: {db_error}")
-        
-    except Exception as e:
-        logger.error(f"[S3 UPLOAD] Background upload failed for sid={sid}, sessionId={sessionId}, message_id={message_id}: {e}")
+            logger.info(f"[WHISPER][SEND] sid={sid} wav_bytes={len(wav_bytes)} pcm_bytes={len(buf)}")
+            result = client.audio.transcriptions.create(
+                model=WHISPER_MODEL,
+                file=("chunk.wav", wav_bytes, "audio/wav"),
+                language="en",
+            )
+            text = getattr(result, 'text', None) or (result.get('text') if isinstance(result, dict) else None)
+            logger.info(f"[WHISPER][RECV] sid={sid} transcript_len={len(text or '')}")
+            if text:
+                await sio.emit("audio transcribe whisper", text.strip(), room=sid)
+        except Exception as e:
+            logger.error(f"[WHISPER] Chunk transcription error: {e}")
 
 # -------------------------- AssemblyAI Universal-Streaming -------------------------- #
 class AssemblyAIStreamingSession:
@@ -1082,6 +1104,33 @@ async def audio_endpoint(sid, data):
                 logger.warn(f"Error while closing session on stop (sid={sid}): {e}")
         else:
             logger.info(f"No active session to close on stop (sid={sid})")
+        
+        # Handle full_byte upload to S3 if provided
+        full_bytes = data.get('full_bytes')
+        session_id = data.get('sessionId')
+
+        if full_bytes is not None and session_id is not None:
+            try:
+                # Normalize full_bytes similar to audioblob
+                if hasattr(full_bytes, 'buffer'):
+                    audio_bytes = bytes(full_bytes)
+                elif isinstance(full_bytes, list):
+                    audio_bytes = bytes(full_bytes)
+                elif isinstance(full_bytes, (bytes, bytearray, memoryview)):
+                    audio_bytes = bytes(full_bytes)
+                else:
+                    audio_bytes = full_bytes
+                
+                logger.info(f"[ASSEMBLYAI][FULL_BYTE] sid={sid} session_id={session_id} full_byte_length={len(audio_bytes)}")
+                
+                # Convert to WAV format and store in global dict keyed by session_id
+                wav_bytes = _pcm16_mono_16k_to_wav_bytes(audio_bytes)
+                audio_wav_storage[session_id] = wav_bytes
+                logger.info(f"[ASSEMBLYAI][DEBUG] Stored WAV bytes for session_id={session_id}, total sessions: {len(audio_wav_storage)}")
+                
+            except Exception as e:
+                logger.error(f"[ASSEMBLYAI][FULL_BYTE] Error processing full_byte for sid={sid}: {e}")
+        
         return
 
     # Normalize audio bytes
@@ -1121,93 +1170,6 @@ async def audio_endpoint(sid, data):
         elif "Attempted to send invalid message" in str(e):
             assemblyai_streams.pop(sid, None)
             logger.warn(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Session removed due to invalid message error")
-    
-# -------------------------- Whisper Batch Transcription -------------------------- #
-@sio.on("audio transcribe whisper")
-async def audio_transcribe_whisper(sid, data):
-    audioblob = data.get('audioblob')
-
-    if sid not in whisper_buffers:
-        whisper_buffers[sid] = bytearray()
-
-    if audioblob is None:
-        buf = whisper_buffers.get(sid, bytearray())
-        logger.info(f"[WHISPER][STOP] sid={sid} final_flush_bytes={len(buf)}")
-        if len(buf) > 0:
-            wav_bytes = _pcm16_mono_16k_to_wav_bytes(bytes(buf))
-            try:
-                result = client.audio.transcriptions.create(
-                    model=WHISPER_MODEL,
-                    file=("chunk.wav", wav_bytes, "audio/wav"),
-                    language="en",
-                )
-                text = getattr(result, 'text', None) or (result.get('text') if isinstance(result, dict) else None)
-                logger.info(f"[WHISPER][STOP] sid={sid} transcript_len={len(text or '')}")
-                if text:
-                    await sio.emit("audio transcribe whisper", text, room=sid)
-            except Exception as e:
-                logger.error(f"[WHISPER] Final flush error: {e}")
-        whisper_buffers.pop(sid, None)
-        return
-
-    try:
-        if hasattr(audioblob, 'buffer'):
-            audio_bytes = bytes(audioblob)
-        elif isinstance(audioblob, list):
-            audio_bytes = bytes(audioblob)
-        elif isinstance(audioblob, (bytes, bytearray, memoryview)):
-            audio_bytes = bytes(audioblob)
-        else:
-            audio_bytes = audioblob
-    except Exception:
-        audio_bytes = audioblob
-
-    # Skip silent chunks to avoid hallucinations on silence
-    if _is_silent_pcm16(audio_bytes):
-        logger.info(f"[WHISPER][SILENT] sid={sid} chunk_bytes={len(audio_bytes)} skipped (rms<th={WHISPER_RMS_THRESHOLD})")
-        return
-
-    whisper_buffers[sid].extend(audio_bytes)
-    logger.info(f"[WHISPER][APPEND] sid={sid} chunk_bytes={len(audio_bytes)} buffer_bytes={len(whisper_buffers[sid])}")
-
-    if len(whisper_buffers[sid]) >= WHISPER_TARGET_BYTES:
-        buf = whisper_buffers[sid]
-        carry = buf[-WHISPER_OVERLAP_BYTES:] if len(buf) > WHISPER_OVERLAP_BYTES else buf[:]
-        whisper_buffers[sid] = bytearray(carry)
-        wav_bytes = _pcm16_mono_16k_to_wav_bytes(bytes(buf))
-        try:
-            logger.info(f"[WHISPER][SEND] sid={sid} wav_bytes={len(wav_bytes)} pcm_bytes={len(buf)}")
-            result = client.audio.transcriptions.create(
-                model=WHISPER_MODEL,
-                file=("chunk.wav", wav_bytes, "audio/wav"),
-                language="en",
-            )
-            text = getattr(result, 'text', None) or (result.get('text') if isinstance(result, dict) else None)
-            logger.info(f"[WHISPER][RECV] sid={sid} transcript_len={len(text or '')}")
-            if text:
-                await sio.emit("audio transcribe whisper", text.strip(), room=sid)
-        except Exception as e:
-            logger.error(f"[WHISPER] Chunk transcription error: {e}")
-
-# executor = ThreadPoolExecutor(max_workers=105)  
-
-async def synthesize_text(text):
-    try:
-        response = client.audio.speech.create(
-            model="tts-1",
-            voice="nova",
-            input=text
-        )
-
-        audio_data = response.read()
-
-        if len(audio_data) == 0 or len(audio_data) < 500:  
-            return {"error": "Received insufficient audio data."}
-
-        return audio_data  
-
-    except Exception as e:
-        return {"error": str(e)}
 
 # method to save audio chat to database
 # TODO: integrate with audio chat function
@@ -1351,10 +1313,27 @@ async def audio_end_point(sid, data):
         try:
             if data.get('response') and data.get('resume') is False:
                 try:
-                    strapi.step1_insert_message(
+                    # Insert message first to get message_id
+                    message_id = strapi.step1_insert_message(
                         run_stage, 
                         data, 
                         sessionId)
+                    
+                    # Check for audio WAV bytes from AssemblyAI and upload to S3
+                    print(f"[AUDIO_CHAT][DEBUG] Looking for WAV bytes for sessionId={sessionId}")
+                    print(f"[AUDIO_CHAT][DEBUG] Available sessions in storage: {list(audio_wav_storage.keys())}")
+                    audio_wav_bytes = audio_wav_storage.get(sessionId)
+                    print(f"[AUDIO_CHAT] Audio WAV bytes for sessionId={sessionId}: {audio_wav_bytes is not None}")
+                    if audio_wav_bytes:
+                        del audio_wav_storage[sessionId]  # Clean up
+                        logger.info(f"[AUDIO_CHAT] Uploading audio from AssemblyAI for sessionId={sessionId}, message_id={message_id}")
+                        
+                        # Upload to S3 and update message with URL
+                        upload_task = asyncio.create_task(
+                            parrot_utils.upload_audio_to_s3_background([audio_wav_bytes], sid, sessionId, message_id)
+                        )
+
+
                 except Exception as insert_error:
                     logger.error(f"Failed to insert user message: {str(insert_error)}")
                     # Continue despite insertion failure
@@ -1431,7 +1410,7 @@ async def audio_end_point(sid, data):
                         logger.info(f"[SOCKET EMIT] Sending chunk response to sid={sid}: '{complete_sentence}'")
                         await sio.emit("audio chat sentence", message, room=sid)
                         logger.info(f"[SOCKET EMIT] Chunk response sent successfully to sid={sid}")
-                        tasks.append(synthesize_text(complete_sentence))
+                        tasks.append(parrot_utils.synthesize_text(complete_sentence))
                     
                         accumulated_message = accumulated_message[last_end_pos + 1:].strip()                        
                     else:
@@ -1556,11 +1535,11 @@ async def audio_end_point(sid, data):
                 None)  # No audio URL initially
             
             # Start background S3 upload if we have audio data
-            if audio_upload_data and message_id:
-                upload_task = asyncio.create_task(
-                    upload_audio_to_s3_background(audio_upload_data, sid, sessionId, message_id)
-                )
-                logger.info(f"[S3 UPLOAD] Started background upload task for sid={sid}, sessionId={sessionId}, message_id={message_id}")
+            # if audio_upload_data and message_id:
+            #     upload_task = asyncio.create_task(
+            #         parrot_utils.upload_audio_to_s3_background(audio_upload_data, sid, sessionId, message_id)
+            #     )
+            #     logger.info(f"[S3 UPLOAD] Started background upload task for sid={sid}, sessionId={sessionId}, message_id={message_id}")
         else:
             message = 'interview over'
             logger.info(f"[SOCKET EMIT] Sending interview done to sid={sid}: {message}")
