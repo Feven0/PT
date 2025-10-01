@@ -152,14 +152,15 @@ const useMiddleSocket = () => {
       };
     }, [socket]);
 
-    // --------------------------- Google STT streaming wiring ---------------------------
+    // --------------------------- Google STT streaming wiring with self-correction ---------------------------
     useEffect(() => {
       if (socket) {
         socket.on('audio transcribe google', (message: any) => {
           if (typeof message === 'string') {
-            setGoogleTranscript(prev => (prev ? prev + ' ' : '') + message);
+            // Smart self-correction: replace entire transcript with latest (most accurate)
+            setGoogleTranscript(message);
+            console.log('[GOOGLE][RX]', message.substring(0, 50));
           }
-          console.log('[GOOGLE][RX]', message);
         });
       }
       return () => {

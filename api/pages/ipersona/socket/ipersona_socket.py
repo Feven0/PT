@@ -29,12 +29,25 @@ from .stt_utils import (
     pcm16_mono_16k_to_wav_bytes,
     is_silent_pcm16,
 )
+# Google Cloud Speech-to-Text imports
+# V1 (legacy)
 try:
     from google.cloud import speech_v1 as speech
     from google.api_core.client_options import ClientOptions
 except Exception:
     speech = None
     ClientOptions = None
+
+# V2 (latest) - Import modular implementations
+try:
+    from .google_stt_v2 import GoogleStreamingSTTV2, GoogleSTTV2Config, check_google_stt_v2_status
+    GOOGLE_STT_V2_AVAILABLE = True
+except Exception as v2_import_error:
+    GoogleStreamingSTTV2 = None
+    GoogleSTTV2Config = None
+    check_google_stt_v2_status = None
+    GOOGLE_STT_V2_AVAILABLE = False
+    logger.warn(f"[GOOGLE_STT_V2] Not available: {v2_import_error}")
 try:
     from google import genai as google_genai
     from google.genai import types as genai_types
@@ -59,11 +72,16 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 transcribers: Dict[str, Any] = {}
 assemblyai_streams: Dict[str, Any] = {}
 whisper_buffers: Dict[str, bytearray] = {}
-google_streams: Dict[str, Any] = {}
+google_streams: Dict[str, Any] = {}  # V1 sessions (legacy)
+google_streams_v2: Dict[str, Any] = {}  # V2 sessions (latest)
 gemini_streams: Dict[str, Any] = {}
 fw_buffers: Dict[str, bytearray] = {}
 fw_model: Any = None
 gemini_last_ts: Dict[str, float] = {}
+
+# Configuration flag for Google STT version
+# Set to True to use old V1 implementation, False for new V2 (recommended)
+USE_GOOGLE_STT_V1 = os.getenv("USE_GOOGLE_STT_V1", "false").lower() == "true"
 
  
 
@@ -328,9 +346,22 @@ class GoogleStreamingSession:
 
 @sio.on("check google speech api")
 async def check_google_speech_api(sid, data):
-    """Check Google Speech API status"""
+    """Check Google Speech API status (supports both V1 and V2)"""
     try:
-        result = check_speech_api_status()
+        # Check which version to use
+        use_v1 = data.get('use_v1', USE_GOOGLE_STT_V1) if isinstance(data, dict) else USE_GOOGLE_STT_V1
+        
+        if use_v1:
+            # V1 health check
+            result = check_speech_api_status()
+            result['api_version'] = 'v1'
+        else:
+            # V2 health check
+            if check_google_stt_v2_status is None:
+                result = {"error": "Google STT V2 not available", "api_version": "v2"}
+            else:
+                result = await check_google_stt_v2_status()
+        
         await sio.emit("google speech api status", result, room=sid)
         logger.info(f"[GOOGLE][API_CHECK] Result sent to sid={sid}: {result}")
     except Exception as e:
@@ -340,20 +371,38 @@ async def check_google_speech_api(sid, data):
 
 @sio.on("audio transcribe google")
 async def audio_transcribe_google(sid, data):
-    """Realtime Google Cloud STT via gRPC; expects 16kHz mono PCM16 chunks. Send audioblob=None to stop."""
+    """
+    Realtime Google Cloud STT via gRPC; expects 16kHz mono PCM16 chunks. Send audioblob=None to stop.
+    
+    Supports both V1 (legacy) and V2 (latest) APIs.
+    Set use_v1=True in data or USE_GOOGLE_STT_V1 env var to use V1.
+    """
     audioblob = data.get('audioblob') if isinstance(data, dict) else None
+    
+    # Determine which version to use
+    use_v1 = data.get('use_v1', USE_GOOGLE_STT_V1) if isinstance(data, dict) else USE_GOOGLE_STT_V1
+    
+    if use_v1:
+        # V1 Implementation (Legacy)
+        await _audio_transcribe_google_v1(sid, audioblob)
+    else:
+        # V2 Implementation (Latest - Recommended)
+        await _audio_transcribe_google_v2(sid, audioblob)
 
+
+async def _audio_transcribe_google_v1(sid: str, audioblob):
+    """V1 implementation (legacy)"""
     if audioblob is None:
         # stop and cleanup
         session: GoogleStreamingSession | None = google_streams.pop(sid, None)
         if session is not None:
-            logger.info(f"[GOOGLE][STOP] sid={sid}")
+            logger.info(f"[GOOGLE_V1][STOP] sid={sid}")
             try:
                 await session.stop()
             except Exception as e:
-                logger.error(f"[GOOGLE] stop error sid={sid}: {e}")
+                logger.error(f"[GOOGLE_V1] stop error sid={sid}: {e}")
         else:
-            logger.info(f"[GOOGLE][STOP] no active session sid={sid}")
+            logger.info(f"[GOOGLE_V1][STOP] no active session sid={sid}")
         return
 
     # normalize
@@ -372,9 +421,9 @@ async def audio_transcribe_google(sid, data):
     # lazy-create session
     if sid not in google_streams:
         if speech is None:
-            logger.error("google-cloud-speech is not installed. Please add google-cloud-speech to requirements.txt")
+            logger.error("[GOOGLE_V1] google-cloud-speech V1 is not installed")
             return
-        logger.info(f"[GOOGLE][START] sid={sid} lang={os.getenv('GOOGLE_STT_LANGUAGE','en-US')}")
+        logger.info(f"[GOOGLE_V1][START] sid={sid} lang={os.getenv('GOOGLE_STT_LANGUAGE','en-US')}")
         session = GoogleStreamingSession(sid=sid)
         google_streams[sid] = session
         await session.start()
@@ -383,7 +432,138 @@ async def audio_transcribe_google(sid, data):
     try:
         await session.add_audio(audio_bytes)
     except Exception as e:
-        logger.error(f"[GOOGLE] add_audio error sid={sid}: {e}")
+        logger.error(f"[GOOGLE_V1] add_audio error sid={sid}: {e}")
+
+
+async def _audio_transcribe_google_v2(sid: str, audioblob):
+    """V2 implementation (latest - recommended)"""
+    if audioblob is None:
+        # stop and cleanup
+        session = google_streams_v2.pop(sid, None)
+        if session is not None:
+            logger.info(f"[GOOGLE_V2][STOP] sid={sid}")
+            try:
+                await session.stop()
+            except Exception as e:
+                logger.error(f"[GOOGLE_V2] stop error sid={sid}: {e}")
+        else:
+            logger.info(f"[GOOGLE_V2][STOP] no active session sid={sid}")
+        return
+
+    # normalize
+    try:
+        if hasattr(audioblob, 'buffer'):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, list):
+            audio_bytes = bytes(audioblob)
+        elif isinstance(audioblob, (bytes, bytearray, memoryview)):
+            audio_bytes = bytes(audioblob)
+        else:
+            audio_bytes = audioblob
+    except Exception:
+        audio_bytes = audioblob
+
+    # lazy-create session
+    if sid not in google_streams_v2:
+        if GoogleStreamingSTTV2 is None:
+            logger.error("[GOOGLE_V2] google-cloud-speech V2 is not installed. Install: pip install 'google-cloud-speech>=2.20.0'")
+            return
+        
+        # Define callbacks
+        # Track state for self-correction and deduplication
+        transcript_state = {
+            "last_interim": "",      # Last interim text sent
+            "last_final": "",        # Last final text sent
+            "utterance_buffer": ""   # Buffer for utterance end
+        }
+        
+        async def on_transcript(text: str, is_final: bool, result: dict):
+            """Callback for transcripts with smart deduplication and self-correction"""
+            
+            if is_final:
+                # Final result - emit if different from last final
+                if text.strip() and text != transcript_state["last_final"]:
+                    await sio.emit("audio transcribe google", text, room=sid)
+                    transcript_state["last_final"] = text
+                    transcript_state["last_interim"] = ""  # Clear interim
+                    transcript_state["utterance_buffer"] = ""  # Clear buffer
+                    logger.info(f"[GOOGLE_V2][TRANSCRIPT][FINAL] sid={sid}, text='{text[:50]}...'")
+            else:
+                # Interim result - smart filtering
+                text_stripped = text.strip()
+                if not text_stripped:
+                    return  # Skip empty
+                
+                # Store for utterance end
+                transcript_state["utterance_buffer"] = text
+                
+                # Only emit interim if configured and text changed significantly
+                if config.emit_interim_results and not config.emit_only_final:
+                    # Check if this is actually new content (not just repetition)
+                    last = transcript_state["last_interim"]
+                    
+                    # Smart deduplication: only emit if text is different AND longer or more stable
+                    if text != last:
+                        # Only emit if it's a meaningful update (not just same text repeating)
+                        words_last = set(last.lower().split())
+                        words_current = set(text.lower().split())
+                        new_words = words_current - words_last
+                        
+                        # Emit if: new words added OR text is substantially different
+                        if new_words or len(text) > len(last) + 2:
+                            await sio.emit("audio transcribe google", text, room=sid)
+                            transcript_state["last_interim"] = text
+                            logger.info(f"[GOOGLE_V2][TRANSCRIPT][INTERIM] sid={sid}, new_words={len(new_words)}, text='{text[:30]}...'")
+        
+        async def on_error(error: Exception):
+            """Callback for errors"""
+            logger.error(f"[GOOGLE_V2][ERROR] sid={sid}: {error}")
+            await sio.emit("transcription_error", {"error": str(error), "version": "v2"}, room=sid)
+        
+        async def on_speech_event(event_type: str, event: dict):
+            """Callback for speech events (VAD)"""
+            logger.info(f"[GOOGLE_V2][EVENT] sid={sid}, type={event_type}")
+            
+            # On utterance end, emit buffered text if configured
+            if event_type == "END_OF_SINGLE_UTTERANCE":
+                if config.emit_on_utterance_end and transcript_state["utterance_buffer"]:
+                    logger.info(f"[GOOGLE_V2][EVENT][UTTERANCE_END] Emitting: '{transcript_state['utterance_buffer'][:50]}...'")
+                    await sio.emit("audio transcribe google", {
+                        "text": transcript_state["utterance_buffer"],
+                        "is_final": False,
+                        "is_utterance_end": True,
+                        "language": "en-US"
+                    }, room=sid)
+                    transcript_state["utterance_buffer"] = ""
+            
+            await sio.emit("speech_event", {"type": event_type, "sid": sid}, room=sid)
+        
+        # Create config
+        config = GoogleSTTV2Config.from_env()
+        
+        logger.info(
+            f"[GOOGLE_V2][START] sid={sid}, "
+            f"model={config.model}, "
+            f"languages={config.language_codes}"
+        )
+        
+        # Create session
+        session = GoogleStreamingSTTV2(
+            sid=sid,
+            config=config,
+            on_transcript=on_transcript,
+            on_error=on_error,
+            on_speech_event=on_speech_event,
+        )
+        
+        google_streams_v2[sid] = session
+        await session.start()
+
+    session = google_streams_v2[sid]
+    try:
+        await session.add_audio(audio_bytes)
+    except Exception as e:
+        logger.error(f"[GOOGLE_V2] add_audio error sid={sid}: {e}")
 
 # -------------------------- faster-whisper Local Batch STT -------------------------- #
 def _get_fw_model() -> Any:
@@ -791,6 +971,7 @@ async def connect(sid):
 @sio.on("disconnect")
 async def disconnect(sid):
     logger.info(f"Client disconnected with SID: {sid}")
+    
     # Clean up any active transcribers for this session
     existing = transcribers.pop(sid, None)
     if existing is not None:
@@ -804,6 +985,24 @@ async def disconnect(sid):
             logger.info(f"Session closed cleanly on disconnect (sid={sid})")
         except Exception as e:
             logger.warn(f"Error while closing session on disconnect (sid={sid}): {e}")
+    
+    # Clean up Google STT V1 sessions
+    google_v1_session = google_streams.pop(sid, None)
+    if google_v1_session is not None:
+        try:
+            await google_v1_session.stop()
+            logger.info(f"[GOOGLE_V1][DISCONNECT] Session closed for sid={sid}")
+        except Exception as e:
+            logger.warn(f"[GOOGLE_V1][DISCONNECT] Error closing session for sid={sid}: {e}")
+    
+    # Clean up Google STT V2 sessions
+    google_v2_session = google_streams_v2.pop(sid, None)
+    if google_v2_session is not None:
+        try:
+            await google_v2_session.stop()
+            logger.info(f"[GOOGLE_V2][DISCONNECT] Session closed for sid={sid}")
+        except Exception as e:
+            logger.warn(f"[GOOGLE_V2][DISCONNECT] Error closing session for sid={sid}: {e}")
     
     # Clean up AssemblyAI Universal-Streaming sessions
     logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Cleaning up AssemblyAI session for sid={sid}")

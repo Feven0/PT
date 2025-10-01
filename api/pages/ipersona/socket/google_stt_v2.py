@@ -1,0 +1,636 @@
+"""
+Google Cloud Speech-to-Text V2 Streaming Module
+
+Uses the latest Speech V2 API with improved features:
+- Better async support with SpeechAsyncClient
+- Recognizer resources for reusable configurations
+- Enhanced streaming with better latency
+- More advanced features and models
+
+Reference: https://cloud.google.com/python/docs/reference/speech/latest/google.cloud.speech_v2.services.speech.SpeechAsyncClient
+"""
+
+import asyncio
+import os
+import json
+import time
+from typing import Optional, Callable, Dict, Any, AsyncIterator
+from dataclasses import dataclass
+
+try:
+    from api.utils.logger import LLPackerLogger
+except ImportError:
+    import logging
+    LLPackerLogger = logging.getLogger
+
+try:
+    from google.cloud.speech_v2 import SpeechAsyncClient
+    from google.cloud.speech_v2.types import (
+        StreamingRecognizeRequest,
+        StreamingRecognitionConfig,
+        StreamingRecognitionFeatures,  # ✅ Separate class, not nested!
+        RecognitionConfig,
+        AutoDetectDecodingConfig,
+        ExplicitDecodingConfig,
+        RecognitionFeatures,
+        SpeechAdaptation,
+    )
+    from google.api_core import exceptions as google_exceptions
+    from google.api_core.client_options import ClientOptions
+except ImportError:
+    SpeechAsyncClient = None
+    StreamingRecognizeRequest = None
+    StreamingRecognitionConfig = None
+    StreamingRecognitionFeatures = None
+    RecognitionConfig = None
+    AutoDetectDecodingConfig = None
+    ExplicitDecodingConfig = None
+    RecognitionFeatures = None
+    SpeechAdaptation = None
+    google_exceptions = None
+    ClientOptions = None
+
+logger = LLPackerLogger(os.path.basename(__file__))
+
+
+@dataclass
+class GoogleSTTV2Config:
+    """Configuration for Google Speech-to-Text V2 streaming"""
+    
+    # Project and Recognizer
+    project_id: Optional[str] = None  # Auto-detected from credentials if not set
+    location: str = "global"  # or regional like "us-central1"
+    recognizer_id: Optional[str] = None  # Use existing recognizer or create inline config
+    
+    # Audio configuration
+    sample_rate_hz: int = 16000
+    language_codes: list = None  # V2 supports multiple languages: ["en-US"]
+    
+    # Model selection
+    model: str = "short"  # Options: short, long, chirp, chirp_2 (V2 uses different names than V1!)
+    
+    # Streaming configuration
+    enable_interim_results: bool = True
+    enable_automatic_punctuation: bool = True
+    enable_word_time_offsets: bool = False
+    enable_word_confidence: bool = False
+    enable_spoken_punctuation: bool = False
+    enable_spoken_emojis: bool = False
+    
+    # Voice Activity Detection
+    enable_voice_activity_events: bool = False
+    
+    # Transcript Emission Strategy
+    emit_interim_results: bool = True  # Send interim results to frontend
+    emit_only_final: bool = False  # Only send final results (overrides emit_interim_results)
+    emit_on_utterance_end: bool = True  # Send on END_OF_SINGLE_UTTERANCE event
+    enable_self_correction: bool = True  # Allow interim results to update previous text
+    
+    # Multi-channel
+    audio_channel_count: int = 1
+    
+    # Adaptation
+    phrase_sets: list = None  # List of phrase set resource names
+    custom_classes: list = None  # List of custom class resource names
+    
+    # Performance
+    streaming_limit_seconds: int = 290
+    chunk_size_bytes: int = 3200  # ~100ms of audio at 16kHz PCM16
+    
+    # Regional endpoint
+    api_endpoint: Optional[str] = None  # e.g., "us-central1-speech.googleapis.com"
+    
+    def __post_init__(self):
+        if self.language_codes is None:
+            self.language_codes = ["en-US"]
+    
+    @classmethod
+    def from_env(cls) -> "GoogleSTTV2Config":
+        """Create configuration from environment variables"""
+        lang_codes_str = os.getenv("GOOGLE_STT_V2_LANGUAGES", "en-US")
+        lang_codes = [l.strip() for l in lang_codes_str.split(",")]
+        
+        return cls(
+            project_id=os.getenv("GOOGLE_CLOUD_PROJECT"),
+            location=os.getenv("GOOGLE_STT_V2_LOCATION", "global"),
+            recognizer_id=os.getenv("GOOGLE_STT_V2_RECOGNIZER_ID"),
+            language_codes=lang_codes,
+            model=os.getenv("GOOGLE_STT_V2_MODEL", "short"),  # V2 uses "short" not "latest_short"
+            enable_interim_results=os.getenv("GOOGLE_STT_V2_INTERIM", "true").lower() == "true",
+            enable_automatic_punctuation=os.getenv("GOOGLE_STT_V2_PUNCTUATION", "true").lower() == "true",
+            enable_voice_activity_events=os.getenv("GOOGLE_STT_V2_VAD_EVENTS", "true").lower() == "true",
+            api_endpoint=os.getenv("GOOGLE_STT_V2_ENDPOINT"),
+            # Emission strategy controls
+            emit_interim_results=os.getenv("GOOGLE_STT_V2_EMIT_INTERIM", "true").lower() == "true",
+            emit_only_final=os.getenv("GOOGLE_STT_V2_EMIT_ONLY_FINAL", "false").lower() == "true",
+            emit_on_utterance_end=os.getenv("GOOGLE_STT_V2_EMIT_ON_UTTERANCE_END", "true").lower() == "true",
+            enable_self_correction=os.getenv("GOOGLE_STT_V2_SELF_CORRECTION", "true").lower() == "true",
+        )
+
+
+class GoogleStreamingSTTV2:
+    """
+    Google Cloud Speech-to-Text V2 streaming client.
+    
+    Improvements over V1:
+    - Better async support with native async client
+    - Recognizer resources for reusable configurations
+    - Improved models (chirp, chirp_2)
+    - Better voice activity detection
+    - Enhanced multi-language support
+    """
+    
+    def __init__(
+        self,
+        sid: str,
+        config: Optional[GoogleSTTV2Config] = None,
+        on_transcript: Optional[Callable] = None,
+        on_error: Optional[Callable] = None,
+        on_speech_event: Optional[Callable] = None,
+        credentials_path: str = '.envdir/tenx-saas-3ff848c57fc5.json'
+    ):
+        """
+        Initialize Google STT V2 streaming client.
+        
+        Args:
+            sid: Session ID for tracking
+            config: Configuration object
+            on_transcript: Async callback: async def callback(text: str, is_final: bool, result: dict)
+            on_error: Async callback: async def callback(error: Exception)
+            on_speech_event: Async callback for VAD events: async def callback(event_type: str, event: dict)
+            credentials_path: Path to Google Cloud credentials JSON
+        """
+        if SpeechAsyncClient is None:
+            raise RuntimeError(
+                "google-cloud-speech V2 is not installed. "
+                "Install: pip install 'google-cloud-speech>=2.20.0'"
+            )
+        
+        self.sid = sid
+        self.config = config or GoogleSTTV2Config.from_env()
+        self.on_transcript = on_transcript
+        self.on_error = on_error
+        self.on_speech_event = on_speech_event
+        
+        # Initialize client
+        self.client = self._initialize_client(credentials_path)
+        self.project_id = self._get_project_id(credentials_path)
+        
+        # Stream management
+        self._stop_event = asyncio.Event()
+        self._stream_task: Optional[asyncio.Task] = None
+        self._restart_timer_task: Optional[asyncio.Task] = None
+        self._audio_queue: asyncio.Queue = asyncio.Queue()
+        
+        # Statistics
+        self.total_audio_bytes = 0
+        self.total_transcripts = 0
+        self.restart_counter = 0
+        self.stream_start_time = time.time()
+        
+    def _get_project_id(self, credentials_path: str) -> str:
+        """Extract project ID from credentials"""
+        if self.config.project_id:
+            return self.config.project_id
+        
+        try:
+            with open(credentials_path, 'r', encoding='utf-8') as f:
+                service_account_data = json.load(f)
+            project_id = service_account_data.get('project_id')
+            if not project_id:
+                raise ValueError("No project_id found in credentials or config")
+            return project_id
+        except Exception as e:
+            logger.error(f"[GOOGLE_STT_V2][INIT] Failed to get project_id: {e}")
+            raise
+    
+    def _initialize_client(self, credentials_path: str) -> SpeechAsyncClient:
+        """Initialize Google Speech V2 async client"""
+        try:
+            if not os.path.exists(credentials_path):
+                raise FileNotFoundError(f"Credentials file not found: {credentials_path}")
+            
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+            
+            # Initialize client with optional regional endpoint
+            client_options = None
+            if self.config.api_endpoint:
+                client_options = ClientOptions(api_endpoint=self.config.api_endpoint)
+            
+            client = SpeechAsyncClient(client_options=client_options)
+            
+            logger.info(
+                f"[GOOGLE_STT_V2][INIT] Client initialized for sid={self.sid}, "
+                f"endpoint={self.config.api_endpoint or 'default'}"
+            )
+            return client
+            
+        except Exception as e:
+            logger.error(f"[GOOGLE_STT_V2][INIT] Failed to initialize client: {e}")
+            raise
+    
+    def _create_streaming_config(self) -> StreamingRecognitionConfig:
+        """Create V2 streaming configuration"""
+        
+        # Create recognition config
+        recognition_config = RecognitionConfig(
+            # Explicit decoding config for PCM16
+            explicit_decoding_config=ExplicitDecodingConfig(
+                encoding=ExplicitDecodingConfig.AudioEncoding.LINEAR16,
+                sample_rate_hertz=self.config.sample_rate_hz,
+                audio_channel_count=self.config.audio_channel_count,
+            ),
+            language_codes=self.config.language_codes,
+            model=self.config.model,
+            features=RecognitionFeatures(
+                enable_automatic_punctuation=self.config.enable_automatic_punctuation,
+                enable_word_time_offsets=self.config.enable_word_time_offsets,
+                enable_word_confidence=self.config.enable_word_confidence,
+                enable_spoken_punctuation=self.config.enable_spoken_punctuation,
+                enable_spoken_emojis=self.config.enable_spoken_emojis,
+            ),
+        )
+        
+        # Add adaptation if configured
+        if self.config.phrase_sets or self.config.custom_classes:
+            phrase_sets = []
+            if self.config.phrase_sets:
+                phrase_sets = [
+                    SpeechAdaptation.AdaptationPhraseSet(phrase_set=ps)
+                    for ps in self.config.phrase_sets
+                ]
+            
+            recognition_config.adaptation = SpeechAdaptation(
+                phrase_sets=phrase_sets,
+            )
+        
+        # Create streaming features (separate class in V2)
+        streaming_features = StreamingRecognitionFeatures(
+            interim_results=self.config.enable_interim_results,
+            enable_voice_activity_events=self.config.enable_voice_activity_events,
+        )
+        
+        # Create streaming config
+        streaming_config = StreamingRecognitionConfig(
+            config=recognition_config,
+            streaming_features=streaming_features,  # ✅ Use the separate class
+        )
+        
+        return streaming_config
+    
+    async def start(self):
+        """Start the streaming session"""
+        if self._stream_task is not None:
+            logger.warn(f"[GOOGLE_STT_V2][START] Stream already running for sid={self.sid}")
+            return
+        
+        self._stop_event.clear()
+        self.stream_start_time = time.time()
+        
+        # Start streaming task
+        self._stream_task = asyncio.create_task(self._run_stream())
+        
+        # Start restart timer
+        self._restart_timer_task = asyncio.create_task(self._restart_timer())
+        
+        logger.info(f"[GOOGLE_STT_V2][START] Stream started for sid={self.sid}")
+    
+    async def stop(self):
+        """Stop the streaming session"""
+        self._stop_event.set()
+        
+        # Signal queue to stop
+        await self._audio_queue.put(None)
+        
+        # Cancel tasks
+        if self._stream_task:
+            self._stream_task.cancel()
+            try:
+                await self._stream_task
+            except asyncio.CancelledError:
+                pass
+        
+        if self._restart_timer_task:
+            self._restart_timer_task.cancel()
+            try:
+                await self._restart_timer_task
+            except asyncio.CancelledError:
+                pass
+        
+        logger.info(
+            f"[GOOGLE_STT_V2][STOP] Stream stopped for sid={self.sid}, "
+            f"total_bytes={self.total_audio_bytes}, "
+            f"total_transcripts={self.total_transcripts}, "
+            f"restarts={self.restart_counter}"
+        )
+    
+    async def add_audio(self, audio_bytes: bytes):
+        """Add audio data to the streaming queue"""
+        self.total_audio_bytes += len(audio_bytes)
+        queue_size = self._audio_queue.qsize()
+        await self._audio_queue.put(audio_bytes)
+        logger.info(
+            f"[GOOGLE_STT_V2][ADD_AUDIO] sid={self.sid}, "
+            f"chunk_size={len(audio_bytes)}, "
+            f"queue_size_before={queue_size}, "
+            f"total_bytes={self.total_audio_bytes}"
+        )
+    
+    async def _audio_request_generator(self) -> AsyncIterator[StreamingRecognizeRequest]:
+        """
+        Async generator for streaming requests.
+        
+        V2 uses async iterator instead of sync generator for better performance.
+        """
+        logger.info(f"[GOOGLE_STT_V2][GENERATOR] Generator called for sid={self.sid}")
+        
+        try:
+            # First request: config
+            logger.info(f"[GOOGLE_STT_V2][GENERATOR] Creating streaming config for sid={self.sid}")
+            streaming_config = self._create_streaming_config()
+            logger.info(f"[GOOGLE_STT_V2][GENERATOR] Streaming config created for sid={self.sid}")
+            
+            # Build recognizer path if using a specific recognizer
+            if self.config.recognizer_id:
+                recognizer = (
+                    f"projects/{self.project_id}/"
+                    f"locations/{self.config.location}/"
+                    f"recognizers/{self.config.recognizer_id}"
+                )
+            else:
+                # Use inline config (no specific recognizer)
+                recognizer = (
+                    f"projects/{self.project_id}/"
+                    f"locations/{self.config.location}/"
+                    f"recognizers/_"
+                )
+            
+            logger.info(
+                f"[GOOGLE_STT_V2][GENERATOR][CONFIG] sid={self.sid}\n"
+                f"  recognizer={recognizer}\n"
+                f"  model={self.config.model}\n"
+                f"  languages={self.config.language_codes}\n"
+                f"  sample_rate={self.config.sample_rate_hz}\n"
+                f"  encoding=LINEAR16\n"
+                f"  interim_results={self.config.enable_interim_results}"
+            )
+            
+            logger.info(f"[GOOGLE_STT_V2][GENERATOR] About to yield first request (config) for sid={self.sid}")
+            yield StreamingRecognizeRequest(
+                recognizer=recognizer,
+                streaming_config=streaming_config,
+            )
+            logger.info(f"[GOOGLE_STT_V2][GENERATOR] ✅ Config request yielded successfully for sid={self.sid}")
+            
+        except Exception as config_error:
+            logger.error(
+                f"[GOOGLE_STT_V2][GENERATOR] ❌ Error creating config for sid={self.sid}: "
+                f"{type(config_error).__name__}: {config_error}",
+                exc_info=True
+            )
+            raise
+        
+        # Stream audio chunks
+        logger.info(f"[GOOGLE_STT_V2][GENERATOR] Starting audio chunk loop for sid={self.sid}")
+        chunk_count = 0
+        while not self._stop_event.is_set():
+            try:
+                chunk = await asyncio.wait_for(self._audio_queue.get(), timeout=0.1)
+                if chunk is None:  # Sentinel to stop
+                    logger.info(f"[GOOGLE_STT_V2][GENERATOR] Sentinel received, stopping generator for sid={self.sid}")
+                    break
+                chunk_count += 1
+                logger.info(f"[GOOGLE_STT_V2][GENERATOR] Yielding audio chunk #{chunk_count}, size={len(chunk)} for sid={self.sid}")
+                yield StreamingRecognizeRequest(audio=chunk)
+                logger.info(f"[GOOGLE_STT_V2][GENERATOR] Audio chunk #{chunk_count} yielded for sid={self.sid}")
+            except asyncio.TimeoutError:
+                continue
+            except Exception as e:
+                logger.error(f"[GOOGLE_STT_V2][GENERATOR] Error: {e}")
+                break
+        
+        logger.info(f"[GOOGLE_STT_V2][GENERATOR] Generator ended after {chunk_count} audio chunks for sid={self.sid}")
+    
+    async def _run_stream(self):
+        """Main streaming loop using V2 async client"""
+        try:
+            logger.info(f"[GOOGLE_STT_V2][STREAM] Creating request generator for sid={self.sid}")
+            
+            # Create request generator
+            requests = self._audio_request_generator()
+            
+            logger.info(f"[GOOGLE_STT_V2][STREAM] Generator created, calling streaming_recognize for sid={self.sid}")
+            
+            # Start streaming recognition (fully async in V2)
+            try:
+                logger.info(f"[GOOGLE_STT_V2][STREAM] About to await streaming_recognize for sid={self.sid}")
+                response_stream = await self.client.streaming_recognize(requests=requests)
+                logger.info(f"[GOOGLE_STT_V2][STREAM] ✅ streaming_recognize() returned successfully for sid={self.sid}")
+            except Exception as stream_init_error:
+                logger.error(
+                    f"[GOOGLE_STT_V2][STREAM] ❌ Failed to call streaming_recognize for sid={self.sid}: "
+                    f"{type(stream_init_error).__name__}: {stream_init_error}",
+                    exc_info=True
+                )
+                raise
+            
+            logger.info(f"[GOOGLE_STT_V2][STREAM] Got response stream for sid={self.sid}")
+            
+            # Process responses
+            response_count = 0
+            logger.info(f"[GOOGLE_STT_V2][STREAM] Starting to consume response stream for sid={self.sid}")
+            async for response in response_stream:
+                response_count += 1
+                logger.info(f"[GOOGLE_STT_V2][STREAM] 📥 Response #{response_count} received for sid={self.sid}")
+                
+                if self._stop_event.is_set():
+                    break
+                
+                await self._process_response(response)
+            
+            logger.info(f"[GOOGLE_STT_V2][STREAM] Stream ended after {response_count} responses for sid={self.sid}")
+                
+        except google_exceptions.OutOfRange:
+            logger.info(f"[GOOGLE_STT_V2][STREAM] Time limit reached for sid={self.sid}")
+            if not self._stop_event.is_set():
+                await self._restart_stream()
+                
+        except google_exceptions.GoogleAPICallError as api_error:
+            logger.error(f"[GOOGLE_STT_V2][STREAM] API error for sid={self.sid}: {api_error}")
+            if self.on_error:
+                await self.on_error(api_error)
+            
+            if not self._stop_event.is_set() and self._should_retry_error(api_error):
+                await asyncio.sleep(1)
+                await self._restart_stream()
+                
+        except (IOError, RuntimeError) as stream_error:
+            logger.error(f"[GOOGLE_STT_V2][STREAM] Stream error for sid={self.sid}: {stream_error}")
+            if self.on_error:
+                await self.on_error(stream_error)
+        
+        except Exception as unexpected_error:
+            logger.error(
+                f"[GOOGLE_STT_V2][STREAM] Unexpected error for sid={self.sid}: "
+                f"{type(unexpected_error).__name__}: {unexpected_error}",
+                exc_info=True
+            )
+            if self.on_error:
+                await self.on_error(unexpected_error)
+    
+    def _should_retry_error(self, error: Exception) -> bool:
+        """Determine if error should trigger retry"""
+        return isinstance(error, (
+            google_exceptions.ServiceUnavailable,
+            google_exceptions.DeadlineExceeded,
+            google_exceptions.InternalServerError,
+        ))
+    
+    async def _process_response(self, response):
+        """Process V2 streaming response"""
+        
+        logger.info(f"[GOOGLE_STT_V2][PROCESS] Processing response for sid={self.sid}, has_results={bool(response.results)}")
+        
+        # Handle speech event (VAD)
+        if hasattr(response, 'speech_event_type') and response.speech_event_type:
+            event_type = response.speech_event_type.name
+            logger.info(f"[GOOGLE_STT_V2][EVENT] sid={self.sid}, type={event_type}")
+            if self.on_speech_event:
+                await self.on_speech_event(event_type, {"response": response})
+        
+        # Handle recognition results
+        if not response.results:
+            logger.info(f"[GOOGLE_STT_V2][PROCESS] ⚠️ No results in response for sid={self.sid}")
+            return
+        
+        logger.info(f"[GOOGLE_STT_V2][PROCESS] ✅ Found {len(response.results)} results for sid={self.sid}")
+        
+        for result in response.results:
+            if not result.alternatives:
+                continue
+            
+            # Get top alternative
+            alternative = result.alternatives[0]
+            transcript = alternative.transcript
+            
+            if not transcript:
+                continue
+            
+            # Build result dict with V2 specific fields
+            result_dict = {
+                "transcript": transcript,
+                "is_final": result.is_final,
+                "stability": result.stability if hasattr(result, 'stability') else None,
+                "result_end_offset": result.result_end_offset if hasattr(result, 'result_end_offset') else None,
+                "language_code": result.language_code if hasattr(result, 'language_code') else None,
+            }
+            
+            if result.is_final:
+                self.total_transcripts += 1
+                result_dict["confidence"] = alternative.confidence if hasattr(alternative, 'confidence') else None
+                
+                # Add word-level info if enabled
+                if self.config.enable_word_time_offsets and hasattr(alternative, 'words'):
+                    result_dict["words"] = [
+                        {
+                            "word": w.word,
+                            "start_offset": w.start_offset if hasattr(w, 'start_offset') else None,
+                            "end_offset": w.end_offset if hasattr(w, 'end_offset') else None,
+                            "confidence": w.confidence if hasattr(w, 'confidence') else None,
+                        }
+                        for w in alternative.words
+                    ]
+                
+                logger.info(
+                    f"[GOOGLE_STT_V2][FINAL] sid={self.sid}, "
+                    f"text='{transcript[:50]}...', "
+                    f"lang={result_dict.get('language_code', 'unknown')}"
+                )
+            else:
+                logger.debug(
+                    f"[GOOGLE_STT_V2][INTERIM] sid={self.sid}, "
+                    f"text='{transcript[:30]}...', "
+                    f"stability={result_dict.get('stability', 0):.2f}"
+                )
+            
+            # Emit transcript
+            if self.on_transcript:
+                await self.on_transcript(transcript, result.is_final, result_dict)
+    
+    async def _restart_stream(self):
+        """Restart the stream"""
+        self.restart_counter += 1
+        
+        logger.info(
+            f"[GOOGLE_STT_V2][RESTART] Restarting stream #{self.restart_counter} "
+            f"for sid={self.sid}"
+        )
+        
+        self.stream_start_time = time.time()
+        
+        # Cancel current stream
+        if self._stream_task:
+            self._stream_task.cancel()
+            try:
+                await self._stream_task
+            except asyncio.CancelledError:
+                pass
+        
+        # Restart
+        self._stream_task = asyncio.create_task(self._run_stream())
+    
+    async def _restart_timer(self):
+        """Periodic restart to avoid timeout"""
+        while not self._stop_event.is_set():
+            await asyncio.sleep(self.config.streaming_limit_seconds)
+            
+            if not self._stop_event.is_set():
+                logger.info(
+                    f"[GOOGLE_STT_V2][TIMER] Periodic restart for sid={self.sid}"
+                )
+                await self._restart_stream()
+
+
+# Health check for V2
+async def check_google_stt_v2_status(credentials_path: str = '.envdir/tenx-saas-3ff848c57fc5.json') -> Dict[str, Any]:
+    """
+    Check if Google Speech-to-Text V2 API is accessible.
+    
+    Returns:
+        dict: Status information
+    """
+    try:
+        if not os.path.exists(credentials_path):
+            return {"error": f"Credentials file not found: {credentials_path}"}
+        
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+        
+        # Get project ID
+        with open(credentials_path, 'r', encoding='utf-8') as f:
+            service_account_data = json.load(f)
+        
+        project_id = service_account_data.get('project_id')
+        if not project_id:
+            return {"error": "No project_id in credentials"}
+        
+        # Try to create client
+        try:
+            client = SpeechAsyncClient()
+            
+            return {
+                "project_id": project_id,
+                "api_version": "v2",
+                "client_initialized": True,
+                "status": "ready",
+            }
+        except Exception as client_error:
+            return {
+                "project_id": project_id,
+                "api_version": "v2",
+                "client_initialized": False,
+                "error": str(client_error),
+            }
+            
+    except (IOError, ValueError, KeyError) as e:
+        return {"error": str(e)}
+
