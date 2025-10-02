@@ -11,6 +11,9 @@ PYTHON_VERSION := 3.12
 VENV := .venv
 VENV_BIN := $(VENV)/bin
 
+# uv (Python package/dependency manager)
+UV_BIN := $(shell command -v uv 2>/dev/null || echo "")
+
 # Stage
 ENV_STAGE ?= dev
 
@@ -29,6 +32,7 @@ FRONTEND_DIR := $(BACKEND_DIR)/frontend
 TEST_DIR = $(BACKEND_DIR)/tests
 
 # Pytest
+CMD ?=
 PYTEST_ARGS ?=
 PYTEST_BASE_CMD := PYTHONPATH=$(BACKEND_DIR) pytest --import-mode=importlib
 
@@ -36,6 +40,11 @@ PYTEST_BASE_CMD := PYTHONPATH=$(BACKEND_DIR) pytest --import-mode=importlib
 define activate_venv
 	@if [ ! -d "$(VENV)" ]; then \
 		echo -e "${YELLOW}Virtual environment not found. Creating one...${NC}"; \
+		if ! command -v uv >/dev/null 2>&1; then \
+			echo -e "${BLUE}uv not found. Installing uv system-wide (user space)...${NC}"; \
+			curl -LsSf https://astral.sh/uv/install.sh | sh; \
+			export PATH="$$HOME/.local/bin:$$PATH"; \
+		fi; \
 		uv venv $(VENV) --python $(PYTHON_VERSION); \
 	fi
 	@echo -e "${GREEN}Activating virtual environment...${NC}"
@@ -47,7 +56,7 @@ define run_in_venv
 	$1
 endef
 
-.PHONY: help install-deps test test-unit test-integration test-watch test-coverage \
+.PHONY: help uv-install uv-version install-deps test test-unit test-integration test-watch test-coverage \
         format lint security clean run docker-compose docker-build docker-run \
         celery-start celery-stop celery-restart celery-status celery-monitor \
         celery-flower worker flower celery-purge celery-logs celery celery-clean \
@@ -59,6 +68,19 @@ help: ## Show this help message
 	@echo -e ''
 	@echo -e 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+uv-install: ## Install uv (Python package manager) system-wide for current user
+	@if command -v uv >/dev/null 2>&1; then \
+		echo -e "${GREEN}uv is already installed at: $(UV_BIN)${NC}"; \
+	else \
+		echo -e "${BLUE}Installing uv...${NC}"; \
+		curl -LsSf https://astral.sh/uv/install.sh | sh; \
+		echo -e "${YELLOW}If uv is not found, add $$HOME/.local/bin to your PATH:${NC}"; \
+		echo '  export PATH="$$HOME/.local/bin:$$PATH"'; \
+	fi
+
+uv-version: ## Print uv version (if installed)
+	@command -v uv >/dev/null 2>&1 && uv --version || echo -e "${RED}uv is not installed${NC}"
 
 install-deps: ## Install dependencies (uv)
 	@echo -e "${BLUE}Installing dependencies...${NC}"
@@ -176,6 +198,11 @@ setup-frontend: check-node ## Setup frontend Node deps
 setup: setup-backend setup-frontend ## Setup both backend and frontend
 
 # ---------------------- Start ----------------------
+.PHONY: runpy
+runpy: ## Run FastAPI app (ENV_STAGE=prod for gunicorn)
+	@echo -e "${BLUE}Run a command in backend...${NC}"
+	$(call activate_venv)
+	source $(VENV_BIN)/activate && python ${CMD}; 
 
 start-backend: ## Run FastAPI app (ENV_STAGE=prod for gunicorn)
 	@echo -e "${BLUE}Running application in $(ENV_STAGE) mode...${NC}"

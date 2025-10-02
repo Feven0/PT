@@ -12,8 +12,9 @@ from typing import Optional, Dict, Any
 from botocore.config import Config
 from botocore.exceptions import ClientError, NoCredentialsError
 
-from api.utils.logger import LLPackerLogger
-logger = LLPackerLogger(os.path.basename(__file__))
+# from api.utils.logger import LLPackerLogger
+import logging
+logger = logging.getLogger(os.path.basename(__file__))
 
 
 # Configuration

@@ -612,9 +612,11 @@ class AudioUtils:
                         
                         # Emit failure event and update Redis
                         from api.socket.core import emit_with_log
+                        room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
                         await emit_with_log(
                             "processing_update_failed",
-                            {"status": f"Invalid interview content: {error_reason}"}
+                            {"status": f"Invalid interview content: {error_reason}"},
+                            room=room
                         )
                         
                         redis.set(task_redis_key, {
@@ -893,9 +895,11 @@ class AudioUtils:
                                     # Emit success event for template answer completion
                                 try:
                                     from api.socket.core import emit_with_log
+                                    room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
                                     loop.run_until_complete(emit_with_log(
                                         "processing_update_success",
-                                        {"status": "✅ Uploaded file analysis completed successfully!"}
+                                        {"status": "✅ Uploaded file analysis completed successfully!"},
+                                        room=room
                                     ))
                                 except Exception as emit_error:
                                     logger.error(f"Failed to emit success event: {str(emit_error)}")
@@ -1070,9 +1074,11 @@ class AudioUtils:
             if not filtered_data:
                 error_msg = "Failed to process upload files: No Valuable matched question-answer data returned from the analysis"
                 from api.socket.core import emit_with_log
+                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
                 await emit_with_log(
                     "processing_update_failed",
-                    {"status": f"No valuable matches found between the question and answer files you just uploaded. Please re-upload a clear interview file, then try again."}
+                    {"status": f"No valuable matches found between the question and answer files you just uploaded. Please re-upload a clear interview file, then try again."},
+                    room=room
                 )
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
@@ -1181,9 +1187,11 @@ class AudioUtils:
                             # Emit success event for template answer completion
                             try:
                                 from api.socket.core import emit_with_log
+                                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
                                 loop.run_until_complete(emit_with_log(
                                     "processing_update_success",
-                                    {"status": "✅ Uploaded file analysis completed successfully!"}
+                                    {"status": "✅ Uploaded file analysis completed successfully!"},
+                                    room=room
                                 ))
                             except Exception as emit_error:
                                 logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
@@ -1276,9 +1284,11 @@ class AudioUtils:
                 error_msg = f"Answer content validation failed: {answer_validation.get('reason', 'Unknown validation error')}"
                 logger.error(error_msg)
                 from api.socket.core import emit_with_log
+                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
                 await emit_with_log(
                     "processing_update_failed",
-                    {"status": f"{error_msg}"}
+                    {"status": f"{error_msg}"},
+                    room=room
                 )
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
@@ -1385,9 +1395,11 @@ class AudioUtils:
             if not filtered_data:
                 error_msg = "Failed to process template answer: No Valuable matched question-answer data returned from the analysis"
                 from api.socket.core import emit_with_log
+                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
                 await emit_with_log(
                     "processing_update_failed",
-                    {"status": f"{error_msg}"}
+                    {"status": f"{error_msg}"},
+                    room=room
                 )
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
@@ -1473,9 +1485,11 @@ class AudioUtils:
                             # Emit success event for template answer completion
                             try:
                                 from api.socket.core import emit_with_log
+                                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
                                 loop.run_until_complete(emit_with_log(
                                     "processing_update_success",
-                                    {"status": "✅ Uploaded file analysis completed successfully!"}
+                                    {"status": "✅ Uploaded file analysis completed successfully!"},
+                                    room=room
                                 ))
                             except Exception as emit_error:
                                 logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")

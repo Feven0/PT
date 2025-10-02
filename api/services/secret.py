@@ -1,5 +1,12 @@
 import sys
 import os
+path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+if path not in sys.path:
+    print(f'Adding {path} to sys.path')
+    sys.path.append(path)
+
+
+
 import time
 import json
 import base64
@@ -644,12 +651,18 @@ def update_secret(secret_name: str, kv: Dict[str, Any]) -> Any:
 
 
 if __name__ == "__main__":
+    
     path = os.path.dirname(os.path.realpath(__file__))
     path = os.path.dirname(path)
-    
-    _ = get_auth(ssmkey="gspread/config",
-                 fconfig=f'{path}/{envdir}/gclass.json',
-                 envvar='rds_CONFIG',
-                 )
-    print(_)
+    for ssmkey in ["googleservice/tenxsaas", "gspread/config"]:
+        fconfig = f'{envdir}/{ssmkey.replace("/", "_")}.json'
+        _ = get_auth(ssmkey=ssmkey,
+                     fconfig=fconfig,
+                     rfile=True
+                    )
+        if os.path.exists(fconfig):
+            print(f'{fconfig} saved successfully')
+        else:
+            print(f'{fconfig} failed to save')
+        
 	

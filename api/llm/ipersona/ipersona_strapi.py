@@ -30,6 +30,7 @@ def step1_insert_message(run_stage, data, sessionId, audio_url=None):
                         "response": data['response'],
                         "time_taken": data['time_taken'],
                         "realtime_evaluation": "null",
+                        "metadata": data['metadata'],
                         "url": audio_url
                     }
                 },

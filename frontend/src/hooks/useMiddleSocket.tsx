@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import useWebSocket from './useWebSocket';
 import { useStopwatch } from 'react-timer-hook';
 
@@ -26,9 +26,45 @@ const useMiddleSocket = () => {
   const { seconds, minutes, start, pause, reset } = useStopwatch({ autoStart: false});
   const [openaiTranscript, setOpenaiTranscript] = useState<string>("");
   const [whisperTranscript, setWhisperTranscript] = useState<string>("");
+  // Google: maintain finals history + live interim for self-correction UX
   const [googleTranscript, setGoogleTranscript] = useState<string>("");
+  const [googleFinalHistory, setGoogleFinalHistory] = useState<string[]>([]);
+  const [googleLiveInterim, setGoogleLiveInterim] = useState<string>("");
   const [geminiTranscript, setGeminiTranscript] = useState<string>("");
   const [fwTranscript, setFwTranscript] = useState<string>("");
+  // Refs to avoid stale reads when composing transcript string and for debounce finalize
+  const googleFinalHistoryRef = useRef<string[]>([]);
+  const googleLiveInterimRef = useRef<string>("");
+  const googleLiveFinalizeTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    googleFinalHistoryRef.current = googleFinalHistory;
+  }, [googleFinalHistory]);
+  useEffect(() => {
+    googleLiveInterimRef.current = googleLiveInterim;
+  }, [googleLiveInterim]);
+
+  const finalizeLiveIntoHistory = () => {
+    const live = (googleLiveInterimRef.current || '').trim();
+    if (!live) return;
+    setGoogleFinalHistory(prev => {
+      const next = [...prev, live];
+      googleFinalHistoryRef.current = next;
+      setGoogleLiveInterim("");
+      setGoogleTranscript((next.join(' ') || '').trim());
+      return next;
+    });
+  };
+
+  const scheduleFinalizeDebounce = () => {
+    if (googleLiveFinalizeTimerRef.current) {
+      clearTimeout(googleLiveFinalizeTimerRef.current);
+    }
+    // Promote live to finals after short inactivity to preserve context when backend only sends strings
+    googleLiveFinalizeTimerRef.current = window.setTimeout(() => {
+      finalizeLiveIntoHistory();
+      googleLiveFinalizeTimerRef.current = null;
+    }, 1200);
+  };
 
 
     // In your React component
@@ -152,19 +188,99 @@ const useMiddleSocket = () => {
       };
     }, [socket]);
 
-    // --------------------------- Google STT streaming wiring with self-correction ---------------------------
+    // --------------------------- Google STT streaming wiring with epoch-aware appending and live self-correction ---------------------------
     useEffect(() => {
       if (socket) {
         socket.on('audio transcribe google', (message: any) => {
+          // Backend may send string (legacy) or structured payload
           if (typeof message === 'string') {
-            // Smart self-correction: replace entire transcript with latest (most accurate)
-            setGoogleTranscript(message);
-            console.log('[GOOGLE][RX]', message.substring(0, 50));
+            // Legacy: treat as live interim for self-correction
+            setGoogleLiveInterim(message);
+            const base = (googleFinalHistoryRef.current.join(' ') || '').trim();
+            const live = message.trim();
+            setGoogleTranscript([base, live].filter(Boolean).join(' ').trim());
+            console.log('[GOOGLE][RX][STR]', message.substring(0, 80));
+            scheduleFinalizeDebounce();
+            return;
+          }
+
+          const text = (message?.text ?? '').toString();
+          const isFinal = Boolean(message?.is_final);
+          const epoch = Number(message?.restart_epoch ?? 0);
+          const resultSeq = Number(message?.result_seq ?? -1);
+
+          if (!text.trim()) return;
+
+          if (isFinal) {
+            // Append final to history; clear live interim; rebuild transcript from new history
+            setGoogleFinalHistory(prev => {
+              const next = [...prev, text];
+              googleFinalHistoryRef.current = next;
+              setGoogleLiveInterim("");
+              setGoogleTranscript((next.join(' ') || '').trim());
+              return next;
+            });
+            console.log('[GOOGLE][RX][FINAL]', { epoch, resultSeq, preview: text.substring(0, 80) });
+          } else {
+            // Live self-correction: update interim only; do not overwrite history
+            setGoogleLiveInterim(text);
+            const base = (googleFinalHistoryRef.current.join(' ') || '').trim();
+            const live = text.trim();
+            setGoogleTranscript([base, live].filter(Boolean).join(' ').trim());
+            console.log('[GOOGLE][RX][INTERIM]', { epoch, resultSeq, preview: text.substring(0, 60) });
+            scheduleFinalizeDebounce();
+          }
+        });
+
+        // Listen for restart/stop markers to optionally handle UI grouping later
+        socket.on('speech_event', (evt: any) => {
+          if (evt?.type === 'STREAM_RESTARTING') {
+            const payload = evt?.payload || evt; // server sends { type, payload }
+            console.log('[GOOGLE][EVENT][STREAM_RESTARTING]', {
+              current_epoch: payload?.current_restart_epoch,
+              next_epoch: payload?.next_restart_epoch,
+            });
+            // Append server-provided last_final_text if new
+            const last = (payload?.last_final_text || '').trim();
+            if (last) {
+              setGoogleFinalHistory(prev => {
+                if (prev.length === 0 || prev[prev.length - 1] !== last) {
+                  const next = [...prev, last];
+                  googleFinalHistoryRef.current = next;
+                  return next;
+                }
+                return prev;
+              });
+            }
+            // Do not clear live; let it continue post-restart
+            setGoogleTranscript((googleFinalHistoryRef.current.join(' ') || '').trim());
+          } else if (evt?.type === 'STOP_SNAPSHOT') {
+            const payload = evt?.payload || evt;
+            console.log('[GOOGLE][EVENT][STOP_SNAPSHOT]', payload);
+            const last = (payload?.last_final_text || '').trim();
+            if (last) {
+              setGoogleFinalHistory(prev => {
+                if (prev.length === 0 || prev[prev.length - 1] !== last) {
+                  const next = [...prev, last];
+                  googleFinalHistoryRef.current = next;
+                  return next;
+                }
+                return prev;
+              });
+            }
+            // Clear live on stop; rebuild transcript from finals
+            setGoogleLiveInterim("");
+            setGoogleTranscript((googleFinalHistoryRef.current.join(' ') || '').trim());
           }
         });
       }
       return () => {
         socket?.off?.('audio transcribe google');
+        socket?.off?.('speech_event');
+        if (googleLiveFinalizeTimerRef.current) {
+          clearTimeout(googleLiveFinalizeTimerRef.current);
+          googleLiveFinalizeTimerRef.current = null;
+        }
       };
     }, [socket]);
 
@@ -387,6 +503,8 @@ const useMiddleSocket = () => {
     stopOpenAITranscribe,
     whisperTranscript,
     googleTranscript,
+    googleFinalHistory,
+    googleLiveInterim,
     geminiTranscript,
     fwTranscript,
     audioChunk, 

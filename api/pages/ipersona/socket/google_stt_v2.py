@@ -53,6 +53,38 @@ except ImportError:
 logger = LLPackerLogger(os.path.basename(__file__))
 
 
+def _merge_env_from_json(json_path: str = ".envdir/tenx_env_vars.json") -> None:
+    """Load environment variables from a JSON file into os.environ.
+
+    - Does not overwrite vars that are already set in the process env
+    - Silently returns if the file does not exist or is invalid JSON
+    """
+    try:
+        if not os.path.exists(json_path):
+            return
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            return
+        for key, value in data.items():
+            if key in os.environ and str(os.environ.get(key, "")).strip() != "":
+                continue
+            # Only set simple types; coerce to string for env
+            try:
+                os.environ[key] = str(value)
+            except Exception:
+                # Skip non-coercible values
+                continue
+    except Exception as e:
+        try:
+            logger.debug(f"[GOOGLE_STT_V2][ENV] Skipping env JSON merge: {e}")
+        except Exception:
+            pass
+
+# Merge env JSON at import time so subsequent os.getenv() calls see values
+_merge_env_from_json()
+
+
 @dataclass
 class GoogleSTTV2Config:
     """Configuration for Google Speech-to-Text V2 streaming"""
@@ -147,7 +179,7 @@ class GoogleStreamingSTTV2:
         on_transcript: Optional[Callable] = None,
         on_error: Optional[Callable] = None,
         on_speech_event: Optional[Callable] = None,
-        credentials_path: str = '.envdir/tenx-saas-3ff848c57fc5.json'
+        credentials_path: str = '.envdir/googleservice_tenxsaas.json'
     ):
         """
         Initialize Google STT V2 streaming client.
@@ -187,6 +219,15 @@ class GoogleStreamingSTTV2:
         self.total_transcripts = 0
         self.restart_counter = 0
         self.stream_start_time = time.time()
+        # Timing diagnostics
+        self._last_audio_ts: Optional[float] = None
+        self._last_response_ts: Optional[float] = None
+        # Sequencing for deterministic client handling
+        self.result_seq = 0  # increments on every recognition result (interim or final)
+        self.utterance_seq = 0  # increments only on finals
+        # Per-epoch accumulation of final transcripts for debugging and restart snapshots
+        self._epoch_finals = {0: []}
+        self._last_final_text = ""
         
     def _get_project_id(self, credentials_path: str) -> str:
         """Extract project ID from credentials"""
@@ -302,6 +343,33 @@ class GoogleStreamingSTTV2:
         # Signal queue to stop
         await self._audio_queue.put(None)
         
+        # On-stop snapshot: log last-final and full finals list for current epoch
+        try:
+            curr_epoch = self.restart_counter
+            finals_list = self._epoch_finals.get(curr_epoch, []) if hasattr(self, '_epoch_finals') else []
+            joined = " | ".join(finals_list)
+            logger.info(
+                f"[GOOGLE_STT_V2][STOP][SNAPSHOT] sid={self.sid} epoch={curr_epoch} "
+                f"last_final='{getattr(self, '_last_final_text', '')}' finals_count={len(finals_list)}"
+            )
+            if joined:
+                logger.info(
+                    f"[GOOGLE_STT_V2][STOP][EPOCH_FINALS] sid={self.sid} epoch={curr_epoch} finals='{joined}'"
+                )
+            # Emit STOP_SNAPSHOT event to frontend so UI can persist final state
+            if self.on_speech_event:
+                await self.on_speech_event(
+                    "STOP_SNAPSHOT",
+                    {
+                        "current_restart_epoch": curr_epoch,
+                        "server_time_ms": int(time.time() * 1000),
+                        "last_final_text": getattr(self, "_last_final_text", ""),
+                        "full_epoch_finals": joined,
+                    },
+                )
+        except Exception:
+            pass
+
         # Cancel tasks
         if self._stream_task:
             self._stream_task.cancel()
@@ -317,11 +385,15 @@ class GoogleStreamingSTTV2:
             except asyncio.CancelledError:
                 pass
         
+        elapsed_s = time.time() - self.stream_start_time if self.stream_start_time else None
+        since_audio_ms = int((time.time() - self._last_audio_ts) * 1000) if self._last_audio_ts else None
+        since_resp_ms = int((time.time() - self._last_response_ts) * 1000) if self._last_response_ts else None
         logger.info(
             f"[GOOGLE_STT_V2][STOP] Stream stopped for sid={self.sid}, "
             f"total_bytes={self.total_audio_bytes}, "
             f"total_transcripts={self.total_transcripts}, "
-            f"restarts={self.restart_counter}"
+            f"restarts={self.restart_counter}, "
+            f"elapsed_s={elapsed_s:.3f} since_last_audio_ms={since_audio_ms} since_last_response_ms={since_resp_ms}"
         )
     
     async def add_audio(self, audio_bytes: bytes):
@@ -329,6 +401,7 @@ class GoogleStreamingSTTV2:
         self.total_audio_bytes += len(audio_bytes)
         queue_size = self._audio_queue.qsize()
         await self._audio_queue.put(audio_bytes)
+        self._last_audio_ts = time.time()
         logger.info(
             f"[GOOGLE_STT_V2][ADD_AUDIO] sid={self.sid}, "
             f"chunk_size={len(audio_bytes)}, "
@@ -451,12 +524,26 @@ class GoogleStreamingSTTV2:
             logger.info(f"[GOOGLE_STT_V2][STREAM] Stream ended after {response_count} responses for sid={self.sid}")
                 
         except google_exceptions.OutOfRange:
-            logger.info(f"[GOOGLE_STT_V2][STREAM] Time limit reached for sid={self.sid}")
+            elapsed_s = time.time() - self.stream_start_time if self.stream_start_time else None
+            since_audio_ms = int((time.time() - self._last_audio_ts) * 1000) if self._last_audio_ts else None
+            since_resp_ms = int((time.time() - self._last_response_ts) * 1000) if self._last_response_ts else None
+            logger.info(
+                f"[GOOGLE_STT_V2][STREAM] Time limit reached for sid={self.sid} "
+                f"elapsed_s={elapsed_s:.3f} since_last_audio_ms={since_audio_ms} since_last_response_ms={since_resp_ms}"
+            )
             if not self._stop_event.is_set():
                 await self._restart_stream()
                 
         except google_exceptions.GoogleAPICallError as api_error:
-            logger.error(f"[GOOGLE_STT_V2][STREAM] API error for sid={self.sid}: {api_error}")
+            # Extract status if available
+            status_code = getattr(api_error, 'code', None)
+            elapsed_s = time.time() - self.stream_start_time if self.stream_start_time else None
+            since_audio_ms = int((time.time() - self._last_audio_ts) * 1000) if self._last_audio_ts else None
+            since_resp_ms = int((time.time() - self._last_response_ts) * 1000) if self._last_response_ts else None
+            logger.error(
+                f"[GOOGLE_STT_V2][STREAM] API error for sid={self.sid}: {status_code or ''} {api_error} "
+                f"elapsed_s={elapsed_s:.3f} since_last_audio_ms={since_audio_ms} since_last_response_ms={since_resp_ms}"
+            )
             if self.on_error:
                 await self.on_error(api_error)
             
@@ -480,16 +567,32 @@ class GoogleStreamingSTTV2:
     
     def _should_retry_error(self, error: Exception) -> bool:
         """Determine if error should trigger retry"""
-        return isinstance(error, (
+        # Known retriable server-side conditions
+        if isinstance(error, (
             google_exceptions.ServiceUnavailable,
             google_exceptions.DeadlineExceeded,
             google_exceptions.InternalServerError,
-        ))
+        )):
+            return True
+        # Google sometimes returns 409 when the stream idles: "Stream timed out after receiving no more client requests."
+        try:
+            code = getattr(error, 'code', None)
+            if code is not None:
+                # grpc StatusCode or numeric; accept either string/int comparison
+                if str(int(code)) == '409' or str(code) == '409':
+                    return True
+        except Exception:
+            pass
+        if 'timed out after receiving no more client requests' in str(error).lower():
+            return True
+        return False
     
     async def _process_response(self, response):
         """Process V2 streaming response"""
         
         logger.info(f"[GOOGLE_STT_V2][PROCESS] Processing response for sid={self.sid}, has_results={bool(response.results)}")
+        # Mark last response timestamp for inactivity diagnostics
+        self._last_response_ts = time.time()
         
         # Handle speech event (VAD)
         if hasattr(response, 'speech_event_type') and response.speech_event_type:
@@ -516,27 +619,62 @@ class GoogleStreamingSTTV2:
             if not transcript:
                 continue
             
+            # Normalize Google duration/timedelta fields into millis to avoid JSON issues
+            def _duration_to_ms(value):
+                try:
+                    # Proto Duration may expose total_seconds()
+                    if hasattr(value, 'total_seconds'):
+                        return int(value.total_seconds() * 1000)
+                    # Some responses use dict-like seconds/nanos
+                    seconds = getattr(value, 'seconds', None)
+                    nanos = getattr(value, 'nanos', None)
+                    if seconds is not None or nanos is not None:
+                        seconds = int(seconds or 0)
+                        nanos = int(nanos or 0)
+                        return int(seconds * 1000 + nanos / 1_000_000)
+                except Exception:
+                    pass
+                return None
+
             # Build result dict with V2 specific fields
             result_dict = {
                 "transcript": transcript,
                 "is_final": result.is_final,
                 "stability": result.stability if hasattr(result, 'stability') else None,
-                "result_end_offset": result.result_end_offset if hasattr(result, 'result_end_offset') else None,
+                "result_end_offset": _duration_to_ms(getattr(result, 'result_end_offset', None)),
                 "language_code": result.language_code if hasattr(result, 'language_code') else None,
+                # Server-provided sequencing metadata
+                "restart_epoch": self.restart_counter,
+                "server_time_ms": int(time.time() * 1000),
             }
             
+            # Increment global result sequence and attach
+            self.result_seq += 1
+            result_dict["result_seq"] = self.result_seq
+
             if result.is_final:
                 self.total_transcripts += 1
+                # Increment utterance sequence only on finals
+                self.utterance_seq += 1
+                result_dict["utterance_seq"] = self.utterance_seq
                 result_dict["confidence"] = alternative.confidence if hasattr(alternative, 'confidence') else None
+                # Track last final and accumulate per-epoch finals for logging
+                try:
+                    self._last_final_text = transcript
+                    if self.restart_counter not in self._epoch_finals:
+                        self._epoch_finals[self.restart_counter] = []
+                    self._epoch_finals[self.restart_counter].append(transcript)
+                except Exception:
+                    pass
                 
                 # Add word-level info if enabled
                 if self.config.enable_word_time_offsets and hasattr(alternative, 'words'):
                     result_dict["words"] = [
                         {
-                            "word": w.word,
-                            "start_offset": w.start_offset if hasattr(w, 'start_offset') else None,
-                            "end_offset": w.end_offset if hasattr(w, 'end_offset') else None,
-                            "confidence": w.confidence if hasattr(w, 'confidence') else None,
+                            "word": getattr(w, 'word', None),
+                            "start_offset": _duration_to_ms(getattr(w, 'start_offset', None)),
+                            "end_offset": _duration_to_ms(getattr(w, 'end_offset', None)),
+                            "confidence": getattr(w, 'confidence', None),
                         }
                         for w in alternative.words
                     ]
@@ -544,13 +682,18 @@ class GoogleStreamingSTTV2:
                 logger.info(
                     f"[GOOGLE_STT_V2][FINAL] sid={self.sid}, "
                     f"text='{transcript[:50]}...', "
-                    f"lang={result_dict.get('language_code', 'unknown')}"
+                    f"lang={result_dict.get('language_code', 'unknown')}, "
+                    f"epoch={result_dict.get('restart_epoch')}, "
+                    f"result_seq={result_dict.get('result_seq')}, "
+                    f"utterance_seq={result_dict.get('utterance_seq')}"
                 )
             else:
                 logger.debug(
                     f"[GOOGLE_STT_V2][INTERIM] sid={self.sid}, "
                     f"text='{transcript[:30]}...', "
-                    f"stability={result_dict.get('stability', 0):.2f}"
+                    f"stability={result_dict.get('stability', 0):.2f}, "
+                    f"epoch={result_dict.get('restart_epoch')}, "
+                    f"result_seq={result_dict.get('result_seq')}"
                 )
             
             # Emit transcript
@@ -559,6 +702,43 @@ class GoogleStreamingSTTV2:
     
     async def _restart_stream(self):
         """Restart the stream"""
+        # Notify clients that we are about to restart; next epoch is restart_counter + 1
+        try:
+            if self.on_speech_event:
+                # Include snapshot of current epoch so client can persist final text before restarting
+                curr_epoch = self.restart_counter
+                finals_list = self._epoch_finals.get(curr_epoch, []) if hasattr(self, '_epoch_finals') else []
+                joined = " | ".join(finals_list)
+                payload = {
+                    "next_restart_epoch": curr_epoch + 1,
+                    "current_restart_epoch": curr_epoch,
+                    "server_time_ms": int(time.time() * 1000),
+                    "last_final_text": getattr(self, "_last_final_text", ""),
+                    "full_epoch_finals": joined,
+                }
+                await self.on_speech_event(
+                    "STREAM_RESTARTING",
+                    payload,
+                )
+                logger.info(
+                    f"[GOOGLE_STT_V2][RESTART] Emitted STREAM_RESTARTING sid={self.sid} "
+                    f"current_epoch={payload['current_restart_epoch']} next_epoch={payload['next_restart_epoch']}"
+                )
+                # Log the full last-final text and all finals in the current epoch
+                try:
+                    logger.info(
+                        f"[GOOGLE_STT_V2][RESTART][SNAPSHOT] sid={self.sid} epoch={curr_epoch} "
+                        f"last_final='{self._last_final_text}' finals_count={len(finals_list)}"
+                    )
+                    if joined:
+                        logger.info(
+                            f"[GOOGLE_STT_V2][RESTART][EPOCH_FINALS] sid={self.sid} epoch={curr_epoch} finals='{joined}'"
+                        )
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         self.restart_counter += 1
         
         logger.info(
@@ -566,7 +746,19 @@ class GoogleStreamingSTTV2:
             f"for sid={self.sid}"
         )
         
+        # Reset timing for new stream
         self.stream_start_time = time.time()
+        self._last_response_ts = None
+        self._last_audio_ts = None
+        # Reset result sequencing for the new epoch
+        self.result_seq = 0
+        self.utterance_seq = 0
+        # Initialize list for the new epoch
+        try:
+            if self.restart_counter not in self._epoch_finals:
+                self._epoch_finals[self.restart_counter] = []
+        except Exception:
+            pass
         
         # Cancel current stream
         if self._stream_task:

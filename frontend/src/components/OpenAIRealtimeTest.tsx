@@ -126,9 +126,13 @@ const OpenAIRealtimeTest: React.FC = () => {
   };
 
   // Compute single transcript view based on selection
+  const googleComposed = ([...((socketHook as any).googleFinalHistory || []), (socketHook as any).googleLiveInterim]
+    .filter(Boolean)
+    .join(' ') || '').trim();
+
   const transcriptMap: Record<string, string> = {
     whisper: socketHook.whisperTranscript || '',
-    google: (socketHook as any).googleTranscript || '',
+    google: googleComposed || (socketHook as any).googleTranscript || '',
     gemini: (socketHook as any).geminiTranscript || '',
     fw: (socketHook as any).fwTranscript || '',
     'upload-fw': uploadResults['upload-fw'] || '',
@@ -227,5 +231,4 @@ const OpenAIRealtimeTest: React.FC = () => {
 };
 
 export default OpenAIRealtimeTest;
-
 

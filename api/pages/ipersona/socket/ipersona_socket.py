@@ -859,7 +859,6 @@ class GeminiLiveSession:
                 logger.info(f"[GEMINI][RECONNECT] sid={self.sid} retrying in 0.5s")
                 await asyncio.sleep(0.5)
 
-
 @sio.on("audio transcribe gemini")
 async def audio_transcribe_gemini(sid, data):
     """Realtime Gemini Live API; expects 16kHz mono PCM16 chunks. Send audioblob=None to stop."""
