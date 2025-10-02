@@ -170,7 +170,7 @@ const OpenAIRealtimeTest: React.FC = () => {
             <div>
               <label>Provider</label>
               <select value={uploadProvider} onChange={(e) => setUploadProvider(e.target.value as any)} style={{ width: '100%', margin: '6px 0 10px' }}>
-                <option value="fw">faster-whisper (local)</option>
+                {/* {<option value="fw">faster-whisper (local)</option> */}
                 <option value="gemini">Gemini (batch)</option>
                 <option value="openai">OpenAI (existing logic)</option>
               </select>
@@ -188,7 +188,7 @@ const OpenAIRealtimeTest: React.FC = () => {
                 <option value="whisper">OpenAI Whisper</option>
                 <option value="google">Google STT</option>
                 <option value="gemini">Gemini Live</option>
-                <option value="fw">faster-whisper</option>
+                {/* <option value="fw">faster-whisper</option> */}
               </optgroup>
               <optgroup label="Uploads">
                 <option value="upload-fw">Upload – faster-whisper</option>
