@@ -53,6 +53,42 @@ except ImportError:
 logger = LLPackerLogger(os.path.basename(__file__))
 
 
+# Optional: local testing overrides. DO NOT commit secrets.
+# Example (uncomment and fill to test locally without exporting env vars):
+# LOCAL_TEST_OVERRIDES = {
+#     "GOOGLE_CLOUD_PROJECT": "your-project-id",
+#     "GOOGLE_STT_V2_LOCATION": "global",
+#     "GOOGLE_STT_V2_MODEL": "short",
+#     "GOOGLE_STT_V2_LANGUAGES": "en-US",
+#     "GOOGLE_STT_V2_INTERIM": "true",
+#     "GOOGLE_STT_V2_PUNCTUATION": "true",
+#     "GOOGLE_STT_V2_VAD_EVENTS": "true",
+#     "GOOGLE_STT_V2_EMIT_INTERIM": "true",
+#     "GOOGLE_STT_V2_EMIT_ONLY_FINAL": "false",
+#     "GOOGLE_STT_V2_EMIT_ON_UTTERANCE_END": "true",
+#     "GOOGLE_STT_V2_SELF_CORRECTION": "true",
+#     "GOOGLE_STT_V2_ENDPOINT": "",
+# }
+LOCAL_TEST_OVERRIDES = {}
+
+
+def _get_env(key: str, default: str | None = None) -> str | None:
+    """Return configuration value with precedence:
+    1) process env, 2) LOCAL_TEST_OVERRIDES, 3) provided default
+    Values are returned as strings (None if not found).
+    """
+    try:
+        value = os.environ.get(key)
+        if value is not None and str(value).strip() != "":
+            return value
+        if key in LOCAL_TEST_OVERRIDES:
+            override = LOCAL_TEST_OVERRIDES[key]
+            return None if override is None else str(override)
+        return default
+    except Exception:
+        return default
+
+
 def _merge_env_from_json(json_path: str = ".envdir/tenx_env_vars.json") -> None:
     """Load environment variables from a JSON file into os.environ.
 
@@ -139,24 +175,24 @@ class GoogleSTTV2Config:
     @classmethod
     def from_env(cls) -> "GoogleSTTV2Config":
         """Create configuration from environment variables"""
-        lang_codes_str = os.getenv("GOOGLE_STT_V2_LANGUAGES", "en-US")
+        lang_codes_str = _get_env("GOOGLE_STT_V2_LANGUAGES", "en-US")
         lang_codes = [l.strip() for l in lang_codes_str.split(",")]
         
         return cls(
-            project_id=os.getenv("GOOGLE_CLOUD_PROJECT"),
-            location=os.getenv("GOOGLE_STT_V2_LOCATION", "global"),
-            recognizer_id=os.getenv("GOOGLE_STT_V2_RECOGNIZER_ID"),
+            project_id=_get_env("GOOGLE_CLOUD_PROJECT"),
+            location=_get_env("GOOGLE_STT_V2_LOCATION", "global"),
+            recognizer_id=_get_env("GOOGLE_STT_V2_RECOGNIZER_ID"),
             language_codes=lang_codes,
-            model=os.getenv("GOOGLE_STT_V2_MODEL", "short"),  # V2 uses "short" not "latest_short"
-            enable_interim_results=os.getenv("GOOGLE_STT_V2_INTERIM", "true").lower() == "true",
-            enable_automatic_punctuation=os.getenv("GOOGLE_STT_V2_PUNCTUATION", "true").lower() == "true",
-            enable_voice_activity_events=os.getenv("GOOGLE_STT_V2_VAD_EVENTS", "true").lower() == "true",
-            api_endpoint=os.getenv("GOOGLE_STT_V2_ENDPOINT"),
+            model=_get_env("GOOGLE_STT_V2_MODEL", "short"),  # V2 uses "short" not "latest_short"
+            enable_interim_results=_get_env("GOOGLE_STT_V2_INTERIM", "true").lower() == "true",
+            enable_automatic_punctuation=_get_env("GOOGLE_STT_V2_PUNCTUATION", "true").lower() == "true",
+            enable_voice_activity_events=_get_env("GOOGLE_STT_V2_VAD_EVENTS", "true").lower() == "true",
+            api_endpoint=_get_env("GOOGLE_STT_V2_ENDPOINT"),
             # Emission strategy controls
-            emit_interim_results=os.getenv("GOOGLE_STT_V2_EMIT_INTERIM", "true").lower() == "true",
-            emit_only_final=os.getenv("GOOGLE_STT_V2_EMIT_ONLY_FINAL", "false").lower() == "true",
-            emit_on_utterance_end=os.getenv("GOOGLE_STT_V2_EMIT_ON_UTTERANCE_END", "true").lower() == "true",
-            enable_self_correction=os.getenv("GOOGLE_STT_V2_SELF_CORRECTION", "true").lower() == "true",
+            emit_interim_results=_get_env("GOOGLE_STT_V2_EMIT_INTERIM", "true").lower() == "true",
+            emit_only_final=_get_env("GOOGLE_STT_V2_EMIT_ONLY_FINAL", "false").lower() == "true",
+            emit_on_utterance_end=_get_env("GOOGLE_STT_V2_EMIT_ON_UTTERANCE_END", "true").lower() == "true",
+            enable_self_correction=_get_env("GOOGLE_STT_V2_SELF_CORRECTION", "true").lower() == "true",
         )
 
 
