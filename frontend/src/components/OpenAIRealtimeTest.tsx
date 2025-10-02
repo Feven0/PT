@@ -158,7 +158,7 @@ const OpenAIRealtimeTest: React.FC = () => {
                 <option value="whisper">OpenAI Whisper (socket)</option>
                 <option value="google">Google STT (streaming)</option>
                 {/* <option value="gemini">Gemini Live (experimental)</option> */}
-                <option value="fw">faster-whisper (local)</option>
+                {/* <option value="fw">faster-whisper (local)</option> */}
               </select>
               {!isRecording ? (
                 <button onClick={startStreaming} style={{ width: '100%' }}>Start recording</button>
