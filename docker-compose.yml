@@ -13,8 +13,8 @@ services:
       - TIMEOUT=120
       - KEEP_ALIVE=60
       - LOG_LEVEL=info      
-      - AWS_ACCESS_KEY_ID=
-      - AWS_SECRET_ACCESS_KEY=
+      - AWS_ACCESS_KEY_ID=AKIARAUQOUIFYWMG4XLG
+      - AWS_SECRET_ACCESS_KEY=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
       - AWS_DEFAULT_REGION=us-east-1
 
     networks:

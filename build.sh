@@ -29,6 +29,10 @@ fi
 source api/env_setup.sh
 echo "build.sh: using envfile=$envfile.."
 
+# Ensure cached secrets files (e.g., .envdir/googleservice_tenxsaas.json) are generated
+# This is a no-op if they already exist. Errors are ignored to avoid impacting build flow.
+python3 api/services/secret.py >/dev/null 2>&1 || true
+
 #build_arg=$(grep "GITHUB" $envfile | sed 's@^@--build-arg @g' | tr -d \" | paste -s -d " ")
 #build_arg="${build_arg} --build-arg CACHEBUST=$(date +%s)"
 #echo "build_arg=$build_arg"
