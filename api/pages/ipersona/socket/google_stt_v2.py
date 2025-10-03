@@ -175,7 +175,8 @@ class GoogleSTTV2Config:
     custom_classes: list = None  # List of custom class resource names
     
     # Performance
-    streaming_limit_seconds: int = 290
+    # Proactive rotation to avoid server ~65s timeout; can be overridden via env
+    streaming_limit_seconds: int = 55
     chunk_size_bytes: int = 3200  # ~100ms of audio at 16kHz PCM16
     
     # Regional endpoint
@@ -206,6 +207,8 @@ class GoogleSTTV2Config:
             emit_only_final=(_get_env("GOOGLE_STT_V2_EMIT_ONLY_FINAL") or "false").lower() == "true",
             emit_on_utterance_end=(_get_env("GOOGLE_STT_V2_EMIT_ON_UTTERANCE_END") or "false").lower() == "true",
             enable_self_correction=(_get_env("GOOGLE_STT_V2_SELF_CORRECTION") or "true").lower() == "true",
+            # Performance/rotation
+            streaming_limit_seconds=int((_get_env("GOOGLE_STT_V2_STREAMING_LIMIT_SECONDS") or "55").strip()),
         )
 
 
@@ -262,6 +265,10 @@ class GoogleStreamingSTTV2:
         self._stream_task: Optional[asyncio.Task] = None
         self._restart_timer_task: Optional[asyncio.Task] = None
         self._audio_queue: asyncio.Queue = asyncio.Queue()
+        # Graceful-stop controls
+        self._stop_requested: bool = False
+        self._final_emitted_event: asyncio.Event = asyncio.Event()
+        self._drain_mode: bool = False
         
         # Statistics
         self.total_audio_bytes = 0
@@ -375,6 +382,14 @@ class GoogleStreamingSTTV2:
             return
         
         self._stop_event.clear()
+        # Reset graceful-stop flags for a fresh session
+        try:
+            self._stop_requested = False
+            self._drain_mode = False
+            if self._final_emitted_event.is_set():
+                self._final_emitted_event.clear()
+        except Exception:
+            pass
         self.stream_start_time = time.time()
         
         # Start streaming task
@@ -387,10 +402,44 @@ class GoogleStreamingSTTV2:
     
     async def stop(self):
         """Stop the streaming session"""
+        # True drain: continue sending already queued audio until queue empty and server quiets
+        if not self._stop_requested:
+            self._stop_requested = True
+            self._drain_mode = True
+            logger.info(f"[GOOGLE_STT_V2][STOP] Entering drain mode for sid={self.sid}")
+            try:
+                # Wait for audio queue to empty and last response to be recent, then a brief quiet period
+                while True:
+                    try:
+                        empty = self._audio_queue.empty()
+                    except Exception:
+                        empty = True
+                    now = time.time()
+                    since_audio_ms = int((now - self._last_audio_ts) * 1000) if self._last_audio_ts else 9999
+                    since_resp_ms = int((now - self._last_response_ts) * 1000) if self._last_response_ts else 9999
+                    # Drain completes when queue empty and responses have settled for >= 250ms
+                    if empty and since_audio_ms >= 150 and since_resp_ms >= 250:
+                        break
+                    await asyncio.sleep(0.05)
+            except Exception:
+                pass
+
+        # After drain, give the server a brief window to deliver a final
+        try:
+            await asyncio.wait_for(self._final_emitted_event.wait(), timeout=2.0)
+        except asyncio.TimeoutError:
+            pass
+        try:
+            await asyncio.sleep(0.1)
+        except Exception:
+            pass
+
+        # Hard stop: end generator and response loop
         self._stop_event.set()
-        
-        # Signal queue to stop
-        await self._audio_queue.put(None)
+        try:
+            await self._audio_queue.put(None)
+        except Exception:
+            pass
         
         # On-stop snapshot: log last-final and full finals list for current epoch
         try:
@@ -532,7 +581,7 @@ class GoogleStreamingSTTV2:
         # Stream audio chunks
         logger.info(f"[GOOGLE_STT_V2][GENERATOR] Starting audio chunk loop for sid={self.sid}")
         chunk_count = 0
-        while not self._stop_event.is_set():
+        while True:
             try:
                 chunk = await asyncio.wait_for(self._audio_queue.get(), timeout=0.1)
                 if chunk is None:  # Sentinel to stop
@@ -543,6 +592,14 @@ class GoogleStreamingSTTV2:
                 yield StreamingRecognizeRequest(audio=chunk)
                 logger.info(f"[GOOGLE_STT_V2][GENERATOR] Audio chunk #{chunk_count} yielded for sid={self.sid}")
             except asyncio.TimeoutError:
+                # In drain mode, if queue is empty, end generator
+                if self._drain_mode:
+                    try:
+                        if self._audio_queue.empty():
+                            logger.info(f"[GOOGLE_STT_V2][GENERATOR] Drain-mode empty queue, stopping generator for sid={self.sid}")
+                            break
+                    except Exception:
+                        pass
                 continue
             except Exception as e:
                 logger.error(f"[GOOGLE_STT_V2][GENERATOR] Error: {e}")
@@ -582,7 +639,8 @@ class GoogleStreamingSTTV2:
                 response_count += 1
                 logger.info(f"[GOOGLE_STT_V2][STREAM] 📥 Response #{response_count} received for sid={self.sid}")
                 
-                if self._stop_event.is_set():
+                # If a hard stop is requested and not draining, break
+                if self._stop_event.is_set() and not self._drain_mode:
                     break
                 
                 await self._process_response(response)
@@ -759,6 +817,12 @@ class GoogleStreamingSTTV2:
                     f"result_seq={result_dict.get('result_seq')}, "
                     f"utterance_seq={result_dict.get('utterance_seq')}"
                 )
+                # Signal any waiters that at least one final has been emitted
+                try:
+                    if not self._final_emitted_event.is_set():
+                        self._final_emitted_event.set()
+                except Exception:
+                    pass
             else:
                 logger.debug(
                     f"[GOOGLE_STT_V2][INTERIM] sid={self.sid}, "
