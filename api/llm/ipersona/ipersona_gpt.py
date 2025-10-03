@@ -5,6 +5,8 @@ import textwrap
 from api.services.secret import get_auth
 
 OPENAI_API_KEY  = get_auth(ssmkey='OPENAI_PARROT_API_KEY')
+GOOGLE_SERVICE_TENX_SAAS  = get_auth(ssmkey='GOOGLE_SERVICE_TENX_SAAS')
+print(f'GOOGLE_SERVICE_TENX_SAAS = {GOOGLE_SERVICE_TENX_SAAS}')
 client = OpenAI(api_key=OPENAI_API_KEY )
 client = OpenAI(api_key=OPENAI_API_KEY)
 

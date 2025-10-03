@@ -445,11 +445,18 @@ def get_all_secrets(sname: str = 'tenx/env/vars') -> Dict[str, Any]:
         # Fetch from AWS SSM
         logger.warn(f'Secret file {rname} does not exist, fetching from AWS SSM...')
         authTemp = get_secret(sname)
+        # Ensure we always work with a dict here
+        if isinstance(authTemp, str):
+            try:
+                authTemp = json.loads(authTemp)
+            except Exception:
+                logger.error(f"Secrets for {sname} returned a non-JSON string; cannot parse")
+                raise
         if not authTemp:
             raise Exception(f"Failed to retrieve secrets from AWS SSM for {sname}")
         
         # Write to file and update cache
-        if atomic_write_json(authTemp, rname):
+        if isinstance(authTemp, dict) and atomic_write_json(authTemp, rname):
             _secrets_cache[sname] = authTemp
             _cache_timestamps[sname] = current_time
             logger.good(f'Successfully cached secrets to {rname}')
@@ -534,7 +541,15 @@ def get_auth(ssmkey: Optional[str] = None,
         }
 
         try:
-            if ssmkey in keys.keys() or ssmkey in authTemp.keys():
+            # Ensure authTemp is a dict before accessing keys
+            if isinstance(authTemp, str):
+                try:
+                    authTemp = json.loads(authTemp)
+                except Exception:
+                    logger.error(f"Loaded secrets for {sname} are not JSON; got string. ssmkey={ssmkey}")
+                    raise
+
+            if ssmkey in keys.keys() or (isinstance(authTemp, dict) and ssmkey in authTemp.keys()):
                 if ssmkey in authTemp.keys():
                     auth = authTemp[ssmkey]
                 else:
