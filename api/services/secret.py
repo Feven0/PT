@@ -471,6 +471,41 @@ def get_all_secrets(sname: str = 'tenx/env/vars') -> Dict[str, Any]:
         logger.error(f'Getting secret {sname} failed: {e}')
         raise
 
+    finally:
+        # Best-effort: also cache commonly used individual secrets to files
+        # so they exist alongside tenx_env_vars.json inside containers.
+        try:
+            for sub_ssm in ["googleservice/tenxsaas", "gspread/config"]:
+                try:
+                    sub_path = f"{envdir}/{sub_ssm.replace('/', '_')}.json"
+                    if not os.path.exists(sub_path):
+                        logger.warn(f'Cache file {sub_path} not found, fetching {sub_ssm} from AWS SSM...')
+                        sub_secret = get_secret(sub_ssm)
+                        # Normalize
+                        if isinstance(sub_secret, str):
+                            try:
+                                sub_secret_parsed = json.loads(sub_secret)
+                            except Exception:
+                                # If not JSON, write raw via config_from_string
+                                res = config_from_string(sub_secret, fname=sub_path, rfile=True)
+                                if res:
+                                    logger.good(f'Successfully cached {sub_ssm} to {sub_path}')
+                                else:
+                                    logger.warn(f'Failed to write {sub_ssm} to {sub_path}')
+                                continue
+                        else:
+                            sub_secret_parsed = sub_secret
+
+                        if isinstance(sub_secret_parsed, dict):
+                            if atomic_write_json(sub_secret_parsed, sub_path):
+                                logger.good(f'Successfully cached {sub_ssm} to {sub_path}')
+                            else:
+                                logger.warn(f'Failed to write {sub_ssm} to {sub_path}')
+                except Exception as sub_e:
+                    logger.warn(f'Best-effort caching for {sub_ssm} failed: {sub_e}')
+        except Exception as e2:
+            logger.warn(f'Post-cache best-effort secret writes encountered an error: {e2}')
+
 
 def get_auth(ssmkey: Optional[str] = None, 
              envvar: Optional[str] = None, 
