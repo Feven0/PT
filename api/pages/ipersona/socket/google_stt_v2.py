@@ -58,7 +58,7 @@ logger = LLPackerLogger(os.path.basename(__file__))
 # LOCAL_TEST_OVERRIDES = {
 #     "GOOGLE_CLOUD_PROJECT": "your-project-id",
 #     "GOOGLE_STT_V2_LOCATION": "global",
-#     "GOOGLE_STT_V2_MODEL": "short",
+#     "GOOGLE_STT_V2_MODEL": "long",  # "long" model allows more self-correction vs "short"
 #     "GOOGLE_STT_V2_LANGUAGES": "en-US",
 #     "GOOGLE_STT_V2_INTERIM": "true",
 #     "GOOGLE_STT_V2_PUNCTUATION": "true",
@@ -69,7 +69,20 @@ logger = LLPackerLogger(os.path.basename(__file__))
 #     "GOOGLE_STT_V2_SELF_CORRECTION": "true",
 #     "GOOGLE_STT_V2_ENDPOINT": "",
 # }
-LOCAL_TEST_OVERRIDES = {}
+LOCAL_TEST_OVERRIDES = {
+    # Fallback configuration in case env vars are missing
+    "GOOGLE_CLOUD_PROJECT": "tenx-saas",
+    "GOOGLE_STT_V2_LOCATION": "global", 
+    "GOOGLE_STT_V2_MODEL": "long",
+    "GOOGLE_STT_V2_LANGUAGES": "en-US",
+    "GOOGLE_STT_V2_INTERIM": "true",
+    "GOOGLE_STT_V2_PUNCTUATION": "true",
+    "GOOGLE_STT_V2_VAD_EVENTS": "false",
+    "GOOGLE_STT_V2_EMIT_INTERIM": "true",
+    "GOOGLE_STT_V2_EMIT_ONLY_FINAL": "false", 
+    "GOOGLE_STT_V2_EMIT_ON_UTTERANCE_END": "false",
+    "GOOGLE_STT_V2_SELF_CORRECTION": "true",
+}
 
 
 def _get_env(key: str, default: str | None = None) -> str | None:
@@ -174,25 +187,25 @@ class GoogleSTTV2Config:
     
     @classmethod
     def from_env(cls) -> "GoogleSTTV2Config":
-        """Create configuration from environment variables"""
-        lang_codes_str = _get_env("GOOGLE_STT_V2_LANGUAGES", "en-US")
+        """Create configuration from environment variables with fallbacks"""
+        lang_codes_str = _get_env("GOOGLE_STT_V2_LANGUAGES") or "en-US"
         lang_codes = [l.strip() for l in lang_codes_str.split(",")]
         
         return cls(
-            project_id=_get_env("GOOGLE_CLOUD_PROJECT"),
-            location=_get_env("GOOGLE_STT_V2_LOCATION", "global"),
+            project_id=_get_env("GOOGLE_CLOUD_PROJECT") or "tenx-saas",
+            location=_get_env("GOOGLE_STT_V2_LOCATION") or "global",
             recognizer_id=_get_env("GOOGLE_STT_V2_RECOGNIZER_ID"),
             language_codes=lang_codes,
-            model=_get_env("GOOGLE_STT_V2_MODEL", "short"),  # V2 uses "short" not "latest_short"
-            enable_interim_results=_get_env("GOOGLE_STT_V2_INTERIM", "true").lower() == "true",
-            enable_automatic_punctuation=_get_env("GOOGLE_STT_V2_PUNCTUATION", "true").lower() == "true",
-            enable_voice_activity_events=_get_env("GOOGLE_STT_V2_VAD_EVENTS", "true").lower() == "true",
+            model=_get_env("GOOGLE_STT_V2_MODEL") or "long",  # "long" model allows more self-correction vs "short"
+            enable_interim_results=(_get_env("GOOGLE_STT_V2_INTERIM") or "true").lower() == "true",
+            enable_automatic_punctuation=(_get_env("GOOGLE_STT_V2_PUNCTUATION") or "true").lower() == "true",
+            enable_voice_activity_events=(_get_env("GOOGLE_STT_V2_VAD_EVENTS") or "false").lower() == "true",
             api_endpoint=_get_env("GOOGLE_STT_V2_ENDPOINT"),
             # Emission strategy controls
-            emit_interim_results=_get_env("GOOGLE_STT_V2_EMIT_INTERIM", "true").lower() == "true",
-            emit_only_final=_get_env("GOOGLE_STT_V2_EMIT_ONLY_FINAL", "false").lower() == "true",
-            emit_on_utterance_end=_get_env("GOOGLE_STT_V2_EMIT_ON_UTTERANCE_END", "true").lower() == "true",
-            enable_self_correction=_get_env("GOOGLE_STT_V2_SELF_CORRECTION", "true").lower() == "true",
+            emit_interim_results=(_get_env("GOOGLE_STT_V2_EMIT_INTERIM") or "true").lower() == "true",
+            emit_only_final=(_get_env("GOOGLE_STT_V2_EMIT_ONLY_FINAL") or "false").lower() == "true",
+            emit_on_utterance_end=(_get_env("GOOGLE_STT_V2_EMIT_ON_UTTERANCE_END") or "false").lower() == "true",
+            enable_self_correction=(_get_env("GOOGLE_STT_V2_SELF_CORRECTION") or "true").lower() == "true",
         )
 
 
@@ -434,8 +447,25 @@ class GoogleStreamingSTTV2:
     
     async def add_audio(self, audio_bytes: bytes):
         """Add audio data to the streaming queue"""
+        # Check if we're in the middle of a restart - if so, drop audio to prevent queue backup
+        if self._stream_task is None or self._stream_task.done():
+            logger.debug(
+                f"[GOOGLE_STT_V2][ADD_AUDIO] Dropping audio during restart for sid={self.sid}, "
+                f"chunk_size={len(audio_bytes)}"
+            )
+            return
+        
         self.total_audio_bytes += len(audio_bytes)
         queue_size = self._audio_queue.qsize()
+        
+        # Prevent queue backup during restart - drop audio if queue is too full
+        if queue_size > 10:  # Allow some buffering but prevent massive backup
+            logger.debug(
+                f"[GOOGLE_STT_V2][ADD_AUDIO] Dropping audio due to queue backup for sid={self.sid}, "
+                f"chunk_size={len(audio_bytes)}, queue_size={queue_size}"
+            )
+            return
+            
         await self._audio_queue.put(audio_bytes)
         self._last_audio_ts = time.time()
         logger.info(
@@ -558,6 +588,12 @@ class GoogleStreamingSTTV2:
                 await self._process_response(response)
             
             logger.info(f"[GOOGLE_STT_V2][STREAM] Stream ended after {response_count} responses for sid={self.sid}")
+            
+            # Stream ended naturally - check if we should restart
+            if not self._stop_event.is_set():
+                logger.info(f"[GOOGLE_STT_V2][STREAM] Stream ended naturally, attempting restart for sid={self.sid}")
+                await asyncio.sleep(0.5)  # Brief delay before restart
+                await self._restart_stream()
                 
         except google_exceptions.OutOfRange:
             elapsed_s = time.time() - self.stream_start_time if self.stream_start_time else None
@@ -804,8 +840,27 @@ class GoogleStreamingSTTV2:
             except asyncio.CancelledError:
                 pass
         
+        # Clear audio queue to prevent stale audio from previous stream
+        await self._clear_audio_queue()
+        
         # Restart
         self._stream_task = asyncio.create_task(self._run_stream())
+    
+    async def _clear_audio_queue(self):
+        """Clear the audio queue to prevent stale audio from being processed"""
+        cleared_count = 0
+        try:
+            while not self._audio_queue.empty():
+                try:
+                    await asyncio.wait_for(self._audio_queue.get(), timeout=0.001)
+                    cleared_count += 1
+                except asyncio.TimeoutError:
+                    break
+            if cleared_count > 0:
+                logger.info(f"[GOOGLE_STT_V2][CLEAR_QUEUE] Cleared {cleared_count} stale audio chunks for sid={self.sid}")
+        except Exception as e:
+            logger.debug(f"[GOOGLE_STT_V2][CLEAR_QUEUE] Error clearing queue for sid={self.sid}: "
+                       f"{type(e).__name__}: {e}")
     
     async def _restart_timer(self):
         """Periodic restart to avoid timeout"""

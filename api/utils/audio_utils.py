@@ -1257,6 +1257,7 @@ class AudioUtils:
             answer_transcript, answer_error_msg = await self.process_and_transcribe_file(
                 answer_filename, answer_content_type, answer_contents, "Answer"
             )
+            answer_transcript = ""
             logger.debug(f"🔊 [DEBUG] Answer processing result - transcript: {answer_transcript[:100] if answer_transcript else 'None'}..., error: {answer_error_msg}")
             
             if answer_error_msg:
@@ -1302,213 +1303,213 @@ class AudioUtils:
             logger.info(f"✅ Answer content validation passed with confidence: {answer_validation.get('confidence', 'N/A')}")
 
             # Upload answer asset to S3 and prepare upload metadata
-            try:
-                answer_url, a_duration, a_size = self._upload_and_get_duration(
-                    answer_filename, answer_content_type, answer_contents
-                )
+            # try:
+            #     answer_url, a_duration, a_size = self._upload_and_get_duration(
+            #         answer_filename, answer_content_type, answer_contents
+            #     )
                 
-                upload_metadata = {
-                    "mode": "answer_only_mode",
-                    "source": "uploaded_file",
-                    "answer": {
-                        "url": answer_url,
-                        "content_type": answer_content_type,
-                        "original_filename": answer_filename,
-                        "duration_secs": a_duration,
-                        "size_bytes": a_size
-                    }
-                }
+            #     upload_metadata = {
+            #         "mode": "answer_only_mode",
+            #         "source": "uploaded_file",
+            #         "answer": {
+            #             "url": answer_url,
+            #             "content_type": answer_content_type,
+            #             "original_filename": answer_filename,
+            #             "duration_secs": a_duration,
+            #             "size_bytes": a_size
+            #         }
+            #     }
                  
                  
-            except Exception as s3e:
-                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                task_redis_key = self._get_task_redis_key(task_type, task_id)
-                redis.set(task_redis_key, {"status": "failed", "message": f"S3 upload failed: {str(s3e)}"})
-                raise
+            # except Exception as s3e:
+            #     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+            #     task_redis_key = self._get_task_redis_key(task_type, task_id)
+            #     redis.set(task_redis_key, {"status": "failed", "message": f"S3 upload failed: {str(s3e)}"})
+            #     raise
 
-            # Convert template_questions to question text format
-            question_text = self.convert_template_questions_to_text(template_questions)
-            logger.info(f"📋 Converted {len(template_questions)} template questions to text format")
+            # # Convert template_questions to question text format
+            # question_text = self.convert_template_questions_to_text(template_questions)
+            # logger.info(f"📋 Converted {len(template_questions)} template questions to text format")
 
-            # Fetch trainee profile data
-            logger.debug("Fetching trainee profile data")
-            ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
-            trainee_profile_data = ipersona_user.filter_by_alluser_id(
-                all_user_id=all_user_id, nopp=True, dataframe=False
-            )
-            if not trainee_profile_data:
-                error_msg = f"No trainee user profiles found for all_user_id: {all_user_id}"
-                logger.warn(error_msg)
-                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                task_redis_key = self._get_task_redis_key(task_type, task_id)
-                redis.set(task_redis_key, {"status": "failed", "message": "No trainee user profiles found"})
-                raise Exception(error_msg)
+            # # Fetch trainee profile data
+            # logger.debug("Fetching trainee profile data")
+            # ipersona_user = IpersonaTraineeSchema(run_stage=run_stage)
+            # trainee_profile_data = ipersona_user.filter_by_alluser_id(
+            #     all_user_id=all_user_id, nopp=True, dataframe=False
+            # )
+            # if not trainee_profile_data:
+            #     error_msg = f"No trainee user profiles found for all_user_id: {all_user_id}"
+            #     logger.warn(error_msg)
+            #     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+            #     task_redis_key = self._get_task_redis_key(task_type, task_id)
+            #     redis.set(task_redis_key, {"status": "failed", "message": "No trainee user profiles found"})
+            #     raise Exception(error_msg)
 
-            tinder_user_profile_id = trainee_profile_data.get('id')
-            logger.debug(f"📋 [DEBUG] Tinder user profile ID: {tinder_user_profile_id}")
-            if not tinder_user_profile_id:
-                error_msg = "Invalid trainee profile: missing ID"
-                logger.error(error_msg)
-                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                task_redis_key = self._get_task_redis_key(task_type, task_id)
-                redis.set(task_redis_key, {"status": "failed", "message": "Invalid trainee profile: missing ID"})
-                raise Exception(error_msg)
+            # tinder_user_profile_id = trainee_profile_data.get('id')
+            # logger.debug(f"📋 [DEBUG] Tinder user profile ID: {tinder_user_profile_id}")
+            # if not tinder_user_profile_id:
+            #     error_msg = "Invalid trainee profile: missing ID"
+            #     logger.error(error_msg)
+            #     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+            #     task_redis_key = self._get_task_redis_key(task_type, task_id)
+            #     redis.set(task_redis_key, {"status": "failed", "message": "Invalid trainee profile: missing ID"})
+            #     raise Exception(error_msg)
 
-            logger.info("Reading external audio analysis prompt")
-            external_audio_prompt = util.file_reader(util.prompt_path('external_audio_analysis_for_separate_inputs.txt'))
-            answer_question_matching = util.file_reader(util.prompt_path('answer_question_match.txt'))
-            realtime_prompt = util.file_reader(util.prompt_path('realtime_evaluation.txt'))
+            # logger.info("Reading external audio analysis prompt")
+            # external_audio_prompt = util.file_reader(util.prompt_path('external_audio_analysis_for_separate_inputs.txt'))
+            # answer_question_matching = util.file_reader(util.prompt_path('answer_question_match.txt'))
+            # realtime_prompt = util.file_reader(util.prompt_path('realtime_evaluation.txt'))
 
-            logger.info("Replacing placeholders in prompts")
-            logger.success(f"📋 [DEBUG] Template questions: {question_text}")
-            logger.success(f"📋 [DEBUG] Answer transcript: {answer_transcript}")
-            logger.success(f"📋 [DEBUG] Answer transcript length: {len(str(answer_transcript))}")
+            # logger.info("Replacing placeholders in prompts")
+            # logger.success(f"📋 [DEBUG] Template questions: {question_text}")
+            # logger.success(f"📋 [DEBUG] Answer transcript: {answer_transcript}")
+            # logger.success(f"📋 [DEBUG] Answer transcript length: {len(str(answer_transcript))}")
             
-            answer_question_match_scoring = answer_question_matching.replace("{questions_data}", question_text)\
-                                                           .replace("{answers_data}", answer_transcript)
+            # answer_question_match_scoring = answer_question_matching.replace("{questions_data}", question_text)\
+            #                                                .replace("{answers_data}", answer_transcript)
 
-            logger.debug("Sending prompt to GPT for analysis")
-            data = gpt.openai_gpt_assistant_without_streaming(answer_question_match_scoring)
-            if data and hasattr(data, 'content'):
-                data = data.content.text
-            response = util.extract_json(data, quite=False)
-            logger.debug(f"📋 [DEBUG] Raw LLM response: {response}")
+            # logger.debug("Sending prompt to GPT for analysis")
+            # data = gpt.openai_gpt_assistant_without_streaming(answer_question_match_scoring)
+            # if data and hasattr(data, 'content'):
+            #     data = data.content.text
+            # response = util.extract_json(data, quite=False)
+            # logger.debug(f"📋 [DEBUG] Raw LLM response: {response}")
 
-            # Filter out items with relevance_score >= 90
-            filtered_data = []
-            for item in response:
-                try:
-                    relevance_score = int(item.get('relevance_score', 0))
-                    if relevance_score >= 60:
-                        filtered_data.append({
-                            'question': item['question'], 
-                            'answer': item['answer']
-                        })
-                except (ValueError, TypeError):
-                    # If relevance_score is not a valid number, skip this item
-                    logger.warn(f"Skipping item with invalid relevance_score: {item.get('relevance_score')}")
-                    continue
+            # # Filter out items with relevance_score >= 90
+            # filtered_data = []
+            # for item in response:
+            #     try:
+            #         relevance_score = int(item.get('relevance_score', 0))
+            #         if relevance_score >= 60:
+            #             filtered_data.append({
+            #                 'question': item['question'], 
+            #                 'answer': item['answer']
+            #             })
+            #     except (ValueError, TypeError):
+            #         # If relevance_score is not a valid number, skip this item
+            #         logger.warn(f"Skipping item with invalid relevance_score: {item.get('relevance_score')}")
+            #         continue
 
-            logger.debug(f"📋 [DEBUG] Filtered data count: {len(filtered_data)}")
-            logger.debug(f"📋 [DEBUG] All relevance scores: {[item.get('relevance_score', 'N/A') for item in response]}")
+            # logger.debug(f"📋 [DEBUG] Filtered data count: {len(filtered_data)}")
+            # logger.debug(f"📋 [DEBUG] All relevance scores: {[item.get('relevance_score', 'N/A') for item in response]}")
             
-            if not filtered_data:
-                error_msg = "Failed to process template answer: No Valuable matched question-answer data returned from the analysis"
-                from api.socket.core import emit_with_log
-                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
-                await emit_with_log(
-                    "processing_update_failed",
-                    {"status": f"{error_msg}"},
-                    room=room
-                )
-                logger.error(error_msg)
-                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                task_redis_key = self._get_task_redis_key(task_type, task_id)
-                redis.set(task_redis_key, {"status": "failed", "message": "No analysis data returned from LLM"})
-                raise Exception(error_msg)
+            # if not filtered_data:
+            #     error_msg = "Failed to process template answer: No Valuable matched question-answer data returned from the analysis"
+            #     from api.socket.core import emit_with_log
+            #     room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
+            #     await emit_with_log(
+            #         "processing_update_failed",
+            #         {"status": f"{error_msg}"},
+            #         room=room
+            #     )
+            #     logger.error(error_msg)
+            #     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+            #     task_redis_key = self._get_task_redis_key(task_type, task_id)
+            #     redis.set(task_redis_key, {"status": "failed", "message": "No analysis data returned from LLM"})
+            #     raise Exception(error_msg)
 
-            logger.debug("Replacing placeholders in prompts")
-            external_audio_prompt = external_audio_prompt.replace("{question_answer_data}", str(filtered_data))\
-                                                           .replace("{realtime}", str(realtime_prompt))
-            data = gpt.openai_gpt_assistant_without_streaming(external_audio_prompt)
-            response = util.extract_json(data, quite=False)
-            logger.info("Matched question-answer data returned from LLM analysis with the new interview structure")
-            logger.debug(f"📋 [DEBUG] Q Response: {response}")
+            # logger.debug("Replacing placeholders in prompts")
+            # external_audio_prompt = external_audio_prompt.replace("{question_answer_data}", str(filtered_data))\
+            #                                                .replace("{realtime}", str(realtime_prompt))
+            # data = gpt.openai_gpt_assistant_without_streaming(external_audio_prompt)
+            # response = util.extract_json(data, quite=False)
+            # logger.info("Matched question-answer data returned from LLM analysis with the new interview structure")
+            # logger.debug(f"📋 [DEBUG] Q Response: {response}")
            
-            # Initialize these for util.create_session (as per original logic)
-            message = ''
-            template = False
-            challenge = False
-            mode = None
+            # # Initialize these for util.create_session (as per original logic)
+            # message = ''
+            # template = False
+            # challenge = False
+            # mode = None
 
-            saved_session = util.create_session(
-                run_stage,
-                mode,
-                template,
-                external,
-                challenge,
-                all_user_id,
-                tinder_user_profile_id,
-                job_profile_id,
-                template_id,
-                challenge_id,
-                message,
-                upload_metadata
-            )
+            # saved_session = util.create_session(
+            #     run_stage,
+            #     mode,
+            #     template,
+            #     external,
+            #     challenge,
+            #     all_user_id,
+            #     tinder_user_profile_id,
+            #     job_profile_id,
+            #     template_id,
+            #     challenge_id,
+            #     message,
+            #     upload_metadata
+            # )
 
-            if saved_session:
-                # Check if saved_session is a valid dictionary with an 'id' field
-                if isinstance(saved_session, dict) and 'id' in saved_session:
-                    sessionId = saved_session['id']
-                    logger.info(f"📥 Session created successfully with ID: {sessionId}")
-                    saved = strapi.save_messages_to_db(response, sessionId)
-                else:
-                    # Handle case where saved_session is not a valid session object
-                    logger.error(f"❌ Invalid session data returned: {type(saved_session)} - {saved_session}")
-                    task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                    task_redis_key = self._get_task_redis_key(task_type, task_id)
-                    redis.set(task_redis_key, {"status": "failed", "message": "Invalid session data returned"})
-                    return
+            # if saved_session:
+            #     # Check if saved_session is a valid dictionary with an 'id' field
+            #     if isinstance(saved_session, dict) and 'id' in saved_session:
+            #         sessionId = saved_session['id']
+            #         logger.info(f"📥 Session created successfully with ID: {sessionId}")
+            #         saved = strapi.save_messages_to_db(response, sessionId)
+            #     else:
+            #         # Handle case where saved_session is not a valid session object
+            #         logger.error(f"❌ Invalid session data returned: {type(saved_session)} - {saved_session}")
+            #         task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+            #         task_redis_key = self._get_task_redis_key(task_type, task_id)
+            #         redis.set(task_redis_key, {"status": "failed", "message": "Invalid session data returned"})
+            #         return
 
-                logger.debug("Starting overall evaluation in a separate thread")
-                def run_overall_sync_wrapper():
-                    try:
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
+            #     logger.debug("Starting overall evaluation in a separate thread")
+            #     def run_overall_sync_wrapper():
+            #         try:
+            #             loop = asyncio.new_event_loop()
+            #             asyncio.set_event_loop(loop)
 
-                        overall = loop.run_until_complete(
-                            self.overall_interview_evaluations_external(
-                                run_stage,
-                                response,
-                                'External',
-                                sessionId,
-                                all_user_id,
-                                tinder_user_profile_id,
-                                job_profile_id,
-                                challenge_id,
-                                template_id,
-                                'job_interview_config'
-                            )
-                        )
+            #             overall = loop.run_until_complete(
+            #                 self.overall_interview_evaluations_external(
+            #                     run_stage,
+            #                     response,
+            #                     'External',
+            #                     sessionId,
+            #                     all_user_id,
+            #                     tinder_user_profile_id,
+            #                     job_profile_id,
+            #                     challenge_id,
+            #                     template_id,
+            #                     'job_interview_config'
+            #                 )
+            #             )
 
-                        if overall:
-                            logger.info("✅ Overall evaluation completed successfully")
-                            task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                            task_redis_key = self._get_task_redis_key(task_type, task_id)
-                            redis.set(task_redis_key, {
-                                "status": "done",
-                                "message": "Chat Saved Successfully",
-                                "chat": saved,
-                                "overall": overall
-                            })
+            #             if overall:
+            #                 logger.info("✅ Overall evaluation completed successfully")
+            #                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+            #                 task_redis_key = self._get_task_redis_key(task_type, task_id)
+            #                 redis.set(task_redis_key, {
+            #                     "status": "done",
+            #                     "message": "Chat Saved Successfully",
+            #                     "chat": saved,
+            #                     "overall": overall
+            #                 })
                             
-                            # Emit success event for template answer completion
-                            try:
-                                from api.socket.core import emit_with_log
-                                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
-                                loop.run_until_complete(emit_with_log(
-                                    "processing_update_success",
-                                    {"status": "✅ Uploaded file analysis completed successfully!"},
-                                    room=room
-                                ))
-                            except Exception as emit_error:
-                                logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
-                        else:
-                            logger.error("❌ Overall evaluation failed")
-                    except Exception as e:
-                        logger.error(f"Error in overall evaluation thread: {str(e)}", exc_info=True)
-                        task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                        task_redis_key = self._get_task_redis_key(task_type, task_id)
-                        redis.set(task_redis_key, {"status": "failed", "message": str(e)})
+            #                 # Emit success event for template answer completion
+            #                 try:
+            #                     from api.socket.core import emit_with_log
+            #                     room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
+            #                     loop.run_until_complete(emit_with_log(
+            #                         "processing_update_success",
+            #                         {"status": "✅ Uploaded file analysis completed successfully!"},
+            #                         room=room
+            #                     ))
+            #                 except Exception as emit_error:
+            #                     logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
+            #             else:
+            #                 logger.error("❌ Overall evaluation failed")
+            #         except Exception as e:
+            #             logger.error(f"Error in overall evaluation thread: {str(e)}", exc_info=True)
+            #             task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+            #             task_redis_key = self._get_task_redis_key(task_type, task_id)
+            #             redis.set(task_redis_key, {"status": "failed", "message": str(e)})
 
-                t = threading.Thread(target=run_overall_sync_wrapper)
-                t.start()
-                logger.success("🎉 TEMPLATE ANSWER PROCESSED AND SAVED SUCCESSFULLY!")
-            else:
-                logger.error("❌ Failed to save session")
-                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                task_redis_key = self._get_task_redis_key(task_type, task_id)
-                redis.set(task_redis_key, {"status": "failed", "message": "Session Not Saved"})
+            #     t = threading.Thread(target=run_overall_sync_wrapper)
+            #     t.start()
+            #     logger.success("🎉 TEMPLATE ANSWER PROCESSED AND SAVED SUCCESSFULLY!")
+            # else:
+            #     logger.error("❌ Failed to save session")
+            #     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+            #     task_redis_key = self._get_task_redis_key(task_type, task_id)
+            #     redis.set(task_redis_key, {"status": "failed", "message": "Session Not Saved"})
 
         except Exception as e:
             logger.error(f"🔥 Critical error in template answer background processing: {str(e)}")
@@ -1636,11 +1637,11 @@ class AudioUtils:
                         'file': (filename, audio_file, content_type)
                     }
                     data = {
-                        'request_id': 'audio-upload-001',
-                        'request_source': 'fastapi_audio_upload',
+                        'request_id': 'audio-upload-001a',
+                        'request_source': 'parrot_audio_upload',
                         'prompt': 'Extract the text from the audio file.',
-                        'llm_provider': 'openai',
-                        'llm_model': 'gpt-4o'
+                        'llm_provider': 'gemini',
+                        'llm_model': 'gemini-2.5-flash'
                     }
                     logger.debug(f"Sending audio file to external transcription endpoint... (Attempt {attempt + 1}/{max_retries})")
                     
