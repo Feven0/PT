@@ -482,7 +482,15 @@ async def _audio_transcribe_google_v2(sid: str, audioblob):
             if is_final:
                 # Final result - emit if different from last final
                 if text.strip() and text != transcript_state["last_final"]:
-                    await sio.emit("audio transcribe google", text, room=sid)
+                    # Emit structured payload so frontend appends into finals history
+                    payload = {
+                        "text": text,
+                        "is_final": True,
+                        "language": result.get("language_code") or "en-US",
+                        "restart_epoch": result.get("restart_epoch"),
+                        "result_seq": result.get("result_seq"),
+                    }
+                    await sio.emit("audio transcribe google", payload, room=sid)
                     transcript_state["last_final"] = text
                     transcript_state["last_interim"] = ""  # Clear interim
                     transcript_state["utterance_buffer"] = ""  # Clear buffer
@@ -510,6 +518,7 @@ async def _audio_transcribe_google_v2(sid: str, audioblob):
                         
                         # Emit if: new words added OR text is substantially different
                         if new_words or len(text) > len(last) + 2:
+                            # Keep interim as string for lightweight, backward-compatible updates
                             await sio.emit("audio transcribe google", text, room=sid)
                             transcript_state["last_interim"] = text
                             logger.info(f"[GOOGLE_V2][TRANSCRIPT][INTERIM] sid={sid}, new_words={len(new_words)}, text='{text[:30]}...'")

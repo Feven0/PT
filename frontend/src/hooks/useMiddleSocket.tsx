@@ -206,14 +206,27 @@ const useMiddleSocket = () => {
 
           const text = (message?.text ?? '').toString();
           const isFinal = Boolean(message?.is_final);
+          const isUtteranceEnd = Boolean(message?.is_utterance_end);
           const epoch = Number(message?.restart_epoch ?? 0);
           const resultSeq = Number(message?.result_seq ?? -1);
 
           if (!text.trim()) return;
 
           if (isFinal) {
+            // Cancel any pending debounce that might promote live interims
+            if (googleLiveFinalizeTimerRef.current) {
+              clearTimeout(googleLiveFinalizeTimerRef.current);
+              googleLiveFinalizeTimerRef.current = null;
+            }
             // Append final to history; clear live interim; rebuild transcript from new history
             setGoogleFinalHistory(prev => {
+              // Dedupe: skip if same as last final already stored
+              if (prev.length > 0 && prev[prev.length - 1] === text) {
+                // Still clear live and rebuild full transcript
+                setGoogleLiveInterim("");
+                setGoogleTranscript((prev.join(' ') || '').trim());
+                return prev;
+              }
               const next = [...prev, text];
               googleFinalHistoryRef.current = next;
               setGoogleLiveInterim("");
@@ -228,7 +241,11 @@ const useMiddleSocket = () => {
             const live = text.trim();
             setGoogleTranscript([base, live].filter(Boolean).join(' ').trim());
             console.log('[GOOGLE][RX][INTERIM]', { epoch, resultSeq, preview: text.substring(0, 60) });
-            scheduleFinalizeDebounce();
+            // Do not schedule debounce for structured interims (e.g., utterance_end payloads);
+            // let explicit finals control history to avoid duplicates.
+            if (!isUtteranceEnd) {
+              // If desired in future, we could debounce here for non-utterance end interims.
+            }
           }
         });
 
