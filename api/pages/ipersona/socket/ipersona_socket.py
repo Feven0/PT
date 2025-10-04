@@ -1141,6 +1141,7 @@ class AssemblyAIStreamingSession:
                 
         def on_begin(client, event: BeginEvent):
             self.connected = True
+            logger.info(f"[ASSEMBLYAI][DEBUG][BEGIN] Connection established for sid={self.sid}")
 
         def on_turn(client, event: TurnEvent):
             try:
@@ -1240,7 +1241,13 @@ class AssemblyAIStreamingSession:
             self.client.connect(params)
             # Note: connected state will be set to True in on_begin event handler
         except Exception as e:
-            logger.error(f"[ASSEMBLYAI][DEBUG][CONNECT] Failed for sid={self.sid}: {e}")
+            logger.debug(f"[ASSEMBLYAI][DEBUG][CONNECT] Failed for sid={self.sid}: {e}")
+            # If threading error, reset client to allow recreation
+            if "threads can only be started once" in str(e):
+                logger.info(f"[ASSEMBLYAI][DEBUG][CONNECT] Threading error, resetting client for sid={self.sid}")
+                self.client = None
+                self.connected = False
+                self._setup_client()
             raise
 
     async def stream_audio(self, audio_bytes: bytes):
@@ -1267,9 +1274,24 @@ class AssemblyAIStreamingSession:
             self.client.stream(audio_bytes)
             
         except Exception as e:
-            # If connection failed, don't try to reconnect - create new session instead
+            # If threading error, recreate client and retry once
             if "threads can only be started once" in str(e):
-                logger.error(f"[ASSEMBLYAI][DEBUG][STREAM] Threading error detected for sid={self.sid}, will create new session on next audio chunk")
+                logger.debug(f"[ASSEMBLYAI][DEBUG][STREAM] Threading error detected for sid={self.sid}, recreating client")
+                try:
+                    # Reset client state
+                    self.client = None
+                    self.connected = False
+                    self._setup_client()
+                    
+                    # Retry connection and streaming
+                    await self.connect()
+                    self.client.stream(audio_bytes)
+                    logger.info(f"[ASSEMBLYAI][DEBUG][STREAM] Successfully recovered from threading error for sid={self.sid}")
+                except Exception as retry_e:
+                    logger.debug(f"[ASSEMBLYAI][DEBUG][STREAM] Retry failed for sid={self.sid}: {retry_e}")
+                    raise
+            else:
+                raise
 
     async def disconnect(self):
         """Disconnect from AssemblyAI streaming service"""
