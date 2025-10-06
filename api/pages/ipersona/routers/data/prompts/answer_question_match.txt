@@ -1,16 +1,17 @@
 You are given two sets of texts:
 
-- {questions_data}: A list of questions of text containing interview questions asked by an HR person.
-- {answers_data}: A list of answers containing of candidate answers, These answers are in free text format and may not follow the exact order of the questions.
+- {questions_data}: A list of questions containing interview questions asked by an HR person.
+- {answers_data}: A list of answers containing candidate responses in free text format.
 
-Your task is to match each candidate **answer** to its **best matching** question using **semantic similarity**. However:
+Your task is to match each candidate **answer** to its **best matching** question using **semantic similarity**. 
 
-IMPORTANT:
-- You MUST treat each full answer (i.e., each item in the answers list) as ONE unit.
-- DO NOT split or break the answer into pieces. Do not assign parts of the same answer to different questions.
-- DO NOT split the question, each of them are separately presentend so address them as they are
+CRITICAL RULES - DO NOT VIOLATE:
+- You MUST treat each full answer as ONE complete unit. NEVER split or break answers into pieces.
+- You MUST treat each question as ONE complete unit. NEVER modify, rephrase, or break down questions.
+- Questions are already asked questions - take them exactly as they are written.
 - Each answer must be matched with at most ONE question (its strongest match).
 - A question may be unmatched if no suitable answer exists.
+- DO NOT try to make answers "fit" questions by changing the question interpretation.
 
 MATCHING INSTRUCTIONS:
 - A valid match should directly address the specific topic or concept asked in the question.
@@ -21,31 +22,29 @@ MATCHING INSTRUCTIONS:
 
 1. **Do not rely on order**. Match answers to questions by meaning, not position.
 2. Each answer can be matched to only one question (best match).
-3. Skip any answer if it doesn’t clearly match any question (weak match).
+3. Skip any answer if it doesn't clearly match any question (weak match).
 4. Skip any question if no answer matches it.
 5. For each matched pair, assign a **relevance_score** from 0 to 100.
    - ≥ 80 = strong match
    - 60–79 = acceptable match
-   - < 50 = weak, ignore
-6. Only return matches with score ≥ 70.
+   - < 60 = weak, ignore
+6. Only return matches with score ≥ 60.
 
-WARNING
+SCORING GUIDELINES:
 - Penalize heavily if the candidate response does not contain any of the domain-relevant keywords or concepts from the question.
 - A valid match must include explicit reference or explanation of what was asked.
 - Do not assume relevance just because the response discusses something vaguely technical.
 - Do not assign a score above 50 if the response doesn't mention or discuss the core topic of the question explicitly.
 
-For each matched pair, assign a relevance_score between 0 and 100.
+For each matched pair, assign a relevance_score between 0 and 100:
 
   90–100: Very strong match — the answer directly and completely addresses the question and includes domain-specific keywords or concepts.
 
   80–89: Strong match — the answer addresses most parts of the question explicitly and contains related technical or contextual details.
 
-  70–79: Acceptable match — the answer addresses the question in general terms but lacks detail or depth.
+  60–79: Acceptable match — the answer addresses the question in general terms but lacks detail or depth.
 
-  50–69: Weak match — some vague connection but not directly answering the question. Do not include.
-
-  < 50: Irrelevant or misleading — ignore completely.
+  < 60: Weak match — some vague connection but not directly answering the question. Do not include.
 
 
 OUTPUT FORMAT:
@@ -57,13 +56,13 @@ Return a JSON list that includes ALL questions from the questions list. For each
 ```json
 [
   {
-    "question": "put the question",
-    "answer": "put the answer",
-    "relevance_score": "put a relevance score result if the answer address the question",
-    "reason": "put a reason for why u gave the score"
+    "question": "put the question exactly as written",
+    "answer": "put the complete answer as provided",
+    "relevance_score": 85,
+    "reason": "put a reason for why you gave this score"
   },
   {
-    "question": "put the question",
+    "question": "put the question exactly as written",
     "answer": null,
     "relevance_score": 0,
     "reason": "No answer provided for this question"
@@ -71,7 +70,10 @@ Return a JSON list that includes ALL questions from the questions list. For each
 ]
 ```
 
-IMPORTANT: 
+CRITICAL OUTPUT REQUIREMENTS: 
 - Include ALL questions from the questions list in the output
 - Unanswered questions should have "answer": null and "relevance_score": 0
 - Only return matched pairs with score ≥ 60 for answered questions
+- NEVER modify the question text - use it exactly as provided
+- NEVER split answers - use the complete answer as provided
+- relevance_score must be a number (not a string)
