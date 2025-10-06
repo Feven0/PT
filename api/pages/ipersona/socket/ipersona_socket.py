@@ -71,11 +71,70 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 # Improved transcriber management - track per session
 transcribers: Dict[str, Any] = {}
 assemblyai_streams: Dict[str, Any] = {}
+
+# AssemblyAI session limits - Production settings
+MAX_ASSEMBLYAI_SESSIONS = 80  # Leave buffer below 100 limit for paid accounts
+
+async def cleanup_stale_assemblyai_sessions():
+    """Clean up stale AssemblyAI sessions that may not have been properly disconnected"""
+    try:
+        stale_sessions = []
+        current_time = time.time()
+        
+        for sid, session in assemblyai_streams.items():
+            if session is None:
+                stale_sessions.append(sid)
+                continue
+                
+            # Check if session is disconnected but still in dict
+            if hasattr(session, 'connected') and not session.connected:
+                stale_sessions.append(sid)
+                continue
+                
+            # Check if session has been inactive for too long (2 minutes for production)
+            if hasattr(session, 'last_activity'):
+                if current_time - session.last_activity > 120:  # 2 minutes
+                    stale_sessions.append(sid)
+        
+        # Remove stale sessions
+        for sid in stale_sessions:
+            logger.info(f"[ASSEMBLYAI][CLEANUP] Removing stale session for sid={sid}")
+            session = assemblyai_streams.pop(sid, None)
+            if session and hasattr(session, 'disconnect'):
+                try:
+                    await session.disconnect()
+                except Exception as e:
+                    logger.warn(f"[ASSEMBLYAI][CLEANUP] Error disconnecting stale session {sid}: {e}")
+                    
+        if stale_sessions:
+            logger.info(f"[ASSEMBLYAI][CLEANUP] Cleaned up {len(stale_sessions)} stale sessions. Active sessions: {len(assemblyai_streams)}")
+            
+    except Exception as e:
+        logger.error(f"[ASSEMBLYAI][CLEANUP] Error during cleanup: {e}")
 whisper_buffers: Dict[str, bytearray] = {}
 google_streams: Dict[str, Any] = {}  # V1 sessions (legacy)
 google_streams_v2: Dict[str, Any] = {}  # V2 sessions (latest)
 gemini_streams: Dict[str, Any] = {}
 fw_buffers: Dict[str, bytearray] = {}
+
+# Periodic cleanup task for production
+async def periodic_assemblyai_cleanup():
+    """Run periodic cleanup every 30 seconds"""
+    while True:
+        try:
+            await asyncio.sleep(30)  # Run every 30 seconds
+            await cleanup_stale_assemblyai_sessions()
+            
+            # Log current session count
+            active_count = len([s for s in assemblyai_streams.values() if s is not None])
+            if active_count > 50:  # Log warning when getting close to limit
+                logger.warn(f"[ASSEMBLYAI][MONITOR] High session count: {active_count}/{MAX_ASSEMBLYAI_SESSIONS}")
+                
+        except Exception as e:
+            logger.error(f"[ASSEMBLYAI][PERIODIC] Error in periodic cleanup: {e}")
+
+# Start periodic cleanup task when first audio endpoint is called
+cleanup_task_started = False
 fw_model: Any = None
 gemini_last_ts: Dict[str, float] = {}
 audio_wav_storage: Dict[str, bytes] = {}
@@ -975,6 +1034,28 @@ async def connect(sid):
         {"message": "socket connection started"}, 
         room=sid)
     
+@sio.on("assemblyai_status")
+async def get_assemblyai_status(sid):
+    """Get current AssemblyAI session status for monitoring"""
+    try:
+        active_sessions = len([s for s in assemblyai_streams.values() if s is not None])
+        total_sessions = len(assemblyai_streams)
+        
+        status = {
+            "active_sessions": active_sessions,
+            "total_sessions": total_sessions,
+            "max_sessions": MAX_ASSEMBLYAI_SESSIONS,
+            "utilization_percent": round((active_sessions / MAX_ASSEMBLYAI_SESSIONS) * 100, 2),
+            "cleanup_task_running": cleanup_task_started
+        }
+        
+        await sio.emit("assemblyai_status_response", status, room=sid)
+        logger.info(f"[ASSEMBLYAI][STATUS] {status}")
+        
+    except Exception as e:
+        logger.error(f"[ASSEMBLYAI][STATUS] Error getting status: {e}")
+        await sio.emit("assemblyai_status_error", {"error": str(e)}, room=sid)
+
 @sio.on("disconnect")
 async def disconnect(sid):
     logger.info(f"Client disconnected with SID: {sid}")
@@ -1102,6 +1183,7 @@ class AssemblyAIStreamingSession:
             self.connected = False
             self.client = None
             self.main_loop = None
+            self.last_activity = time.time()  # Track last activity for cleanup
             # Accumulate raw audio bytes for the current turn; cleared at end_of_turn
             self.turn_buffer: bytearray = bytearray()
             # Accumulate all raw audio bytes across the session until stop/termination
@@ -1253,6 +1335,8 @@ class AssemblyAIStreamingSession:
     async def stream_audio(self, audio_bytes: bytes):
         """Stream audio data to AssemblyAI"""
         try:
+            # Update activity timestamp
+            self.last_activity = time.time()
             
             # Connect only if not already connected
             if not self.connected:
@@ -1379,7 +1463,22 @@ async def audio_endpoint(sid, data):
     # Log normalized audio data
     normalized_length = len(audio_bytes) if hasattr(audio_bytes, '__len__') else 'unknown'
     
+    # Start periodic cleanup task if not already started
+    global cleanup_task_started
+    if not cleanup_task_started:
+        asyncio.create_task(periodic_assemblyai_cleanup())
+        cleanup_task_started = True
+        logger.info("[ASSEMBLYAI][STARTUP] Started periodic cleanup task")
+    
     if sid not in assemblyai_streams or assemblyai_streams.get(sid) is None:
+        # Clean up stale sessions first
+        await cleanup_stale_assemblyai_sessions()
+        
+        # Log session count for monitoring (no limit enforcement)
+        active_sessions = len([s for s in assemblyai_streams.values() if s is not None])
+        if active_sessions > 50:  # Just log warning, don't block
+            logger.warn(f"[ASSEMBLYAI][DEBUG] High session count: {active_sessions} (AssemblyAI limit: 100)")
+            
         try:
             session = AssemblyAIStreamingSession(sid=sid)
             assemblyai_streams[sid] = session
