@@ -1,4 +1,3 @@
-
 from nturl2path import url2pathname
 import os
 import requests
@@ -19,7 +18,7 @@ import api.llm.ipersona.ipersona_strapi as strapi
 import api.modules.ipersona_parrot_gpt as util
 from pydub import AudioSegment
 from io import BytesIO
-from api.socket.core import sio
+from api.socket.core import sio, emit_with_log
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
@@ -476,7 +475,8 @@ class AudioUtils:
         template_id,
         all_user_id,
         external,
-        run_stage):
+        run_stage,
+        user_sid=None):
         
         try:
             redis = RedisBase()
@@ -619,13 +619,16 @@ class AudioUtils:
                         logger.warn(f"Content validation failed: {error_reason}")
                         
                         # Emit failure event and update Redis
-                        from api.socket.core import emit_with_log
-                        room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
-                        await emit_with_log(
-                            "processing_update_failed",
-                            {"status": f"Invalid interview content: {error_reason}"},
-                            room=room
-                        )
+                        try:
+                            if user_sid:
+                                logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: Invalid interview content ...")
+                                await emit_with_log(
+                                    "processing_update_failed",
+                                    {"status": f"Invalid interview content: {error_reason}"},
+                                            sid=user_sid,
+                                )
+                        except Exception as emit_exc:
+                            logger.error(f"[EMIT][ERROR] processing_update_failed sid={user_sid} err={emit_exc}")
                         
                         redis.set(task_redis_key, {
                             "status": "failed",
@@ -658,15 +661,21 @@ class AudioUtils:
                             contents = f.read()
                         logger.info(f"Read file contents, size: {len(contents)} bytes")
                         
-                        # Upload original document to S3
+                        # Upload original document to S3 (use bytes to avoid local path issues inside Docker)
                         bucket = _pick_bucket()
-                        url, key = _s3h.upload_file_and_get_url(bucket, audio_path, key=f"documents/{filename}")
+                        url, key = _s3h.upload_bytes_and_get_url(bucket, contents, key=f"documents/{filename}")
                         s3_text_url = url
                         text_size_bytes = len(contents)
                         logger.info(f"Document uploaded to S3: {url}")
                         
                     except Exception as e:
-                        logger.error(f"Failed to process document: {str(e)}")
+                        if user_sid:
+                            logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: Document processing failed ...")
+                            await emit_with_log(
+                                "processing_update_failed",
+                                {"status": f"Document processing failed: {str(e)}"},
+                                sid=user_sid,
+                            )
                         return f'Document processing failed: {str(e)}'
                     
                     # Extract text content
@@ -751,8 +760,6 @@ class AudioUtils:
                 except Exception as e:
                     logger.error(f"❌ [DEBUG] Failed to set Redis error status: {str(e)}")
                 return 'Audio processing failed'
-
-
 
 
             # --- Existing logic continues here ---
@@ -903,14 +910,17 @@ class AudioUtils:
                                     # Emit success event for template answer completion
                                 try:
                                     from api.socket.core import emit_with_log
-                                    room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
-                                    loop.run_until_complete(emit_with_log(
+                                    if user_sid:
+                                        logger.info(f"[EMIT] event=processing_update_success sid={user_sid} payload=status: completed successfully ...")
+                                        loop.run_until_complete(
+                                            emit_with_log(
                                         "processing_update_success",
                                         {"status": "✅ Uploaded file analysis completed successfully!"},
-                                        room=room
-                                    ))
+                                                sid=user_sid,
+                                            )
+                                        )
                                 except Exception as emit_error:
-                                    logger.error(f"Failed to emit success event: {str(emit_error)}")
+                                    logger.error(f"[EMIT][ERROR] processing_update_success sid={user_sid} err={emit_error}")
                             else:
                                 logger.error("❌ Overall evaluation failed")
                         except Exception as e:
@@ -972,51 +982,51 @@ class AudioUtils:
         try:
 
             # --- Process Question File using helper ---
-            # question_transcript, question_error_msg = await self.process_and_transcribe_file(
-            #     question_filename, question_content_type, question_contents, "Question"
-            # )
+            question_transcript, question_error_msg = await self.process_and_transcribe_file(
+                question_filename, question_content_type, question_contents, "Question"
+            )
 
-            # if question_error_msg:
-            #     error_msg = f"Question file processing failed: {question_error_msg}"
-            #     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-            #     task_redis_key = self._get_task_redis_key(task_type, task_id)
-            #     redis.set(task_redis_key, {"status": "failed", "message": error_msg})
-            #     raise Exception(error_msg)
+            if question_error_msg:
+                error_msg = f"Question file processing failed: {question_error_msg}"
+                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                redis.set(task_redis_key, {"status": "failed", "message": error_msg})
+                raise Exception(error_msg)
 
-            # # --- Process Answer File using helper ---
-            # logger.info(f"🔊 [DEBUG] Processing answer file: {answer_filename}, content_type: {answer_content_type}, size: {len(answer_contents)} bytes")
-            # answer_transcript, answer_error_msg = await self.process_and_transcribe_file(
-            #     answer_filename, answer_content_type, answer_contents, "Answer"
-            # )
-            # logger.info(f"🔊 [DEBUG] Answer processing result - transcript: {answer_transcript[:100] if answer_transcript else 'None'}..., error: {answer_error_msg}")
+            # --- Process Answer File using helper ---
+            logger.info(f"🔊 [DEBUG] Processing answer file: {answer_filename}, content_type: {answer_content_type}, size: {len(answer_contents)} bytes")
+            answer_transcript, answer_error_msg = await self.process_and_transcribe_file(
+                answer_filename, answer_content_type, answer_contents, "Answer"
+            )
+            logger.info(f"🔊 [DEBUG] Answer processing result - transcript: {answer_transcript[:100] if answer_transcript else 'None'}..., error: {answer_error_msg}")
             
-            # if answer_error_msg:
-            #     error_msg = f"Answer file processing failed: {answer_error_msg}"
-            #     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-            #     task_redis_key = self._get_task_redis_key(task_type, task_id)
-            #     redis.set(task_redis_key, {"status": "failed", "message": error_msg})
-            #     raise Exception(error_msg)
+            if answer_error_msg:
+                error_msg = f"Answer file processing failed: {answer_error_msg}"
+                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                redis.set(task_redis_key, {"status": "failed", "message": error_msg})
+                raise Exception(error_msg)
 
-            # # Ensure transcripts are not None after helper calls (should be handled by error_msg)
-            # if question_transcript is None or answer_transcript is None:
-            #     error_msg = "One or both transcripts are missing after file processing. Cannot proceed."
-            #     logger.error(error_msg)
-            #     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-            #     task_redis_key = self._get_task_redis_key(task_type, task_id)
-            #     redis.set(task_redis_key, {"status": "failed", "message": "Missing transcripts for analysis."})
-            #     raise Exception(error_msg)
+            # Ensure transcripts are not None after helper calls (should be handled by error_msg)
+            if question_transcript is None or answer_transcript is None:
+                error_msg = "One or both transcripts are missing after file processing. Cannot proceed."
+                logger.error(error_msg)
+                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                redis.set(task_redis_key, {"status": "failed", "message": "Missing transcripts for analysis."})
+                raise Exception(error_msg)
 
-            # logger.info("✅ Both question and answer files processed successfully.")
+            logger.info("✅ Both question and answer files processed successfully.")
 
-            # # --- Upload both assets to S3 and collect URLs (simplified via helper) ---
-            # try:
-            #     question_url, q_duration, q_size = self._upload_and_get_duration(question_filename, question_content_type, question_contents)
-            #     answer_url, a_duration, a_size = self._upload_and_get_duration(answer_filename, answer_content_type, answer_contents)
-            # except Exception as s3e:
-            #     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-            #     task_redis_key = self._get_task_redis_key(task_type, task_id)
-            #     redis.set(task_redis_key, {"status": "failed", "message": f"S3 upload failed: {str(s3e)}"})
-            #     raise
+            # --- Upload both assets to S3 and collect URLs (simplified via helper) ---
+            try:
+                question_url, q_duration, q_size = self._upload_and_get_duration(question_filename, question_content_type, question_contents)
+                answer_url, a_duration, a_size = self._upload_and_get_duration(answer_filename, answer_content_type, answer_contents)
+            except Exception as s3e:
+                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                redis.set(task_redis_key, {"status": "failed", "message": f"S3 upload failed: {str(s3e)}"})
+                raise
 
             # --- Remaining Original Logic (now much cleaner) ---
             logger.info("Fetching trainee profile data")
@@ -1047,70 +1057,54 @@ class AudioUtils:
             external_all_file_prompt = util.file_reader(util.prompt_path('external_audio_analysis.txt'))
             answer_question_matching = util.file_reader(util.prompt_path('answer_question_match.txt'))
             realtime_prompt = util.file_reader(util.prompt_path('realtime_evaluation.txt'))
-            
-            question_transcript= ["""Tell me a little bit about your self?"""]
-            answer_transcript= [
-                            """Hi. Hello. I am Nardos Delahun.
-                            I am a   software engineering graduate from Adis Ababa, and Adis Ababa Science
-                            and   Technology University, which is where I'm based in Adis Ababa, Ethiopia.",
-                            "Um, I'm currently working as a full stack developer with a strong   inclination
-                            towards uh, front-end development, and we use Next.js and   Tailwind for CSS,
-                            and for the back-end part, we mostly use Flask.",   "And, um, and now I'm
-                            applying for the for this role, for the front-end role   using Rails.",     "Um,
-                            I'm very excited to apply for this role because I   believe that every tool and
-                            every uh, technology, or every language has its   own quality.",     "And, um,
-                            as I advance towards my senior roles, uh, as   I'm trying to grow always, um, I
-                            want to know more or have a broad   understanding of architectural approaches
-                            and how uh, to use what, when to   use them so that we can make or I can make a
-                            a good architectural decisions   in the future time.",     "So, I'm very excited
-                            to hear from Arun about this   opportunity because it was the perfect
-                            opportunity for me since I'm seeking   to grow and Rails seems like it's the
-                            perfect next step for me.""" ]
+
             # Keep hardcoded test data as-is (already proper Python lists)
             logger.success(f"📋 [DEBUG] Question transcript: {question_transcript}")
             logger.success(f"📋 [DEBUG] Answer transcript: {answer_transcript}")
             logger.success(f"📋 [DEBUG] Answer transcript length: {len(str(answer_transcript))}")
-            # answer_question_match_scoring = answer_question_matching.replace("{questions_data}", question_transcript)\
-            #                                                .replace("{answers_data}", answer_transcript)
+  
+            answer_question_match_scoring = answer_question_matching.replace("{questions_data}", question_transcript)\
+                                                           .replace("{answers_data}", answer_transcript)
 
-            # logger.info("Sending prompt to GPT for analysis")
-            # # logger.info(f"📋 [DEBUG] Answer question match scoring: {answer_question_match_scoring}")
-            # data = gpt.openai_gpt_assistant_without_streaming(answer_question_match_scoring)
-            # if data and hasattr(data, 'content'):
-            #     data = data.content.text
-            # response = util.extract_json(data, quite=False)
+            logger.info("Sending prompt to GPT for analysis")
+            # logger.info(f"📋 [DEBUG] Answer question match scoring: {answer_question_match_scoring}")
+            data = gpt.openai_gpt_assistant_without_streaming(answer_question_match_scoring)
+            if data and hasattr(data, 'content'):
+                data = data.content.text
+            response = util.extract_json(data, quite=False)
 
-            # # Filter out items with relevance_score >= 90
-            # filtered_data = []
-            # for item in response:
-            #     try:
-            #         # CRITICAL: Never assign default values to sensitive data
-            #         if 'relevance_score' not in item:
-            #             logger.error(f"❌ CRITICAL: Missing relevance_score in item: {item}")
-            #             logger.error(f"❌ Cannot assign default values to sensitive matching data")
-            #             continue
+            # Filter out items with relevance_score >= 90
+            filtered_data = []
+            for item in response:
+                try:
+                    # CRITICAL: Never assign default values to sensitive data
+                    if 'relevance_score' not in item:
+                        logger.error(f"❌ CRITICAL: Missing relevance_score in item: {item}")
+                        logger.error(f"❌ Cannot assign default values to sensitive matching data")
+                        continue
                     
-            #         relevance_score = item['relevance_score']
+                    relevance_score = item['relevance_score']
                     
-            #         # Handle None values (unmatched questions) - skip them
-            #         if relevance_score is None:
-            #             logger.info(f"ℹ️ Skipping unmatched question (relevance_score: None)")
-            #             continue
+                    # Handle None values (unmatched questions) - skip them
+                    if relevance_score is None:
+                        logger.info(f"ℹ️ Skipping unmatched question (relevance_score: None)")
+                        continue
                     
-            #         # Convert to int for comparison
-            #         relevance_score = int(relevance_score)
-            #         if relevance_score >= 90:
-            #             filtered_data.append({
-            #                 'question': item['question'], 
-            #                 'answer': item['answer']
-            #             })
-            #     except (ValueError, TypeError) as e:
-            #         # If relevance_score is not a valid number, skip this item
-            #         logger.error(f"❌ Invalid relevance_score in item: {item.get('relevance_score')} - Error: {e}")
-            #         logger.error(f"❌ Cannot process item with invalid score data")
-            #         continue
-
-                        # Use structured matching instead of LLM-based matching
+                    # Convert to int for comparison
+                    relevance_score = int(relevance_score)
+                    if relevance_score >= 90:
+                        filtered_data.append({
+                            'question': item['question'], 
+                            'answer': item['answer']
+                        })
+                except (ValueError, TypeError) as e:
+                    # If relevance_score is not a valid number, skip this item
+                    logger.error(f"❌ Invalid relevance_score in item: {item.get('relevance_score')} - Error: {e}")
+                    logger.error(f"❌ Cannot process item with invalid score data")
+                    continue
+            
+            # =========================
+            # Use structured matching instead of LLM-based matching
             response = self._structured_question_answer_matching(question_transcript, answer_transcript)
             logger.info(f"📋 [DEBUG] Structured matching response: {response}")
 
@@ -1119,16 +1113,17 @@ class AudioUtils:
             filtered_data = response
 
             logger.info(f"📋 [DEBUG] Filtered data count: {len(filtered_data)}")
-            
+            # =========================
+
             # Proceed even if all are unmatched; only fail on invalid matcher response
             if filtered_data is None or not isinstance(filtered_data, list):
-                error_msg = "Failed to process template answer: invalid matcher response (expected list)"
-                from api.socket.core import emit_with_log
-                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
+                error_msg = "Failed to process template answer: invalid matcher response, you should reupload correct files and try again"
+                if user_sid:
+                    logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: invalid matcher response")
                 await emit_with_log(
                     "processing_update_failed",
-                    {"status": f"{error_msg}"},
-                    room=room
+                        {"status": f"{error_msg}"},
+                        sid=user_sid,
                 )
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
@@ -1137,14 +1132,20 @@ class AudioUtils:
                 raise Exception(error_msg)
                 
             if all(item.get('relevance_score') is None for item in filtered_data):
-                error_msg = "Failed to process template answer: all questions unmatched (relevance_score: None)"
-                from api.socket.core import emit_with_log
-                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
-                await emit_with_log(
-                    "processing_update_failed",
-                    {"status": f"{error_msg}"},
-                    room=room
-                )
+                error_msg = "Failed to process template answer: all questions unmatched, you should reupload correct files and try again"
+                
+                # Optional: notify failure via SID
+                try:
+                    if user_sid:
+                        logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: all questions unmatched")
+                        await emit_with_log(
+                            "processing_update_failed",
+                            {"status": f"{error_msg}"},
+                            sid=user_sid,
+                        )
+                except Exception as emit_exc:
+                    logger.error(f"[EMIT][ERROR] processing_update_failed sid={user_sid} err={emit_exc}")
+
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
@@ -1153,21 +1154,6 @@ class AudioUtils:
 
             logger.info(f"📋 [DEBUG] Filtered data count: {len(filtered_data)}")
             logger.info(f"📋 [DEBUG] All relevance scores: {[item.get('relevance_score', 'N/A') for item in response]}")
-
-            if not filtered_data:
-                error_msg = "Failed to process upload files: No Valuable matched question-answer data returned from the analysis"
-                from api.socket.core import emit_with_log
-                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
-                await emit_with_log(
-                    "processing_update_failed",
-                    {"status": f"No valuable matches found between the question and answer files you just uploaded. Please re-upload a clear interview file, then try again."},
-                    room=room
-                )
-                logger.error(error_msg)
-                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-                task_redis_key = self._get_task_redis_key(task_type, task_id)
-                redis.set(task_redis_key, {"status": "failed", "message": "No analysis data returned from LLM"})
-                raise Exception(error_msg)
 
             external_audio_prompt = external_audio_prompt.replace("{question_answer_data}", str(filtered_data))\
                                                            .replace("{realtime}", str(realtime_prompt))
@@ -1183,128 +1169,132 @@ class AudioUtils:
             challenge = False
             mode = None
 
-            # # Build upload metadata with distinct URLs, optional durations, and sizes
-            # upload_metadata = {
-            #     "mode": "qa_split_mode",
-            #     "source": "uploaded_file",
-            #     "question": {
-            #         "url": question_url,
-            #         "content_type": question_content_type,
-            #         "original_filename": question_filename,
-            #         "duration_secs": q_duration,
-            #         "size_bytes": q_size
-            #     },
-            #     "answer": {
-            #         "url": answer_url,
-            #         "content_type": answer_content_type,
-            #         "original_filename": answer_filename,
-            #         "duration_secs": a_duration,
-            #         "size_bytes": a_size
-            #     }
-            # }
+            # Build upload metadata with distinct URLs, optional durations, and sizes
+            upload_metadata = {
+                "mode": "qa_split_mode",
+                "source": "uploaded_file",
+                "question": {
+                    "url": question_url,
+                    "content_type": question_content_type,
+                    "original_filename": question_filename,
+                    "duration_secs": q_duration,
+                    "size_bytes": q_size
+                },
+                "answer": {
+                    "url": answer_url,
+                    "content_type": answer_content_type,
+                    "original_filename": answer_filename,
+                    "duration_secs": a_duration,
+                    "size_bytes": a_size
+                }
+            }
                         
-            # saved_session = util.create_session(
-            #     run_stage,
-            #     mode,
-            #     template,
-            #     external,
-            #     challenge,
-            #     all_user_id,
-            #     tinder_user_profile_id,
-            #     job_profile_id,
-            #     template_id,
-            #     challenge_id,
-            #     message,
-            #     upload_metadata
-            # )
+            saved_session = util.create_session(
+                run_stage,
+                mode,
+                template,
+                external,
+                challenge,
+                all_user_id,
+                tinder_user_profile_id,
+                job_profile_id,
+                template_id,
+                challenge_id,
+                message,
+                upload_metadata
+            )
 
-            # if saved_session:
-            #     # Check if saved_session is a valid dictionary with an 'id' field
-            #     if isinstance(saved_session, dict) and 'id' in saved_session:
-            #         sessionId = saved_session['id']
-            #         logger.info(f"📥 Session created successfully with ID: {sessionId}")
-            #         logger.info("Saving analyzed chat to database")
-            #         saved = strapi.save_messages_to_db(response, sessionId)
-            #     else:
-            #         # Handle case where saved_session is not a valid session object
-            #         logger.error(f"❌ Invalid session data returned: {type(saved_session)} - {saved_session}")
-            #         logger.error("❌ Failed to save session - invalid session data")
-            #         task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-            #         task_redis_key = self._get_task_redis_key(task_type, task_id)
-            #         redis.set(task_redis_key, {"status": "failed", "message": "Invalid session data returned"})
-            #         return
+            if saved_session:
+                # Check if saved_session is a valid dictionary with an 'id' field
+                if isinstance(saved_session, dict) and 'id' in saved_session:
+                    sessionId = saved_session['id']
+                    logger.info(f"📥 Session created successfully with ID: {sessionId}")
+                    logger.info("Saving analyzed chat to database")
+                    saved = strapi.save_messages_to_db(response, sessionId)
+                else:
+                    # Handle case where saved_session is not a valid session object
+                    logger.error(f"❌ Invalid session data returned: {type(saved_session)} - {saved_session}")
+                    logger.error("❌ Failed to save session - invalid session data")
+                    task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                    task_redis_key = self._get_task_redis_key(task_type, task_id)
+                    redis.set(task_redis_key, {"status": "failed", "message": "Invalid session data returned"})
+                    return
 
-            #     logger.info("Starting overall evaluation in a separate thread")
-            #     def run_overall_sync_wrapper():
-            #         try:
-            #             loop = asyncio.new_event_loop()
-            #             asyncio.set_event_loop(loop)
+                logger.info("Starting overall evaluation in a separate thread")
+                def run_overall_sync_wrapper():
+                    try:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
 
-            #             overall = loop.run_until_complete(
-            #                 self.overall_interview_evaluations_external(
-            #                     run_stage,
-            #                     response,
-            #                     'External',
-            #                     sessionId,
-            #                     all_user_id,
-            #                     tinder_user_profile_id,
-            #                     job_profile_id,
-            #                     challenge_id,
-            #                     template_id,
-            #                     'job_interview_config'
-            #                 )
-            #             )
+                        overall = loop.run_until_complete(
+                            self.overall_interview_evaluations_external(
+                                run_stage,
+                                response,
+                                'External',
+                                sessionId,
+                                all_user_id,
+                                tinder_user_profile_id,
+                                job_profile_id,
+                                challenge_id,
+                                template_id,
+                                'job_interview_config'
+                            )
+                        )
                         
-            #             if overall:
-            #                 logger.info("✅ Overall evaluation completed successfully")
-            #                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-            #                 task_redis_key = self._get_task_redis_key(task_type, task_id)
-            #                 redis.set(task_redis_key, {
-            #                     "status": "done",
-            #                     "message": "Chat Saved Successfully",
-            #                     "chat": saved,
-            #                     "overall": overall,
-            #                     "emit_success": True  # Flag for socket emission
-            #                 })
+                        if overall:
+                            logger.info("✅ Overall evaluation completed successfully")
+                            task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                            task_redis_key = self._get_task_redis_key(task_type, task_id)
+                            redis.set(task_redis_key, {
+                                "status": "done",
+                                "message": "Chat Saved Successfully",
+                                "chat": saved,
+                                "overall": overall,
+                                "emit_success": True  # Flag for socket emission
+                            })
                             
-            #                 # Emit success event for template answer completion
-            #                 try:
-            #                     from api.socket.core import emit_with_log
-            #                     room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
-            #                     loop.run_until_complete(emit_with_log(
-            #                         "processing_update_success",
-            #                         {"status": "✅ Uploaded file analysis completed successfully!"},
-            #                         room=room
-            #                     ))
-            #                 except Exception as emit_error:
-            #                     logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
-            #             else:
-            #                 logger.error("❌ Overall evaluation failed")
-            #                 return False
+                            # Emit success event for template answer completion
+                            try:
+                                from api.socket.core import emit_with_log
+                                # Optional: notify failure via SID
+                                if user_sid:
+                                    asyncio.run(
+                                        emit_with_log(
+                                    "processing_update_success",
+                                    {"status": "✅ Uploaded file analysis completed successfully!"},
+                                            sid=user_sid,
+                                        )
+                                    )
+     
+                            except Exception as emit_error:
+                                logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
+                        else:
+                            logger.error("❌ Overall evaluation failed")
+                            return False
 
                        
-            #         except Exception as e:
-            #             logger.error(f"Error in overall evaluation thread: {str(e)}", exc_info=True)
-            #             task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-            #             task_redis_key = self._get_task_redis_key(task_type, task_id)
-            #             redis.set(task_redis_key, {"status": "failed", "message": str(e)})
+                    except Exception as e:
+                        logger.error(f"Error in overall evaluation thread: {str(e)}", exc_info=True)
+                        task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                        task_redis_key = self._get_task_redis_key(task_type, task_id)
+                        redis.set(task_redis_key, {"status": "failed", "message": str(e)})
 
-            #     t = threading.Thread(target=run_overall_sync_wrapper)
-            #     t.start()
+                t = threading.Thread(target=run_overall_sync_wrapper)
+                t.start()
                 
-            #     # Wait for thread completion and emit socket event if successful
-            #     t.join()  # Wait for thread to complete
+                # Wait for thread completion and emit socket event if successful
+                t.join()  # Wait for thread to complete
                 
-            #     # Check if success was indicated
-            #     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-            #     task_redis_key = self._get_task_redis_key(task_type, task_id)
-            #     status_data = redis.get(task_redis_key)
+                # Check if success was indicated
+                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                status_data = redis.get(task_redis_key)
             
-            # else:
-            #     logger.error("❌ Failed to save session")
-            #     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
-            #     task_redis_key = self._get_task_redis_key(task_type, task_id)
-            #     redis.set(task_redis_key, {"status": "failed", "message": "Session Not Saved"})
+            else:
+                logger.error("❌ Failed to save session")
+                task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+                task_redis_key = self._get_task_redis_key(task_type, task_id)
+                redis.set(task_redis_key, {"status": "failed", "message": "Session Not Saved"})
 
         except Exception as e:
             if job_profile_id:
@@ -1334,7 +1324,7 @@ class AudioUtils:
         """
         redis = RedisBase()
         try:
-            
+     
             answer_transcript = False
             answer_error_msg = False
             # Process Answer File using helper
@@ -1344,9 +1334,29 @@ class AudioUtils:
                     answer_filename, answer_content_type, answer_contents, "Answer"
                 )
                 import ast
-                answer_transcript = ast.literal_eval(answer_transcript)
+                # Add detailed logs before parsing
+                preview = str(answer_transcript)[:200] if answer_transcript is not None else 'None'
+                logger.info(f"[PARSE] answer_transcript pre-parse type={type(answer_transcript)} len={len(str(answer_transcript)) if answer_transcript is not None else 0} preview={preview}")
+                # Try safe parsing in order: literal_eval for python-like lists, then JSON
+                if isinstance(answer_transcript, str):
+                    parsed_ok = False
+                    try:
+                        answer_transcript = ast.literal_eval(answer_transcript)
+                        parsed_ok = True
+                        logger.info("[PARSE] literal_eval succeeded for answer_transcript")
+                    except Exception as e:
+                        logger.error(f"[PARSE][ERROR] literal_eval failed: {e}")
+                        try:
+                            answer_transcript = json.loads(answer_transcript)
+                            parsed_ok = True
+                            logger.info("[PARSE] json.loads succeeded for answer_transcript")
+                        except Exception as je:
+                            logger.error(f"[PARSE][ERROR] json.loads failed: {je}")
+                    if not parsed_ok:
+                        logger.info("[PARSE] Using raw string answer_transcript (parsing not applicable)")
+                # If still a string, attempt to extract JSON structure
                 answer_transcript = util.extract_json(answer_transcript, quite=False)
-                logger.info(f"🔊 [DEBUG] Answer processing result - transcript: {type(answer_transcript)} : length {len(answer_transcript)}..., error: {answer_error_msg}")
+                logger.info(f"🔊 [DEBUG] Answer processing result - transcript: {type(answer_transcript)} : length {len(answer_transcript) if hasattr(answer_transcript,'__len__') else 'N/A'}..., error: {answer_error_msg}")
 
             logger.info(f"🔊 [DEBUG] Answer processing result - transcript: {type(answer_transcript)} : length {len(answer_transcript)}..., error: {answer_error_msg}")
             
@@ -1375,13 +1385,12 @@ class AudioUtils:
             if not answer_validation.get("valid", False):
                 error_msg = f"Answer content validation failed: {answer_validation.get('reason', 'Unknown validation error')}"
                 logger.error(error_msg)
-                from api.socket.core import emit_with_log
-                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
-                await emit_with_log(
-                    "processing_update_failed",
-                    {"status": f"{error_msg}"},
-                    room=room
-                )
+                if user_sid:
+                    await emit_with_log(
+                        "processing_update_failed",
+                        {"status": f"{error_msg}"},
+                            sid=user_sid,
+                    )
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
                 redis.set(task_redis_key, {
@@ -1460,14 +1469,14 @@ class AudioUtils:
             
             # Proceed even if all are unmatched; only fail on invalid matcher response
             if filtered_data is None or not isinstance(filtered_data, list):
-                error_msg = "Failed to process template answer: invalid matcher response (expected list)"
-                from api.socket.core import emit_with_log
-                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
-                await emit_with_log(
-                    "processing_update_failed",
-                    {"status": f"{error_msg}"},
-                    room=room
-                )
+                error_msg = "Failed to process template answer: invalid matcher response, you should reupload correct files and try again"
+                if user_sid:
+                    logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: invalid matcher response")
+                    await emit_with_log(
+                        "processing_update_failed",
+                        {"status": f"{error_msg}"},
+                        sid=user_sid,
+                    )
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
@@ -1475,14 +1484,20 @@ class AudioUtils:
                 raise Exception(error_msg)
                 
             if all(item.get('relevance_score') is None for item in filtered_data):
-                error_msg = "Failed to process template answer: all questions unmatched (relevance_score: None)"
-                from api.socket.core import emit_with_log
-                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
-                await emit_with_log(
-                    "processing_update_failed",
-                    {"status": f"{error_msg}"},
-                    room=room
-                )
+                error_msg = "Failed to process template answer: all questions unmatched, you should reupload correct files and try again"
+                
+                # Optional: notify failure via SID
+                try:
+                    if user_sid:
+                        logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: all questions unmatched")
+                        await emit_with_log(
+                            "processing_update_failed",
+                            {"status": f"{error_msg}"},
+                                    sid=user_sid,
+                        )
+                except Exception as emit_exc:
+                    logger.error(f"[EMIT][ERROR] processing_update_failed sid={user_sid} err={emit_exc}")
+
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
@@ -1528,6 +1543,7 @@ class AudioUtils:
                 else:
                     # Handle case where saved_session is not a valid session object
                     logger.error(f"❌ Invalid session data returned: {type(saved_session)} - {saved_session}")
+                    logger.error("❌ Failed to save session - invalid session data")
                     task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                     task_redis_key = self._get_task_redis_key(task_type, task_id)
                     redis.set(task_redis_key, {"status": "failed", "message": "Invalid session data returned"})
@@ -1568,12 +1584,14 @@ class AudioUtils:
                             # Emit success event for template answer completion
                             try:
                                 from api.socket.core import emit_with_log
-                                room = f"processing_{job_profile_id}_{all_user_id}" if job_profile_id and all_user_id else None
-                                loop.run_until_complete(emit_with_log(
-                                    "processing_update_success",
-                                    {"status": "✅ Uploaded file analysis completed successfully!"},
-                                    room=room
-                                ))
+                                if user_sid:
+                                    loop.run_until_complete(
+                                        emit_with_log(
+                                            "processing_update_success",
+                                            {"status": "✅ Uploaded file analysis completed successfully!"},
+                                            sid=user_sid,
+                                        )
+                                    )
                             except Exception as emit_error:
                                 logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
                         else:
@@ -1624,7 +1642,7 @@ class AudioUtils:
                         question_text += "\n"
         
         return question_text.strip()
-    
+ 
     def _structured_question_answer_matching(self, template_questions, answer_transcript):
         """
         Use structured matching system instead of LLM-based matching.
@@ -1638,13 +1656,15 @@ class AudioUtils:
         """
         try:
             from api.utils.question_answer_matcher import QuestionAnswerMatcher
-            
+            logger.info(f"🔍 [DEBUG] Template questions: type {type(template_questions)} ::length {len(template_questions)}")
+            logger.info(f"🔍 [DEBUG] Answer transcript: type {type(answer_transcript)} :: length {len(answer_transcript)}")
             # Initialize matcher
             matcher = QuestionAnswerMatcher()
             
             # Perform matching - pass the original answer_transcript (list or string)
             result = matcher.match_questions_answers(template_questions, answer_transcript)
-            
+            logger.info(f"🔍 [DEBUG] Result: type {type(result)} :: {result}")
+
             if "error" in result:
                 logger.error(f"Structured matching error: {result['error']}")
                 
@@ -2115,7 +2135,6 @@ class AudioUtils:
                     """
                 transcript = gpt.openai_gpt_assistant_without_streaming(prompt)
                 logger.info(f"🔄 [DEBUG] Transcript: {transcript}")
-                logger.info(f":::::::::::::::::.................000000...............:::::::::::::::::")
                 # Extract text content from ModelResponse
                 # if transcript and hasattr(transcript, 'content'):
                 #     transcript = transcript.content.text
@@ -2440,7 +2459,7 @@ class AudioUtils:
             session_chatobserver = None
     
             if job_profile_id_int and job_profile_id_int != 0: 
-                logger.info(f"🎯 [DEBUG] Taking JOB_PROFILE path - job_profile_id: {job_profile_id_int}")
+                print(f"🎯 [DEBUG] Taking JOB_PROFILE path - job_profile_id: {job_profile_id_int}")
                 session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(
                     user_profile_id = tinder_user_profile_id, 
                     job_profile_id = job_profile_id_int, 
@@ -2448,7 +2467,7 @@ class AudioUtils:
                     dataframe=False)
                 
             elif challenge_id_int and challenge_id_int != 0:
-                logger.info(f"🎯 [DEBUG] Taking CHALLENGE path - challenge_id: {challenge_id_int}")
+                print(f"🎯 [DEBUG] Taking CHALLENGE path - challenge_id: {challenge_id_int}")
                 session_chatobserver = ipersona_overall.filter_by_with_user_and_challenge_id(
                     user_profile_id = tinder_user_profile_id, 
                     challenge_id = challenge_id_int, 
@@ -2456,7 +2475,7 @@ class AudioUtils:
                     dataframe=False)   
 
             elif template_id_int and template_id_int != 0:
-                logger.info(f"🎯 [DEBUG] Taking TEMPLATE path - template_id: {template_id_int}")
+                print(f"🎯 [DEBUG] Taking TEMPLATE path - template_id: {template_id_int}")
                 session_chatobserver = ipersona_overall.filter_by_with_user_and_template_id(
                     user_profile_id = tinder_user_profile_id, 
                     template_id = template_id_int, 

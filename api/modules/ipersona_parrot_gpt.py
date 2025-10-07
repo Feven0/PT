@@ -4352,16 +4352,22 @@ def summarize_interview_by_template_data(run_stage, data, cursor, filter_by_stat
 
 #-------------------------------------------- FIle reader --------------------------------------------
 def parse_iso_format_with_z(iso_str):
+    # Gracefully handle missing/empty timestamps
+    if not iso_str or (isinstance(iso_str, str) and iso_str.strip() == ""):
+        return None
     return datetime.strptime(iso_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc)
 
 def convert_iso_to_readable_format(iso_time):
+    # If time is not provided, return a friendly placeholder instead of raising
+    if not iso_time or (isinstance(iso_time, str) and iso_time.strip() == ""):
+        return "time not provided"
     try:
         dt = datetime.strptime(iso_time, '%Y-%m-%dT%H:%M:%S.%fZ')    
         readable_time = dt.strftime('%d %b %Y %I:%M %p')
         return readable_time
     except Exception as e:
-        logger.error(f"Error processing files: {e}")
-        return {'error': str(e)}
+        logger.warning(f"Time parse failed, returning placeholder: {e}")
+        return "time not provided"
 
 def file_reader(path: str) -> str:
     """ File Reader """

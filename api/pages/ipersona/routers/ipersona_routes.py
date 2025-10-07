@@ -38,7 +38,8 @@ from api.services.celery.audio_tasks import (
     process_upload_external_audio_task, 
     process_upload_external_files_task,
     process_upload_external_answer_file_task,
-    process_upload_external_answer_with_template_task
+    process_upload_external_answer_with_template_task,
+    emit_simple_event_task
 )   
 
 from api.pages.ipersona.routers.celery_task import router as task_router
@@ -3050,8 +3051,10 @@ async def audio_upload_external_celery(
     file: UploadFile = File(...),
     target: Optional[str] = Form(None),
     external: bool = Form(True),
-    run_stage: str = Form('dev')
+    run_stage: str = Form('dev'),
+    sid: Optional[str] = Form(None)
     ):
+    print(f"🔧 [DEBUG] SID:============================== {sid}")
     """
     Celery-based replica of audio_upload_external endpoint
     Uses Celery tasks instead of FastAPI background tasks
@@ -3107,7 +3110,8 @@ async def audio_upload_external_celery(
             session_id,
             all_user_id,
             external,
-            run_stage
+            run_stage,
+            sid
         )
 
         logger.info("After calling celery task")
@@ -3126,7 +3130,7 @@ async def files_upload_external_celery(
     target: Optional[str] = Form(None),
     external: bool = Form(True),
     run_stage: str = Form('dev'),
-    user_sid: Optional[str] = Form(None)
+    sid: Optional[str] = Form(None)
 ):
     try:
         # 1. Input Validation for both files
@@ -3199,7 +3203,7 @@ async def files_upload_external_celery(
                 all_user_id=all_user_id,
                 external=external,
                 run_stage=run_stage,
-                user_sid=user_sid
+                user_sid=sid
             )
 
             logger.info("After calling celery task")
@@ -3222,7 +3226,7 @@ async def files_upload_external_celery(
     target: Optional[str] = Form(None),
     external: bool = Form(True),
     run_stage: str = Form('dev'),
-    user_sid: Optional[str] = Form(None)
+    sid: Optional[str] = Form(None)
 ):
     try:
         # 1. Input Validation for both files
@@ -3282,7 +3286,7 @@ async def files_upload_external_celery(
                 all_user_id=all_user_id,
                 external=external,
                 run_stage=run_stage,
-                user_sid=user_sid
+                user_sid=sid
             )
         
             logger.info("After calling celery task")
@@ -3298,7 +3302,6 @@ async def files_upload_external_celery(
     except Exception as e:
         logger.error(f"Error in process_audio_upload: {str(e)}")
         return {'status': 500, 'message': str(e)}
-
 
 @routes.post("/audio_upload", tags=["Audio Endpoint"])
 async def speech_to_text(file: UploadFile = File(...)) -> dict:
@@ -3385,6 +3388,34 @@ async def speech_to_text(file: UploadFile = File(...)) -> dict:
             }
         )
 
+
+
+@routes.post("/test_celery_event", tags=["Audio Endpoints - Celery"])
+async def test_celery_event(sid: str | None = None):
+    try:
+        logger.info(f"[TEST_EMIT] Received /api/test_celery_event sid={sid!r}")
+        # Always emit via Celery task. If sid provided, pass inside payload as _sid to be used by the task.
+        payload = {"message": "hello from celery rehmet love"}
+        if sid:
+            payload["_sid"] = sid
+        logger.info(f"[TEST_EMIT] Enqueue payload keys={list(payload.keys())}, mode={'sid' if sid else 'room'}")
+        emit_simple_event_task.delay(
+            event="processing_update_failed",
+            payload=payload,
+            room=None if sid else "processing_123"
+        )
+        logger.info(f"[TEST_EMIT] Task queued: event='processing_update_failed', room={'None' if sid else 'processing_123'}")
+    
+        logger.info("After calling celery task")
+        return {
+            "status": 200,
+            "message": "Emit queued via Celery",
+            "mode": ("sid" if sid else "room")
+        }
+
+    except Exception as e:
+        logger.error(f"Error in test_celery_event: {str(e)}")
+        return {'status': 500, 'message': str(e)}
 
 
 

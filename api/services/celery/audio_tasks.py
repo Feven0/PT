@@ -2,14 +2,32 @@ import asyncio
 from api.services.celery.celery_worker import celery_app
 from api.services.celery.task_tracker import task_tracker, TaskStatus, TaskType
 from api.utils.audio_utils import AudioUtils
+from api.utils.logger import LLPackerLogger
+import os
 audio_util = AudioUtils()
+from api.socket.core import emit_with_log
+logger = LLPackerLogger(os.path.basename(__file__))
 
+@celery_app.task(name="emit_simple_event_task", bind=True)
+def emit_simple_event_task(self, event: str, payload: dict, room: str | None = None):
+    """Lightweight test task: emit a socket event to a room."""
+    try:
+        import asyncio as _asyncio
+        # Allow targeting a specific SID if provided inside payload (keeps signature unchanged)
+        sid = None
+        if isinstance(payload, dict):
+            sid = payload.pop("_sid", None) or payload.pop("sid", None)
+        _asyncio.run(emit_with_log(event, payload, room=room, sid=sid))
+        return {"ok": True, "event": event, "room": room, "sid": sid}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "event": event, "room": room}
+        
 @celery_app.task(bind=True)
 def process_upload_external_audio_task(
     self,
     filename, content_type, audio_path, 
     job_profile_id, challenge_id, template_id, 
-    session_id, all_user_id, external, run_stage
+    session_id, all_user_id, external, run_stage, user_sid=None
 ):
     # Register task with tracker - now supporting all target types
     target = task_tracker.create_target_dict(
@@ -24,8 +42,8 @@ def process_upload_external_audio_task(
     task_registered = False
     
     try:
-        print(f"🔧 [DEBUG] Registering audio_processing task for job_profile_id: {job_profile_id}")
-        print(f"🔧 [DEBUG] Target: {target}")
+        logger.info(f"🔧 [DEBUG] Registering audio_processing task for job_profile_id: {job_profile_id}")
+        logger.info(f"🔧 [DEBUG] Target: {target}")
         
         task_data = task_tracker.register_task(
             task_type="audio_processing",
@@ -38,7 +56,7 @@ def process_upload_external_audio_task(
                 "celery_task_id": self.request.id
             }
         )
-        print(f"✅ [DEBUG] Task registered successfully: {task_data}")
+        logger.info(f"✅ [DEBUG] Task registered successfully: {task_data}")
         task_registered = True
         
         # Update status to processing
@@ -48,12 +66,12 @@ def process_upload_external_audio_task(
             progress=10,
             status=TaskStatus.PROCESSING
         )
-        print(f"🔄 [DEBUG] Status update to processing: {'✅' if success else '❌'}")
+        logger.info(f"🔄 [DEBUG] Status update to processing: {'✅' if success else '❌'}")
         
     except Exception as e:
-        print(f"❌ [DEBUG] Failed to register task: {e}")
+        logger.info(f"❌ [DEBUG] Failed to register task: {e}")
         import traceback
-        traceback.print_exc()
+        traceback.logger.info_exc()
         # If we can't even register the task, we can't track it further
         raise e
     
@@ -68,7 +86,8 @@ def process_upload_external_audio_task(
             template_id,
             all_user_id, 
             external, 
-            run_stage
+            run_stage,
+            user_sid
         ))
         
         # Update status to completed
@@ -78,12 +97,12 @@ def process_upload_external_audio_task(
             progress=100,
             status=TaskStatus.COMPLETED
         )
-        print(f"✅ [DEBUG] Status update to completed: {'✅' if success else '❌'}")
+        logger.info(f"✅ [DEBUG] Status update to completed: {'✅' if success else '❌'}")
         
         return result
         
     except Exception as e:
-        print(f"❌ [DEBUG] Task failed with error: {e}")
+        logger.info(f"❌ [DEBUG] Task failed with error: {e}")
         
         # Only update status if task was registered
         if task_registered:
@@ -94,9 +113,9 @@ def process_upload_external_audio_task(
                 status=TaskStatus.FAILED,
                 error_message=str(e)
             )
-            print(f"❌ [DEBUG] Status update to failed: {'✅' if success else '❌'}")
+            logger.info(f"❌ [DEBUG] Status update to failed: {'✅' if success else '❌'}")
         else:
-            print(f"❌ [DEBUG] Task not registered, cannot update status")
+            logger.info(f"❌ [DEBUG] Task not registered, cannot update status")
         
         # Re-raise the exception so Celery knows the task failed
         raise e
@@ -122,8 +141,8 @@ def process_upload_external_files_task(
     task_registered = False
     
     try:
-        print(f"🔧 [DEBUG] Registering dual_audio_processing task for job_profile_id: {job_profile_id}")
-        print(f"🔧 [DEBUG] Target: {target}")
+        logger.info(f"🔧 [DEBUG] Registering dual_audio_processing task for job_profile_id: {job_profile_id}")
+        logger.info(f"🔧 [DEBUG] Target: {target}")
         
         task_data = task_tracker.register_task(
             task_type="dual_audio_processing",
@@ -138,7 +157,7 @@ def process_upload_external_files_task(
                 "celery_task_id": self.request.id
             }
         )
-        print(f"✅ [DEBUG] Task registered successfully: {task_data}")
+        logger.info(f"✅ [DEBUG] Task registered successfully: {task_data}")
         task_registered = True
         
         # Update status to processing
@@ -148,12 +167,12 @@ def process_upload_external_files_task(
             progress=10,
             status=TaskStatus.PROCESSING
         )
-        print(f"🔄 [DEBUG] Status update to processing: {'✅' if success else '❌'}")
+        logger.info(f"🔄 [DEBUG] Status update to processing: {'✅' if success else '❌'}")
         
     except Exception as e:
-        print(f"❌ [DEBUG] Failed to register task: {e}")
+        logger.info(f"❌ [DEBUG] Failed to register task: {e}")
         import traceback
-        traceback.print_exc()
+        traceback.logger.info_exc()
         # If we can't even register the task, we can't track it further
         raise e
     
@@ -184,12 +203,12 @@ def process_upload_external_files_task(
             progress=100,
             status=TaskStatus.COMPLETED
         )
-        print(f"✅ [DEBUG] Status update to completed: {'✅' if success else '❌'}")
+        logger.info(f"✅ [DEBUG] Status update to completed: {'✅' if success else '❌'}")
         
         return result
         
     except Exception as e:
-        print(f"❌ [DEBUG] Task failed with error: {e}")
+        logger.info(f"❌ [DEBUG] Task failed with error: {e}")
         
         # Only update status if task was registered
         if task_registered:
@@ -200,9 +219,9 @@ def process_upload_external_files_task(
                 status=TaskStatus.FAILED,
                 error_message=str(e)
             )
-            print(f"❌ [DEBUG] Status update to failed: {'✅' if success else '❌'}")
+            logger.info(f"❌ [DEBUG] Status update to failed: {'✅' if success else '❌'}")
         else:
-            print(f"❌ [DEBUG] Task not registered, cannot update status")
+            logger.info(f"❌ [DEBUG] Task not registered, cannot update status")
         
         # Re-raise the exception so Celery knows the task failed
         raise e 
@@ -228,8 +247,8 @@ def process_upload_external_answer_file_task(
     task_registered = False
     
     try:
-        print(f"🔧 [DEBUG] Registering dual_audio_processing task for job_profile_id: {job_profile_id}")
-        print(f"🔧 [DEBUG] Target: {target}")
+        logger.info(f"🔧 [DEBUG] Registering dual_audio_processing task for job_profile_id: {job_profile_id}")
+        logger.info(f"🔧 [DEBUG] Target: {target}")
         
         task_data = task_tracker.register_task(
             task_type="dual_audio_processing",
@@ -244,7 +263,7 @@ def process_upload_external_answer_file_task(
                 "celery_task_id": self.request.id
             }
         )
-        print(f"✅ [DEBUG] Task registered successfully: {task_data}")
+        logger.info(f"✅ [DEBUG] Task registered successfully: {task_data}")
         task_registered = True
         
         # Update status to processing
@@ -254,12 +273,12 @@ def process_upload_external_answer_file_task(
             progress=10,
             status=TaskStatus.PROCESSING
         )
-        print(f"🔄 [DEBUG] Status update to processing: {'✅' if success else '❌'}")
+        logger.info(f"🔄 [DEBUG] Status update to processing: {'✅' if success else '❌'}")
         
     except Exception as e:
-        print(f"❌ [DEBUG] Failed to register task: {e}")
+        logger.info(f"❌ [DEBUG] Failed to register task: {e}")
         import traceback
-        traceback.print_exc()
+        traceback.logger.info_exc()
         # If we can't even register the task, we can't track it further
         raise e
     
@@ -289,12 +308,12 @@ def process_upload_external_answer_file_task(
             progress=100,
             status=TaskStatus.COMPLETED
         )
-        print(f"✅ [DEBUG] Status update to completed: {'✅' if success else '❌'}")
+        logger.info(f"✅ [DEBUG] Status update to completed: {'✅' if success else '❌'}")
         
         return result
         
     except Exception as e:
-        print(f"❌ [DEBUG] Task failed with error: {e}")
+        logger.info(f"❌ [DEBUG] Task failed with error: {e}")
         
         # Only update status if task was registered
         if task_registered:
@@ -305,9 +324,9 @@ def process_upload_external_answer_file_task(
                 status=TaskStatus.FAILED,
                 error_message=str(e)
             )
-            print(f"❌ [DEBUG] Status update to failed: {'✅' if success else '❌'}")
+            logger.info(f"❌ [DEBUG] Status update to failed: {'✅' if success else '❌'}")
         else:
-            print(f"❌ [DEBUG] Task not registered, cannot update status")
+            logger.info(f"❌ [DEBUG] Task not registered, cannot update status")
         
         # Re-raise the exception so Celery knows the task failed
         raise e 
@@ -332,8 +351,8 @@ def process_upload_external_answer_with_template_task(
     task_registered = False
     
     try:
-        print(f"🔧 [DEBUG] Registering template_answer_processing task for job_profile_id: {job_profile_id}")
-        print(f"🔧 [DEBUG] Target: {target}")
+        logger.info(f"🔧 [DEBUG] Registering template_answer_processing task for job_profile_id: {job_profile_id}")
+        logger.info(f"🔧 [DEBUG] Target: {target}")
         
         task_data = task_tracker.register_task(
             task_type="template_answer_processing",
@@ -347,7 +366,7 @@ def process_upload_external_answer_with_template_task(
                 "celery_task_id": self.request.id
             }
         )
-        print(f"✅ [DEBUG] Task registered successfully: {task_data}")
+        logger.info(f"✅ [DEBUG] Task registered successfully: {task_data}")
         task_registered = True
         
         # Update status to processing
@@ -357,18 +376,18 @@ def process_upload_external_answer_with_template_task(
             progress=10,
             status=TaskStatus.PROCESSING
         )
-        print(f"🔄 [DEBUG] Status update to processing: {'✅' if success else '❌'}")
+        logger.info(f"🔄 [DEBUG] Status update to processing: {'✅' if success else '❌'}")
         
     except Exception as e:
-        print(f"❌ [DEBUG] Failed to register task: {e}")
+        logger.info(f"❌ [DEBUG] Failed to register task: {e}")
         import traceback
-        traceback.print_exc()
+        traceback.logger.info_exc()
         # If we can't even register the task, we can't track it further
         raise e
     
     try:
         # Fetch template questions from database
-        print(f"📋 [DEBUG] Fetching template questions for template_id: {template_id}")
+        logger.info(f"📋 [DEBUG] Fetching template questions for template_id: {template_id}")
         from api.llm.ipersona.ipersona_strapi_schemas import IpersonaTinderTemplateSchema
         
         ipersona_template = IpersonaTinderTemplateSchema()
@@ -385,11 +404,11 @@ def process_upload_external_answer_with_template_task(
             attributes = fetched_template.get("attributes", {})
             template_questions = attributes.get("attributes", {}).get("template_questions", [])
         
-        print(f"📋 [DEBUG] Extracted {len(template_questions)} template questions")
+        logger.info(f"📋 [DEBUG] Extracted {len(template_questions)} template questions")
         
         if not template_questions:
             error_msg = f"No template questions found for template_id: {template_id}"
-            print(f"❌ [DEBUG] {error_msg}")
+            logger.info(f"❌ [DEBUG] {error_msg}")
             if task_registered:
                 task_tracker.update_task_progress(
                     target=target,
@@ -423,12 +442,12 @@ def process_upload_external_answer_with_template_task(
             progress=100,
             status=TaskStatus.COMPLETED
         )
-        print(f"✅ [DEBUG] Status update to completed: {'✅' if success else '❌'}")
+        logger.info(f"✅ [DEBUG] Status update to completed: {'✅' if success else '❌'}")
         
         return result
         
     except Exception as e:
-        print(f"❌ [DEBUG] Task failed with error: {e}")
+        logger.info(f"❌ [DEBUG] Task failed with error: {e}")
         
         # Only update status if task was registered
         if task_registered:
@@ -439,9 +458,9 @@ def process_upload_external_answer_with_template_task(
                 status=TaskStatus.FAILED,
                 error_message=str(e)
             )
-            print(f"❌ [DEBUG] Status update to failed: {'✅' if success else '❌'}")
+            logger.info(f"❌ [DEBUG] Status update to failed: {'✅' if success else '❌'}")
         else:
-            print(f"❌ [DEBUG] Task not registered, cannot update status")
+            logger.info(f"❌ [DEBUG] Task not registered, cannot update status")
         
         # Re-raise the exception so Celery knows the task failed
         raise e

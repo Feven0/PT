@@ -74,6 +74,7 @@ assemblyai_streams: Dict[str, Any] = {}
 
 # AssemblyAI session limits - Production settings
 MAX_ASSEMBLYAI_SESSIONS = 80  # Leave buffer below 100 limit for paid accounts
+ASSEMBLYAI_SOFT_CAP = int(os.getenv("ASSEMBLYAI_SOFT_CAP", "75"))
 
 async def cleanup_stale_assemblyai_sessions():
     """Clean up stale AssemblyAI sessions that may not have been properly disconnected"""
@@ -1474,11 +1475,11 @@ async def audio_endpoint(sid, data):
         # Clean up stale sessions first
         await cleanup_stale_assemblyai_sessions()
         
-        # Log session count for monitoring (no limit enforcement)
-        active_sessions = len([s for s in assemblyai_streams.values() if s is not None])
-        if active_sessions > 50:  # Just log warning, don't block
-            logger.warn(f"[ASSEMBLYAI][DEBUG] High session count: {active_sessions} (AssemblyAI limit: 100)")
-            
+        # Admission control (global + per-SID)
+        ok = await _can_open_assemblyai_session(sid)
+        if not ok:
+            return
+        
         try:
             session = AssemblyAIStreamingSession(sid=sid)
             assemblyai_streams[sid] = session
@@ -1491,6 +1492,11 @@ async def audio_endpoint(sid, data):
     try:
         await assemblyai_streams[sid].stream_audio(audio_bytes)
         logger.info(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Audio streamed successfully for sid={sid}")
+        # Update last activity for cleanup
+        try:
+            setattr(assemblyai_streams[sid], "last_activity", time.time())
+        except Exception:
+            pass
     except Exception as e:
         # If threading error, remove the session so a new one will be created
         if "threads can only be started once" in str(e):
@@ -1498,6 +1504,13 @@ async def audio_endpoint(sid, data):
         elif "Attempted to send invalid message" in str(e):
             assemblyai_streams.pop(sid, None)
             logger.warn(f"[ASSEMBLYAI][DEBUG][ENDPOINT] Session removed due to invalid message error")
+        elif "Too many concurrent sessions" in str(e) or "Unauthorized" in str(e):
+            # Provider concurrency limit hit — cleanly close and inform client
+            await _emit_transcription_error(sid, "Audio streaming limit reached. Please wait a few seconds and retry.")
+            await _close_assemblyai_session(sid, reason="provider_concurrency_limit")
+        else:
+            # Generic failure: ensure cleanup so future attempts can recreate
+            await _close_assemblyai_session(sid, reason="stream_error")
 
 # method to save audio chat to database
 # TODO: integrate with audio chat function
@@ -1506,7 +1519,6 @@ async def audio_end_point(sid, data):
     session = await sio.get_session(sid)        
         
     run_stage = session.get('run_stage', None)  
-
     if run_stage is None:
         logger.info(f"Run stage not found in session for sid: {sid}")
     else:
@@ -2322,4 +2334,46 @@ async def interview_endpoint(sid, data):
 
 def get_socketio_app(fast_app):
     return get_socket_asgi_app(fast_app)
+
+async def _emit_transcription_error(sid: str, message: str):
+    try:
+        await sio.emit("transcription_error", {"error": message, "provider": "assemblyai"}, room=sid)
+    except Exception as emit_err:
+        logger.warn(f"[ASSEMBLYAI][EMIT][ERROR] sid={sid}: {emit_err}")
+
+def _has_active_assemblyai_session(sid: str) -> bool:
+    session = assemblyai_streams.get(sid)
+    if not session:
+        return False
+    # Consider presence as active; prefer attribute check when available
+    if hasattr(session, "connected"):
+        try:
+            return bool(session.connected)
+        except Exception:
+            return True
+    return True
+
+async def _can_open_assemblyai_session(sid: str) -> bool:
+    # Global cap guard
+    active = len([s for s in assemblyai_streams.values() if s is not None])
+    if active >= ASSEMBLYAI_SOFT_CAP:
+        logger.warn(f"[ASSEMBLYAI][ADMIT][BLOCK] active={active} >= soft_cap={ASSEMBLYAI_SOFT_CAP}")
+        await _emit_transcription_error(sid, "Service is busy right now. Please try again in a few seconds.")
+        return False
+    # Per-SID guard
+    if _has_active_assemblyai_session(sid):
+        logger.warn(f"[ASSEMBLYAI][ADMIT][BLOCK] sid={sid} already has an active session")
+        await _emit_transcription_error(sid, "A streaming session is already active for this tab. Please stop it before starting another.")
+        return False
+    return True
+
+async def _close_assemblyai_session(sid: str, reason: str = ""):
+    session = assemblyai_streams.pop(sid, None)
+    if session:
+        logger.info(f"[ASSEMBLYAI][CLOSE] sid={sid} reason={reason}")
+        try:
+            if hasattr(session, "disconnect"):
+                await session.disconnect()
+        except Exception as e:
+            logger.warn(f"[ASSEMBLYAI][CLOSE][ERROR] sid={sid}: {e}")
 

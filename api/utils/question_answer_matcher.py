@@ -63,6 +63,9 @@ class QuestionAnswerMatcher:
         self.model_name = model_name
         self.similarity_threshold = 0.15  # Lowered: Minimum cosine similarity (was 0.3)
         self.relevance_threshold = 30     # Lowered: Minimum relevance score (was 60)
+        # Three-band routing (whole-text only, no segmentation)
+        self.strong_accept_threshold = 30  # >= 30% → accept directly
+        self.borderline_floor = 18         # 18%–30% → send to LLM verifier
         
     def parse_template_questions(self, template_questions: List[Dict]) -> List[Question]:
         """
@@ -74,8 +77,45 @@ class QuestionAnswerMatcher:
         Returns:
             List of Question objects
         """
-        logger.info(f"🔍 Starting to parse template questions - Input type: {type(template_questions)}, Length: {len(template_questions)}")
+        logger.info(f"🔍 Starting to parse template questions - Input type: {type(template_questions)}, Length: {len(str(template_questions))}")
         logger.info(f"📋 Raw template data: {template_questions}")
+
+        # Accept stringified list inputs (e.g., "['Q1', 'Q2']") by coercing to list
+        if isinstance(template_questions, str):
+            stripped = template_questions.strip()
+            if stripped.startswith("[") and stripped.endswith("]"):
+                try:
+                    # Prefer JSON if it is valid JSON, else fall back to literal_eval
+                    try:
+                        parsed = json.loads(stripped)
+                    except Exception:
+                        import ast
+                        parsed = ast.literal_eval(stripped)
+                    if isinstance(parsed, list):
+                        logger.info("🧩 Detected stringified list for template_questions; coercing to list[str]")
+                        template_questions = parsed
+                except Exception as e:
+                    logger.warning(f"Failed to coerce stringified template_questions to list: {e}")
+        
+        # Diagnostics: show per-element types for the first few items if list
+        if isinstance(template_questions, list):
+            preview_n = min(5, len(template_questions))
+            for i in range(preview_n):
+                elem = template_questions[i]
+                logger.info(
+                    f"   🔍 [DEBUG] template_questions[{i}] type={type(elem)} :: sample='{str(elem)[:120]}{'...' if len(str(elem))>120 else ''}'"
+                )
+            all_dicts = all(isinstance(q, dict) for q in template_questions)
+            all_strings = all(isinstance(q, str) for q in template_questions)
+            logger.info(f"   🔧 [DEBUG] list diagnostics → all_dicts={all_dicts}, all_strings={all_strings}")
+            if all_strings:
+                logger.info("🧩 Detected simple list[str]; wrapping as a single section for parsing")
+                template_questions = [{
+                    "sectionType": "General",
+                    "questions": [{"question": q} for q in template_questions]
+                }]
+            elif not all_dicts:
+                logger.warn("   ⚠️ Mixed or unexpected element types in template_questions; proceeding without coercion")
         
         questions = []
         
@@ -154,6 +194,22 @@ class QuestionAnswerMatcher:
         answers = []
         
         # Handle both string and list inputs
+        if isinstance(answer_transcript, str):
+            stripped = answer_transcript.strip()
+            if stripped.startswith("[") and stripped.endswith("]"):
+                try:
+                    # Prefer JSON; fallback to safe literal eval
+                    try:
+                        parsed = json.loads(stripped)
+                    except Exception:
+                        import ast
+                        parsed = ast.literal_eval(stripped)
+                    if isinstance(parsed, list):
+                        logger.info("🧩 Detected stringified list for answer_transcript; coercing to list[str]")
+                        answer_transcript = parsed
+                except Exception as e:
+                    logger.warning(f"Failed to coerce stringified answer_transcript to list: {e}")
+
         if isinstance(answer_transcript, list):
             logger.info(f"📝 Processing list input with {len(answer_transcript)} items")
             
@@ -373,6 +429,45 @@ class QuestionAnswerMatcher:
             logger.error(f"❌ The system requires real semantic embeddings for accurate matching")
             logger.error(f"❌ Random embeddings would produce completely meaningless similarity scores")
             raise RuntimeError(f"OpenAI embeddings are required for accurate matching. Cannot proceed without valid embeddings. Error: {e}")
+
+    def _llm_verify_match(self, question_text: str, answer_text: str) -> Dict[str, Any]:
+        """
+        Borderline verifier: ask the LLM to render a minimal JSON verdict whether
+        the whole answer appropriately answers the whole question.
+        Returns a dict like {"is_match": bool, "reason": str, "confidence": "low|medium|high"}.
+        """
+        prompt = (
+            "You are a strict evaluator. Given a question and a candidate answer, decide if the answer reasonably answers the question. "
+            "Evaluate the ENTIRE question and the ENTIRE answer AS-IS. Do NOT rewrite, summarize, extract, segment, trim, or transform them. "
+            "Do NOT propose a better answer. Do NOT ignore parts. Only judge whether the provided full answer addresses the provided full question. "
+            "Reply in strict JSON only with no extra text: {\"is_match\": true|false, \"confidence\": \"low|medium|high\", \"reason\": \"...\"}.\n\n"
+            f"Question (verbatim):\n{question_text}\n\n"
+            f"Answer (verbatim):\n{answer_text}\n"
+        )
+        try:
+            import openai
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Return strict JSON only. No prose. Do not rewrite or segment inputs."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.0,
+                max_tokens=200,
+            )
+            content = resp.choices[0].message.content
+            # best-effort JSON parse
+            try:
+                return json.loads(content)
+            except Exception:
+                # fallback: attempt to extract JSON substring
+                import re as _re
+                m = _re.search(r"\{[\s\S]*\}", content)
+                return json.loads(m.group(0)) if m else {"is_match": False, "confidence": "low", "reason": "invalid_json"}
+        except Exception as e:
+            logger.warn(f"LLM verifier exception: {e}")
+            return {"is_match": False, "confidence": "low", "reason": f"exception: {e}"}
     
     def find_matches(self, questions: List[Question], answers: List[Answer]) -> List[Match]:
         """
@@ -408,6 +503,8 @@ class QuestionAnswerMatcher:
             best_match = None
             best_score = 0
             best_answer_idx = -1
+            second_best_score = 0
+            second_best_idx = -1
             
             logger.info(f"   📊 Checking against {len(answers)} answers:")
             
@@ -427,24 +524,49 @@ class QuestionAnswerMatcher:
                     logger.info(f"         ✅ Above similarity threshold ({self.similarity_threshold})")
                     if relevance_score > best_score:
                         logger.info(f"         🏆 NEW BEST MATCH! Previous best: {best_score}%, New: {relevance_score}%")
+                        # demote current best to second best
+                        second_best_score = best_score
+                        second_best_idx = best_answer_idx
+                        # promote
                         best_score = relevance_score
                         best_match = answer
                         best_answer_idx = a_idx
+                    elif relevance_score > second_best_score:
+                        second_best_score = relevance_score
+                        second_best_idx = a_idx
                     else:
                         logger.info(f"         📉 Not better than current best ({best_score}%)")
                 else:
                     logger.info(f"         ❌ Below similarity threshold ({self.similarity_threshold})")
             
-            # Check if we found a valid match
-            if best_match and best_score >= self.relevance_threshold:
-                logger.info(f"   ✅ VALID MATCH FOUND: A{best_answer_idx + 1} with score {best_score}%")
-                
+            # Banding decision with optional LLM verifier on borderline
+            decision_reason = None
+            if best_match and best_score >= self.strong_accept_threshold:
+                decision_reason = "accepted_by_embedding"
+            elif best_match and best_score >= self.borderline_floor:
+                logger.info(f"   🤔 BORDERLINE case for Q{q_idx + 1}: best={best_score}%, second_best={second_best_score}% → verifying via LLM")
+                try:
+                    verifier = self._llm_verify_match(question.text, best_match.text)
+                    logger.info(f"   🧠 Verifier response: {verifier}")
+                    if isinstance(verifier, dict) and verifier.get("is_match") and verifier.get("confidence") != "low":
+                        decision_reason = "accepted_by_verifier"
+                    else:
+                        decision_reason = "rejected_by_verifier"
+                        best_match = None
+                except Exception as e:
+                    logger.warn(f"   ⚠️ Verifier failed: {e}")
+                    decision_reason = "verifier_error"
+                    best_match = None
+
+            # Check if we found a valid match after banding
+            if best_match and (decision_reason in ("accepted_by_embedding", "accepted_by_verifier")):
+                logger.info(f"   ✅ VALID MATCH FOUND: A{best_answer_idx + 1} with score {best_score}% ({decision_reason})")
                 match = Match(
                     question=question,
                     answer=best_match,
                     similarity_score=similarity_matrix[q_idx, best_answer_idx],
                     relevance_score=best_score,
-                    match_reason=f"Semantic similarity: {best_score}%"
+                    match_reason=("Semantic similarity (strong)" if decision_reason == "accepted_by_embedding" else "Semantic similarity (borderline, LLM verified)")
                 )
                 matches.append(match)
                 used_answers.add(best_answer_idx)
@@ -453,7 +575,7 @@ class QuestionAnswerMatcher:
                 logger.info(f"      Question: '{question.text[:100]}{'...' if len(question.text) > 100 else ''}'")
                 logger.info(f"      Answer: '{best_match.text[:100]}{'...' if len(best_match.text) > 100 else ''}'")
                 logger.info(f"      Similarity: {similarity_matrix[q_idx, best_answer_idx]:.4f}")
-                logger.info(f"      Relevance: {best_score}%")
+                logger.info(f"      Relevance: {best_score}% (second_best={second_best_score}%)")
             else:
                 logger.warn(f"   ❌ NO VALID MATCH FOUND for Q{q_idx + 1}")
                 if best_match:
@@ -554,6 +676,8 @@ class QuestionAnswerMatcher:
                         "answer": match.answer.text,
                         "relevance_score": match.relevance_score,
                         "reason": match.match_reason,
+                        "similarity_score": float(match.similarity_score),
+                        "band": "strong" if match.relevance_score >= self.strong_accept_threshold else ("borderline" if match.relevance_score >= self.borderline_floor else "low"),
                         "section_type": question.section_type
                     }
                     
@@ -568,6 +692,8 @@ class QuestionAnswerMatcher:
                         "answer": None,
                         "relevance_score": None,  # CRITICAL: Never assign default scores to sensitive data
                         "reason": "No matching answer found",
+                        "similarity_score": None,
+                        "band": "low",
                         "section_type": question.section_type
                     }
                     

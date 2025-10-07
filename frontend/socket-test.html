@@ -29,7 +29,9 @@
       <label>Job ID (room): <input id="jobId" size="24" placeholder="123" /></label>
       <button id="joinBtn">Join Room</button>
       <button id="leaveBtn">Leave Room</button>
-      <button id="triggerBtn">Trigger Celery Emit</button>
+      <button id="triggerBtn">Trigger Celery Emit (/tasks/socket-test)</button>
+      <button id="triggerCeleryApiBtn">Trigger Test Celery Event (/api/test_celery_event)</button>
+      <button id="triggerBySidBtn">Trigger By SID (/api/test_celery_event_by_sid)</button>
       <button id="directBtn">Trigger Direct Emit</button>
     </div>
 
@@ -37,9 +39,13 @@
     <div id="log"></div>
 
     <script>
+      const ts = () => new Date().toISOString().split("T")[1].replace("Z", "");
       const log = (m) => {
         const el = document.getElementById('log');
-        el.textContent += (typeof m === 'string' ? m : JSON.stringify(m)) + "\n";
+        const line = (typeof m === 'string' ? m : JSON.stringify(m));
+        const entry = `[${ts()}] ${line}`;
+        el.textContent += entry + "\n";
+        console.debug(entry);
         el.scrollTop = el.scrollHeight;
       };
 
@@ -52,15 +58,15 @@
         const url = document.getElementById('serverUrl').value.trim();
         if (socket && socket.connected) socket.disconnect();
         socket = io(url, { transports: ['websocket'] });
-        socket.on('connect', () => log(`connected: ${socket.id}`));
-        socket.on('disconnect', (r) => log(`disconnected: ${r}`));
-        socket.on('connect_error', (e) => log(`connect_error: ${e.message}`));
+        socket.on('connect', () => log({ event: 'connect', sid: socket.id }));
+        socket.on('disconnect', (r) => log({ event: 'disconnect', reason: r }));
+        socket.on('connect_error', (e) => log({ event: 'connect_error', message: e.message }));
         socket.on('socket_test', (data) => log(['socket_test', data]));
-        // Catch-all to see if events arrive under unexpected names
+        socket.on('processing_update_failed', (data) => log(['processing_update_failed', data]));
+        socket.on('processing_update_success', (data) => log(['processing_update_success', data]));
+        // Catch-all: log every event we receive with payload
         socket.onAny((event, ...args) => {
-          if (event !== 'socket_test') {
-            log(['onAny', event, args?.[0] ?? null]);
-          }
+          log(['onAny', event, args?.[0] ?? null]);
         });
         // Auto-register client id
         let cid = document.getElementById('clientId').value.trim();
@@ -69,17 +75,23 @@
           document.getElementById('clientId').value = cid;
         }
         socket.emit('register', { client_id: cid });
-        log(['registered', cid]);
+        log({ event: 'register', client_id: cid, sid: socket.id });
         socket.on('progress_update', (data) => log(['progress_update', data]));
       };
 
+      let currentRoom = null;
       document.getElementById('joinBtn').onclick = async () => {
         const jobId = document.getElementById('jobId').value.trim();
-        if (!jobId) return log('enter job id');
+        if (!jobId) { log('join: missing job id'); return; }
+        const room = `processing_${jobId}`;
         try {
-          socket.emit('join', { room: `processing_${jobId}` });
-          log(`joined processing_${jobId}`);
-        } catch (e) { log(e.message); }
+          log({ action: 'join_attempt', room });
+          socket.emit('join', { room });
+          currentRoom = room;
+          log({ action: 'join_set_client_room', room });
+        } catch (e) {
+          log({ action: 'join_error', error: e.message });
+        }
       };
 
       document.getElementById('registerBtn').onclick = () => {
@@ -91,11 +103,16 @@
 
       document.getElementById('leaveBtn').onclick = async () => {
         const jobId = document.getElementById('jobId').value.trim();
-        if (!jobId) return log('enter job id');
+        if (!jobId) { log('leave: missing job id'); return; }
+        const room = `processing_${jobId}`;
         try {
-          socket.emit('leave', { room: `processing_${jobId}` });
-          log(`left processing_${jobId}`);
-        } catch (e) { log(e.message); }
+          log({ action: 'leave_attempt', room });
+          socket.emit('leave', { room });
+          if (currentRoom === room) currentRoom = null;
+          log({ action: 'leave_set_client_room', room, currentRoom });
+        } catch (e) {
+          log({ action: 'leave_error', error: e.message });
+        }
       };
 
       document.getElementById('triggerSidBtn').onclick = async () => {
@@ -137,6 +154,38 @@
           log(['direct', res.status, json]);
         } catch (e) {
           log(`direct error: ${e.message}`);
+        }
+      };
+
+      // Call the new FastAPI route that enqueues emit_simple_event_task
+      document.getElementById('triggerCeleryApiBtn').onclick = async () => {
+        const url = document.getElementById('serverUrl').value.trim();
+        if (!url) return log('enter server url');
+        try {
+          const sid = (typeof socket !== 'undefined' && socket && socket.connected) ? socket.id : null;
+          const base = `${url.replace(/\/$/, '')}/api/test_celery_event`;
+          const full = sid ? `${base}?sid=${encodeURIComponent(sid)}` : base;
+          log({ action: 'call_test_celery_event', mode: sid ? 'sid' : 'room', sid, currentRoom });
+          const res = await fetch(full, { method: 'POST' });
+          const json = await res.json().catch(() => ({}));
+          log(['triggerCeleryApi', res.status, json]);
+        } catch (e) {
+          log(`triggerCeleryApi error: ${e.message}`);
+        }
+      };
+
+      document.getElementById('triggerBySidBtn').onclick = async () => {
+        const url = document.getElementById('serverUrl').value.trim();
+        if (!url) return log('enter server url');
+        if (!socket || !socket.connected) { alert('Connect first'); return; }
+        try {
+          const sid = socket.id;
+          log({ action: 'call_test_celery_event_by_sid', sid });
+          const res = await fetch(`${url.replace(/\/$/, '')}/api/test_celery_event_by_sid?sid=${encodeURIComponent(sid)}&message=${encodeURIComponent('hello-from-by-sid')}`, { method: 'POST' });
+          const json = await res.json().catch(() => ({}));
+          log(['triggerBySid', res.status, json]);
+        } catch (e) {
+          log(`triggerBySid error: ${e.message}`);
         }
       };
     </script>
