@@ -559,7 +559,7 @@ async def helper_func(
         return response
     
     except Exception as e:
-        logger.error(f"Choosing question helper process failed: ${str(e)}")
+        logger.error(f"Choosing question helper process failed: {str(e)}")
         return {'error': str(e)}
    
 #----------------------------------------- picking the right Question ----------------------------------------- 
@@ -648,7 +648,7 @@ async def fetch_interview_question(
             ))
         return response
     except Exception as e:
-        logger.error(f"Choosing the right question process failed: ${str(e)}")
+        logger.error(f"Choosing the right question process failed: {str(e)}")
         return {'error': str(e)}
 
 async def process_question_generation_background(
@@ -1075,7 +1075,7 @@ def interview_question_time_limit(question: str):
         response = extract_json(response, quite=False)
         return response
     except Exception as e:
-        logger.error(f"generating time limit process failed: ${str(e)}")
+        logger.error(f"generating time limit process failed: {str(e)}")
         return {'error': str(e)}
     
 #---------------------------------------- Follow up Question Checker -------------------------------
@@ -1107,7 +1107,7 @@ async def check_if_followup(candidate_response: str, type) -> bool:
         return response_json["follow-up"]
     
     except Exception as e:
-        logger.error(f"Checking follow up process failed: ${str(e)}")
+        logger.error(f"Checking follow up process failed: {str(e)}")
         return {'error': str(e)}
      
 #-------------------------------------------- Generate Follow up Question -----------------------------------
@@ -1142,7 +1142,7 @@ async def generate_followup(data, type) -> dict:
         return response
     
     except Exception as e:
-        logger.error(f"Generating follow up failed: ${str(e)}")
+        logger.error(f"Generating follow up failed: {str(e)}")
         return {'error': str(e)}
 
 #---------------------------------------- Realtime Chat Evaluation Function -------------------------------
@@ -1172,7 +1172,7 @@ def fetch_the_last_question(run_stage, data: dict, sessionId) -> dict:
         return last_assistant_response   
 
     except Exception as e:
-        logger.error(f"Real time evaluation process failed: ${str(e)}")
+        logger.error(f"Real time evaluation process failed: {str(e)}")
         return {'error': str(e)} 
     
 def realtime_response_evaluation(run_stage, data: dict, sessionId, type) -> dict:
@@ -1206,7 +1206,7 @@ def realtime_response_evaluation(run_stage, data: dict, sessionId, type) -> dict
         return realtime_evaluation_response
     
     except Exception as e:
-        logger.error(f"Real time evaluation process failed: ${str(e)}")
+        logger.error(f"Real time evaluation process failed: {str(e)}")
         return {'error': str(e)} 
     
 #---------------------------------------- Overall EXTERNAL AUDIO Evaluation -------------------------------
@@ -1473,7 +1473,7 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         return response
         
     except Exception as e:
-        logger.error(f"Overall evaluation process failed: ${str(e)}")
+        logger.error(f"Overall evaluation process failed: {str(e)}")
         return {'error': str(e)}    
                   
 async def overall_interview_evaluations_external(
@@ -1608,7 +1608,7 @@ async def overall_interview_evaluations_external(
         return response
         
     except Exception as e:
-        logger.error(f"Overall evaluation process failed: ${str(e)}")
+        logger.error(f"Overall evaluation process failed: {str(e)}")
         return {'error': str(e)}    
                   
 #---------------------------------------- Interview Question Clarification ---------------------------------
@@ -1641,7 +1641,7 @@ async def clarify_question(question: str) -> dict:
         return response
     
     except Exception as e:
-        logger.error(f"Overall evaluation process failed: ${str(e)}")
+        logger.error(f"Overall evaluation process failed: {str(e)}")
 
         return {'error': str(e)}
 
@@ -1685,7 +1685,7 @@ def identify_class(all_class: list, jd: str) -> dict:
 
     
     except Exception as e:
-        logger.error(f"Persona class identification failed: ${str(e)}")
+        logger.error(f"Persona class identification failed: {str(e)}")
         return {'error': str(e)}
     
 def time_to_seconds(time_str):
@@ -1953,7 +1953,7 @@ def percentage_term(percent: float) -> dict:
             return data
         
     except Exception as e:
-        logger.error(f"Percentage term assignation process failed: ${str(e)}")
+        logger.error(f"Percentage term assignation process failed: {str(e)}")
 
         return {'error': str(e)}
     
@@ -2387,7 +2387,7 @@ async def calculate_overall_progress_external(
             return response
     
     except Exception as e:
-        logger.error(f"Process failed: ${str(e)}")
+        logger.error(f"Process failed: {str(e)}")
         return f'Error: {str(e)}'  
     
 #-------------- Entire User Session Progress Over All Types of Jobs ---------------
@@ -4378,7 +4378,7 @@ def file_reader(path: str) -> str:
         return system_message
     
     except Exception as e:
-        logger.error(f"File reading process failed: ${str(e)}")
+        logger.error(f"File reading process failed: {str(e)}")
         return f'Error: {str(e)}'  
 
 def remove_key(data, key_to_remove):

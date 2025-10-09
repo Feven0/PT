@@ -6,11 +6,11 @@ const OpenAIRealtimeTest: React.FC = () => {
   const socketHook = useMiddleSocket();
 
   const [isRecording, setIsRecording] = useState(false);
-  const [streamProvider, setStreamProvider] = useState<'whisper'|'google'|'gemini'|'fw'>('whisper');
+  const [streamProvider, setStreamProvider] = useState<'whisper'|'google'|'gemini'|'fw'|'assemblyai'>('whisper');
   const [uploadProvider, setUploadProvider] = useState<'fw'|'gemini'|'openai'>('fw');
   const [uploadLang, setUploadLang] = useState<string>('');
   const [activePanel, setActivePanel] = useState<'realtime'|'upload'>('realtime');
-  const [activeTranscriptSource, setActiveTranscriptSource] = useState<'whisper'|'google'|'gemini'|'fw'|'upload-fw'|'upload-gemini'|'upload-openai'>('whisper');
+  const [activeTranscriptSource, setActiveTranscriptSource] = useState<'whisper'|'google'|'gemini'|'fw'|'assemblyai'|'upload-fw'|'upload-gemini'|'upload-openai'>('whisper');
   const [uploadResults, setUploadResults] = useState<Record<string,string>>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [comparisons, setComparisons] = useState<Array<{ id: string; source: string; text: string; ts: number }>>([]);
@@ -59,11 +59,13 @@ const OpenAIRealtimeTest: React.FC = () => {
     if (streamProvider === 'google') (socketHook as any).googleTranscript = "";
     if (streamProvider === 'gemini') (socketHook as any).geminiTranscript = "";
     if (streamProvider === 'fw') (socketHook as any).fwTranscript = "";
+    if (streamProvider === 'assemblyai') (socketHook as any).assemblyaiTranscript = "";
     await setupAudio((pcm) => {
       if (streamProvider === 'whisper') socketHook.socket?.emit?.('audio transcribe whisper', { latest, audioblob: pcm });
       if (streamProvider === 'google') socketHook.socket?.emit?.('audio transcribe google', { latest, audioblob: pcm });
       if (streamProvider === 'gemini') socketHook.socket?.emit?.('audio transcribe gemini', { latest, audioblob: pcm });
       if (streamProvider === 'fw') socketHook.socket?.emit?.('audio transcribe fw', { latest, audioblob: pcm });
+      if (streamProvider === 'assemblyai') socketHook.socket?.emit?.('audio transcribe', { latest, audioblob: pcm });
     });
     setIsRecording(true);
   };
@@ -75,19 +77,49 @@ const OpenAIRealtimeTest: React.FC = () => {
     if (streamProvider === 'google') await socketHook.socket?.emit?.('audio transcribe google', { audioblob: null });
     if (streamProvider === 'gemini') await socketHook.socket?.emit?.('audio transcribe gemini', { audioblob: null });
     if (streamProvider === 'fw') await socketHook.socket?.emit?.('audio transcribe fw', { audioblob: null });
-    // Snapshot current realtime transcript for comparison list
+    if (streamProvider === 'assemblyai') await socketHook.socket?.emit?.('audio transcribe', { audioblob: null });
+    
+    // Automatically capture comparison on stop (immediate)
+    refreshComparison();
+  };
+
+  const refreshComparison = () => {
     const transcriptMap: Record<string, string> = {
       whisper: socketHook.whisperTranscript || '',
       google: (socketHook as any).googleTranscript || '',
       gemini: (socketHook as any).geminiTranscript || '',
       fw: (socketHook as any).fwTranscript || '',
+      assemblyai: (socketHook as any).assemblyaiTranscript || '',
     };
     const text = transcriptMap[streamProvider] || '';
     if (text.trim()) {
-      setComparisons(prev => [
-        ...prev,
-        { id: `${Date.now()}-${streamProvider}`, source: `realtime:${streamProvider}`, text, ts: Date.now() }
-      ]);
+      setComparisons(prev => {
+        // Find the most recent comparison for this provider
+        let recentIndex = -1;
+        for (let i = prev.length - 1; i >= 0; i--) {
+          if (prev[i].source === `realtime:${streamProvider}`) {
+            recentIndex = i;
+            break;
+          }
+        }
+        if (recentIndex !== -1) {
+          // Replace the most recent one
+          const updated = [...prev];
+          updated[recentIndex] = { 
+            id: updated[recentIndex].id, // Keep same ID
+            source: `realtime:${streamProvider}`, 
+            text, 
+            ts: Date.now() // Update timestamp
+          };
+          return updated;
+        } else {
+          // If no existing comparison found, add new one
+          return [
+            ...prev,
+            { id: `${Date.now()}-${streamProvider}`, source: `realtime:${streamProvider}`, text, ts: Date.now() }
+          ];
+        }
+      });
     }
   };
 
@@ -135,6 +167,7 @@ const OpenAIRealtimeTest: React.FC = () => {
     google: googleComposed || (socketHook as any).googleTranscript || '',
     gemini: (socketHook as any).geminiTranscript || '',
     fw: (socketHook as any).fwTranscript || '',
+    assemblyai: (socketHook as any).assemblyaiTranscript || '',
     'upload-fw': uploadResults['upload-fw'] || '',
     'upload-gemini': uploadResults['upload-gemini'] || '',
     'upload-openai': uploadResults['upload-openai'] || '',
@@ -154,9 +187,20 @@ const OpenAIRealtimeTest: React.FC = () => {
           {activePanel === 'realtime' ? (
             <div>
               <label>Provider</label>
-              <select value={streamProvider} onChange={(e) => { const v = e.target.value as any; setStreamProvider(v); setActiveTranscriptSource(v); }} style={{ width: '100%', margin: '6px 0 10px' }}>
+              <select 
+                value={streamProvider} 
+                onChange={(e) => { const v = e.target.value as any; setStreamProvider(v); setActiveTranscriptSource(v); }} 
+                disabled={isRecording}
+                style={{ 
+                  width: '100%', 
+                  margin: '6px 0 10px',
+                  opacity: isRecording ? 0.6 : 1,
+                  cursor: isRecording ? 'not-allowed' : 'default'
+                }}
+              >
                 <option value="whisper">OpenAI Whisper (socket)</option>
                 <option value="google">Google STT (streaming)</option>
+                <option value="assemblyai">AssemblyAI (streaming)</option>
                 {/* <option value="gemini">Gemini Live (experimental)</option> */}
                 {/* <option value="fw">faster-whisper (local)</option> */}
               </select>
@@ -187,6 +231,7 @@ const OpenAIRealtimeTest: React.FC = () => {
               <optgroup label="Realtime">
                 <option value="whisper">OpenAI Whisper</option>
                 <option value="google">Google STT</option>
+                <option value="assemblyai">AssemblyAI</option>
                 <option value="gemini">Gemini Live</option>
                 {/* <option value="fw">faster-whisper</option> */}
               </optgroup>
@@ -210,7 +255,12 @@ const OpenAIRealtimeTest: React.FC = () => {
             <div style={{ marginTop: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <strong>Comparisons (ordered)</strong>
-                <button onClick={() => setComparisons([])} style={{ fontSize: 12 }}>Clear</button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={refreshComparison} style={{ fontSize: 12 }} title="Add current live transcript to comparisons">
+                    🔄 Refresh
+                  </button>
+                  <button onClick={() => setComparisons([])} style={{ fontSize: 12 }}>Clear</button>
+                </div>
               </div>
               <ol style={{ marginTop: 8, paddingLeft: 18 }}>
                 {comparisons

@@ -629,7 +629,8 @@ def get_openapi_token(
       
 @dataclass
 class assemblyai:
-    api_key = get_secret_key('ASSEMBLY_AI_API_KEY')  
+    # api_key = get_secret_key('ASSEMBLY_AI_API_KEY')  
+    api_key = "af1b742664d64a40a7429081cd7cdc35"
 
 @dataclass
 class gemini:

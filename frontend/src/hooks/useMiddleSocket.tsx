@@ -32,6 +32,7 @@ const useMiddleSocket = () => {
   const [googleLiveInterim, setGoogleLiveInterim] = useState<string>("");
   const [geminiTranscript, setGeminiTranscript] = useState<string>("");
   const [fwTranscript, setFwTranscript] = useState<string>("");
+  const [assemblyaiTranscript, setAssemblyaiTranscript] = useState<string>("");
   // Refs to avoid stale reads when composing transcript string and for debounce finalize
   const googleFinalHistoryRef = useRef<string[]>([]);
   const googleLiveInterimRef = useRef<string>("");
@@ -316,6 +317,28 @@ const useMiddleSocket = () => {
       };
     }, [socket]);
 
+    // --------------------------- AssemblyAI streaming wiring ---------------------------
+    useEffect(() => {
+      if (socket) {
+        socket.on('audio transcribe', (message: any) => {
+          if (typeof message === 'string') {
+            setAssemblyaiTranscript(prev => (prev ? prev + ' ' : '') + message);
+          }
+          console.log('[ASSEMBLYAI][RX]', message);
+        });
+        
+        socket.on('transcription_complete', (message: any) => {
+          console.log('[ASSEMBLYAI][COMPLETE]', message);
+          // Emit a custom event to notify components that transcription is complete
+          window.dispatchEvent(new CustomEvent('assemblyai-transcription-complete', { detail: message }));
+        });
+      }
+      return () => {
+        socket?.off?.('audio transcribe');
+        socket?.off?.('transcription_complete');
+      };
+    }, [socket]);
+
     const handleTemplateInterview = async (data: any) => {
       const chat = [{
         user_type: "candidate",
@@ -524,6 +547,7 @@ const useMiddleSocket = () => {
     googleLiveInterim,
     geminiTranscript,
     fwTranscript,
+    assemblyaiTranscript,
     audioChunk, 
     setAudioInterviewChunk,
     handleAudioSentence,
