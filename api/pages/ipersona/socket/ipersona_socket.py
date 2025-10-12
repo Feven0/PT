@@ -1256,7 +1256,6 @@ async def audio_end_point(sid, data):
     else:
         logger.info(f"Run stage retrieved: {run_stage}")
         
-    logger.info("audio socket response", data["response"], data['user_session']['id'])
     
     # Get session ID early for deduplication
     sessionId = None
@@ -1772,12 +1771,12 @@ async def interview_endpoint(sid, data):
             run_stage = session.get('run_stage', None)  
             if run_stage is None:
                 logger.warn(f"Run stage not found in session for sid: {sid}, using default")
-                run_stage = 'democms'  # Default to production if not specified
+                run_stage = 'dev'  # Default to production if not specified
             else:
                 logger.info(f"Run stage retrieved: {run_stage}")
         except Exception as stage_error:
             logger.error(f"Error retrieving run stage: {str(stage_error)}")
-            run_stage = 'democms'  # Default to production if error occurs
+            run_stage = 'dev'  # Default to production if error occurs
 
         # Get session ID with error handling
         try:

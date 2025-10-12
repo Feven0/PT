@@ -1755,7 +1755,7 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
             "attributes": "JSON",            
             "tinder_user_profile": "ID",
             "tinder_job_profile": "ID",
-            "i_persona_observers": "ID",
+            "i_persona_observers": "[ID]",
             "challenge_document": "ID",
             "tinder_template": "ID"    
          }

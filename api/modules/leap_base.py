@@ -998,7 +998,7 @@ class LeapBaseClass:
 
             query = '''
             query get%s( $offsetStart: Int!, $pageSize: Int!) {
-                %s( pagination: { start: $offsetStart, limit: $pageSize }, sort: "createdAt:%s"  %s ) {     
+                %s( pagination: { start: $offsetStart, limit: $pageSize }, sort: "createdAt:%s", %s ) {     
                     meta {
                         pagination {
                             page

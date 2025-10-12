@@ -289,7 +289,7 @@ async def choose_interview_question_new_structure(
                 # print('my daaaaaaaaaaaaaaaaaaaaaaaaa=====================================')
                 # print(realtime_evaluation)
             
-            rstage = ''
+            rstage = run_stage
             status = "Completed"
             
             # Run overall calculation in background to avoid blocking socket emission
@@ -446,7 +446,7 @@ async def choose_interview_question_challenge_new_structure(
                 final = 'true'
                 strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId)
 
-            rstage = ''
+            rstage = run_stage
             status = "Completed"
             
             # Run overall calculation in background to avoid blocking socket emission
@@ -559,7 +559,7 @@ async def helper_func(
                 status = "final"
                 final = 'true'
                 strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId)
-            rstage=''
+            rstage = run_stage
             status = "Completed"
    
             # Run overall calculation in background to avoid blocking socket emission
