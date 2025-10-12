@@ -149,6 +149,8 @@ const useWebSocket = (url: string) => {
       console.log('audio transcribe', message);
         setAssemblyTTS((prevMessages) => [...prevMessages, message]);
     });
+
+    // Google STT is handled by useMiddleSocket.tsx - no need for duplicate listener
       
     newSocket.on('audio chat sentence', (message) => {
       setAudioHistory((prevMessages) => {

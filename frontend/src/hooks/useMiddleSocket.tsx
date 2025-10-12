@@ -33,6 +33,7 @@ const useMiddleSocket = () => {
   const [geminiTranscript, setGeminiTranscript] = useState<string>("");
   const [fwTranscript, setFwTranscript] = useState<string>("");
   const [assemblyaiTranscript, setAssemblyaiTranscript] = useState<string>("");
+  const [googleTranscriptionComplete, setGoogleTranscriptionComplete] = useState<{status: string, message: string}>({ status: "pending", message: "Ready for new recording" });
   // Refs to avoid stale reads when composing transcript string and for debounce finalize
   const googleFinalHistoryRef = useRef<string[]>([]);
   const googleLiveInterimRef = useRef<string>("");
@@ -332,10 +333,18 @@ const useMiddleSocket = () => {
           // Emit a custom event to notify components that transcription is complete
           window.dispatchEvent(new CustomEvent('assemblyai-transcription-complete', { detail: message }));
         });
+
+        socket.on('google_transcription_complete', (message: any) => {
+          console.log('[GOOGLE][COMPLETE]', message);
+          setGoogleTranscriptionComplete(message);
+          // Emit a custom event to notify components that transcription is complete
+          window.dispatchEvent(new CustomEvent('google-transcription-complete', { detail: message }));
+        });
       }
       return () => {
         socket?.off?.('audio transcribe');
         socket?.off?.('transcription_complete');
+        socket?.off?.('google_transcription_complete');
       };
     }, [socket]);
 
@@ -545,6 +554,8 @@ const useMiddleSocket = () => {
     googleTranscript,
     googleFinalHistory,
     googleLiveInterim,
+    googleTranscriptionComplete,
+    setGoogleTranscriptionComplete,
     geminiTranscript,
     fwTranscript,
     assemblyaiTranscript,

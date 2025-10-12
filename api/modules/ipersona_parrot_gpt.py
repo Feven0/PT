@@ -2,6 +2,7 @@ from openai import OpenAI
 import json, os
 import os
 import json_repair
+import asyncio
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 import api.llm.ipersona.ipersona_strapi as strapi
@@ -283,13 +284,21 @@ async def choose_interview_question_new_structure(
                 status = "final"
                 final = 'true'
                 strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId)
+                
+               
                 # print('my daaaaaaaaaaaaaaaaaaaaaaaaa=====================================')
                 # print(realtime_evaluation)
             
             rstage = ''
             status = "Completed"
-            await overall_interview_evaluations(rstage, data, status, sessionId, type)
-            logger.info("Calculate the overall and save to database done.")            
+            
+            # Run overall calculation in background to avoid blocking socket emission
+            logger.info(f"🔍 [DEBUG] === STARTING BACKGROUND OVERALL CALCULATION ===")
+            logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {type}")
+            logger.info(f"🔍 [DEBUG] Run stage: {rstage}")
+            
+            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, type))
+            logger.info("✅ Started overall calculation in background - socket emission will not be blocked")            
                 
             response = {
                 "interview": interview_question_json,
@@ -431,7 +440,7 @@ async def choose_interview_question_challenge_new_structure(
             realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId, type)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
            
-            logger.info(f"Realtime evaluation is: {realtime_evaluation}")
+            logger.info(f"Realtime evaluation i______s: {realtime_evaluation}")
             if realtime_evaluation != "null":
                 status = "final"
                 final = 'true'
@@ -439,8 +448,14 @@ async def choose_interview_question_challenge_new_structure(
 
             rstage = ''
             status = "Completed"
-            await overall_interview_evaluations(rstage, data, status, sessionId, type)
-            logger.info("Calculate the overall and save to database done.")            
+            
+            # Run overall calculation in background to avoid blocking socket emission
+            logger.info(f"🔍 [DEBUG] === STARTING BACKGROUND OVERALL CALCULATION ===")
+            logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {type}")
+            logger.info(f"🔍 [DEBUG] Run stage: {rstage}")
+            
+            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, type))
+            logger.info("✅ Started overall calculation in background - socket emission will not be blocked")            
                 
             response = {
                 "interview": interview_question_json,
@@ -539,7 +554,7 @@ async def helper_func(
         else:  
             realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId, type)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
-            logger.info(f"Realtime evaluation is: {realtime_evaluation}")
+            logger.info(f"Realtime evaluation i______s: {realtime_evaluation}")
             if realtime_evaluation != "null":
                 status = "final"
                 final = 'true'
@@ -547,8 +562,13 @@ async def helper_func(
             rstage=''
             status = "Completed"
    
-            await overall_interview_evaluations(rstage, data, status, sessionId, type)
-            logger.info("Calculate the overall and save to database done.")            
+            # Run overall calculation in background to avoid blocking socket emission
+            logger.info(f"🔍 [DEBUG] === STARTING BACKGROUND OVERALL CALCULATION ===")
+            logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {type}")
+            logger.info(f"🔍 [DEBUG] Run stage: {rstage}")
+            
+            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, type))
+            logger.info("✅ Started overall calculation in background - socket emission will not be blocked")            
                 
         response = {
             "interview": interview_question_json,
@@ -795,118 +815,6 @@ async def calculate_template_time_limit_sync(
     except Exception as e:
         logger.error(f"Synchronous time limit calculation failed: {str(e)}")
         return {"time_limit": "03:00"}  # Default fallback
-
-# async def process_time_limit_calculation_background(
-#     response: str,
-#     section: list,
-#     sessionId: str,
-#     run_stage: str,
-#     sio,
-#     sid: str
-# ):
-#     """
-#     Background task to calculate time limit for template questions
-#     """
-#     try:
-    
-#         # Find the specific question in the section to get its time limit
-#         time_limit = None
-        
-#         # Normalize the response text for matching
-#         def normalize(text: str) -> str:
-#             if text is None:
-#                 return ""
-#             # Remove trailing question marks and normalize whitespace
-#             normalized = " ".join(str(text).strip().split()).lower()
-#             # Remove trailing question mark for better matching
-#             if normalized.endswith('?'):
-#                 normalized = normalized[:-1]
-#             return normalized
-        
-#         response_norm = normalize(response)
-#         print(f"🔄 [BACKGROUND] Normalized response: '{response_norm}'")
-        
-#         # Search through sections to find matching question
-#         print(f"🔄 [BACKGROUND] Searching through {len(section)} section items...")
-#         for i, section_item in enumerate(section):
-#             print(f"🔄 [BACKGROUND] Section item {i}: {type(section_item)}")
-#             if isinstance(section_item, dict) and 'questions' in section_item:
-#                 questions = section_item.get('questions', [])
-#                 print(f"🔄 [BACKGROUND] Found {len(questions)} questions in section {i}")
-#                 for j, question in enumerate(questions):
-#                     if isinstance(question, dict):
-#                         question_text = question.get('question', '')
-#                         question_norm = normalize(question_text)
-#                         # Check if this question matches the response
-#                         if question_norm == response_norm or response_norm in question_norm:
-#                             time_limit = question.get('time_limit')
-#                             if time_limit:
-#                                 print(f"✅ [BACKGROUND] Found time limit: {time_limit}")
-#                                 logger.info(f"[BACKGROUND] Found matching question with time limit: {time_limit}")
-#                                 break
-#                 if time_limit:
-#                     break
-#             else:
-#                 print(f"🔄 [BACKGROUND] Section item {i} is not a dict with questions or has no questions key")
-        
-#         # If no specific time limit found, use default value of 3 minutes
-#         if not time_limit or time_limit == '':
-#             print("🔄 [BACKGROUND] No specific time limit found, using default 3 minutes")
-#             time_limit = "3"
-        
-#         # Convert time limit to MM:SS format
-#         def format_time_limit(time_str):
-#             """Convert time limit to MM:SS format"""
-#             try:
-#                 # Handle different input formats
-#                 if time_str in ['null', None, '']:
-#                     return "03:00"  # Default 3 minutes
-                
-#                 # If it's already a number (string), treat as minutes
-#                 if time_str.isdigit():
-#                     minutes = int(time_str)
-#                     return f"{minutes:02d}:00"
-                
-#                 # If it contains 'min' or 'mins', extract the number
-#                 if 'min' in str(time_str).lower():
-#                     import re
-#                     match = re.search(r'(\d+)', str(time_str))
-#                     if match:
-#                         minutes = int(match.group(1))
-#                         return f"{minutes:02d}:00"
-                
-#                 # If it's already in MM:SS format, return as is
-#                 if ':' in str(time_str):
-#                     return str(time_str)
-                
-#                 # Default fallback
-#                 return "03:00"
-#             except Exception as e:
-#                 print(f"❌ [BACKGROUND] Error formatting time limit '{time_str}': {e}")
-#                 return "03:00"  # Default fallback
-        
-#         formatted_time_limit = format_time_limit(time_limit)
-#         print(f"🔄 [BACKGROUND] Original time limit: '{time_limit}' -> Formatted: '{formatted_time_limit}'")
-        
-#         # Emit the time limit to the socket
-#         message = [{
-#             "content": {
-#                 "time_limit": formatted_time_limit,
-#             }
-#         }]
-        
-#         print(f"🔄 [BACKGROUND] Emitting formatted time limit: {formatted_time_limit}")
-#         print(f"🔄 [BACKGROUND] Message: {message}")
-#         print(f"🔄 [BACKGROUND] SID: {sid}")
-#         logger.info(f"[BACKGROUND] Emitting formatted time limit {formatted_time_limit} to SID {sid}")
-        
-#         await sio.emit("time_limit", message, room=sid)
-#         print("✅ [BACKGROUND] Time limit calculation and emission completed successfully")
-#         logger.info(f"[BACKGROUND] Time limit emission completed successfully for SID {sid}")
-        
-#     except Exception as e:
-#         print(f"❌ [BACKGROUND] Time limit calculation failed: {str(e)}")
-#         logger.error(f"Background time limit calculation failed: {str(e)}")
 
 async def append_asked_question_number_from_sections(
     asked_numbers: list,
@@ -1197,6 +1105,7 @@ def realtime_response_evaluation(run_stage, data: dict, sessionId, type) -> dict
     try:
         
         last_assistant_response = fetch_the_last_question(run_stage, data, sessionId)  
+        logger.info(f"Last assistant response: {last_assistant_response}")
         msg = read_prompt_realtime_evaluation(type, data, last_assistant_response)
    
         persona = data['user_session']['attributes']['attributes'].get('persona', '')
@@ -1345,6 +1254,13 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         or an error message if an exception occurs during processing.
     """
     try:
+        # 🔍 DEBUG: Overall calculation function started
+        import time
+        start_time = time.time()
+        logger.info(f"🔍 [DEBUG] === overall_interview_evaluations FUNCTION STARTED ===")
+        logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {type}")
+        logger.info(f"🔍 [DEBUG] Run stage: {run_stage}")
+        
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         all_chat_history = ipersona_message.filter_by_session_id(
             sessionId=sessionId, 
@@ -1469,6 +1385,14 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
             "overall_interview_metrics": overall_interview_metrics_json,
             "overall_evaluation_response": overall_evaluation_response_json
         }
+        
+        # 🔍 DEBUG: Overall calculation function completed
+        end_time = time.time()
+        duration = end_time - start_time
+        logger.info(f"🔍 [DEBUG] === overall_interview_evaluations FUNCTION COMPLETED ===")
+        logger.info(f"🔍 [DEBUG] SessionID: {sessionId}")
+        logger.info(f"🔍 [DEBUG] Duration: {duration:.2f} seconds")
+        logger.info("✅ Calculate the overall and save to database done.")
         
         return response
         

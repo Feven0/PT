@@ -169,3 +169,4 @@ langraph_client
 node_modules
 
 .envdir/
+ipersona_socket.backup

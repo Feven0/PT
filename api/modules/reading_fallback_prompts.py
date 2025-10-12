@@ -83,7 +83,7 @@ def read_prompt_realtime_evaluation(data, last_assistant_response):
     evaluation_context = str(evaluation_prompt)
     realtime_evaluation_msg = evaluation_context\
         .replace("{question}", last_assistant_response)\
-        .replace("{candidate_response}", data['response'])
+        .replace("{candidate_response}", str(data['response'] or ''))
 
     return realtime_evaluation_msg
 
