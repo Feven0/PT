@@ -1686,6 +1686,8 @@ async def audio_end_point(sid, data):
                     logger.info(f"🔍 [DEBUG] All active SIDs: {list(sio.manager.rooms.keys())}")
                     logger.info(f"🔍 [DEBUG] Realtime evaluation: {response.get('realtime', 'null')}")
                     
+                    # Add small delay to ensure client is still connected
+                    await asyncio.sleep(0.1)
                     # Safely emit or queue the message
                     logger.info(f"[DEBUG] last_audio_realtime_evaluation payload: {message}")
                     await safe_emit_or_queue(sid, "last_audio_realtime_evaluation", message)
