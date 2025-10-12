@@ -5187,7 +5187,6 @@ def get_user_data(all_user_id, run_stage):
     trainee_profile_data = ipersona_user.filter_by_alluser_id(
         all_user_id=all_user_id, nopp=True, dataframe=False
     )
-
     if not trainee_profile_data:
         logger.warn(f"No trainee user profiles found for all_user_id: {all_user_id}")
         return {

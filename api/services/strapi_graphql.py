@@ -11,26 +11,24 @@ from api.utils.logger import LLPackerLogger
 logger = LLPackerLogger(os.path.basename(__file__))
 
 class StrapiGraphql():
-    def __init__(self, **kwargs):
-        
+    def __init__(self, **kwargs): 
         # define run environment
-        if config.strapi.stage=='dev':
-            run_stage =  kwargs.get('run_stage',config.strapi.stage)
-        else:
-            run_stage = config.strapi.stage
+        # Always use run_stage from kwargs if provided, otherwise fall back to config
+        run_stage = kwargs.get('run_stage', config.strapi.stage)
 
         self.run_stage = run_stage
         
        
         # define url
-        root, ssmkey = config.get_strapi_params(run_stage) 
-   
+        root, ssmkey = config.get_strapi_params(run_stage)    
         if run_stage.lower().startswith('tenacious'):
             self.apiroot = f"https://cms.gettenacious.com/graphql" 
-        elif run_stage.lower().startswith('demo'):
-            self.apiroot = f"https://democms.10academy.org/graphql"    
+        elif run_stage.lower().startswith('democms'):
+            self.apiroot = f"https://democms.10academy.org/graphql"
         else:
             self.apiroot = f"https://{root}.10academy.org/graphql"
+        
+   
         self.ssmkey = ssmkey
         
         # define token
@@ -40,8 +38,8 @@ class StrapiGraphql():
         self.token = get_auth(ssmkey,
                             envvar='STRAPI_TOKEN',
                             fconfig=lambda_friendly_path(f'.env/{root}.json'))
-
-
+         
+ 
         # define headers
         if self.token:                        
             self.headers = {"Authorization": f"Bearer {self.token}"}

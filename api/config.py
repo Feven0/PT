@@ -73,6 +73,12 @@ def get_strapi_params(stage):
     elif stage.lower().startswith('democms'):
         root='democms'
         ssmkey="DEMO_PROD_STRAPI_TOKEN"
+    elif stage.lower().startswith('kaimdev'):
+        root='kaimdev-cms'
+        ssmkey="KAIM_DEV_STRAPI_TOKEN"
+    elif stage.lower().startswith('kaim'):
+        root='kaimcms'
+        ssmkey="KAIM_PROD_STRAPI_TOKEN"
     else:  #stage.lower().startswith('dev')
         root='dev-cms'
         ssmkey="TENX_DEV_STRAPI_TOKEN"  
@@ -676,11 +682,14 @@ def get_strapi_params(stage):
     elif stage.lower().startswith('tenacious'):
         root='tenaciouscms'
         ssmkey="TENACIOUS_PROD_STRAPI_TOKEN"
-    elif stage.lower().startswith('demo'):
+    elif stage.lower().startswith('democms'):
         root='democms'
         ssmkey="DEMO_PROD_STRAPI_TOKEN"
+    elif stage.lower().startswith('kaimdev'):
+        root='kaimdev-cms'
+        ssmkey="KAIM_DEV_STRAPI_TOKEN"
     elif stage.lower().startswith('kaim'):
-        root='kaim'
+        root='kaimcms'
         ssmkey="KAIM_PROD_STRAPI_TOKEN"
     else:  #stage.lower().startswith('dev')
         root='dev-cms'
