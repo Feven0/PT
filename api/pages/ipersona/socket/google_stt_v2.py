@@ -595,7 +595,7 @@ class GoogleStreamingSTTV2:
         chunk_count = 0
         while True:
             try:
-                chunk = await asyncio.wait_for(self._audio_queue.get(), timeout=60.0)  # Increased timeout to accommodate 55s keep-alive
+                chunk = await asyncio.wait_for(self._audio_queue.get(), timeout=30.0)  # Reduced timeout to detect stalls faster
                 if chunk is None:  # Sentinel to stop
                     logger.info(f"[GOOGLE_STT_V2][GENERATOR] Sentinel received, stopping generator for sid={self.sid}")
                     break
@@ -604,6 +604,9 @@ class GoogleStreamingSTTV2:
                 yield StreamingRecognizeRequest(audio=chunk)
                 logger.info(f"[GOOGLE_STT_V2][GENERATOR] Audio chunk #{chunk_count} yielded for sid={self.sid}")
             except asyncio.TimeoutError:
+                # Log timeout to help debug stalls
+                logger.warning(f"[GOOGLE_STT_V2][GENERATOR] Timeout waiting for audio chunk for sid={self.sid}, queue_size={self._audio_queue.qsize()}")
+                
                 # In drain mode, if queue is empty, end generator
                 if self._drain_mode:
                     try:
@@ -687,11 +690,11 @@ class GoogleStreamingSTTV2:
                 f"[GOOGLE_STT_V2][STREAM] API error for sid={self.sid}: {status_code or ''} {api_error} "
                 f"elapsed_s={elapsed_s:.3f} since_last_audio_ms={since_audio_ms} since_last_response_ms={since_resp_ms}"
             )
-            if self.on_error:
+            if self.on_error:  
                 await self.on_error(api_error)
             
             if not self._stop_event.is_set() and self._should_retry_error(api_error):
-                await asyncio.sleep(1)
+                # Immediate self-restart on retryable errors (e.g., 409 idle timeout)
                 await self._restart_stream()
                 
         except (IOError, RuntimeError) as stream_error:
@@ -953,7 +956,7 @@ class GoogleStreamingSTTV2:
     async def _keepalive_mechanism(self):
         """Send periodic keep-alive packets to prevent Google API inactivity timeout"""
         while not self._stop_event.is_set():
-            await asyncio.sleep(55)  # Send keep-alive every 55 seconds (well before ~65s timeout)
+            await asyncio.sleep(25)  # Send keep-alive every 25 seconds (well before 30s generator timeout)
             
             if not self._stop_event.is_set():
                 try:

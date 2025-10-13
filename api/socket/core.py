@@ -29,7 +29,10 @@ else:
 _CLIENT_MANAGER = None
 # Simple in-memory registry mapping client_id to current sid (for targeting)
 CLIENT_REGISTRY: dict[str, str] = {}
-if _REDIS_URL:
+# Allow forcing client-only mode in certain processes (e.g., Celery workers)
+_DISABLE_MANAGER = os.environ.get("SOCKETIO_DISABLE_MANAGER", "false").lower() in {"1", "true", "yes"}
+
+if _REDIS_URL and not _DISABLE_MANAGER:
     try:
         from socketio import AsyncRedisManager
         _CLIENT_MANAGER = AsyncRedisManager(_REDIS_URL)
@@ -58,6 +61,14 @@ async def emit_to_job(job_id: str, event: str, data):
 # Debug helper to log emits from any process (API or Celery)
 async def emit_with_log(event: str, data: dict, room: str | None = None, sid: str | None = None):
     try:
+        # Event loop diagnostics
+        loop_desc = "unknown"
+        try:
+            loop = asyncio.get_running_loop()
+            loop_desc = f"running loop id={id(loop)} closed={loop.is_closed()}"
+        except RuntimeError:
+            loop_desc = "no running loop"
+
         ns = "/"
         approx_targets = "unknown"
         try:
@@ -71,19 +82,25 @@ async def emit_with_log(event: str, data: dict, room: str | None = None, sid: st
             pass
         target_desc = f"sid='{sid}'" if sid else f"room='{room or 'ALL'}'"
         print(f"[SIO] → Emitting event='{event}' {target_desc} targets≈{approx_targets} keys={list(data.keys())}")
-        print(f"[SIO] client_manager present? {'yes' if _CLIENT_MANAGER else 'no'}; redis_url={_REDIS_URL or 'unset'}")
+        print(f"[SIO] client_manager present? {'yes' if _CLIENT_MANAGER else 'no'}; redis_url={_REDIS_URL or 'unset'}; loop={loop_desc}")
         # If no Redis manager in this process, use HTTP client fallback to reach the Socket.IO server
         if not _CLIENT_MANAGER:
             await _emit_via_client(event, data, room, sid)
             print(f"[SIO] ✓ Emitted event='{event}' via client fallback (no manager in process)")
             return
         # Otherwise emit via the manager (works across processes)
-        if sid:
-            await sio.emit(event, data, to=sid)
-        else:
-            await sio.emit(event, data, room=room)
-        print(f"[SIO] ✓ Emitted event='{event}' via manager")
-        return
+        try:
+            if sid:
+                await sio.emit(event, data, to=sid)
+            else:
+                await sio.emit(event, data, room=room)
+            print(f"[SIO] ✓ Emitted event='{event}' via manager")
+            return
+        except Exception as manager_err:
+            print(f"[SIO] manager emit failed, falling back to client: {manager_err}")
+            await _emit_via_client(event, data, room, sid)
+            print(f"[SIO] ✓ Emitted event='{event}' via client fallback after manager failure")
+            return
     except Exception as e:
         print(f"[SIO] ✗ Emit failed event='{event}': {e}")
 
