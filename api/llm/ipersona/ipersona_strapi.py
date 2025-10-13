@@ -124,18 +124,17 @@ def step2_insert_message(
         logger.error(f"Saving to db failed: ${str(e)}")
         return {'error': str(e)}
 
-def update_message_with_audio_url(message_id, audio_url):
+def update_message_with_audio_url(message_id, audio_url, run_stage):
     """Update a specific message with the audio URL."""
     try:        
         # Get the current message using the correct schema
         from api.llm.ipersona.ipersona_strapi_schemas import IpersonaSessionMessageSchema
-        message_schema = IpersonaSessionMessageSchema()
+        message_schema = IpersonaSessionMessageSchema(run_stage=run_stage)
         current_message = message_schema.get_session_msg_by_id(
-            sessionId=message_id,
+            msgId=message_id,
             nopp=True,
             dataframe=False
         )
-    
         if not current_message:
             logger.error(f"[UPDATE_AUDIO_URL] Message {message_id} not found")
             return False

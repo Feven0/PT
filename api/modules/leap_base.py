@@ -45,15 +45,11 @@ class LeapBaseClass:
         else:
             self.run_stage = run_stage
             config.strapi.stage = self.run_stage
-            # Update root and ssmkey based on run_stage
-            root, ssmkey = config.get_strapi_params(self.run_stage)
-            config.strapi.root = root
-            config.strapi.ssmkey = ssmkey
             
         self.user_token = kwargs.get('strapi_token', kwargs.get('user_token', ""))
         self.strapi_token = self.user_token
         self.user_role = kwargs.get('user_role', "")
-        
+                                
         self.kwargs = kwargs
         self.sg = StrapiGraphql(run_stage=self.run_stage, **kwargs)
         self.verbose = kwargs.get('verbose', 0)
@@ -998,7 +994,7 @@ class LeapBaseClass:
 
             query = '''
             query get%s( $offsetStart: Int!, $pageSize: Int!) {
-                %s( pagination: { start: $offsetStart, limit: $pageSize }, sort: "createdAt:%s", %s ) {     
+                %s( pagination: { start: $offsetStart, limit: $pageSize }, sort: "createdAt:%s"  %s ) {     
                     meta {
                         pagination {
                             page

@@ -1755,7 +1755,7 @@ class IpersonaSessionOverallObserverSchema(LeapBaseClass):
             "attributes": "JSON",            
             "tinder_user_profile": "ID",
             "tinder_job_profile": "ID",
-            "i_persona_observers": "[ID]",
+            "i_persona_observers": "ID",
             "challenge_document": "ID",
             "tinder_template": "ID"    
          }
@@ -2285,8 +2285,8 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
         self.data = self.data%""
         _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)
     
-    def get_session_msg_by_id(self, sessionId, **kwargs):
-        return self.exists(scol='id', sval=sessionId, op='eq', stype="ID", **kwargs)        
+    def get_session_msg_by_id(self, msgId, **kwargs):
+        return self.exists(scol='id', sval=msgId, op='eq', stype="ID", **kwargs)        
     
     def filter_by_session_id(self, sessionId, **kwargs):
         try:
@@ -2492,6 +2492,7 @@ class IpersonaSessionObserverSchema(LeapBaseClass):
             
         self.type_map = {   
             "attributes": "JSON",
+            "metadata": "JSON",
             "i_persona_session": "ID"
         }
 

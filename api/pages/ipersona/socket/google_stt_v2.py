@@ -77,7 +77,7 @@ LOCAL_TEST_OVERRIDES = {
     "GOOGLE_STT_V2_LANGUAGES": "en-US",
     "GOOGLE_STT_V2_INTERIM": "true",
     "GOOGLE_STT_V2_PUNCTUATION": "true",
-    "GOOGLE_STT_V2_VAD_EVENTS": "true",
+    "GOOGLE_STT_V2_VAD_EVENTS": "false",
     "GOOGLE_STT_V2_EMIT_INTERIM": "true",
     "GOOGLE_STT_V2_EMIT_ONLY_FINAL": "false", 
     "GOOGLE_STT_V2_EMIT_ON_UTTERANCE_END": "false",
@@ -176,7 +176,7 @@ class GoogleSTTV2Config:
     
     # Performance
     # Proactive rotation to avoid server ~65s timeout; can be overridden via env
-    streaming_limit_seconds: int = 55
+    streaming_limit_seconds: int = 1800  # Increased to 30 minutes for longer discussions
     chunk_size_bytes: int = 3200  # ~100ms of audio at 16kHz PCM16
     
     # Regional endpoint
@@ -208,7 +208,7 @@ class GoogleSTTV2Config:
             emit_on_utterance_end=(_get_env("GOOGLE_STT_V2_EMIT_ON_UTTERANCE_END") or "false").lower() == "true",
             enable_self_correction=(_get_env("GOOGLE_STT_V2_SELF_CORRECTION") or "true").lower() == "true",
             # Performance/rotation
-            streaming_limit_seconds=int((_get_env("GOOGLE_STT_V2_STREAMING_LIMIT_SECONDS") or "55").strip()),
+            streaming_limit_seconds=int((_get_env("GOOGLE_STT_V2_STREAMING_LIMIT_SECONDS") or "1800").strip()),
         )
 
 
@@ -264,6 +264,7 @@ class GoogleStreamingSTTV2:
         self._stop_event = asyncio.Event()
         self._stream_task: Optional[asyncio.Task] = None
         self._restart_timer_task: Optional[asyncio.Task] = None
+        self._keepalive_task: Optional[asyncio.Task] = None
         self._audio_queue: asyncio.Queue = asyncio.Queue()
         # Graceful-stop controls
         self._stop_requested: bool = False
@@ -398,6 +399,9 @@ class GoogleStreamingSTTV2:
         # Start restart timer
         self._restart_timer_task = asyncio.create_task(self._restart_timer())
         
+        # Start keep-alive mechanism to prevent inactivity timeouts
+        self._keepalive_task = asyncio.create_task(self._keepalive_mechanism())
+        
         logger.info(f"[GOOGLE_STT_V2][START] Stream started for sid={self.sid}")
     
     async def stop(self):
@@ -440,6 +444,14 @@ class GoogleStreamingSTTV2:
             await self._audio_queue.put(None)
         except Exception:
             pass
+        
+        # Cancel keep-alive task
+        if self._keepalive_task and not self._keepalive_task.done():
+            self._keepalive_task.cancel()
+            try:
+                await self._keepalive_task
+            except asyncio.CancelledError:
+                pass
         
         # On-stop snapshot: log last-final and full finals list for current epoch
         try:
@@ -583,7 +595,7 @@ class GoogleStreamingSTTV2:
         chunk_count = 0
         while True:
             try:
-                chunk = await asyncio.wait_for(self._audio_queue.get(), timeout=0.1)
+                chunk = await asyncio.wait_for(self._audio_queue.get(), timeout=60.0)  # Increased timeout to accommodate 55s keep-alive
                 if chunk is None:  # Sentinel to stop
                     logger.info(f"[GOOGLE_STT_V2][GENERATOR] Sentinel received, stopping generator for sid={self.sid}")
                     break
@@ -600,6 +612,7 @@ class GoogleStreamingSTTV2:
                             break
                     except Exception:
                         pass
+                # Continue waiting for audio chunks (including keep-alive)
                 continue
             except Exception as e:
                 logger.error(f"[GOOGLE_STT_V2][GENERATOR] Error: {e}")
@@ -936,6 +949,20 @@ class GoogleStreamingSTTV2:
                     f"[GOOGLE_STT_V2][TIMER] Periodic restart for sid={self.sid}"
                 )
                 await self._restart_stream()
+    
+    async def _keepalive_mechanism(self):
+        """Send periodic keep-alive packets to prevent Google API inactivity timeout"""
+        while not self._stop_event.is_set():
+            await asyncio.sleep(55)  # Send keep-alive every 55 seconds (well before ~65s timeout)
+            
+            if not self._stop_event.is_set():
+                try:
+                    # Send a small silent audio chunk to keep the stream alive
+                    silent_chunk = b'\x00' * 1600  # ~100ms of silence at 16kHz
+                    await self._audio_queue.put(silent_chunk)
+                    logger.info(f"[GOOGLE_STT_V2][KEEPALIVE] Sent keep-alive for sid={self.sid}, chunk_size={len(silent_chunk)}")
+                except Exception as e:
+                    logger.error(f"[GOOGLE_STT_V2][KEEPALIVE] Error sending keep-alive for sid={self.sid}: {e}")
 
 
 # Health check for V2

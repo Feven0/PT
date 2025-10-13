@@ -290,6 +290,7 @@ async def choose_interview_question_new_structure(
                 # print(realtime_evaluation)
             
             rstage = run_stage
+            
             status = "Completed"
             
             # Run overall calculation in background to avoid blocking socket emission
@@ -1328,6 +1329,7 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
                     "interview_evaluation": overall_evaluation_response_json,
                     "interview_evaluation_metrics": overall_interview_metrics_json,
                 },
+                "metadata": None,
                 "i_persona_session": sessionId,
                 "status": status            
             }

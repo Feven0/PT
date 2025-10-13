@@ -1013,7 +1013,7 @@ async def _audio_transcribe_google_v1(sid: str, audioblob, data=None):
         if data and isinstance(data, dict):
             full_bytes = data.get('full_bytes')
             session_id = data.get('sessionId')
-
+            
             if full_bytes is not None and session_id is not None:
                 try:
                     # Normalize full_bytes similar to audioblob
@@ -1070,6 +1070,13 @@ async def _audio_transcribe_google_v1(sid: str, audioblob, data=None):
 
 async def _audio_transcribe_google_v2(sid: str, audioblob, data=None):
     """V2 implementation (latest - recommended)"""
+    
+    # Minimal debug logging - only log full_bytes length when present
+    if data and isinstance(data, dict) and 'full_bytes' in data:
+        full_bytes = data.get('full_bytes')
+        if full_bytes is not None:
+            logger.info(f"[GOOGLE_V2][FULL_BYTE] sid={sid} full_byte_length={len(full_bytes)}")
+    
     if audioblob is None:
         # stop and cleanup
         session = google_streams_v2.pop(sid, None)
@@ -1086,12 +1093,19 @@ async def _audio_transcribe_google_v2(sid: str, audioblob, data=None):
             except Exception as e:
                 logger.error(f"[GOOGLE_V2] stop error sid={sid}: {e}")
         else:
-            logger.info(f"[GOOGLE_V2][STOP] no active session sid={sid}")
+            logger.info(f"[GOOGLE_V2][STOP] no active session sid={sid}") 
         
         # Handle full_byte upload to S3 if provided (same as AssemblyAI)
         if data and isinstance(data, dict):
             full_bytes = data.get('full_bytes')
             session_id = data.get('sessionId')
+            
+            # If sessionId not provided directly, try to get it from latest.id
+            if session_id is None and 'latest' in data:
+                latest = data.get('latest')
+                if isinstance(latest, dict) and 'id' in latest:
+                    session_id = latest.get('id')
+                    logger.info(f"[GOOGLE_V2][DEBUG] Extracted sessionId from latest.id: {session_id}")
 
             if full_bytes is not None and session_id is not None:
                 try:
@@ -1410,17 +1424,20 @@ async def audio_end_point(sid, data):
                         sessionId)
                     
                     # Check for audio WAV bytes from AssemblyAI and upload to S3
-                    print(f"[AUDIO_CHAT][DEBUG] Looking for WAV bytes for sessionId={sessionId}")
-                    print(f"[AUDIO_CHAT][DEBUG] Available sessions in storage: {list(audio_wav_storage.keys())}")
+                    logger.info(f"[AUDIO_CHAT][DEBUG] Looking for WAV bytes for sessionId={sessionId}")
+                    logger.info(f"[AUDIO_CHAT][DEBUG] Available sessions in storage: {list(audio_wav_storage.keys())}")
                     audio_wav_bytes = audio_wav_storage.get(sessionId)
-                    print(f"[AUDIO_CHAT] Audio WAV bytes for sessionId={sessionId}: {audio_wav_bytes is not None}")
+                    if audio_wav_bytes:
+                        logger.info(f"[AUDIO_CHAT] Found WAV bytes for sessionId={sessionId}, length={len(audio_wav_bytes)} bytes")
+                    else:
+                        logger.info(f"[AUDIO_CHAT] No WAV bytes found for sessionId={sessionId}")
                     if audio_wav_bytes:
                         del audio_wav_storage[sessionId]  # Clean up
                         logger.info(f"[AUDIO_CHAT] Uploading audio from AssemblyAI for sessionId={sessionId}, message_id={message_id}")
                         
                         # Upload to S3 and update message with URL
                         upload_task = asyncio.create_task(
-                            parrot_utils.upload_audio_to_s3_background([audio_wav_bytes], sid, sessionId, message_id)
+                            parrot_utils.upload_audio_to_s3_background([audio_wav_bytes], sid, sessionId, message_id, run_stage)
                         )
 
 

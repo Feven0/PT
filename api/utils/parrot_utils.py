@@ -8,7 +8,7 @@ OPENAI_API_KEY = config.openai.api_key
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # -------------------------- S3 Background Upload -------------------------- #
-async def upload_audio_to_s3_background(accumulated_audio, sid, sessionId, message_id):
+async def upload_audio_to_s3_background(accumulated_audio, sid, sessionId, message_id, run_stage):
     """Background task to upload audio to S3 and update the specific message with URL."""
     try:
         from api.utils import s3_client as _s3h
@@ -41,7 +41,7 @@ async def upload_audio_to_s3_background(accumulated_audio, sid, sessionId, messa
         # Update the specific message with the audio URL
         try:
             from api.llm.ipersona import ipersona_strapi as strapi
-            success = strapi.update_message_with_audio_url(message_id, audio_url)
+            success = strapi.update_message_with_audio_url(message_id, audio_url, run_stage)
             if success:
                 logger.info(f"[S3 UPLOAD] Successfully updated message {message_id} with audio URL")
             else:

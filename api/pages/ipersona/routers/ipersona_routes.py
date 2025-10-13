@@ -1,3 +1,4 @@
+from math import log
 import time, os, json
 import assemblyai as aai
 from fastapi import FastAPI, File, UploadFile, Form, Request, BackgroundTasks
@@ -377,18 +378,21 @@ async def health_check():
         # await sio.emit("processing_update", {"status": "processing cma healt check"})
         sessionId = 1879
         mode = 'Chat'
-        run_stage = 'dev'
-        updated_mode = util.updating_session_mode(sessionId, mode, run_stage)
-        user_profile_id = 197
-        template_id = 129
-        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
-        session = ipersona_session.filter_by_with_user_template_id(
-                    user_profile_id=197,
-                    template_id=129, 
-                    nopp=True, 
-                    dataframe=False
-                    ) 
-       
+        run_stage = 'kaim'
+        # updated_mode = util.updating_session_mode(sessionId, mode, run_stage)
+        # user_profile_id = 197
+        # template_id = 129
+        # ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        # session = ipersona_session.filter_by_with_user_template_id(
+        #             user_profile_id=197,
+        #             template_id=129, 
+        #             nopp=True, 
+        #             dataframe=False
+        #             ) 
+        
+        ipersona_session_message = IpersonaSessionMessageSchema(run_stage=run_stage)
+        session =  ipersona_session_message.get_session_msg_by_id(msgId=205, nopp=True, dataframe=False)
+        
         return session
     except Exception as e:
         logger.error(f"Error in health check: {str(e)}")
@@ -650,8 +654,7 @@ async def close_interview_session(request: pemodel.ClosedDataRequestRecieved):
     Exception
         If any error occurs during the evaluation process
     """
-    run_stage = request.run_stage
-
+    run_stage = request.data.get('run_stage')
     if not request or not request.data:
         logger.error("Missing session data in request")
         return JSONResponse(
@@ -3054,7 +3057,7 @@ async def audio_upload_external_celery(
     run_stage: str = Form('dev'),
     sid: Optional[str] = Form(None)
     ):
-    print(f"🔧 [DEBUG] SID:============================== {sid}")
+    logger.info(f"🔧 [DEBUG] audio_upload_external_celery SID: {sid}")
     """
     Celery-based replica of audio_upload_external endpoint
     Uses Celery tasks instead of FastAPI background tasks
@@ -3132,6 +3135,7 @@ async def files_upload_external_celery(
     run_stage: str = Form('dev'),
     sid: Optional[str] = Form(None)
 ):
+    logger.info(f"🔧 [DEBUG] files_upload_external_celery SID: {sid}")
     try:
         # 1. Input Validation for both files
         if not question_file.filename or not answer_file.filename:
@@ -3243,6 +3247,7 @@ async def files_upload_external_celery(
 
         # 2. Parse `target` JSON
     # Try parsing `target` as JSON
+        logger.info(f"🔧 [DEBUG] answer_file_upload_external_celery SID: {sid}")
         if target:
             try:
                 target_data = json.loads(target)
