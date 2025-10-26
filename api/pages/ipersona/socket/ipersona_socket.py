@@ -3,9 +3,10 @@ import re
 import time
 import io, wave
 import queue
+from datetime import datetime
 from openai import OpenAI
 import assemblyai as aai
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Set
 import api.utils.parrot_utils as parrot_utils
 from api import config
 import api.modules.ipersona_parrot_gpt as util
@@ -29,6 +30,19 @@ from .stt_utils import (
     pcm16_mono_16k_to_wav_bytes,
     is_silent_pcm16,
 )
+
+# Redis imports for SID mapping persistence
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    redis = None
+    REDIS_AVAILABLE = False
+
+logger = LLPackerLogger(os.path.basename(__file__))
+
+if not REDIS_AVAILABLE:
+    logger.warn("[REDIS] Redis not available - SID mapping will use memory only")
 # Google Cloud Speech-to-Text imports
 # V1 (legacy)
 try:
@@ -61,9 +75,26 @@ except Exception:
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
+# Initialize Redis connection for SID mapping persistence
+redis_client = None
+if REDIS_AVAILABLE:
+    try:
+        redis_client = redis.Redis(
+            host=os.getenv('REDIS_HOST', 'localhost'),
+            port=int(os.getenv('REDIS_PORT', '6379')),
+            db=int(os.getenv('REDIS_DB', '0')),
+            decode_responses=True,
+            socket_connect_timeout=5,
+            socket_timeout=5
+        )
+        # Test connection
+        redis_client.ping()
+        logger.info("[REDIS] Connected to Redis for SID mapping persistence")
+    except Exception as e:
+        logger.warn(f"[REDIS] Failed to connect to Redis: {e}")
+        redis_client = None
 
 aai.settings.api_key = config.assemblyai.api_key
-
 
 OPENAI_API_KEY = config.openai.api_key
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -75,64 +106,9 @@ assemblyai_streams: Dict[str, Any] = {}
 # AssemblyAI session limits - Production settings
 MAX_ASSEMBLYAI_SESSIONS = 80  # Leave buffer below 100 limit for paid accounts
 ASSEMBLYAI_SOFT_CAP = int(os.getenv("ASSEMBLYAI_SOFT_CAP", "75"))
-
-async def cleanup_stale_assemblyai_sessions():
-    """Clean up stale AssemblyAI sessions that may not have been properly disconnected"""
-    try:
-        stale_sessions = []
-        current_time = time.time()
-        
-        for sid, session in assemblyai_streams.items():
-            if session is None:
-                stale_sessions.append(sid)
-                continue
-                
-            # Check if session is disconnected but still in dict
-            if hasattr(session, 'connected') and not session.connected:
-                stale_sessions.append(sid)
-                continue
-                
-            # Check if session has been inactive for too long (2 minutes for production)
-            if hasattr(session, 'last_activity'):
-                if current_time - session.last_activity > 120:  # 2 minutes
-                    stale_sessions.append(sid)
-        
-        # Remove stale sessions
-        for sid in stale_sessions:
-            logger.info(f"[ASSEMBLYAI][CLEANUP] Removing stale session for sid={sid}")
-            session = assemblyai_streams.pop(sid, None)
-            if session and hasattr(session, 'disconnect'):
-                try:
-                    await session.disconnect()
-                except Exception as e:
-                    logger.warn(f"[ASSEMBLYAI][CLEANUP] Error disconnecting stale session {sid}: {e}")
-                    
-        if stale_sessions:
-            logger.info(f"[ASSEMBLYAI][CLEANUP] Cleaned up {len(stale_sessions)} stale sessions. Active sessions: {len(assemblyai_streams)}")
-            
-    except Exception as e:
-        logger.error(f"[ASSEMBLYAI][CLEANUP] Error during cleanup: {e}")
-whisper_buffers: Dict[str, bytearray] = {}
-google_streams: Dict[str, Any] = {}  # V1 sessions (legacy)
-google_streams_v2: Dict[str, Any] = {}  # V2 sessions (latest)
-gemini_streams: Dict[str, Any] = {}
-fw_buffers: Dict[str, bytearray] = {}
-
-# Periodic cleanup task for production
-async def periodic_assemblyai_cleanup():
-    """Run periodic cleanup every 30 seconds"""
-    while True:
-        try:
-            await asyncio.sleep(30)  # Run every 30 seconds
-            await cleanup_stale_assemblyai_sessions()
-            
-            # Log current session count
-            active_count = len([s for s in assemblyai_streams.values() if s is not None])
-            if active_count > 50:  # Log warning when getting close to limit
-                logger.warn(f"[ASSEMBLYAI][MONITOR] High session count: {active_count}/{MAX_ASSEMBLYAI_SESSIONS}")
-                
-        except Exception as e:
-            logger.error(f"[ASSEMBLYAI][PERIODIC] Error in periodic cleanup: {e}")
+# Configuration flag for Google STT version
+# Set to True to use old V1 implementation, False for new V2 (recommended)
+USE_GOOGLE_STT_V1 = os.getenv("USE_GOOGLE_STT_V1", "false").lower() == "true"
 
 # Start periodic cleanup task when first audio endpoint is called
 cleanup_task_started = False
@@ -140,70 +116,552 @@ fw_model: Any = None
 gemini_last_ts: Dict[str, float] = {}
 audio_wav_storage: Dict[str, bytes] = {}
 
-# Message queue for disconnected clients
+# Message queue for disconnected clients (legacy SID-based)
 disconnected_message_queue: Dict[str, list] = {}
 
-def queue_message_for_client(sid: str, event: str, data: any):
-    """Queue a message for a disconnected client"""
-    if sid not in disconnected_message_queue:
-        disconnected_message_queue[sid] = []
+# Enhanced SID mapping storage using user_id
+USER_ID_TO_SID: Dict[str, str] = {}  # user_id -> current_sid
+SID_TO_USER_ID: Dict[str, str] = {}  # sid -> user_id
+
+# Enhanced message queue with user_id as key
+user_message_queue: Dict[str, list] = {}
+
+whisper_buffers: Dict[str, bytearray] = {}
+google_streams: Dict[str, Any] = {}  # V1 sessions (legacy)
+google_streams_v2: Dict[str, Any] = {}  # V2 sessions (latest)
+gemini_streams: Dict[str, Any] = {}
+fw_buffers: Dict[str, bytearray] = {}
+
+# Track active SIDs per user and globally for robust emits
+ACTIVE_SIDS: Set[str] = set()
+USER_ID_ACTIVE_SIDS: Dict[str, Set[str]] = {}
+
+# Track number of SID changes per user (for observability)
+USER_ID_SID_CHANGE_COUNT: Dict[str, int] = {}
+
+
+# -------------------------- Debug Functions -------------------------- #
+
+def debug_show_mappings():
+    """Debug function to show current SID mappings"""
+    logger.info(f"[DEBUG][MAPPINGS] Current USER_ID_TO_SID: {USER_ID_TO_SID}")
+    logger.info(f"[DEBUG][MAPPINGS] Current SID_TO_USER_ID: {SID_TO_USER_ID}")
+    logger.info(f"[DEBUG][MAPPINGS] Current user_message_queue keys: {list(user_message_queue.keys())}")
+    logger.info(f"[DEBUG][MAPPINGS] Current disconnected_message_queue keys: {list(disconnected_message_queue.keys())}")
+    logger.info(f"[DEBUG][MAPPINGS] Current sio.manager.rooms: {list(sio.manager.rooms.keys())}")
+    logger.info(f"[DEBUG][MAPPINGS] Current USER_ID_SID_CHANGE_COUNT: {USER_ID_SID_CHANGE_COUNT}")
     
-    disconnected_message_queue[sid].append({
-        "event": event,
-        "data": data,
-        "timestamp": time.time()
-    })
-    logger.info(f"[QUEUE] Queued {event} for disconnected client {sid} (queue size: {len(disconnected_message_queue[sid])})")
+    # Show Redis status if available
+    if redis_client:
+        try:
+            # Show SID mappings in Redis
+            user_sid_keys = redis_client.keys("user_sid:*")
+            sid_user_keys = redis_client.keys("sid_user:*")
+            logger.info(f"[DEBUG][MAPPINGS] Redis user_sid keys: {user_sid_keys}")
+            logger.info(f"[DEBUG][MAPPINGS] Redis sid_user keys: {sid_user_keys}")
+            
+            # Show queued messages in Redis
+            redis_keys = redis_client.keys("queued_messages:*")
+            logger.info(f"[DEBUG][MAPPINGS] Redis queued_messages keys: {redis_keys}")
+        except Exception as e:
+            logger.warn(f"[DEBUG][MAPPINGS] Failed to get Redis keys: {e}")
+    else:
+        logger.info(f"[DEBUG][MAPPINGS] Redis client not available")
 
-async def safe_emit_or_queue(sid: str, event: str, data: any):
-    """Safely emit a message or queue it if client is disconnected"""
+# -------------------------- SID Mapping Utilities -------------------------- #
+
+def load_sid_mappings_from_redis():
+    """Load existing SID mappings from Redis on startup"""
+    if not redis_client:
+        logger.info("[SID_MAPPING] Redis not available, skipping mapping load")
+        return
+    
     try:
-        logger.info(f"[SOCKET EMIT] Attempting to send {event} to sid={sid}")
-        await sio.emit(event, data, room=sid)
-        logger.info(f"[SOCKET EMIT] {event} sent successfully to sid={sid}")
+        logger.info("[SID_MAPPING] Loading existing mappings from Redis...")
+        
+        # Get all user_sid keys
+        user_sid_keys = redis_client.keys("user_sid:*")
+        logger.info(f"[SID_MAPPING] Found {len(user_sid_keys)} user_sid keys in Redis")
+        
+        loaded_count = 0
+        for key in user_sid_keys:
+            try:
+                user_id = key.replace("user_sid:", "")
+                current_sid = redis_client.get(key)
+                
+                if current_sid:
+                    # Load into memory
+                    USER_ID_TO_SID[user_id] = current_sid
+                    SID_TO_USER_ID[current_sid] = user_id
+                    loaded_count += 1
+                    logger.info(f"[SID_MAPPING] Loaded mapping: user_id={user_id} -> sid={current_sid}")
+                else:
+                    # Clean up expired key
+                    redis_client.delete(key)
+                    logger.info(f"[SID_MAPPING] Cleaned up expired key: {key}")
+                    
+            except Exception as e:
+                logger.warn(f"[SID_MAPPING] Failed to load mapping for key {key}: {e}")
+        
+        logger.info(f"[SID_MAPPING] Successfully loaded {loaded_count} mappings from Redis")
+        logger.info(f"[SID_MAPPING] Current memory mappings: USER_ID_TO_SID={USER_ID_TO_SID}")
+        logger.info(f"[SID_MAPPING] Current memory mappings: SID_TO_USER_ID={SID_TO_USER_ID}")
+        
     except Exception as e:
-        logger.warn(f"[SOCKET EMIT] Failed to send {event} to {sid}: {e}, queuing instead")
-        queue_message_for_client(sid, event, data)
+        logger.error(f"[SID_MAPPING] Failed to load mappings from Redis: {e}")
 
-# Configuration flag for Google STT version
-# Set to True to use old V1 implementation, False for new V2 (recommended)
-USE_GOOGLE_STT_V1 = os.getenv("USE_GOOGLE_STT_V1", "false").lower() == "true"
+# Load mappings on startup
+load_sid_mappings_from_redis()
 
+def get_user_id_from_sid(sid: str) -> Optional[str]:
+    """Get user_id from SID - check Redis first, then memory"""
+    # Check Redis first
+    if redis_client:
+        try:
+            user_id = redis_client.get(f"sid_user:{sid}")
+            if user_id:
+                logger.info(f"[DEBUG][SID_MAPPING] get_user_id_from_sid (Redis): sid={sid} -> user_id={user_id}")
+                return user_id
+        except Exception as e:
+            logger.warn(f"[REDIS] Failed to get user_id from Redis: {e}")
+    
+    # Fallback to memory
+    user_id = SID_TO_USER_ID.get(sid)
+    logger.info(f"[DEBUG][SID_MAPPING] get_user_id_from_sid (Memory): sid={sid} -> user_id={user_id}")
+    return user_id
 
-def _pcm16_mono_16k_to_wav_bytes(pcm_bytes: bytes) -> bytes:
-    # Backward compatibility wrapper
-    return pcm16_mono_16k_to_wav_bytes(pcm_bytes)
+def get_current_sid_for_user(user_id: str) -> Optional[str]:
+    """Get current SID for a user_id - check Redis first, then memory"""
+    # Check Redis first
+    if redis_client:
+        try:
+            current_sid = redis_client.get(f"user_sid:{user_id}")
+            if current_sid:
+                logger.info(f"[DEBUG][SID_MAPPING] get_current_sid_for_user (Redis): user_id={user_id} -> current_sid={current_sid}")
+                return current_sid
+        except Exception as e:
+            logger.warn(f"[REDIS] Failed to get SID from Redis: {e}")
+    
+    # Fallback to memory
+    current_sid = USER_ID_TO_SID.get(user_id)
+    logger.info(f"[DEBUG][SID_MAPPING] get_current_sid_for_user (Memory): user_id={user_id} -> current_sid={current_sid}")
+    return current_sid
 
-def _is_silent_pcm16(pcm_bytes: bytes, rms_threshold: int = WHISPER_RMS_THRESHOLD) -> bool:
-    # Backward compatibility wrapper
-    return is_silent_pcm16(pcm_bytes, rms_threshold)
+def update_sid_mapping(user_id: str, sid: str):
+    """Update SID mapping when user connects - store in Redis and memory"""
+    logger.info(f"[DEBUG][SID_MAPPING] update_sid_mapping: user_id={user_id}, sid={sid}")
+    logger.info(f"[DEBUG][SID_MAPPING] Before update - USER_ID_TO_SID: {USER_ID_TO_SID}")
+    logger.info(f"[DEBUG][SID_MAPPING] Before update - SID_TO_USER_ID: {SID_TO_USER_ID}")
+    
+    # Remove old SID mapping if exists
+    old_sid = USER_ID_TO_SID.get(user_id)
+    if old_sid and old_sid != sid:
+        SID_TO_USER_ID.pop(old_sid, None)
+        logger.info(f"[DEBUG][SID_MAPPING] Removed old SID {old_sid} for user {user_id}")
+        
+        # Also remove old SID from active tracking
+        try:
+            if user_id in USER_ID_ACTIVE_SIDS and old_sid in USER_ID_ACTIVE_SIDS[user_id]:
+                USER_ID_ACTIVE_SIDS[user_id].discard(old_sid)
+                logger.info(f"[DEBUG][SID_MAPPING] Removed old SID {old_sid} from active tracking for user {user_id}")
+                if not USER_ID_ACTIVE_SIDS[user_id]:
+                    USER_ID_ACTIVE_SIDS.pop(user_id, None)
+                    logger.info(f"[DEBUG][SID_MAPPING] No more active SIDs for user {user_id}")
+        except Exception as e:
+            logger.warn(f"[DEBUG][SID_MAPPING] Error cleaning up active tracking for user {user_id}: {e}")
+        
+        # Increment change counter (memory)
+        USER_ID_SID_CHANGE_COUNT[user_id] = USER_ID_SID_CHANGE_COUNT.get(user_id, 0) + 1
+        logger.info(f"[DEBUG][SID_MAPPING] SID change count for user {user_id}: {USER_ID_SID_CHANGE_COUNT[user_id]}")
+        # Increment change counter (Redis)
+        if redis_client:
+            try:
+                redis_client.incr(f"sid_changes:{user_id}")
+            except Exception:
+                pass
+        
+        # Also remove from Redis
+        if redis_client:
+            try:
+                redis_client.delete(f"sid_user:{old_sid}")
+                logger.info(f"[DEBUG][SID_MAPPING] Removed old SID {old_sid} from Redis")
+            except Exception as e:
+                logger.warn(f"[REDIS] Failed to remove old SID from Redis: {e}")
+    
+    # Store in Redis first (primary storage)
+    if redis_client:
+        try:
+            redis_client.set(f"user_sid:{user_id}", sid, ex=3600)  # 1 hour TTL
+            redis_client.set(f"sid_user:{sid}", user_id, ex=3600)  # 1 hour TTL
+            logger.info(f"[DEBUG][SID_MAPPING] Stored mapping in Redis: user_id={user_id} -> sid={sid}")
+        except Exception as e:
+            logger.warn(f"[REDIS] Failed to store SID mapping in Redis: {e}")
+    
+    # Also store in memory for fast access
+    USER_ID_TO_SID[user_id] = sid
+    SID_TO_USER_ID[sid] = user_id
+    
+    logger.info(f"[DEBUG][SID_MAPPING] After update - USER_ID_TO_SID: {USER_ID_TO_SID}")
+    logger.info(f"[DEBUG][SID_MAPPING] After update - SID_TO_USER_ID: {SID_TO_USER_ID}")
+    logger.info(f"[SID_MAPPING] Mapped user {user_id} -> SID {sid}")
+
+def queue_message_for_user(user_id: str, event: str, data: any):
+    """Queue message using user_id instead of SID"""
+    try:
+        logger.info(f"[DEBUG][QUEUE] queue_message_for_user: user_id={user_id}, event={event}")
+        logger.info(f"[DEBUG][QUEUE] Current user_message_queue keys: {list(user_message_queue.keys())}")
+        
+        # Validate inputs
+        if not user_id or not isinstance(user_id, str):
+            logger.error(f"[ERROR][QUEUE] Invalid user_id: {user_id} (type: {type(user_id)})")
+            return
+            
+        if not event or not isinstance(event, str):
+            logger.error(f"[ERROR][QUEUE] Invalid event: {event} (type: {type(event)})")
+            return
+        
+        if user_id not in user_message_queue:
+            user_message_queue[user_id] = []
+        
+        message = {
+            "event": event,
+            "data": data,
+            "timestamp": time.time()
+        }
+        
+        user_message_queue[user_id].append(message)
+        
+        logger.info(f"[DEBUG][QUEUE] Added message to queue. Queue size for {user_id}: {len(user_message_queue[user_id])}")
+        
+        # Store in Redis for persistence
+        if redis_client:
+            try:
+                redis_key = f"queued_messages:{user_id}"
+                redis_client.lpush(redis_key, json.dumps(message))
+                redis_client.expire(redis_key, 3600)  # 1 hour TTL
+                logger.info(f"[DEBUG][REDIS] Stored message in Redis with key: {redis_key}")
+            except Exception as e:
+                logger.warn(f"[REDIS] Failed to store queued message: {e}")
+        else:
+            logger.info(f"[DEBUG][REDIS] Redis client not available, message stored in memory only")
+        
+        logger.info(f"[QUEUE] Queued {event} for user {user_id} (queue size: {len(user_message_queue[user_id])})")
+        
+    except Exception as e:
+        logger.error(f"[ERROR][QUEUE] Failed to queue message for user {user_id}: {e}")
+        logger.error(f"[ERROR][QUEUE] Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"[ERROR][QUEUE] Full traceback: {traceback.format_exc()}")
+
+async def safe_emit_or_queue_by_user_id(user_id: str, event: str, data: any):
+    """Send to user with SID validation - only emit to actually active SIDs"""
+    try:
+        logger.info(f"[DEBUG][EMIT] safe_emit_or_queue_by_user_id: user_id={user_id}, event={event}")
+
+        # Validate inputs
+        if not user_id or not isinstance(user_id, str):
+            logger.error(f"[ERROR][EMIT] Invalid user_id: {user_id} (type: {type(user_id)})")
+            return
+            
+        if not event or not isinstance(event, str):
+            logger.error(f"[ERROR][EMIT] Invalid event: {event} (type: {type(event)})")
+            return
+
+        # Get active SIDs for this user (copy to avoid modification during iteration)
+        active_sids = USER_ID_ACTIVE_SIDS.get(user_id, set()).copy()
+        
+        if not active_sids:
+            logger.info(f"[DEBUG][EMIT] No active SIDs for user {user_id}, queuing message")
+            await queue_message_for_user(user_id, event, data)
+            return
+
+        # Track if any SID was successfully used
+        message_sent = False
+        
+        for sid in active_sids:
+            try:
+                # Check if SID is still active in Socket.IO's internal tracking
+                if sid in sio.manager.rooms.get('/', {}):
+                    await sio.emit(event, data, room=sid)
+                    logger.info(f"[SOCKET EMIT] {event} sent to active SID {sid} for user {user_id}")
+                    message_sent = True
+                else:
+                    # SID is dead, remove from our tracking
+                    USER_ID_ACTIVE_SIDS[user_id].discard(sid)
+                    logger.info(f"[CLEANUP] Removed dead SID {sid} from user {user_id}")
+            except Exception as e:
+                # SID is dead, remove from our tracking
+                USER_ID_ACTIVE_SIDS[user_id].discard(sid)
+                logger.error(f"[CLEANUP] Removed dead SID {sid} due to error: {e}")
+                logger.error(f"[CLEANUP] Error type: {type(e).__name__}")
+
+        # If no SIDs were successfully used, queue the message
+        if not message_sent:
+            logger.info(f"[DEBUG][EMIT] No active SIDs available for user {user_id}, queuing message")
+            await queue_message_for_user(user_id, event, data)
+            
+    except Exception as e:
+        logger.error(f"[ERROR][EMIT] Failed to emit to user {user_id}: {e}")
+        logger.error(f"[ERROR][EMIT] Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"[ERROR][EMIT] Full traceback: {traceback.format_exc()}")
+        
+        # Try to queue the message as a fallback
+        try:
+            await queue_message_for_user(user_id, event, data)
+        except Exception as queue_error:
+            logger.error(f"[ERROR][EMIT] Failed to queue message as fallback: {queue_error}")
+
+async def deliver_queued_messages_for_user(user_id: str, sid: str):
+    """Deliver queued messages for a user"""
+    logger.info(f"[DEBUG][DELIVERY] deliver_queued_messages_for_user: user_id={user_id}, sid={sid}")
+    queued_messages = []
+    
+    # Get messages from memory
+    logger.info(f"[DEBUG][DELIVERY] Checking memory queue for user {user_id}")
+    logger.info(f"[DEBUG][DELIVERY] Memory queue keys: {list(user_message_queue.keys())}")
+    
+    if user_id in user_message_queue:
+        queued_messages.extend(user_message_queue[user_id])
+        logger.info(f"[DEBUG][DELIVERY] Found {len(user_message_queue[user_id])} messages in memory queue")
+        del user_message_queue[user_id]
+    else:
+        logger.info(f"[DEBUG][DELIVERY] No messages found in memory queue for user {user_id}")
+    
+    # Get messages from Redis
+    if redis_client:
+        try:
+            redis_key = f"queued_messages:{user_id}"
+            logger.info(f"[DEBUG][DELIVERY] Checking Redis with key: {redis_key}")
+            redis_messages = redis_client.lrange(redis_key, 0, -1)
+            logger.info(f"[DEBUG][DELIVERY] Found {len(redis_messages)} messages in Redis")
+            
+            if redis_messages:
+                for msg_json in redis_messages:
+                    try:
+                        msg = json.loads(msg_json)
+                        queued_messages.append(msg)
+                        logger.info(f"[DEBUG][DELIVERY] Parsed Redis message: {msg.get('event', 'unknown_event')}")
+                    except Exception as e:
+                        logger.warn(f"[REDIS] Failed to parse queued message: {e}")
+                
+                # Clear Redis queue
+                redis_client.delete(redis_key)
+                logger.info(f"[DEBUG][DELIVERY] Cleared Redis queue for user {user_id}")
+        except Exception as e:
+            logger.warn(f"[REDIS] Failed to retrieve queued messages: {e}")
+    else:
+        logger.info(f"[DEBUG][DELIVERY] Redis client not available, skipping Redis check")
+    
+    # Deliver messages
+    total_messages = len(queued_messages)
+    logger.info(f"[DEBUG][DELIVERY] Total messages to deliver: {total_messages}")
+    
+    if queued_messages:
+        logger.info(f"[DELIVERY] Delivering {total_messages} queued messages to user {user_id}")
+        
+        for i, msg in enumerate(queued_messages):
+            try:
+                logger.info(f"[DEBUG][DELIVERY] Delivering message {i+1}/{total_messages}: {msg.get('event', 'unknown_event')}")
+                await safe_emit_or_queue(sid, msg["event"], msg["data"])
+                logger.info(f"[DELIVERY] Delivered queued {msg['event']} to user {user_id}")
+            except Exception as e:
+                logger.error(f"[DELIVERY] Failed to deliver message: {e}")
+    else:
+        logger.info(f"[DELIVERY] No queued messages for user {user_id}")
 
 # -------------------------- Google Cloud STT Streaming -------------------------- #
 @sio.event
 async def connect(sid, environ):
     logger.info(f"####### Socket Connected with SID: {sid} #######")
-    # Join the client to a room with its own SID for SID targeting
-    await sio.enter_room(sid, sid)
-    await sio.emit("initial connect", {"message": "socket connection started"}, room=sid)
+    logger.info(f"[DEBUG][CONNECT] Full environ: {environ}")
     
+    # CRITICAL: Check if this is the SID we're expecting
+    if sid == "sA01oGbEBzACUn76AAAL":
+        logger.info(f"🎯 [CRITICAL] FOUND EXPECTED SID: {sid}")
+        logger.info(f"🎯 [CRITICAL] This should deliver queued messages for user 1688")
+    
+    # Track active SID globally
+    try:
+        ACTIVE_SIDS.add(sid)
+        logger.info(f"[DEBUG][CONNECT] Added SID {sid} to ACTIVE_SIDS. Total active: {len(ACTIVE_SIDS)}")
+    except Exception as e:
+        logger.error(f"[DEBUG][CONNECT] Error adding SID to ACTIVE_SIDS: {e}")
+    
+    # Extract user_id from query parameters
     query_string = environ.get('QUERY_STRING', '')
-    logger.info(f"Query string: {query_string}")
+    logger.info(f"[DEBUG][CONNECT] Query string: {query_string}")
     
     asgi_scope = environ.get('asgi.scope', {})
     scope_query = asgi_scope.get('query_string', b'').decode('utf-8')
-    logger.info(f"ASGI scope query string: {scope_query}")
+    logger.info(f"[DEBUG][CONNECT] ASGI scope query string: {scope_query}")
     
     parsed_query = urllib.parse.parse_qs(query_string)
-    run_stage = parsed_query.get('run_stage', [''])[0]
-    logger.info(f"Parsed run_stage: {run_stage}")
-        
-    # Also try the session method
+    user_id = parsed_query.get('user_id', [None])[0]
+    run_stage = parsed_query.get('run_stage', ['dev'])[0]
+    logger.info(f"[DEBUG][CONNECT] Parsed run_stage: {run_stage}")
+    logger.info(f"[DEBUG][CONNECT] Parsed user_id: {user_id}")
+    
+    # Join the client to a room with its own SID for SID targeting (PRESERVE EXISTING)
+    await sio.enter_room(sid, sid)
+    logger.info(f"[DEBUG][CONNECT] Joined SID room: {sid}")
+    
+    # Store run_stage and user_id in session (ENHANCED)
     try:
-        await sio.save_session(sid, {'run_stage': run_stage})
+        session_data = {'run_stage': run_stage}
+        if user_id:
+            session_data['user_id'] = user_id
+        await sio.save_session(sid, session_data)
         session = await sio.get_session(sid)
-        logger.info(f"Session after save: {session}")
+        logger.info(f"[DEBUG][CONNECT] Session after save: {session}")
     except Exception as e:
-        logger.info(f"Session error: {e}")
+        logger.info(f"[DEBUG][CONNECT] Session error: {e}")
+    
+    # Emit after session is saved so that downstream handlers can resolve user_id from session
+    await safe_emit_or_queue(sid, "initial connect", {"message": "socket connection started"})
+    
+    # NEW: Handle user_id mapping if provided
+    if user_id:
+        logger.info(f"[DEBUG][CONNECT] Processing user_id mapping for user: {user_id}")
+        update_sid_mapping(user_id, sid)
+        # Also join a room with user_id for user-based targeting
+        await sio.enter_room(sid, f"user_{user_id}")
+        logger.info(f"[DEBUG][CONNECT] Joined user room: user_{user_id}")
+        # Track active SIDs per user
+        try:
+            if user_id not in USER_ID_ACTIVE_SIDS:
+                USER_ID_ACTIVE_SIDS[user_id] = set()
+            USER_ID_ACTIVE_SIDS[user_id].add(sid)
+            logger.info(f"[DEBUG][CONNECT] Added SID {sid} to USER_ID_ACTIVE_SIDS[{user_id}]. Active SIDs for user: {len(USER_ID_ACTIVE_SIDS[user_id])}")
+        except Exception as e:
+            logger.error(f"[DEBUG][CONNECT] Error adding SID to USER_ID_ACTIVE_SIDS: {e}")
+        # Deliver any queued messages for this user
+        logger.info(f"[DEBUG][CONNECT] About to deliver queued messages for user {user_id}")
+        await deliver_queued_messages_for_user(user_id, sid)
+        logger.info(f"[CONNECT] User {user_id} connected with SID {sid}")
+        
+        # Debug: Show current mappings after connection
+        debug_show_mappings()
+    else:
+        logger.warn(f"[CONNECT] No user_id provided for SID {sid} - using legacy SID-only mode")
+
+@sio.on("initial connect")
+async def connect(sid):
+    logger.info(f"####### Socket Connected with SID: {sid} #######")
+    
+    # Check if there are queued messages for this client (PRESERVE EXISTING)
+    logger.info(f"[DEBUG][INITIAL_CONNECT] Checking legacy SID queue for {sid}")
+    if sid in disconnected_message_queue:
+        queued_messages = disconnected_message_queue[sid]
+        logger.info(f"[DELIVERY] Delivering {len(queued_messages)} queued messages to {sid}")
+        
+        for msg in queued_messages:
+            await safe_emit_or_queue(sid, msg["event"], msg["data"])
+            logger.info(f"[DELIVERY] Delivered queued {msg['event']} to {sid}")
+        
+        # Clear the queue
+        del disconnected_message_queue[sid]
+        logger.info(f"[DELIVERY] Cleared message queue for {sid}")
+    else:
+        logger.info(f"[DELIVERY] No queued messages for {sid}")
+    
+    # NEW: Also check for user_id based queued messages
+    try:
+        session = await sio.get_session(sid)
+        user_id = session.get('user_id')
+        logger.info(f"[DEBUG][INITIAL_CONNECT] Session user_id: {user_id}")
+        if user_id:
+            logger.info(f"[DEBUG][INITIAL_CONNECT] Delivering user_id based messages for {user_id}")
+            await deliver_queued_messages_for_user(user_id, sid)
+        else:
+            logger.info(f"[DEBUG][INITIAL_CONNECT] No user_id in session")
+    except Exception as e:
+        logger.info(f"[DEBUG][INITIAL_CONNECT] Session retrieval error: {e}")
+    
+    await safe_emit_or_queue(sid, "initial connect", {"message": "socket connection started"})
+
+@sio.on("disconnect")
+async def disconnect(sid):
+    logger.info(f"Client disconnected with SID: {sid}")
+    # Mark SID inactive
+    try:
+        ACTIVE_SIDS.discard(sid)
+    except Exception:
+        pass
+    
+    # Get user_id for this SID
+    user_id = get_user_id_from_sid(sid)
+    if user_id:
+        logger.info(f"[DEBUG][DISCONNECT] User {user_id} disconnected from SID {sid}")
+        logger.info(f"[DEBUG][DISCONNECT] Current mappings - USER_ID_TO_SID: {USER_ID_TO_SID}")
+        logger.info(f"[DEBUG][DISCONNECT] Current mappings - SID_TO_USER_ID: {SID_TO_USER_ID}")
+        
+        # Do NOT remove mapping immediately; leave mapping so emits during reconnect window can still resolve user_id
+        if USER_ID_TO_SID.get(user_id) == sid:
+            logger.info(f"[DEBUG][DISCONNECT] Preserving mapping for user {user_id} -> {sid} during reconnect window")
+        else:
+            logger.info(f"[DEBUG][DISCONNECT] SID {sid} not the current mapping for user {user_id}")
+        # Remove from active set for this user
+        try:
+            if user_id in USER_ID_ACTIVE_SIDS and sid in USER_ID_ACTIVE_SIDS[user_id]:
+                USER_ID_ACTIVE_SIDS[user_id].discard(sid)
+                if not USER_ID_ACTIVE_SIDS[user_id]:
+                    USER_ID_ACTIVE_SIDS.pop(user_id, None)
+        except Exception:
+            pass
+    else:
+        logger.info(f"[DEBUG][DISCONNECT] No user_id found for SID {sid}")
+    
+    # PRESERVE ALL EXISTING CLEANUP LOGIC
+    # Clean up any active transcribers for this session
+    existing = transcribers.pop(sid, None)
+    if existing is not None:
+        try:
+            if hasattr(existing, 'close') and callable(getattr(existing, 'close')):
+                existing.close()
+            elif hasattr(existing, 'disconnect') and callable(getattr(existing, 'disconnect')):
+                existing.disconnect()
+            elif hasattr(existing, 'terminate') and callable(getattr(existing, 'terminate')):
+                existing.terminate()
+            logger.info(f"Session closed cleanly on disconnect (sid={sid})")
+        except Exception as e:
+            logger.warn(f"Error while closing session on disconnect (sid={sid}): {e}")
+    
+    # Clean up Google STT V1 sessions (PRESERVE EXISTING)
+    google_v1_session = google_streams.pop(sid, None)
+    if google_v1_session is not None:
+        try:
+            await google_v1_session.stop()
+            logger.info(f"[GOOGLE_V1][DISCONNECT] Session closed for sid={sid}")
+        except Exception as e:
+            logger.warn(f"[GOOGLE_V1][DISCONNECT] Error closing session for sid={sid}: {e}")
+    
+    # Clean up Google STT V2 sessions (PRESERVE EXISTING)
+    google_v2_session = google_streams_v2.pop(sid, None)
+    if google_v2_session is not None:
+        try:
+            await google_v2_session.stop()
+            logger.info(f"[GOOGLE_V2][DISCONNECT] Session closed for sid={sid}")
+        except Exception as e:
+            logger.warn(f"[GOOGLE_V2][DISCONNECT] Error closing session for sid={sid}: {e}")
+    
+    # Clean up AssemblyAI Universal-Streaming sessions (PRESERVE EXISTING)
+    logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Cleaning up AssemblyAI session for sid={sid}")
+    logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Current AssemblyAI sessions: {list(assemblyai_streams.keys())}")
+    
+    assemblyai_session = assemblyai_streams.pop(sid, None)
+    if assemblyai_session is not None:
+        try:
+            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Found session, calling disconnect for sid={sid}")
+            await assemblyai_session.disconnect()
+            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] AssemblyAI session closed cleanly on disconnect (sid={sid})")
+        except Exception as e:
+            logger.warn(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Error while closing AssemblyAI session on disconnect (sid={sid}): {e}")
+            logger.warn(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Error type: {type(e)}")
+    else:
+        logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] No AssemblyAI session found for sid={sid}")
+
+
 
 @sio.on("subscribe_to_processing")
 async def subscribe_to_processing(sid, data):
@@ -220,7 +678,7 @@ async def subscribe_to_processing(sid, data):
     if user_id and (job_id or job_id == "None"):
         room = f"processing_{job_id}_{user_id}"
         await sio.enter_room(sid, room)
-        await sio.emit("processing_confirmed", {
+        await safe_emit_or_queue(sid, "processing_confirmed", {
             "job_id": job_id,
             "user_id": user_id,
             "room": room,
@@ -228,37 +686,9 @@ async def subscribe_to_processing(sid, data):
         }, room=sid)
         logger.info(f"📡 [DEBUG] User {user_id} subscribed to room {room} for job {job_id}")
     else:
-        await sio.emit("processing_error", {
+        await safe_emit_or_queue(sid, "processing_error", {
             "error": f"Missing job_id or user_id for subscription. Got job_id={job_id}, user_id={user_id}"
         }, room=sid)
-    
-@sio.on("initial connect")
-async def connect(sid):
-    logger.info(f"####### Socket Connected with SID: {sid} #######")
-    
-    # Check if there are queued messages for this client
-    if sid in disconnected_message_queue:
-        queued_messages = disconnected_message_queue[sid]
-        logger.info(f"[DELIVERY] Delivering {len(queued_messages)} queued messages to {sid}")
-        
-        for msg in queued_messages:
-            await sio.emit(msg["event"], msg["data"], room=sid)
-            logger.info(f"[DELIVERY] Delivered queued {msg['event']} to {sid}")
-        
-        # Clear the queue
-        del disconnected_message_queue[sid]
-        logger.info(f"[DELIVERY] Cleared message queue for {sid}")
-    else:
-        logger.info(f"[DELIVERY] No queued messages for {sid}")
-    
-    await sio.emit(
-        "initial connect",
-        {"message": "socket connection started"}, 
-        room=sid)
-
-@sio.on("disconnect")
-async def disconnect(sid):
-    logger.info(f"####### Socket Disconnected with SID: {sid} #######")
     
 @sio.on("assemblyai_status")
 async def get_assemblyai_status(sid):
@@ -275,64 +705,12 @@ async def get_assemblyai_status(sid):
             "cleanup_task_running": cleanup_task_started
         }
         
-        await sio.emit("assemblyai_status_response", status, room=sid)
+        await safe_emit_or_queue(sid, "assemblyai_status_response", status)
         logger.info(f"[ASSEMBLYAI][STATUS] {status}")
         
     except Exception as e:
         logger.error(f"[ASSEMBLYAI][STATUS] Error getting status: {e}")
-        await sio.emit("assemblyai_status_error", {"error": str(e)}, room=sid)
-
-@sio.on("disconnect")
-async def disconnect(sid):
-    logger.info(f"Client disconnected with SID: {sid}")
-    
-    # Clean up any active transcribers for this session
-    existing = transcribers.pop(sid, None)
-    if existing is not None:
-        try:
-            if hasattr(existing, 'close') and callable(getattr(existing, 'close')):
-                existing.close()
-            elif hasattr(existing, 'disconnect') and callable(getattr(existing, 'disconnect')):
-                existing.disconnect()
-            elif hasattr(existing, 'terminate') and callable(getattr(existing, 'terminate')):
-                existing.terminate()
-            logger.info(f"Session closed cleanly on disconnect (sid={sid})")
-        except Exception as e:
-            logger.warn(f"Error while closing session on disconnect (sid={sid}): {e}")
-    
-    # Clean up Google STT V1 sessions
-    google_v1_session = google_streams.pop(sid, None)
-    if google_v1_session is not None:
-        try:
-            await google_v1_session.stop()
-            logger.info(f"[GOOGLE_V1][DISCONNECT] Session closed for sid={sid}")
-        except Exception as e:
-            logger.warn(f"[GOOGLE_V1][DISCONNECT] Error closing session for sid={sid}: {e}")
-    
-    # Clean up Google STT V2 sessions
-    google_v2_session = google_streams_v2.pop(sid, None)
-    if google_v2_session is not None:
-        try:
-            await google_v2_session.stop()
-            logger.info(f"[GOOGLE_V2][DISCONNECT] Session closed for sid={sid}")
-        except Exception as e:
-            logger.warn(f"[GOOGLE_V2][DISCONNECT] Error closing session for sid={sid}: {e}")
-    
-    # Clean up AssemblyAI Universal-Streaming sessions
-    logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Cleaning up AssemblyAI session for sid={sid}")
-    logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Current AssemblyAI sessions: {list(assemblyai_streams.keys())}")
-    
-    assemblyai_session = assemblyai_streams.pop(sid, None)
-    if assemblyai_session is not None:
-        try:
-            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Found session, calling disconnect for sid={sid}")
-            await assemblyai_session.disconnect()
-            logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] AssemblyAI session closed cleanly on disconnect (sid={sid})")
-        except Exception as e:
-            logger.warn(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Error while closing AssemblyAI session on disconnect (sid={sid}): {e}")
-            logger.warn(f"[ASSEMBLYAI][DEBUG][DISCONNECT] Error type: {type(e)}")
-    else:
-        logger.info(f"[ASSEMBLYAI][DEBUG][DISCONNECT] No AssemblyAI session found for sid={sid}")
+        await safe_emit_or_queue(sid, "assemblyai_status_error", {"error": str(e)})
 
 
 # -------------------------- Whisper Batch Transcription -------------------------- #
@@ -357,7 +735,7 @@ async def audio_transcribe_whisper(sid, data):
                 text = getattr(result, 'text', None) or (result.get('text') if isinstance(result, dict) else None)
                 logger.info(f"[WHISPER][STOP] sid={sid} transcript_len={len(text or '')}")
                 if text:
-                    await sio.emit("audio transcribe whisper", text, room=sid)
+                    await safe_emit_or_queue(sid, "audio transcribe whisper", text)
             except Exception as e:
                 logger.error(f"[WHISPER] Final flush error: {e}")
         whisper_buffers.pop(sid, None)
@@ -398,7 +776,7 @@ async def audio_transcribe_whisper(sid, data):
             text = getattr(result, 'text', None) or (result.get('text') if isinstance(result, dict) else None)
             logger.info(f"[WHISPER][RECV] sid={sid} transcript_len={len(text or '')}")
             if text:
-                await sio.emit("audio transcribe whisper", text.strip(), room=sid)
+                await safe_emit_or_queue(sid, "audio transcribe whisper", text.strip())
         except Exception as e:
             logger.error(f"[WHISPER] Chunk transcription error: {e}")
 
@@ -477,7 +855,7 @@ class AssemblyAIStreamingSession:
                         if self.main_loop and not self.main_loop.is_closed():
                             
                             asyncio.run_coroutine_threadsafe(
-                                sio.emit("audio transcribe", event.transcript, room=self.sid),
+                                safe_emit_or_queue(self.sid, "audio transcribe", event.transcript),
                                 self.main_loop
                             )
                             logger.info(f"[ASSEMBLYAI][DEBUG][TURN] Final transcript emitted successfully for sid={self.sid}")
@@ -524,10 +902,10 @@ class AssemblyAIStreamingSession:
                 # Emit completion signal when transcription is fully terminated
                 if self.main_loop:
                     asyncio.run_coroutine_threadsafe(
-                        sio.emit("transcription_complete", {
+                        safe_emit_or_queue(self.sid, "transcription_complete", {
                             "status": "completed",
                             "message": "Audio transcription finished"
-                        }, room=self.sid), self.main_loop
+                        }), self.main_loop
                     )
                     logger.info(f"[ASSEMBLYAI][DEBUG][TERMINATED] transcription_complete emitted successfully for sid={self.sid}")
                 else:
@@ -926,7 +1304,7 @@ class GoogleStreamingSession:
                         self.last_transcript_was_final = True
                         logger.info(f"[GOOGLE][FINAL] sid={self.sid} text='{transcript}'")
                         asyncio.run_coroutine_threadsafe(
-                            sio.emit("audio transcribe google", transcript, room=self.sid),
+                            safe_emit_or_queue(self.sid, "audio transcribe google", transcript),
                             loop,
                         )
                     else:
@@ -999,10 +1377,10 @@ async def _audio_transcribe_google_v1(sid: str, audioblob, data=None):
             try:
                 await session.stop()
                 # Emit transcription completion signal
-                await sio.emit("google_transcription_complete", {
+                await safe_emit_or_queue(sid, "google_transcription_complete", {
                     "status": "completed",
                     "message": "Google STT transcription finished"
-                }, room=sid)
+                })
                 logger.info(f"[GOOGLE_V1][COMPLETE] transcription_complete emitted for sid={sid}")
             except Exception as e:
                 logger.error(f"[GOOGLE_V1] stop error sid={sid}: {e}")
@@ -1085,10 +1463,10 @@ async def _audio_transcribe_google_v2(sid: str, audioblob, data=None):
             try:
                 await session.stop()
                 # Emit transcription completion signal
-                await sio.emit("google_transcription_complete", {
+                await safe_emit_or_queue(sid, "google_transcription_complete", {
                     "status": "completed",
                     "message": "Google STT transcription finished"
-                }, room=sid)
+                })
                 logger.info(f"[GOOGLE_V2][COMPLETE] transcription_complete emitted for sid={sid}")
             except Exception as e:
                 logger.error(f"[GOOGLE_V2] stop error sid={sid}: {e}")
@@ -1172,7 +1550,7 @@ async def _audio_transcribe_google_v2(sid: str, audioblob, data=None):
                         "restart_epoch": result.get("restart_epoch"),
                         "result_seq": result.get("result_seq"),
                     }
-                    await sio.emit("audio transcribe google", payload, room=sid)
+                    await safe_emit_or_queue(sid, "audio transcribe google", payload)
                     transcript_state["last_final"] = text
                     transcript_state["last_interim"] = ""  # Clear interim
                     transcript_state["utterance_buffer"] = ""  # Clear buffer
@@ -1201,14 +1579,14 @@ async def _audio_transcribe_google_v2(sid: str, audioblob, data=None):
                         # Emit if: new words added OR text is substantially different
                         if new_words or len(text) > len(last) + 2:
                             # Keep interim as string for lightweight, backward-compatible updates
-                            await sio.emit("audio transcribe google", text, room=sid)
+                            await safe_emit_or_queue(sid, "audio transcribe google", text)
                             transcript_state["last_interim"] = text
                             logger.info(f"[GOOGLE_V2][TRANSCRIPT][INTERIM] sid={sid}, new_words={len(new_words)}, text='{text[:30]}...'")
         
         async def on_error(error: Exception):
             """Callback for errors"""
             logger.error(f"[GOOGLE_V2][ERROR] sid={sid}: {error}")
-            await sio.emit("transcription_error", {"error": str(error), "version": "v2"}, room=sid)
+            await safe_emit_or_queue(sid, "transcription_error", {"error": str(error), "version": "v2"})
         
         async def on_speech_event(event_type: str, event: dict):
             """Callback for speech events (VAD)"""
@@ -1218,15 +1596,15 @@ async def _audio_transcribe_google_v2(sid: str, audioblob, data=None):
             if event_type == "END_OF_SINGLE_UTTERANCE":
                 if config.emit_on_utterance_end and transcript_state["utterance_buffer"]:
                     logger.info(f"[GOOGLE_V2][EVENT][UTTERANCE_END] Emitting: '{transcript_state['utterance_buffer'][:50]}...'")
-                    await sio.emit("audio transcribe google", {
+                    await safe_emit_or_queue(sid, "audio transcribe google", {
                         "text": transcript_state["utterance_buffer"],
                         "is_final": False,
                         "is_utterance_end": True,
                         "language": "en-US"
-                    }, room=sid)
+                    })
                     transcript_state["utterance_buffer"] = ""
             
-            await sio.emit("speech_event", {"type": event_type, "sid": sid}, room=sid)
+            await safe_emit_or_queue(sid, "speech_event", {"type": event_type, "sid": sid})
         
         # Create config
         config = GoogleSTTV2Config.from_env()
@@ -1271,27 +1649,41 @@ async def audio_end_point(sid, data):
         logger.info(f"Run stage retrieved: {run_stage}")
         
     
-    # Get session ID early for deduplication
-    sessionId = None
-    try:
-        if isinstance(data.get('user_session'), dict) and 'id' in data['user_session']:
-            sessionId = data['user_session']['id']
-            logger.info(f"[AUDIO_CHAT] Processing interview chat for session ID: {sessionId}")
-        else:
-            error_msg = "Invalid user_session format: missing ID"
-            logger.error(error_msg)
-            # Safely emit or queue the message
-            await safe_emit_or_queue(sid, "error", {"error": error_msg})
-            return
-    except Exception as session_id_error:
-        logger.error(f"Error extracting session ID: {str(session_id_error)}")
-        # Safely emit or queue the message
-        await safe_emit_or_queue(sid, "error", {"error": "Failed to identify session"})
+    # Normalize and extract user_session.id from flexible inputs
+    # Accept dict, JSON string, list/tuple candidates; also accept 'session_id' alias
+    import json as _json
+    def _extract_session_id(payload):
+        if not isinstance(payload, dict):
+            return None
+        user_session = payload.get('user_session')
+        # If user_session is a JSON string, try to parse
+        if isinstance(user_session, str):
+            try:
+                user_session = _json.loads(user_session)
+            except Exception:
+                user_session = None
+        # If user_session is a list/tuple, select first dict with an id
+        if isinstance(user_session, (list, tuple)):
+            for item in user_session:
+                if isinstance(item, dict) and (item.get('id') or item.get('session_id')):
+                    return item.get('id') or item.get('session_id')
+            return None
+        # If dict, check common keys
+        if isinstance(user_session, dict):
+            return user_session.get('id') or user_session.get('session_id')
+        return None
+
+    sessionId = _extract_session_id(data)
+    if not sessionId:
+        error_msg = "Invalid user_session: missing id/session_id"
+        logger.warn(error_msg)
+        await safe_emit_or_queue(sid, "error", {"error": error_msg})
         return
+    logger.info(f"[AUDIO_CHAT] Processing interview chat for session ID: {sessionId}")
     
     try:
         chat_count = 1  
-        sessionId = data['user_session']['id']
+        # sessionId already extracted above
         realtime_evaluation = "null"
         accumulated_message = ""
         full_accumulated_message = ""
@@ -1300,24 +1692,6 @@ async def audio_end_point(sid, data):
         total_questions = 0
         template = data.get('template', False)
 
-         # Get session ID with error handling
-        try:
-            if isinstance(data.get('user_session'), dict) and 'id' in data['user_session']:
-                sessionId = data['user_session']['id']
-                logger.info(f"Processing interview chat for session ID: {sessionId}")
-            else:
-                error_msg = "Invalid user_session format: missing ID"
-                logger.error(error_msg)
-                # Safely emit or queue the message
-                logger.info(f"[SOCKET EMIT] Sending error to sid={sid}: {error_msg}")
-                await safe_emit_or_queue(sid, "error", {"error": error_msg})
-                return
-        except Exception as session_id_error:
-            logger.error(f"Error extracting session ID: {str(session_id_error)}")
-            # Safely emit or queue the message
-            logger.info(f"[SOCKET EMIT] Sending error to sid={sid}: Failed to identify session")
-            await safe_emit_or_queue(sid, "error", {"error": "Failed to identify session"})
-            return
         
         #-----------------------------------------------------------------------------------#
         try:
@@ -1475,14 +1849,12 @@ async def audio_end_point(sid, data):
             if not response:
                 logger.error("Failed to generate interview question: empty response")
                 # Safely emit or queue the message
-                logger.info(f"[SOCKET EMIT] Sending error to sid={sid}: Failed to generate next question")
                 await safe_emit_or_queue(sid, "error", {"error": "Failed to generate next question"})
                 return
             
         except Exception as generate_error:
             logger.error(f"Error generating interview question: {str(generate_error)}")
             # Safely emit or queue the message
-            logger.info(f"[SOCKET EMIT] Sending error to sid={sid}: Question generation failed")
             await safe_emit_or_queue(sid, "error", {"error": f"Question generation failed: {str(generate_error)}"})
             return
              
@@ -1505,7 +1877,6 @@ async def audio_end_point(sid, data):
                     ]
             
             # Safely emit or queue the message
-            logger.info(f"[SOCKET EMIT] Sending initial audio chat sentence to sid={sid}: {message}")
             await safe_emit_or_queue(sid, "audio chat sentence", message)
             
             tasks = []
@@ -1615,11 +1986,18 @@ async def audio_end_point(sid, data):
             # Perform real-time response evaluation if applicable
             if data['response'] is not [None, ""]:
                 type = 'job_interview_config'
+                # Determine if this is the last response (interview is over)
+                # chat_count represents number of questions asked, so when chat_count >= total_questions,
+                # the response we're evaluating is the answer to the last question
+                is_last_response = False
+                logger.info(f"🔍 [DEBUG] Audio chat - chat_count: {chat_count}, total_questions: {total_questions}, is_last_response: {is_last_response}")
+                
                 realtime_evaluation_response_json = util.realtime_response_evaluation(
                                 run_stage, 
                                 data, 
                                 sessionId, 
-                                type)
+                                type,
+                                is_last_response=is_last_response)
                 realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
                 logger.success(f"Realtime evaluation is: {realtime_evaluation}")
             
@@ -1630,14 +2008,14 @@ async def audio_end_point(sid, data):
                     }
                 }]
                 status = "start"
-                await sio.emit("realtime_status", status, room=sid)  
+                await safe_emit_or_queue(sid, "realtime_status", status)
                 # Check if client is still connected before emitting
                 # Safely emit or queue the message
                 logger.info(f"[SOCKET EMIT] Sending audio_realtime to sid={sid}: {realtime_evaluation}")
                 logger.info(f"[DEBUG] audio_realtime payload: {message}")
                 await safe_emit_or_queue(sid, "audio_realtime", message)
                 status = "end"
-                await sio.emit("realtime_status", status, room=sid)  
+                await safe_emit_or_queue(sid, "realtime_status", status)
              
        
         # Insert the message or conclude the interview if the chat count exceeds the limit
@@ -1680,52 +2058,68 @@ async def audio_end_point(sid, data):
             logger.info(f"🔍 [DEBUG] Active SIDs after 'interview done': {list(sio.manager.rooms.keys())}")
 
             final = 'true'
-            if response.get("status") is not None:
-                try:
-                    message = [{
-                            "user_type": "assistant",
-                            "content_type": "question",
-                            "content": {
-                                "time_taken": "null",
-                                "time_limit": "null",                        
-                                "chunk_response": '',
-                                "full_response": accumulated_message,
-                                "final": "true",
-                                "realtime_evaluation": response.get("realtime", "null")
-                            }
-                        }]
-                    
-                    # 🔍 DEBUG: Before sending last_audio_realtime_evaluation
-                    logger.info(f"🔍 [DEBUG] === ABOUT TO SEND last_audio_realtime_evaluation ===")
-                    logger.info(f"🔍 [DEBUG] SID: {sid}")
-                    logger.info(f"🔍 [DEBUG] SID exists in rooms: {sid in sio.manager.rooms}")
-                    logger.info(f"🔍 [DEBUG] All active SIDs: {list(sio.manager.rooms.keys())}")
-                    logger.info(f"🔍 [DEBUG] Realtime evaluation: {response.get('realtime', 'null')}")
-                    
-                    # Add small delay to ensure client is still connected
-                    await asyncio.sleep(0.1)
-                    # Safely emit or queue the message
-                    logger.info(f"[DEBUG] last_audio_realtime_evaluation payload: {message}")
-                    await safe_emit_or_queue(sid, "last_audio_realtime_evaluation", message)
-                    
-                    # 🔍 DEBUG: After sending last_audio_realtime_evaluation
-                    logger.info(f"🔍 [DEBUG] === last_audio_realtime_evaluation SENT SUCCESSFULLY ===")
-                    logger.info(f"🔍 [DEBUG] SID: {sid}")
-                    logger.info(f"🔍 [DEBUG] SID still exists: {sid in sio.manager.rooms}")
+            # Always send last_audio_realtime_evaluation regardless of status
+            try:
+                message = [{
+                        "user_type": "assistant",
+                        "content_type": "question",
+                        "content": {
+                            "time_taken": "null",
+                            "time_limit": "null",                        
+                            "chunk_response": '',
+                            "full_response": accumulated_message,
+                            "final": "true",
+                            "realtime_evaluation": response.get("realtime", "null")
+                        }
+                    }]
+                
+                # 🔍 DEBUG: Before sending last_audio_realtime_evaluation
+                logger.info(f"🔍 [DEBUG] === ABOUT TO SEND last_audio_realtime_evaluation ===")
+                logger.info(f"🔍 [DEBUG] SID: {sid}")
+                logger.info(f"🔍 [DEBUG] SID exists in rooms: {sid in sio.manager.rooms}")
+                logger.info(f"🔍 [DEBUG] All active SIDs: {list(sio.manager.rooms.keys())}")
+                logger.info(f"🔍 [DEBUG] Realtime evaluation: {response.get('realtime', 'null')}")
+                
+                # Add small delay to ensure client is still connected
+                await asyncio.sleep(0.1)
+                # Safely emit or queue the message
+                logger.info(f"[DEBUG] last_audio_realtime_evaluation payload: {message}")
+                await safe_emit_or_queue(sid, "last_audio_realtime_evaluation", message)
+                
+                # 🔍 DEBUG: After sending last_audio_realtime_evaluation
+                logger.info(f"🔍 [DEBUG] === last_audio_realtime_evaluation SENT SUCCESSFULLY ===")
+                logger.info(f"🔍 [DEBUG] SID: {sid}")
+                logger.info(f"🔍 [DEBUG] SID still exists: {sid in sio.manager.rooms}")
 
-                except Exception as final_emit_error:
-                    logger.error(f"❌ [ERROR] Failed to emit final evaluation: {str(final_emit_error)}")
-                    logger.error(f"❌ [ERROR] SID at error time: {sid}")
-                    logger.error(f"❌ [ERROR] SID exists at error time: {sid in sio.manager.rooms}")
-            else:
-                logger.info(f"🔍 [DEBUG] No response status found, skipping last_audio_realtime_evaluation")
+            except Exception as final_emit_error:
+                logger.error(f"❌ [ERROR] Failed to emit final evaluation: {str(final_emit_error)}")
+                logger.error(f"❌ [ERROR] SID at error time: {sid}")
+                logger.error(f"❌ [ERROR] SID exists at error time: {sid in sio.manager.rooms}")
             
             # 🔍 DEBUG: Interview completion flow ends
             logger.info(f"🔍 [DEBUG] === INTERVIEW COMPLETION FLOW COMPLETED ===")
             # strapi.step3_insert_message(data, realtime_evaluation, final)
    
     except Exception as e:
-        logger.error(f'Error: {str(e)}')  
+        logger.error(f'❌ [ERROR] Audio endpoint error: {str(e)}')
+        logger.error(f'❌ [ERROR] Error type: {type(e).__name__}')
+        logger.error(f'❌ [ERROR] SID: {sid}')
+        logger.error(f'❌ [ERROR] SID exists: {sid in sio.manager.rooms if sid else "N/A"}')
+        
+        # Try to send error notification to client if possible
+        try:
+            if sid and sid in sio.manager.rooms:
+                await safe_emit_or_queue(sid, "error", {
+                    "message": "An error occurred while processing your request",
+                    "error_type": type(e).__name__,
+                    "timestamp": datetime.now().isoformat()
+                })
+        except Exception as emit_error:
+            logger.error(f'❌ [ERROR] Failed to emit error notification: {str(emit_error)}')
+        
+        # Log the full traceback for debugging
+        import traceback
+        logger.error(f'❌ [ERROR] Full traceback: {traceback.format_exc()}')
         
 
 
@@ -1746,10 +2140,7 @@ async def interview_endpoint(sid, data):
     """
     try:
         logger.info(f"Received interview request with template_id: {data.get('template_id')}, job: {data.get('job_profile_id', None)}, challenge: {data.get('challenge_id', None)}")
-        print("****************************************************")
-        print(data['metadata'])
-        print("****************************************************")
-
+        
         # Validate input data
         if not isinstance(data, dict):
             error_msg = "Invalid data format: expected a dictionary"
@@ -1900,6 +2291,7 @@ async def interview_endpoint(sid, data):
                 try:
                     chat_total = session_chathistory.get('total', [])
                     assistant_count = sum(1 for entry in chat_total if entry.get("user_type") == "assistant")
+                    
                     chat_count += assistant_count
                 except Exception as count_error:
                     logger.error(f"Error counting assistant messages: {str(count_error)}")
@@ -1942,6 +2334,7 @@ async def interview_endpoint(sid, data):
             if not response:
                 logger.error("Failed to generate interview question: empty response")
                 return {"error": "Failed to generate next question"}
+
         except Exception as generate_error:
             logger.error(f"Error generating interview question: {str(generate_error)}")
             return {"error": f"Question generation failed: {str(generate_error)}"}
@@ -1968,7 +2361,6 @@ async def interview_endpoint(sid, data):
                         }
                     ]
                     # Safely emit or queue the message
-                    logger.info(f"[SOCKET EMIT] Sending initial interview chat to sid={sid}: {message}")
                     await safe_emit_or_queue(sid, "interview chat", message)
 
                 except Exception as initial_emit_error:
@@ -2053,11 +2445,22 @@ async def interview_endpoint(sid, data):
                     if data.get('response') not in [None, "", []]:
                         try:
                             eval_type = 'job_interview_config'
+                            # Determine if this is the last response (interview is over)
+                            # chat_count represents number of questions asked, so when chat_count >= total_questions,
+                            # the response we're evaluating is the answer to the last question
+                            is_last_response = False
+                            logger.info(f"🔍 [DEBUG] chat_count: {chat_count}")
+                            logger.info(f"🔍 [DEBUG] total_questions: {total_questions}")
+                            logger.info(f"🔍 [DEBUG] is_last_response: {is_last_response}")
+                            logger.info(f"🔍 [DEBUG] Text chat - chat_count: {chat_count}, total_questions: {total_questions}, is_last_response: {is_last_response}")
+                            
                             realtime_evaluation_response_json = util.realtime_response_evaluation(
                                 run_stage, 
                                 data, 
                                 sessionId, 
-                                eval_type)
+                                eval_type,
+                                is_last_response=is_last_response
+                                )
                             logger.info(f"🔍 [DEBUG] realtime_evaluation_response_json: {realtime_evaluation_response_json}")
                             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
                             logger.info(f"🔍 [DEBUG] Computed realtime_evaluation: {realtime_evaluation}")
@@ -2074,12 +2477,12 @@ async def interview_endpoint(sid, data):
                             }]
 
                             status = "started"
-                            await sio.emit("realtime_status", status, room=sid)  
+                            await safe_emit_or_queue(sid, "realtime_status", status)
                             # Safely emit or queue the message
                             logger.info(f"[SOCKET EMIT] Sending realtime evaluation to sid={sid}: {realtime_evaluation}")
                             await safe_emit_or_queue(sid, "realtime", message)
                             status = "finished"
-                            await sio.emit("realtime_status", status, room=sid)  
+                            await safe_emit_or_queue(sid, "realtime_status", status)
 
                         except Exception as eval_emit_error:
                             logger.error(f"Failed to emit realtime evaluation: {str(eval_emit_error)}")
@@ -2089,6 +2492,7 @@ async def interview_endpoint(sid, data):
 
             else:
                 logger.warn("No interview question generated in the response")
+
         except Exception as response_process_error:
             logger.error(f"Error processing response: {str(response_process_error)}")
             return {"error": f"Error processing response: {str(response_process_error)}"}
@@ -2167,7 +2571,7 @@ def get_socketio_app(fast_app):
 
 async def _emit_transcription_error(sid: str, message: str):
     try:
-        await sio.emit("transcription_error", {"error": message, "provider": "assemblyai"}, room=sid)
+        await safe_emit_or_queue(sid, "transcription_error", {"error": message, "provider": "assemblyai"})
     except Exception as emit_err:
         logger.warn(f"[ASSEMBLYAI][EMIT][ERROR] sid={sid}: {emit_err}")
 
@@ -2223,4 +2627,133 @@ async def _close_assemblyai_session(sid: str, reason: str = ""):
                 await session.disconnect()
         except Exception as e:
             logger.warn(f"[ASSEMBLYAI][CLOSE][ERROR] sid={sid}: {e}")
+
+async def cleanup_stale_assemblyai_sessions():
+    """Clean up stale AssemblyAI sessions that may not have been properly disconnected"""
+    try:
+        stale_sessions = []
+        current_time = time.time()
+        
+        for sid, session in assemblyai_streams.items():
+            if session is None:
+                stale_sessions.append(sid)
+                continue
+                
+            # Check if session is disconnected but still in dict
+            if hasattr(session, 'connected') and not session.connected:
+                stale_sessions.append(sid)
+                continue
+                
+            # Check if session has been inactive for too long (2 minutes for production)
+            if hasattr(session, 'last_activity'):
+                if current_time - session.last_activity > 120:  # 2 minutes
+                    stale_sessions.append(sid)
+        
+        # Remove stale sessions
+        for sid in stale_sessions:
+            logger.info(f"[ASSEMBLYAI][CLEANUP] Removing stale session for sid={sid}")
+            session = assemblyai_streams.pop(sid, None)
+            if session and hasattr(session, 'disconnect'):
+                try:
+                    await session.disconnect()
+                except Exception as e:
+                    logger.warn(f"[ASSEMBLYAI][CLEANUP] Error disconnecting stale session {sid}: {e}")
+                    
+        if stale_sessions:
+            logger.info(f"[ASSEMBLYAI][CLEANUP] Cleaned up {len(stale_sessions)} stale sessions. Active sessions: {len(assemblyai_streams)}")
+            
+    except Exception as e:
+        logger.error(f"[ASSEMBLYAI][CLEANUP] Error during cleanup: {e}")
+
+# Periodic cleanup task for production
+async def periodic_assemblyai_cleanup():
+    """Run periodic cleanup every 30 seconds"""
+    while True:
+        try:
+            await asyncio.sleep(30)  # Run every 30 seconds
+            await cleanup_stale_assemblyai_sessions()
+            
+            # Log current session count
+            active_count = len([s for s in assemblyai_streams.values() if s is not None])
+            if active_count > 50:  # Log warn when getting close to limit
+                logger.warn(f"[ASSEMBLYAI][MONITOR] High session count: {active_count}/{MAX_ASSEMBLYAI_SESSIONS}")
+                
+        except Exception as e:
+            logger.error(f"[ASSEMBLYAI][PERIODIC] Error in periodic cleanup: {e}")
+
+async def safe_emit_or_queue(sid: str, event: str, data: any):
+    """Enhanced function that tries user_id mapping first, falls back to SID"""
+    logger.info(f"[DEBUG][SAFE_EMIT] safe_emit_or_queue called: sid={sid}, event={event}")
+    
+    # Try to get user_id from SID
+    user_id = get_user_id_from_sid(sid)
+    logger.info(f"[DEBUG][SAFE_EMIT] Retrieved user_id: {user_id}")
+    
+    if user_id:
+        # Use user_id based delivery
+        logger.info(f"[DEBUG][SAFE_EMIT] Using user_id based delivery for user: {user_id}")
+        await safe_emit_or_queue_by_user_id(user_id, event, data)
+    else:
+        # Try to find user_id from session data, then emit by user_id
+        try:
+            session = await sio.get_session(sid)
+            if session is None:
+                logger.warn(f"[DEBUG][SAFE_EMIT] Session is None for SID {sid}")
+                return
+                
+            session_user_id = session.get('user_id')
+            logger.info(f"[DEBUG][SAFE_EMIT] Session user_id for SID {sid}: {session_user_id}")
+            if session_user_id:
+                logger.info(f"[DEBUG][SAFE_EMIT] Found user_id in session, creating mapping for: {session_user_id}")
+                update_sid_mapping(session_user_id, sid)
+                logger.info(f"[DEBUG][SAFE_EMIT] Created mapping, using user_id delivery: {session_user_id}")
+                await safe_emit_or_queue_by_user_id(session_user_id, event, data)
+                return
+        except Exception as e:
+            logger.error(f"[DEBUG][SAFE_EMIT] Failed to get session for SID {sid}: {e}")
+            logger.error(f"[DEBUG][SAFE_EMIT] Error type: {type(e).__name__}")
+            # Don't re-raise the exception, just log it and continue
+
+        # No user_id available; skip SID emit per policy and log clearly
+        logger.warn(f"[SAFE_EMIT] Skipping emit of '{event}' for SID {sid}: no user_id available during reconnect window")
+
+# New function for direct user_id usage
+async def emit_to_user(user_id: str, event: str, data: any):
+    """Emit directly to user by user_id"""
+    logger.info(f"[DEBUG][EMIT_TO_USER] emit_to_user called: user_id={user_id}, event={event}")
+    await safe_emit_or_queue_by_user_id(user_id, event, data)
+
+# Enhanced queue_message_for_client to work with both systems
+def queue_message_for_client(sid: str, event: str, data: any):
+    """Enhanced function that queues by user_id if available, otherwise by SID"""
+    logger.info(f"[DEBUG][QUEUE_CLIENT] queue_message_for_client called: sid={sid}, event={event}")
+    
+    user_id = get_user_id_from_sid(sid)
+    logger.info(f"[DEBUG][QUEUE_CLIENT] Retrieved user_id: {user_id}")
+    
+    if user_id:
+        logger.info(f"[DEBUG][QUEUE_CLIENT] Using user_id based queuing for user: {user_id}")
+        queue_message_for_user(user_id, event, data)
+    else:
+        # Fallback to original SID-based queuing (PRESERVE EXISTING)
+        logger.info(f"[DEBUG][QUEUE_CLIENT] No user_id found, using SID fallback for: {sid}")
+        if sid not in disconnected_message_queue:
+            disconnected_message_queue[sid] = []
+        
+        disconnected_message_queue[sid].append({
+            "event": event,
+            "data": data,
+            "timestamp": time.time()
+        })
+        logger.info(f"[QUEUE] Queued {event} for disconnected client {sid} (queue size: {len(disconnected_message_queue[sid])})")
+
+
+def _pcm16_mono_16k_to_wav_bytes(pcm_bytes: bytes) -> bytes:
+    # Backward compatibility wrapper
+    return pcm16_mono_16k_to_wav_bytes(pcm_bytes)
+
+def _is_silent_pcm16(pcm_bytes: bytes, rms_threshold: int = WHISPER_RMS_THRESHOLD) -> bool:
+    # Backward compatibility wrapper
+    return is_silent_pcm16(pcm_bytes, rms_threshold)
+
 

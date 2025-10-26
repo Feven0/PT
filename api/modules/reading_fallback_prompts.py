@@ -126,11 +126,11 @@ def read_prompt_pick_interview_question():
     message = util.file_reader(prompt_path('ipersona/pick_question.txt'))
     return message
 
-def read_prompt_closing_question_realtime_evaluation(last_assistant_response, candidate_response):
+def read_prompt_closing_question_realtime_evaluation(data, last_assistant_response):
     closing_evaluation_prompt = util.file_reader(prompt_path('ipersona/closing_question_realtime_evaluation.txt'))          
     closing_evaluation_context = str(closing_evaluation_prompt)
     closing_realtime_evaluation_msg = closing_evaluation_context\
         .replace("{question}", last_assistant_response)\
-        .replace("{candidate_response}", str(candidate_response))
+        .replace("{candidate_response}", str(data['response'] or ''))
 
     return closing_realtime_evaluation_msg

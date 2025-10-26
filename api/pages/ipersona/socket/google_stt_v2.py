@@ -467,7 +467,7 @@ class GoogleStreamingSTTV2:
                     f"[GOOGLE_STT_V2][STOP][EPOCH_FINALS] sid={self.sid} epoch={curr_epoch} finals='{joined}'"
                 )
             # Emit STOP_SNAPSHOT event to frontend so UI can persist final state
-            if self.on_speech_event:
+            if self.on_speech_event and callable(self.on_speech_event):
                 await self.on_speech_event(
                     "STOP_SNAPSHOT",
                     {
@@ -690,7 +690,7 @@ class GoogleStreamingSTTV2:
                 f"[GOOGLE_STT_V2][STREAM] API error for sid={self.sid}: {status_code or ''} {api_error} "
                 f"elapsed_s={elapsed_s:.3f} since_last_audio_ms={since_audio_ms} since_last_response_ms={since_resp_ms}"
             )
-            if self.on_error:  
+            if self.on_error and callable(self.on_error):  
                 await self.on_error(api_error)
             
             if not self._stop_event.is_set() and self._should_retry_error(api_error):
@@ -699,7 +699,7 @@ class GoogleStreamingSTTV2:
                 
         except (IOError, RuntimeError) as stream_error:
             logger.error(f"[GOOGLE_STT_V2][STREAM] Stream error for sid={self.sid}: {stream_error}")
-            if self.on_error:
+            if self.on_error and callable(self.on_error):
                 await self.on_error(stream_error)
         
         except Exception as unexpected_error:
@@ -708,7 +708,7 @@ class GoogleStreamingSTTV2:
                 f"{type(unexpected_error).__name__}: {unexpected_error}",
                 exc_info=True
             )
-            if self.on_error:
+            if self.on_error and callable(self.on_error):
                 await self.on_error(unexpected_error)
     
     def _should_retry_error(self, error: Exception) -> bool:
@@ -744,7 +744,7 @@ class GoogleStreamingSTTV2:
         if hasattr(response, 'speech_event_type') and response.speech_event_type:
             event_type = response.speech_event_type.name
             logger.info(f"[GOOGLE_STT_V2][EVENT] sid={self.sid}, type={event_type}")
-            if self.on_speech_event:
+            if self.on_speech_event and callable(self.on_speech_event):
                 await self.on_speech_event(event_type, {"response": response})
         
         # Handle recognition results
@@ -849,14 +849,14 @@ class GoogleStreamingSTTV2:
                 )
             
             # Emit transcript
-            if self.on_transcript:
+            if self.on_transcript and callable(self.on_transcript):
                 await self.on_transcript(transcript, result.is_final, result_dict)
     
     async def _restart_stream(self):
         """Restart the stream"""
         # Notify clients that we are about to restart; next epoch is restart_counter + 1
         try:
-            if self.on_speech_event:
+            if self.on_speech_event and callable(self.on_speech_event):
                 # Include snapshot of current epoch so client can persist final text before restarting
                 curr_epoch = self.restart_counter
                 finals_list = self._epoch_finals.get(curr_epoch, []) if hasattr(self, '_epoch_finals') else []

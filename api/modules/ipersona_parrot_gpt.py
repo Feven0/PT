@@ -264,15 +264,18 @@ async def choose_interview_question_new_structure(
             candidate_response = data['response']
 
             if data.get("template_id") and data.get("challenge_id"):
-                print("whyare you doing thesesss====================================================")
-                closing_content = realtime_response_evaluation(run_stage, data, sessionId, type)
+                is_last_response=True
+                closing_content = realtime_response_evaluation(
+                    run_stage, 
+                    data, 
+                    sessionId, 
+                    type, 
+                    is_last_response=is_last_response)
             else: 
-                print("whyare you doing thes NOTTTTe====================================================")
                 closing_content = read_prompt_closing_question_realtime_evaluation(
                     type, 
                     last_assistant_response, 
                     candidate_response)
-
             # Get realtime evaluation
             realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(closing_content)
 
@@ -436,9 +439,14 @@ async def choose_interview_question_challenge_new_structure(
             interview_question_json = None
             realtime_evaluation = None
             status = None
-            
+            is_last_response=True
             # Realtime evaluation response
-            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId, type)
+            realtime_evaluation_response_json = realtime_response_evaluation(
+                run_stage, 
+                data, 
+                sessionId, 
+                type,
+                is_last_response=is_last_response)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
            
             logger.info(f"Realtime evaluation i______s: {realtime_evaluation}")
@@ -553,7 +561,13 @@ async def helper_func(
                 #         run_stage)
    
         else:  
-            realtime_evaluation_response_json = realtime_response_evaluation(run_stage, data, sessionId, type)
+            is_last_response=True
+            realtime_evaluation_response_json = realtime_response_evaluation(
+                run_stage, 
+                data, 
+                sessionId, 
+                type,
+                is_last_response=is_last_response)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
             logger.info(f"Realtime evaluation i______s: {realtime_evaluation}")
             if realtime_evaluation != "null":
@@ -1084,7 +1098,7 @@ def fetch_the_last_question(run_stage, data: dict, sessionId) -> dict:
         logger.error(f"Real time evaluation process failed: {str(e)}")
         return {'error': str(e)} 
     
-def realtime_response_evaluation(run_stage, data: dict, sessionId, type) -> dict:
+def realtime_response_evaluation(run_stage, data: dict, sessionId, type, is_last_response: bool = False) -> dict:
     """
     Evaluates the candidate's response in real-time based on the previous question.
 
@@ -1094,8 +1108,17 @@ def realtime_response_evaluation(run_stage, data: dict, sessionId, type) -> dict
 
     Parameters:
     ----------
+    run_stage : str
+        The run stage environment (dev, prod, etc.)
     data : dict
         A dictionary containing the previous question and the candidate's response.
+    sessionId : str
+        The session ID for the interview.
+    type : str
+        The evaluation type (e.g., 'job_interview_config').
+    is_last_response : bool, optional
+        Indicates if this is the final response evaluation (interview is over).
+        Defaults to False.
 
     Returns:
     -------
@@ -1104,10 +1127,14 @@ def realtime_response_evaluation(run_stage, data: dict, sessionId, type) -> dict
         or an error message if an exception occurs during processing.
     """
     try:
+        # Log if this is the last response evaluation
+        if is_last_response:
+            logger.info(f"🔍 [DEBUG] === FINAL RESPONSE EVALUATION ===")
+            logger.info(f"🔍 [DEBUG] This is the last response evaluation (interview is over)")
         
         last_assistant_response = fetch_the_last_question(run_stage, data, sessionId)  
         logger.info(f"Last assistant response: {last_assistant_response}")
-        msg = read_prompt_realtime_evaluation(type, data, last_assistant_response)
+        msg = read_prompt_realtime_evaluation(type, data, last_assistant_response, is_last_response)
    
         persona = data['user_session']['attributes']['attributes'].get('persona', '')
         content = persona + msg
@@ -5390,7 +5417,7 @@ def read_realtime_evaluation():
         realtime_prompt = file_reader(prompts_path('realtime_evaluation.txt'))
         return realtime_prompt
     
-def read_prompt_realtime_evaluation(type, data, last_assistant_response):
+def read_prompt_realtime_evaluation(type, data, last_assistant_response, is_last_response: bool = False):
     tag = 'parrot_realtime_evaluation'
     content = fetch_config_template(type, tag)
     if content:
@@ -5400,9 +5427,14 @@ def read_prompt_realtime_evaluation(type, data, last_assistant_response):
         return message
     else:
         # Fallback to default realtime evaluation
-        realtime_prompt = fallback.read_prompt_realtime_evaluation(data, last_assistant_response)
+        print("9090=========================testing========================9090", is_last_response)
+        if is_last_response:
+            realtime_prompt = fallback.read_prompt_closing_question_realtime_evaluation(data, last_assistant_response)
+        else:
+            realtime_prompt = fallback.read_prompt_realtime_evaluation(data, last_assistant_response)
         return realtime_prompt
     
+
 def read_prompt_closing_question_realtime_evaluation(type, last_assistant_response, candidate_response):
     tag = 'parrot_closing_question_realtime_evaluation'
     content = fetch_config_template(type, tag)
