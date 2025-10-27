@@ -43,6 +43,13 @@ logger = LLPackerLogger(os.path.basename(__file__))
 
 if not REDIS_AVAILABLE:
     logger.warn("[REDIS] Redis not available - SID mapping will use memory only")
+
+# Helper function to normalize IDs (convert string "null" to actual None)
+def normalize_id(id_value):
+    """Convert string "null" or "None" to Python None for ID fields"""
+    if id_value == "null" or id_value == "None":
+        return None
+    return id_value
 # Google Cloud Speech-to-Text imports
 # V1 (legacy)
 try:
@@ -1687,8 +1694,9 @@ async def audio_end_point(sid, data):
         realtime_evaluation = "null"
         accumulated_message = ""
         full_accumulated_message = ""
-        template_id = data.get('template_id', "null")
-        challenge_id = data.get('challenge_id', "null")
+        template_id = normalize_id(data.get('template_id', "null"))
+        challenge_id = normalize_id(data.get('challenge_id', "null"))
+        job_profile_id = normalize_id(data.get('job_profile_id', "null"))
         total_questions = 0
         template = data.get('template', False)
 
@@ -1697,7 +1705,7 @@ async def audio_end_point(sid, data):
         try:
             if data.get('template'):
                     try:
-                        template_id = data.get('template_id')
+                        template_id = normalize_id(data.get('template_id'))
                         if not template_id:
                             logger.warn("Template flag set but no template_id provided")
                             return {"error": "Template ID is required"}
@@ -2126,6 +2134,9 @@ async def audio_end_point(sid, data):
         
 # ------------------------------------------- Text Chat --------------------------------------------------- #
 # handle for text to text chat
+# Track processing sessions to prevent duplicate processing
+processing_sessions = set()
+
 @sio.on("interview chat")
 async def interview_endpoint(sid, data):
     """
@@ -2140,6 +2151,17 @@ async def interview_endpoint(sid, data):
     """
     try:
         logger.info(f"Received interview request with template_id: {data.get('template_id')}, job: {data.get('job_profile_id', None)}, challenge: {data.get('challenge_id', None)}")
+        
+        # Get session ID to create unique processing key
+        sessionId = data.get('sessionId')
+        if sessionId:
+            processing_key = f"{sid}_{sessionId}_{data.get('response', '')[:50]}"
+            if processing_key in processing_sessions:
+                logger.warn(f"[DUPLICATE] Already processing this interview request: {processing_key}. Ignoring duplicate.")
+                return
+            else:
+                processing_sessions.add(processing_key)
+                logger.info(f"[PROCESSING] Starting interview processing for: {processing_key}")
         
         # Validate input data
         if not isinstance(data, dict):
@@ -2167,8 +2189,9 @@ async def interview_endpoint(sid, data):
         sessionId = None
         realtime_evaluation = "null"
         accumulated_message = ""     
-        template_id = data.get('template_id', "null")
-        challenge_id = data.get('challenge_id', "null")
+        template_id = normalize_id(data.get('template_id', "null"))
+        challenge_id = normalize_id(data.get('challenge_id', "null"))
+        job_profile_id = normalize_id(data.get('job_profile_id', "null"))
         timelimit = {"time_limit": "null"}
         total_questions = 0
         template = data.get('template', False)
@@ -2205,7 +2228,7 @@ async def interview_endpoint(sid, data):
         try:
             if data.get('template'):
                 try:
-                    template_id = data.get('template_id')
+                    template_id = normalize_id(data.get('template_id'))
                     if not template_id:
                         logger.warn("Template flag set but no template_id provided")
                         return {"error": "Template ID is required"}
@@ -2528,8 +2551,8 @@ async def interview_endpoint(sid, data):
                     # Safely emit or queue the message
                     await safe_emit_or_queue(sid, "interview done", message)
                     final = 'true'
-                    temp_id = data.get('template_id') if data.get('template_id') is not None else "null"
-                    challenge_id = data.get('challenge_id') if data.get('challenge_id') is not None else "null"
+                    temp_id = normalize_id(data.get('template_id', "null"))
+                    challenge_id = normalize_id(data.get('challenge_id', "null"))
 
                     if response.get("status") is not None:
                         try:

@@ -30,6 +30,19 @@ from fastapi.responses import JSONResponse
 
 logger = LLPackerLogger(os.path.basename(__file__))
 
+# Helper function to normalize IDs (convert string "null" to actual None/0)
+def normalize_id(id_value):
+    """Convert string "null" or "None" to None for ID fields"""
+    if id_value == "null" or id_value == "None":
+        return None
+    return id_value
+
+def normalize_id_to_int(id_value):
+    """Convert string "null" or "None" to 0 for integer ID fields"""
+    if id_value == "null" or id_value == "None":
+        return 0
+    return id_value
+
 from api.services.secret import get_auth
 
 OPENAI_API_KEY  = get_auth(ssmkey='OPENAI_PARROT_API_KEY')
@@ -106,9 +119,33 @@ async def generate_interview_question(run_stage, data: dict, question_count, tem
         
         # Choose between generated_questions and template_questions
         collection = user_attributes.get('generated_questions') or user_attributes.get('template_questions') or user_attributes.get('challenge_questions')
-        collection = json.loads(collection) if isinstance(collection, str) else collection
-
-        if(challenge_id != 0):
+        
+        # Handle None or empty collection
+        if not collection or collection in ["null", "None", ""]:
+            logger.error(f"No questions collection found in user session attributes")
+            raise ValueError("No questions available in generated_questions, template_questions, or challenge_questions.")
+        
+        # Parse JSON string if needed
+        if isinstance(collection, str):
+            try:
+                collection = json.loads(collection)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse collection JSON: {e}")
+                raise ValueError(f"Invalid JSON format in collection: {e}")
+        
+        # Validate collection is a list
+        if not isinstance(collection, list):
+            logger.error(f"Collection is not a list. Type: {type(collection)}, Value: {collection}")
+            raise ValueError(f"Invalid collection format: expected list, got {type(collection)}")
+        
+        # Validate each item in collection is a dict
+        if collection and not all(isinstance(item, dict) for item in collection):
+            logger.error(f"Collection contains non-dict items. Collection: {collection}")
+            raise ValueError("Invalid collection format: all items must be dictionaries")
+        
+        # Check if challenge_id is valid: not None, not 0, and not "null" string
+        if challenge_id is not None and challenge_id != 0 and challenge_id != "null":
+        
             response = await choose_interview_question_challenge_new_structure(
                 run_stage, 
                 collection, 
@@ -152,7 +189,7 @@ async def choose_interview_question_new_structure(
         template):
     try: 
         # Fetch session chat history
-        type = 'job_interview_config'
+        interview_type = 'job_interview_config'
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
             sessionId=sessionId, 
@@ -196,35 +233,26 @@ async def choose_interview_question_new_structure(
             section_type = section['sectionType']
             boundaries = section_boundaries[section_type]
             
-            # print('telegramapp====================================================')
-            # print(chat_count)
-            # print(boundaries['end'])
-            # print('telegramapp====================================================')
-            
             if chat_count < boundaries['end']:
                 current_section = section
                 break
             else:
                 final_flag = True
-                # print('final_flag====================================================')
         
         # If a section is found, process the interview question
         if current_section:
-            print('whathapp====================================================')
-            print(current_section['sectionType'])
-            print('whathapp====================================================')
             
             question_type = current_section['sectionType']
             
             # Determine if this is a specific chat count moment (optional)
             count = None
             section_start = section_boundaries[question_type]['start']
-            print(f"DEBUG: question_type = '{question_type}', chat_count = {chat_count}, section_start = {section_start}")
+            logger.info(f"DEBUG: question_type = '{question_type}', chat_count = {chat_count}, section_start = {section_start}")
             if chat_count == section_start:
                 count = chat_count
-                print(f"DEBUG: chat_count ({chat_count}) == section_start ({section_start}) - Setting count = {count}")
+                logger.info(f"DEBUG: chat_count ({chat_count}) == section_start ({section_start}) - Setting count = {count}")
             else:
-                print(f"DEBUG: chat_count ({chat_count}) != section_start ({section_start}) - count remains None")
+                logger.info(f"DEBUG: chat_count ({chat_count}) != section_start ({section_start}) - count remains None")
             
             # Call helper function to fetch or generate question
             response = await helper_func(
@@ -238,7 +266,7 @@ async def choose_interview_question_new_structure(
                 sessionId,
                 template_id,
                 challenge_id,
-                type,
+                interview_type,
                 template)
 
             return response
@@ -250,8 +278,11 @@ async def choose_interview_question_new_structure(
             status = None
             
             # Fetch last assistant response
+            logger.info(f"🔍 [CLOSING_EVAL] Fetching last assistant response for sessionId={sessionId}")
             last_assistant_response = fetch_the_last_question(run_stage, data, sessionId) 
-
+            logger.info(f"🔍 [CLOSING_EVAL] last_assistant_response type: {type(last_assistant_response)}")
+            logger.info(f"🔍 [CLOSING_EVAL] last_assistant_response value: {last_assistant_response}")
+            
             # Prepare closing evaluation prompt
             # ipersona_metric = IpersonaSmgCretrionMetricSchema()
             # data_content = ipersona_metric.get_smgCriterionMetric_by_id(metricId=167, nopp=True, dataframe=False)
@@ -262,25 +293,64 @@ async def choose_interview_question_new_structure(
             # closing_content = data_content.replace("{closing_question}", str(last_assistant_response))
             # closing_content = data_content.replace("{candidate_response}" , str(data['response']))
             candidate_response = data['response']
+            logger.info(f"🔍 [CLOSING_EVAL] candidate_response type: {type(candidate_response)}")
+            logger.info(f"🔍 [CLOSING_EVAL] candidate_response value: {candidate_response}")
 
-            if data.get("template_id") and data.get("challenge_id"):
-                is_last_response=True
+            # Check if both template_id and challenge_id exist and are not "null" strings
+            template_id_val = data.get("template_id")
+            challenge_id_val = data.get("challenge_id")
+            logger.info(f"🔍 [CLOSING_EVAL] template_id_val: {template_id_val}, challenge_id_val: {challenge_id_val}")
+            
+            if template_id_val and template_id_val != "null" and challenge_id_val and challenge_id_val != "null":
+                logger.info(f"🔍 [CLOSING_EVAL] Using realtime_response_evaluation (template+challenge)")
+                is_last_response=False
                 closing_content = realtime_response_evaluation(
                     run_stage, 
                     data, 
                     sessionId, 
-                    type, 
+                    interview_type, 
                     is_last_response=is_last_response)
+                logger.info(f"🔍 [CLOSING_EVAL] Got closing_content from realtime_response_evaluation, type: {type(closing_content)}")
             else: 
-                closing_content = read_prompt_closing_question_realtime_evaluation(
-                    type, 
-                    last_assistant_response, 
-                    candidate_response)
+                # Use fallback if last_assistant_response is None
+                if last_assistant_response is None:
+                    logger.warn("❌ [CLOSING_EVAL] last_assistant_response is None, using fallback evaluation")
+                    closing_content = realtime_response_evaluation(
+                        run_stage, 
+                        data, 
+                        sessionId, 
+                        interview_type, 
+                        is_last_response=is_last_response)
+                    logger.info(f"🔍 [CLOSING_EVAL] Got fallback closing_content, type: {type(closing_content)}")
+                else:
+                    logger.info(f"🔍 [CLOSING_EVAL] Using read_prompt_closing_question_realtime_evaluation")
+                    logger.info(f"🔍 [CLOSING_EVAL] Parameters: interview_type={interview_type}, last_assistant_response={last_assistant_response}, candidate_response={candidate_response}")
+                    logger.info(f"🔍 [CLOSING_EVAL] DEBUG - data type: {type(data)}, data keys: {data.keys() if isinstance(data, dict) else 'N/A'}")
+                    logger.info(f"🔍 [CLOSING_EVAL] DEBUG - data value: {data}")
+                    closing_content = read_prompt_closing_question_realtime_evaluation(
+                        interview_type, 
+                        last_assistant_response, 
+                        candidate_response,
+                        data=data)
+                    logger.info(f"🔍 [CLOSING_EVAL] Got closing_content from read_prompt, type: {type(closing_content)}, value: {closing_content[:200] if isinstance(closing_content, str) else closing_content}")
             # Get realtime evaluation
+            logger.info(f"🔍 [DEBUG] About to call GPT with closing_content type: {type(closing_content)}")
+            logger.info(f"🔍 [DEBUG] closing_content length: {len(closing_content) if isinstance(closing_content, str) else 'N/A'}")
             realtime_evaluation_response = gpt.openai_gpt_assistant_without_streaming(closing_content)
+            logger.info(f"🔍 [DEBUG] Got raw GPT response type: {type(realtime_evaluation_response)}")
+            logger.info(f"🔍 [DEBUG] Got raw GPT response (first 500 chars): {str(realtime_evaluation_response)[:500] if realtime_evaluation_response else 'None'}")
 
-            realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False) 
-            realtime_evaluation = "null" if realtime_evaluation_response is None else realtime_evaluation_response.get("realtime_evaluation")
+            realtime_evaluation_response = extract_json(realtime_evaluation_response, quite=False)
+            logger.info(f"🔍 [DEBUG] After extract_json - type: {type(realtime_evaluation_response)}, value: {realtime_evaluation_response}")
+            
+            # Check if realtime_evaluation_response is a list or dict
+            if isinstance(realtime_evaluation_response, list):
+                realtime_evaluation = "null"
+                logger.warn(f"⚠️ [DEBUG] realtime_evaluation_response is a list, setting to null")
+            elif isinstance(realtime_evaluation_response, dict):
+                realtime_evaluation = realtime_evaluation_response.get("realtime_evaluation", "null")
+            else:
+                realtime_evaluation = "null"
 
             logger.info(f"Realtime evaluation is: {realtime_evaluation}")
             if realtime_evaluation != "null":
@@ -288,9 +358,6 @@ async def choose_interview_question_new_structure(
                 final = 'true'
                 strapi.step3_insert_message(run_stage, realtime_evaluation, final, sessionId)
                 
-               
-                # print('my daaaaaaaaaaaaaaaaaaaaaaaaa=====================================')
-                # print(realtime_evaluation)
             
             rstage = run_stage
             
@@ -298,10 +365,10 @@ async def choose_interview_question_new_structure(
             
             # Run overall calculation in background to avoid blocking socket emission
             logger.info(f"🔍 [DEBUG] === STARTING BACKGROUND OVERALL CALCULATION ===")
-            logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {type}")
+            logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {interview_type}")
             logger.info(f"🔍 [DEBUG] Run stage: {rstage}")
             
-            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, type))
+            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, interview_type))
             logger.info("✅ Started overall calculation in background - socket emission will not be blocked")            
                 
             response = {
@@ -327,7 +394,7 @@ async def choose_interview_question_challenge_new_structure(
     template):
     try: 
         # Fetch session chat history
-        type = 'challenge_interview_config'
+        interview_type = 'challenge_interview_config'
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
             sessionId=sessionId, 
@@ -352,10 +419,7 @@ async def choose_interview_question_challenge_new_structure(
         # Dynamically calculate section question counts
         question_counts = {section['sectionType']: len(section['questions']) for section in collection}
         total_questions = sum(question_counts.values())
-        # print("question_counts is here ==========================================")
-        # print(question_counts)
-        # print(total_questions)
-        # print("question_counts is here ==========================================")
+  
         # Create a cumulative section boundaries
         section_boundaries = {}
         current_boundary = 1  # Start from 1
@@ -383,19 +447,13 @@ async def choose_interview_question_challenge_new_structure(
         for section in collection:
             section_type = section['sectionType']
             boundaries = section_boundaries[section_type]
-            
-            # print('telegramapp====================================================')
-            # print(chat_count)
-            # print(boundaries['end'])
-            # print('telegramapp====================================================')
+    
             
             if chat_count < boundaries['end']:
                 current_section = section
                 break
             else:
-                final_flag = True
-                # print('final_flag====================================================')
-        
+                final_flag = True        
         
         # If a section is found, process the interview question
         if current_section:
@@ -404,19 +462,12 @@ async def choose_interview_question_challenge_new_structure(
             # Determine if this is a specific chat count moment (optional)
             count = None
             section_start = section_boundaries[question_type]['start']
-            print(f"DEBUG: question_type = '{question_type}', chat_count = {chat_count}, section_start = {section_start}")
             if chat_count == section_start:
                 count = chat_count
                 print(f"DEBUG: chat_count ({chat_count}) == section_start ({section_start}) - Setting count = {count}")
             else:
                 print(f"DEBUG: chat_count ({chat_count}) != section_start ({section_start}) - count remains None")
-            # print("CURRENT SECTION IS HERE ==========================================")
-            # print(current_section)
-            # print("CURRENT SECTION IS HERE ==========================================")
-
-            # print("USER RESONPSEN=====================================================")
-            # print(data['response'])
-            # print("USER RESONPSEN=====================================================")
+     
             # Call helper function to fetch or generate question
             response = await helper_func(
                 run_stage, 
@@ -429,7 +480,7 @@ async def choose_interview_question_challenge_new_structure(
                 sessionId,
                 template_id,
                 challenge_id,
-                type,
+                interview_type,
                 template)
 
             return response
@@ -439,13 +490,13 @@ async def choose_interview_question_challenge_new_structure(
             interview_question_json = None
             realtime_evaluation = None
             status = None
-            is_last_response=True
+            is_last_response=False
             # Realtime evaluation response
             realtime_evaluation_response_json = realtime_response_evaluation(
                 run_stage, 
                 data, 
                 sessionId, 
-                type,
+                interview_type,
                 is_last_response=is_last_response)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
            
@@ -460,10 +511,10 @@ async def choose_interview_question_challenge_new_structure(
             
             # Run overall calculation in background to avoid blocking socket emission
             logger.info(f"🔍 [DEBUG] === STARTING BACKGROUND OVERALL CALCULATION ===")
-            logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {type}")
+            logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {interview_type}")
             logger.info(f"🔍 [DEBUG] Run stage: {rstage}")
             
-            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, type))
+            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, interview_type))
             logger.info("✅ Started overall calculation in background - socket emission will not be blocked")            
                 
             response = {
@@ -490,7 +541,7 @@ async def helper_func(
     sessionId,
     template_id,
     challenge_id,
-    type,
+    interview_type,
     template):
     """
     Processes interview questions and evaluations based on candidate responses.
@@ -529,7 +580,7 @@ async def helper_func(
         if chat_count < question_count + 2:
             if data['response']:
                 if count is not None:
-                    interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type, template_id, sessionId, run_stage) 
+                    interview_question_json = await fetch_interview_question(section, question_type, data, question_count, interview_type, template_id, sessionId, run_stage) 
                   
                     # await append_asked_question_number_from_sections(
                     #     interview_question_json, 
@@ -553,7 +604,7 @@ async def helper_func(
 
                         
             else:
-                interview_question_json = await fetch_interview_question(section, question_type, data, question_count, type, template_id, sessionId, run_stage) 
+                interview_question_json = await fetch_interview_question(section, question_type, data, question_count, interview_type, template_id, sessionId, run_stage) 
                 # await append_asked_question_number_from_sections(
                 #         interview_question_json, 
                 #         section, 
@@ -566,7 +617,7 @@ async def helper_func(
                 run_stage, 
                 data, 
                 sessionId, 
-                type,
+                interview_type,
                 is_last_response=is_last_response)
             realtime_evaluation = "null" if realtime_evaluation_response_json is None else realtime_evaluation_response_json.get("realtime_evaluation")
             logger.info(f"Realtime evaluation i______s: {realtime_evaluation}")
@@ -579,10 +630,10 @@ async def helper_func(
    
             # Run overall calculation in background to avoid blocking socket emission
             logger.info(f"🔍 [DEBUG] === STARTING BACKGROUND OVERALL CALCULATION ===")
-            logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {type}")
+            logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {interview_type}")
             logger.info(f"🔍 [DEBUG] Run stage: {rstage}")
             
-            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, type))
+            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, interview_type))
             logger.info("✅ Started overall calculation in background - socket emission will not be blocked")            
                 
         response = {
@@ -603,7 +654,7 @@ async def fetch_interview_question(
     question_type: str, 
     data: dict, 
     question_count,
-    type, 
+    interview_type_param, 
     template_id,
     sessionId,
     run_stage):
@@ -630,12 +681,12 @@ async def fetch_interview_question(
     """
     try:
         if chat_count == question_count + 2:
-            message = read_prompt_interview_closing(type)
+            message = read_prompt_interview_closing(interview_type_param)
         else:
-            if template_id:
+            if template_id and template_id != "null":
                 message = file_reader(prompts_path('ipersona/template_question_picking.txt'))
             else:
-                message = read_prompt_pick_interview_question(type)
+                message = read_prompt_pick_interview_question(interview_type_param)
             
         # Ensure asked_question_numbers is defined to avoid NameError
         ipersona_user = IpersonaSessionSchema(run_stage=run_stage)
@@ -650,7 +701,6 @@ async def fetch_interview_question(
             print(f"DEBUG: Session fetch failed for session_id: {sessionId}")
             return []
             
-        print(f"DEBUG: Session fetched successfully: {sessionId}")
         
         # Get current attributes - session_fetched['attributes']['attributes'] is the inner attributes
         session_attributes = session_fetched.get('attributes', {})
@@ -670,7 +720,10 @@ async def fetch_interview_question(
         response = gpt.openai_gpt_assistant_with_streaming(content)
         
   
-        if template_id != 0 or template_id is not None:
+        # Normalize template_id if needed
+        template_id = normalize_id(template_id)
+        
+        if template_id is not None and template_id != 0 and template_id != "null":
             # Use asyncio.create_task for background processing in regular functions
             import asyncio
             asyncio.create_task(process_question_generation_background(
@@ -727,7 +780,6 @@ async def calculate_template_time_limit_sync(
     """
     try:
         logger.info("🔄 [SYNC] Starting synchronous time limit calculation...")
-        print(response)
         # Find the specific question in the section to get its time limit
         time_limit = None
         
@@ -991,8 +1043,8 @@ async def append_asked_question_number_from_sections(
 #-------------------------------- Interview question time limit generation ---------------------------- 
 def interview_question_time_limit(question: str):
     try:
-        type = 'job_interview_config'
-        msg = read_prompt_time_limit_generator(type, question)
+        interview_type = 'job_interview_config'
+        msg = read_prompt_time_limit_generator(interview_type, question)
 
         response = gpt.openai_gpt_assistant_without_streaming(msg)
         response = extract_json(response, quite=False)
@@ -1002,7 +1054,7 @@ def interview_question_time_limit(question: str):
         return {'error': str(e)}
     
 #---------------------------------------- Follow up Question Checker -------------------------------
-async def check_if_followup(candidate_response: str, type) -> bool:
+async def check_if_followup(candidate_response: str, interview_type_param) -> bool:
     """
     Checks if a follow-up question is needed based on the candidate's response.
 
@@ -1022,7 +1074,7 @@ async def check_if_followup(candidate_response: str, type) -> bool:
         or an error message if an exception occurs during processing.
     """
     try:
-        msg = read_prompt_followup_checker(type, candidate_response)
+        msg = read_prompt_followup_checker(interview_type_param, candidate_response)
 
         response = gpt.openai_gpt_assistant_without_streaming(msg)
         response_json = extract_json(response, quite=False)
@@ -1034,7 +1086,7 @@ async def check_if_followup(candidate_response: str, type) -> bool:
         return {'error': str(e)}
      
 #-------------------------------------------- Generate Follow up Question -----------------------------------
-async def generate_followup(data, type) -> dict:
+async def generate_followup(data, interview_type_param) -> dict:
     """
     Generates a follow-up question based on the candidate's response.
 
@@ -1056,7 +1108,7 @@ async def generate_followup(data, type) -> dict:
     """
     try:
         candidate_response = data['response']
-        msg = read_prompt_followup_question_generator(type, candidate_response)
+        msg = read_prompt_followup_question_generator(interview_type_param, candidate_response)
 
         persona = data['user_session']['attributes']['attributes'].get('persona', '')
         content = persona + msg
@@ -1071,6 +1123,7 @@ async def generate_followup(data, type) -> dict:
 #---------------------------------------- Realtime Chat Evaluation Function -------------------------------
 def fetch_the_last_question(run_stage, data: dict, sessionId) -> dict:
     try:
+        logger.info(f"🔍 [FETCH_LAST_QUESTION] Starting - sessionId={sessionId}, run_stage={run_stage}")
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
         session_chathistory = ipersona_message.filter_by_session_id(
             sessionId=sessionId, 
@@ -1078,27 +1131,71 @@ def fetch_the_last_question(run_stage, data: dict, sessionId) -> dict:
             dataframe=False,
             sort='asc')
         
-        history = session_chathistory['total']
+        logger.info(f"🔍 [FETCH_LAST_QUESTION] session_chathistory type: {type(session_chathistory)}")
+        logger.info(f"🔍 [FETCH_LAST_QUESTION] session_chathistory value: {session_chathistory}")
+        
+        # Check if session_chathistory is valid
+        if session_chathistory is None:
+            logger.warn(f"❌ [FETCH_LAST_QUESTION] No chat history found for sessionId={sessionId}")
+            return None
+        
+        # Check if it's a dict with 'total' key
+        if not isinstance(session_chathistory, dict):
+            logger.error(f"❌ [FETCH_LAST_QUESTION] session_chathistory is not a dict: {type(session_chathistory)}, value={session_chathistory}")
+            return None
+        
+        logger.info(f"🔍 [FETCH_LAST_QUESTION] session_chathistory keys: {session_chathistory.keys() if isinstance(session_chathistory, dict) else 'N/A'}")
+        
+        history = session_chathistory.get('total', [])
+        
+        logger.info(f"🔍 [FETCH_LAST_QUESTION] history type: {type(history)}")
+        logger.info(f"🔍 [FETCH_LAST_QUESTION] history length: {len(history) if isinstance(history, list) else 'N/A'}")
+        
+        if not isinstance(history, list):
+            logger.error(f"❌ [FETCH_LAST_QUESTION] history is not a list: {type(history)}, value={history}")
+            return None
         
         last_assistant_response = None
+        entry_count = 0
         for entry in reversed(history):
-            message = entry            
-            if message["user_type"] == "assistant":
-                last_assistant_response = message["content"].get("full_response")  
+            entry_count += 1
+            logger.info(f"🔍 [FETCH_LAST_QUESTION] Processing entry {entry_count}, type: {type(entry)}")
+            if not isinstance(entry, dict):
+                logger.warn(f"⚠️ [FETCH_LAST_QUESTION] Entry {entry_count} is not a dict: {type(entry)}, value: {entry}")
+                continue
+            message = entry
+            user_type = message.get("user_type")
+            logger.info(f"🔍 [FETCH_LAST_QUESTION] Entry {entry_count} - user_type: {user_type}")
+            
+            if user_type == "assistant":
+                # Handle both nested content structure and direct content
+                content = message.get("content", {})
+                logger.info(f"🔍 [FETCH_LAST_QUESTION] content type: {type(content)}")
+                logger.info(f"🔍 [FETCH_LAST_QUESTION] content value: {content}")
+                
+                if isinstance(content, dict):
+                    last_assistant_response = content.get("full_response")
+                    logger.info(f"🔍 [FETCH_LAST_QUESTION] Extracted from dict: {last_assistant_response}")
+                elif isinstance(content, str):
+                    last_assistant_response = content
+                    logger.info(f"🔍 [FETCH_LAST_QUESTION] Extracted string content: {last_assistant_response}")
                 break  
 
         if last_assistant_response:
-            logger.info("Last assistant response For Realtime Evaluation")
+            logger.info(f"✅ [FETCH_LAST_QUESTION] Found last assistant response: {last_assistant_response}")
         else:
-            logger.warn("No assistant response found in the chat history.")
+            logger.warn(f"❌ [FETCH_LAST_QUESTION] No assistant response found in the chat history. Processed {entry_count} entries.")
 
         return last_assistant_response   
 
     except Exception as e:
-        logger.error(f"Real time evaluation process failed: {str(e)}")
-        return {'error': str(e)} 
+        logger.error(f"❌ [FETCH_LAST_QUESTION] Real time evaluation process failed: {str(e)}")
+        logger.error(f"❌ [FETCH_LAST_QUESTION] Error traceback: {str(e)}")
+        import traceback
+        logger.error(f"❌ [FETCH_LAST_QUESTION] Full traceback: {traceback.format_exc()}")
+        return None 
     
-def realtime_response_evaluation(run_stage, data: dict, sessionId, type, is_last_response: bool = False) -> dict:
+def realtime_response_evaluation(run_stage, data: dict, sessionId, interview_type_param, is_last_response: bool = False) -> dict:
     """
     Evaluates the candidate's response in real-time based on the previous question.
 
@@ -1134,7 +1231,7 @@ def realtime_response_evaluation(run_stage, data: dict, sessionId, type, is_last
         
         last_assistant_response = fetch_the_last_question(run_stage, data, sessionId)  
         logger.info(f"Last assistant response: {last_assistant_response}")
-        msg = read_prompt_realtime_evaluation(type, data, last_assistant_response, is_last_response)
+        msg = read_prompt_realtime_evaluation(interview_type_param, data, last_assistant_response, is_last_response)
    
         persona = data['user_session']['attributes']['attributes'].get('persona', '')
         content = persona + msg
@@ -1217,7 +1314,7 @@ def process_audio_and_save_external(
             sessionId = saved_session['id']
             saved = strapi.save_messages_to_db(transcribe_chat, sessionId)
             status = 'External'
-            type = 'job_interview_config'
+            interview_type = 'job_interview_config'
             def run_overall():
                 try:
                     import asyncio
@@ -1258,7 +1355,7 @@ def process_audio_and_save_external(
         audio_processing_status[job_profile_id] = {"status": "failed", "message": str(e)}
 
 #----------------------------------------- Overall Interview Evaluation -------------------------------
-async def overall_interview_evaluations(run_stage, data: dict, status, sessionId, type) -> dict:
+async def overall_interview_evaluations(run_stage, data: dict, status, sessionId, interview_type_param) -> dict:
     """
     Evaluates the overall performance of a candidate in an interview.
 
@@ -1286,7 +1383,7 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         import time
         start_time = time.time()
         logger.info(f"🔍 [DEBUG] === overall_interview_evaluations FUNCTION STARTED ===")
-        logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {type}")
+        logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {interview_type_param}")
         logger.info(f"🔍 [DEBUG] Run stage: {run_stage}")
         
         ipersona_message = IpersonaSessionMessageSchema(run_stage=run_stage)
@@ -1308,7 +1405,7 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         # message = message.replace("{history}", history_str)  
         # overall_evaluation_msg = message
       
-        overall_evaluation_msg = read_prompt_overall_evaluation(type, history_str)
+        overall_evaluation_msg = read_prompt_overall_evaluation(interview_type_param, history_str)
         
 
         # data_content_metrics = ipersona_metric.get_smgCriterionMetric_by_id(metricId=173, nopp=True, dataframe=False)
@@ -1319,7 +1416,7 @@ async def overall_interview_evaluations(run_stage, data: dict, status, sessionId
         # message = content.get('content', '')
         # message = message.replace("{history}", history_str)  
         # overall_metrics_msg = message
-        overall_metrics_msg = read_prompt_interview_evaluation_metrics(type, history_str)
+        overall_metrics_msg = read_prompt_interview_evaluation_metrics(interview_type_param, history_str)
         
         
         # persona = data['user_session']['attributes']['attributes'].get('persona', '')
@@ -1471,7 +1568,7 @@ async def overall_interview_evaluations_external(
         # message = content.get('content', '')
         # message = message.replace("{history}", history_str)  
        
-        overall_evaluation_msg = read_prompt_overall_evaluation(type, history_str)
+        overall_evaluation_msg = read_prompt_overall_evaluation(interview_type_param, history_str)
 
 
         # data_content_metrics = ipersona_metric.get_smgCriterionMetric_by_id(metricId=173, nopp=True, dataframe=False)
@@ -1481,7 +1578,7 @@ async def overall_interview_evaluations_external(
         # message = content.get('content', '')
         # message = message.replace("{history}", history_str) 
          
-        overall_metrics_msg = read_prompt_interview_evaluation_metrics(type, history_str)
+        overall_metrics_msg = read_prompt_interview_evaluation_metrics(interview_type_param, history_str)
 
         persona = ''
         content = persona + overall_evaluation_msg
@@ -1949,6 +2046,12 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
         logger.info(f"template_id::: {template_id}")
         logger.info(f"all_user_id::: {all_user_id}")
         
+        # Normalize IDs: convert string "null" to 0 before converting to int
+        challenge_id = normalize_id_to_int(challenge_id)
+        job_profile_id = normalize_id_to_int(job_profile_id)
+        template_id = normalize_id_to_int(template_id)
+        all_user_id = normalize_id_to_int(all_user_id)
+        
         # Convert to integers and handle empty strings
         try:
             challenge_id = int(challenge_id) if challenge_id and challenge_id != "" else 0
@@ -2031,21 +2134,21 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
         tinder_user_profile_id = trainee_profile_data['id']    
         session_chatobserver = None
 
-        if job_profile_id: 
+        if job_profile_id and job_profile_id != "null": 
             session_chatobserver = ipersona_overall.filter_by_with_user_and_job_id(
                 user_profile_id = tinder_user_profile_id, 
                 job_profile_id = job_profile_id, 
                 nopp=True, 
                 dataframe=False)
             
-        elif challenge_id:
+        elif challenge_id and challenge_id != "null":
             session_chatobserver = ipersona_overall.filter_by_with_user_and_challenge_id(
                 user_profile_id = tinder_user_profile_id, 
                 challenge_id = challenge_id, 
                 nopp=True, 
                 dataframe=False)
 
-        elif template_id:
+        elif template_id and template_id != "null":
             session_chatobserver = ipersona_overall.filter_by_with_user_and_template_id(
                 user_profile_id = tinder_user_profile_id, 
                 template_id = template_id, 
@@ -2094,13 +2197,13 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
                     "attributes": update_overall_data,
                     "i_persona_observers": obs_ids
                 }
-                if job_profile_id:
+                if job_profile_id and job_profile_id != "null":
                     message_data["tinder_user_profile"] = tinder_user_profile_id
                     message_data["tinder_job_profile"] = job_profile_id
-                elif challenge_id:
+                elif challenge_id and challenge_id != "null":
                     message_data["tinder_user_profile"] = tinder_user_profile_id
                     message_data["challenge_document"] = challenge_id
-                elif template_id:
+                elif template_id and template_id != "null":
                     message_data["tinder_user_profile"] = tinder_user_profile_id
                     message_data["tinder_template"] = template_id
 
@@ -2141,13 +2244,13 @@ async def calculate_overall_progress(run_stage, userdata, data: list):
             }
 
             # Add the correct attribute based on which ID is present
-            if job_profile_id:
+            if job_profile_id and job_profile_id != "null":
                 message_data["tinder_user_profile"] = tinder_user_profile_id
                 message_data["tinder_job_profile"] = job_profile_id
-            elif challenge_id:
+            elif challenge_id and challenge_id != "null":
                 message_data["tinder_user_profile"] = tinder_user_profile_id
                 message_data["challenge_document"] = challenge_id
-            elif template_id:
+            elif template_id and template_id != "null":
                 message_data["tinder_user_profile"] = tinder_user_profile_id
                 message_data["tinder_template"] = template_id
 
@@ -4449,14 +4552,14 @@ async def create_session_logics(
             return saved_session
 
         elif challenge:
-            type = 'challenge_interview_config'
-            response_obj = fetch_the_structure(type)
+            interview_type = 'challenge_interview_config'
+            response_obj = fetch_the_structure(interview_type)
             challenge_data = await analysis_challenge(challenge_id)
 
             if response_obj is False:
                 tag = 'parrot_challenge_question_generation_default'
                 challenge_prompt = read_prompt_data_for_challenge_default(
-                    challenge_data, type, tag
+                    challenge_data, interview_type, tag
                 )
             else:
                 tag = 'parrot_challenge_question_generation'
@@ -4466,7 +4569,7 @@ async def create_session_logics(
                     json_format, 
                     section_count, 
                     challenge_data, 
-                    type, 
+                    interview_type, 
                     tag
                 )
 
@@ -4497,8 +4600,8 @@ async def create_session_logics(
             return saved_session
 
         else:
-            type = 'job_interview_config'
-            response_obj = fetch_the_structure(type)
+            interview_type = 'job_interview_config'
+            response_obj = fetch_the_structure(interview_type)
 
             if response_obj is False:
                 tag = 'parrot_question_generator_default'
@@ -4506,10 +4609,10 @@ async def create_session_logics(
                 generated_persona = read_prompt_persona(
                     tinder_job_data, 
                     tinder_user_profile_data, 
-                    type, 
+                    interview_type, 
                     persona_tag
                 )
-                msg = read_prompt_data_for_default(type, tag)
+                msg = read_prompt_data_for_default(interview_type, tag)
             else:
                 section_count = response_obj.get('section_count', {})
                 json_format = response_obj.get('json_format', {})
@@ -4518,7 +4621,7 @@ async def create_session_logics(
                 generated_persona = read_prompt_persona(
                     tinder_job_data, 
                     tinder_user_profile_data, 
-                    type,
+                    interview_type,
                     persona_tag
                 )
                 msg = read_generate_question_prompt(
@@ -4526,7 +4629,7 @@ async def create_session_logics(
                     section_count, 
                     context='', 
                     tag=tag, 
-                    type=type
+                    interview_type_param=interview_type
                 )
 
             content = generated_persona + msg
@@ -4674,7 +4777,6 @@ def create_session(
             challenge_generated_questions = add_question_number(challenge_generated_questions)
             
         if challenge: 
-            print(f"🎯 [DEBUG] Taking CHALLENGE code path - challenge_id: {challenge_id}")
             # Step 5: Save session data
             # Convert all ID fields to integers if they're valid numbers
             job_profile_id_value = convert_id_to_int(job_profile_id)
@@ -4740,8 +4842,6 @@ def create_session(
             if challenge_id_value is not None:
                 session_data["challenge_document"] = challenge_id_value
             
-            print(f"📋 [DEBUG] Final session data: {session_data}")
-
          
         ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
         saved_session = ipersona_session.save_session(
@@ -5234,9 +5334,9 @@ def get_user_data(all_user_id, run_stage):
     logger.info(f"User profile data extracted for user ID: {tinder_user_profile_id}")
     return tinder_user_profile_data, tinder_user_profile_id
 
-def read_prompt_data_for_challenge_default(contents, type, tag):
+def read_prompt_data_for_challenge_default(contents, interview_type_param, tag):
     if contents:
-        content = fetch_config_template(type, tag)
+        content = fetch_config_template(interview_type_param, tag)
         if content:
             message = content.get('content', '')
             message = message.replace("{challenge_document}", str(contents)) 
@@ -5251,8 +5351,8 @@ def read_prompt_data_for_challenge_default(contents, type, tag):
     else:
         return 'Challenge content not found, or challenge ID is invalid'
 
-def read_prompt_data_for_multiple_challenge_default(challenges_data, type, tag):
-    content = fetch_config_template(type, tag)
+def read_prompt_data_for_multiple_challenge_default(challenges_data, interview_type_param, tag):
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')
         message = message.replace("{challenge_document}", str(challenges_data)) 
@@ -5269,9 +5369,9 @@ def read_prompt_data_for_multiple_challenge(
         json_format, 
         count, 
         challenges_data, 
-        type, 
+        interview_type_param, 
         tag):
-    content = fetch_config_template(type, tag)
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')
         message = message.replace("{challenge_document}", str(challenges_data))
@@ -5289,12 +5389,12 @@ async def read_prompt_data_for_challenge(
         json_format, 
         count, 
         contents, 
-        type, 
+        interview_type_param, 
         tag):
 
     # contents = await analysis_challenge(challenge_id)
     if contents:
-        content = fetch_config_template(type, tag)
+        content = fetch_config_template(interview_type_param, tag)
         if content:
             message = content.get('content', '')
             message = message.replace("{challenge_document}", str(contents))
@@ -5314,8 +5414,8 @@ async def read_prompt_data_for_challenge(
     else:
         return 'Challenge content not found, or challenge ID is invalid'
 
-def read_prompt_persona(tinder_job_data, tinder_user_profile_data, type, tag):
-    content = fetch_config_template(type, tag)
+def read_prompt_persona(tinder_job_data, tinder_user_profile_data, interview_type_param, tag):
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')
         created_persona = create_persona(str(tinder_job_data))
@@ -5329,8 +5429,8 @@ def read_prompt_persona(tinder_job_data, tinder_user_profile_data, type, tag):
         generated_persona = fallback.read_prompt_persona(tinder_job_data, tinder_user_profile_data)
         return generated_persona
 
-def read_prompt_data_for_default(type, tag):
-    content = fetch_config_template(type, tag)
+def read_prompt_data_for_default(interview_type_param, tag):
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')
         message = message.replace("{introduction_count}", str(1))
@@ -5346,8 +5446,8 @@ def read_prompt_data_for_default(type, tag):
         msg = fallback.read_prompt_data_for_default()
         return msg
 
-def read_generate_question_prompt(json_format, context, section_count, tag, type):
-    content = fetch_config_template(type, tag)
+def read_generate_question_prompt(json_format, context, section_count, tag, interview_type_param):
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')
         message = message.replace("{section_count}", str(section_count))
@@ -5359,9 +5459,9 @@ def read_generate_question_prompt(json_format, context, section_count, tag, type
         message = fallback.read_generate_question_prompt(json_format, context, section_count)
         return message
 
-def read_prompt_interview_closing(type):
+def read_prompt_interview_closing(interview_type_param):
     tag = 'parrot_interview_closing'
-    content = fetch_config_template(type, tag)
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')  
         return message
@@ -5370,9 +5470,9 @@ def read_prompt_interview_closing(type):
         message = fallback.read_prompt_interview_closing()
         return message
 
-def read_prompt_pick_interview_question(type):
+def read_prompt_pick_interview_question(interview_type_param):
     tag = 'parrot_pick_interview_question'
-    content = fetch_config_template(type, tag)
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')  
         return message
@@ -5381,9 +5481,9 @@ def read_prompt_pick_interview_question(type):
         message = fallback.read_prompt_pick_interview_question()
         return message
   
-def read_prompt_followup_checker(type, candidate_response):
+def read_prompt_followup_checker(interview_type_param, candidate_response):
     tag = 'parrot_followup_checker'
-    content = fetch_config_template(type, tag)
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')
         message = message.replace("{candidate_response}", candidate_response) 
@@ -5393,9 +5493,9 @@ def read_prompt_followup_checker(type, candidate_response):
         message = fallback.read_prompt_followup_checker(candidate_response)
         return message
 
-def read_prompt_followup_question_generator(type, candidate_response):
+def read_prompt_followup_question_generator(interview_type_param, candidate_response):
     tag = 'parrot_followup_question_generator'
-    content = fetch_config_template(type, tag)
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')
         message = message.replace("{candidate_response}", candidate_response)
@@ -5407,8 +5507,8 @@ def read_prompt_followup_question_generator(type, candidate_response):
     
 def read_realtime_evaluation():
     tag = 'parrot_realtime_evaluation'
-    type = 'job_interview_config'
-    content = fetch_config_template(type, tag)
+    interview_type = 'job_interview_config'
+    content = fetch_config_template(interview_type, tag)
     if content:
         realtime_msg = content.get('content', '')
         return realtime_msg
@@ -5417,9 +5517,9 @@ def read_realtime_evaluation():
         realtime_prompt = file_reader(prompts_path('realtime_evaluation.txt'))
         return realtime_prompt
     
-def read_prompt_realtime_evaluation(type, data, last_assistant_response, is_last_response: bool = False):
+def read_prompt_realtime_evaluation(interview_type_param, data, last_assistant_response, is_last_response: bool = False):
     tag = 'parrot_realtime_evaluation'
-    content = fetch_config_template(type, tag)
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')
         message = message.replace("{question}", last_assistant_response)
@@ -5427,7 +5527,6 @@ def read_prompt_realtime_evaluation(type, data, last_assistant_response, is_last
         return message
     else:
         # Fallback to default realtime evaluation
-        print("9090=========================testing========================9090", is_last_response)
         if is_last_response:
             realtime_prompt = fallback.read_prompt_closing_question_realtime_evaluation(data, last_assistant_response)
         else:
@@ -5435,25 +5534,55 @@ def read_prompt_realtime_evaluation(type, data, last_assistant_response, is_last
         return realtime_prompt
     
 
-def read_prompt_closing_question_realtime_evaluation(type, last_assistant_response, candidate_response):
-    tag = 'parrot_closing_question_realtime_evaluation'
-    content = fetch_config_template(type, tag)
-    if content:
-        data_content = content.get('content', '')
-        closing_content = data_content.replace("{closing_question}", str(last_assistant_response))
-        closing_content = data_content.replace("{candidate_response}" , str(candidate_response))
-        return closing_content
-    else:
-        # Fallback to default closing question realtime evaluation
-        closing_prompt = fallback.read_prompt_closing_question_realtime_evaluation(
-            last_assistant_response, candidate_response
-        )
-        return closing_prompt
+def read_prompt_closing_question_realtime_evaluation(interview_type_param, last_assistant_response, candidate_response, data=None):
+    logger.info(f"🔍 [READ_PROMPT] Starting - interview_type={interview_type_param}")
+    logger.info(f"🔍 [READ_PROMPT] last_assistant_response type: {type(last_assistant_response)}, value: {last_assistant_response}")
+    logger.info(f"🔍 [READ_PROMPT] candidate_response type: {type(candidate_response)}, value: {candidate_response}")
+    logger.info(f"🔍 [READ_PROMPT] data type: {type(data)}, value: {data}")
+    
+    try:
+        tag = 'parrot_closing_question_realtime_evaluation'
+        logger.info(f"🔍 [READ_PROMPT] Fetching config template with tag={tag}")
+        content = fetch_config_template(interview_type_param, tag)
+        logger.info(f"🔍 [READ_PROMPT] content type: {type(content)}, value: {content}")
+        
+        if content:
+            data_content = content.get('content', '')
+            logger.info(f"🔍 [READ_PROMPT] data_content type: {type(data_content)}, length: {len(data_content) if isinstance(data_content, str) else 'N/A'}")
+            logger.info(f"🔍 [READ_PROMPT] Replacing {{closing_question}} with last_assistant_response")
+            closing_content = data_content.replace("{closing_question}", str(last_assistant_response))
+            logger.info(f"🔍 [READ_PROMPT] Replacing {{candidate_response}} with candidate_response")
+            closing_content = closing_content.replace("{candidate_response}" , str(candidate_response))
+            logger.info(f"🔍 [READ_PROMPT] Returning closing_content, type: {type(closing_content)}")
+            return closing_content
+        else:
+            logger.warn(f"❌ [READ_PROMPT] content is None or empty, using fallback")
+            logger.info(f"🔍 [READ_PROMPT] FALLBACK - data type: {type(data)}, data keys: {data.keys() if isinstance(data, dict) else 'N/A'}")
+            logger.info(f"🔍 [READ_PROMPT] FALLBACK - last_assistant_response type: {type(last_assistant_response)}, value: {last_assistant_response}")
+            # Fallback to default closing question realtime evaluation
+            # fallback expects (data, last_assistant_response)
+            if data is None:
+                logger.error(f"❌ [READ_PROMPT] data is None, cannot use fallback")
+                # Return a basic fallback string
+                return f"Evaluate the candidate's response to: {last_assistant_response}\nCandidate Response: {candidate_response}"
+            logger.info(f"🔍 [READ_PROMPT] Calling fallback.read_prompt_closing_question_realtime_evaluation with data={type(data)}, last_assistant_response={type(last_assistant_response)}")
+            closing_prompt = fallback.read_prompt_closing_question_realtime_evaluation(
+                data, last_assistant_response
+            )
+            logger.info(f"🔍 [READ_PROMPT] Fallback returned closing_prompt type: {type(closing_prompt)}, value: {closing_prompt[:200] if isinstance(closing_prompt, str) else closing_prompt}")
+            logger.info(f"🔍 [READ_PROMPT] Returning fallback closing_prompt, type: {type(closing_prompt)}")
+            return closing_prompt
+    except Exception as e:
+        logger.error(f"❌ [READ_PROMPT] Error: {str(e)}")
+        import traceback
+        logger.error(f"❌ [READ_PROMPT] Full traceback: {traceback.format_exc()}")
+        # Return a safe fallback
+        return f"Error occurred while generating evaluation prompt: {str(e)}"
     
 def read_prompt_clarify(question):
     tag = 'parrot_clarify_question'
-    type = 'job_interview_config'
-    content = fetch_config_template(type, tag)
+    interview_type = 'job_interview_config'
+    content = fetch_config_template(interview_type, tag)
     if content:
         message = content.get('content', '')
         message = message.replace("{question}", question) 
@@ -5463,10 +5592,10 @@ def read_prompt_clarify(question):
         message = fallback.read_prompt_clarify(question)
         return message
     
-def read_prompt_time_limit_generator(type, question):
+def read_prompt_time_limit_generator(interview_type_param, question):
     tag = 'parrot_interview_question_time_limit_generatorg'
-    type = 'job_interview_config'
-    content = fetch_config_template(type, tag)
+    interview_type_param = 'job_interview_config'
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')
         message = message.replace("{question}", question)
@@ -5476,9 +5605,9 @@ def read_prompt_time_limit_generator(type, question):
         message = fallback.read_prompt_time_limit_generator(question)
         return message
 
-def read_prompt_overall_evaluation(type, history_str):
+def read_prompt_overall_evaluation(interview_type_param, history_str):
     tag = 'parrot_overall_evaluation'
-    content = fetch_config_template(type, tag)
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')
         message = message.replace("{history}", history_str)  
@@ -5488,9 +5617,9 @@ def read_prompt_overall_evaluation(type, history_str):
         message = fallback.read_prompt_overall_evaluation(history_str)
         return message
 
-def read_prompt_interview_evaluation_metrics(type, history_str):
+def read_prompt_interview_evaluation_metrics(interview_type_param, history_str):
     tag = 'parrot_interview_evaluation_metrics'
-    content = fetch_config_template(type, tag)
+    content = fetch_config_template(interview_type_param, tag)
     if content:
         message = content.get('content', '')
         message = message.replace("{history}", history_str)  
@@ -5500,8 +5629,8 @@ def read_prompt_interview_evaluation_metrics(type, history_str):
         message = fallback.read_prompt_interview_evaluation_metrics(history_str)
         return message
 
-def read_external_audio_analysis(transcript, type, tag):
-    content = fetch_config_template(type, tag)
+def read_external_audio_analysis(transcript, interview_type_param, tag):
+    content = fetch_config_template(interview_type_param, tag)
     realtime_prompt = read_realtime_evaluation()
     if content:
         message = content.get('content', '')
@@ -5532,11 +5661,11 @@ def add_question_number(generated_question_json):
 
     return generated_question_json
 
-def fetch_config_template(type, tag):
+def fetch_config_template(interview_type_param, tag):
     try:
         ipersona_template = IpersonaTinderTemplateSchema()
         templates = ipersona_template.filter_by_type_without_cursor(
-                        type=type, 
+                        type=interview_type_param, 
                         nopp=True, 
                         dataframe=False
                     )
