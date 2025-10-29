@@ -620,13 +620,14 @@ class AudioUtils:
                         
                         # Emit failure event and update Redis
                         try:
-                            if user_sid:
-                                logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: Invalid interview content ...")
-                                await emit_with_log(
-                                    "processing_update_failed",
-                                    {"status": f"Invalid interview content: {error_reason}"},
-                                            sid=user_sid,
-                                )
+                            # if user_sid:
+                            #     logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: Invalid interview content ...")
+                                # await emit_with_log(
+                                #     "processing_update_failed",
+                                #     {"status": f"Invalid interview content: {error_reason}"},
+                                #             sid=user_sid,
+                                # )
+                            asyncio.run(self.save_notification(all_user_id, run_stage, f"Invalid interview content: {error_reason}"))
                         except Exception as emit_exc:
                             logger.error(f"[EMIT][ERROR] processing_update_failed sid={user_sid} err={emit_exc}")
                         
@@ -669,13 +670,14 @@ class AudioUtils:
                         logger.info(f"Document uploaded to S3: {url}")
                         
                     except Exception as e:
-                        if user_sid:
-                            logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: Document processing failed ...")
-                            await emit_with_log(
-                                "processing_update_failed",
-                                {"status": f"Document processing failed: {str(e)}"},
-                                sid=user_sid,
-                            )
+                        # if user_sid:
+                        #     logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: Document processing failed ...")
+                            # await emit_with_log(
+                            #     "processing_update_failed",
+                            #     {"status": f"Document processing failed: {str(e)}"},
+                            #     sid=user_sid,
+                            # )
+                        asyncio.run(self.save_notification(all_user_id, run_stage, f"Document processing failed: {str(e)}"))
                         return f'Document processing failed: {str(e)}'
                     
                     # Extract text content
@@ -910,15 +912,16 @@ class AudioUtils:
                                     # Emit success event for template answer completion
                                 try:
                                     from api.socket.core import emit_with_log
-                                    if user_sid:
-                                        logger.info(f"[EMIT] event=processing_update_success sid={user_sid} payload=status: completed successfully ...")
-                                        loop.run_until_complete(
-                                            emit_with_log(
-                                        "processing_update_success",
-                                        {"status": "✅ Uploaded file analysis completed successfully!"},
-                                                sid=user_sid,
-                                            )
-                                        )
+                                    # if user_sid:
+                                    #     logger.info(f"[EMIT] event=processing_update_success sid={user_sid} payload=status: completed successfully ...")
+                                        # loop.run_until_complete(
+                                        #     emit_with_log(
+                                        # "processing_update_success",
+                                        # {"status": "✅ Uploaded file analysis completed successfully!"},
+                                        #         sid=user_sid,
+                                        #     )
+                                        # )
+                                    asyncio.run(self.save_notification(all_user_id, run_stage, f"Uploaded file analysis completed successfully!"))
                                 except Exception as emit_error:
                                     logger.error(f"[EMIT][ERROR] processing_update_success sid={user_sid} err={emit_error}")
                             else:
@@ -1118,13 +1121,14 @@ class AudioUtils:
             # Proceed even if all are unmatched; only fail on invalid matcher response
             if filtered_data is None or not isinstance(filtered_data, list):
                 error_msg = "Failed to process template answer: invalid matcher response, you should reupload correct files and try again"
-                if user_sid:
-                    logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: invalid matcher response")
-                await emit_with_log(
-                    "processing_update_failed",
-                        {"status": f"{error_msg}"},
-                        sid=user_sid,
-                )
+                # if user_sid:
+                #     logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: invalid matcher response")
+                # await emit_with_log(
+                #     "processing_update_failed",
+                #         {"status": f"{error_msg}"},
+                #         sid=user_sid,
+                # )
+                asyncio.run(self.save_notification(all_user_id, run_stage, f"Invalid matcher response: {error_msg}"))
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
@@ -1138,11 +1142,12 @@ class AudioUtils:
                 try:
                     if user_sid:
                         logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: all questions unmatched")
-                        await emit_with_log(
-                            "processing_update_failed",
-                            {"status": f"{error_msg}"},
-                            sid=user_sid,
-                        )
+                        # await emit_with_log(
+                        #     "processing_update_failed",
+                        #     {"status": f"{error_msg}"},
+                        #     sid=user_sid,
+                        # )
+                        asyncio.run(self.save_notification(all_user_id, run_stage, f"All questions unmatched: {error_msg}"))
                 except Exception as emit_exc:
                     logger.error(f"[EMIT][ERROR] processing_update_failed sid={user_sid} err={emit_exc}")
 
@@ -1257,14 +1262,15 @@ class AudioUtils:
                             try:
                                 from api.socket.core import emit_with_log
                                 # Optional: notify failure via SID
-                                if user_sid:
-                                    asyncio.run(
-                                        emit_with_log(
-                                    "processing_update_success",
-                                    {"status": "✅ Uploaded file analysis completed successfully!"},
-                                            sid=user_sid,
-                                        )
-                                    )
+                                # if user_sid:
+                                #     asyncio.run(
+                                #         emit_with_log(
+                                #     "processing_update_success",
+                                #     {"status": "✅ Uploaded file analysis completed successfully!"},
+                                #             sid=user_sid,
+                                #         )
+                                #     )
+                                asyncio.run(self.save_notification(all_user_id, run_stage, f"Uploaded file analysis completed successfully!"))
      
                             except Exception as emit_error:
                                 logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
@@ -1385,12 +1391,13 @@ class AudioUtils:
             if not answer_validation.get("valid", False):
                 error_msg = f"Answer content validation failed: {answer_validation.get('reason', 'Unknown validation error')}"
                 logger.error(error_msg)
-                if user_sid:
-                    await emit_with_log(
-                        "processing_update_failed",
-                        {"status": f"{error_msg}"},
-                            sid=user_sid,
-                    )
+                # if user_sid:
+                #     await emit_with_log(
+                #         "processing_update_failed",
+                #         {"status": f"{error_msg}"},
+                #             sid=user_sid,
+                #     )
+                asyncio.run(self.save_notification(all_user_id, run_stage, f"Answer content validation failed: {error_msg}"))
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
                 redis.set(task_redis_key, {
@@ -1470,13 +1477,14 @@ class AudioUtils:
             # Proceed even if all are unmatched; only fail on invalid matcher response
             if filtered_data is None or not isinstance(filtered_data, list):
                 error_msg = "Failed to process template answer: invalid matcher response, you should reupload correct files and try again"
-                if user_sid:
-                    logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: invalid matcher response")
-                    await emit_with_log(
-                        "processing_update_failed",
-                        {"status": f"{error_msg}"},
-                        sid=user_sid,
-                    )
+                # if user_sid:
+                #     logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: invalid matcher response")
+                #     await emit_with_log(
+                #         "processing_update_failed",
+                #         {"status": f"{error_msg}"},
+                #         sid=user_sid,
+                #     )
+                asyncio.run(self.save_notification(all_user_id, run_stage, f"Invalid matcher response: {error_msg}"))
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
@@ -1488,13 +1496,14 @@ class AudioUtils:
                 
                 # Optional: notify failure via SID
                 try:
-                    if user_sid:
-                        logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: all questions unmatched")
-                        await emit_with_log(
-                            "processing_update_failed",
-                            {"status": f"{error_msg}"},
-                                    sid=user_sid,
-                        )
+                    # if user_sid:
+                    #     logger.info(f"[EMIT] event=processing_update_failed sid={user_sid} payload=status: all questions unmatched")
+                    #     await emit_with_log(
+                    #         "processing_update_failed",
+                    #         {"status": f"{error_msg}"},
+                    #                 sid=user_sid,
+                    #     )
+                    asyncio.run(self.save_notification(all_user_id, run_stage, f"All questions unmatched: {error_msg}"))
                 except Exception as emit_exc:
                     logger.error(f"[EMIT][ERROR] processing_update_failed sid={user_sid} err={emit_exc}")
 
@@ -1584,14 +1593,15 @@ class AudioUtils:
                             # Emit success event for template answer completion
                             try:
                                 from api.socket.core import emit_with_log
-                                if user_sid:
-                                    loop.run_until_complete(
-                                        emit_with_log(
-                                            "processing_update_success",
-                                            {"status": "✅ Uploaded file analysis completed successfully!"},
-                                            sid=user_sid,
-                                        )
-                                    )
+                                # if user_sid:
+                                #     loop.run_until_complete(
+                                #         emit_with_log(
+                                #             "processing_update_success",
+                                #             {"status": "✅ Uploaded file analysis completed successfully!"},
+                                #             sid=user_sid,
+                                #         )
+                                #     )
+                                asyncio.run(self.save_notification(all_user_id, run_stage, f"Uploaded file analysis completed successfully!"))
                             except Exception as emit_error:
                                 logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
                         else:
@@ -2578,3 +2588,53 @@ class AudioUtils:
             logger.error(f"Process failed: ${str(e)}")
             return f'Error: {str(e)}'  
         
+    async def save_notification(self, all_user_id, run_stage, message):
+        try:
+
+            detail = {
+                    "topic": f"external upload data processing status",
+                    "where": f"",
+                    "notificationMessage": f"{message}",
+                    # "traineeLink": f"/trainee/parrot",
+                    # "staffLink": f"/trainee/parrot",
+                    "traineeLink": f"#",
+                    "staffLink": f"#",
+                }
+                
+            from api.llm.ipersona.ipersona_strapi_schemas import IpersonaAllUserSchema
+            ipersona_alluser = IpersonaAllUserSchema(run_stage=run_stage)
+            ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
+
+            nana_user_id = "2147"
+            batch_id = ipersona_alluser_data.get('Batch')
+            if batch_id:
+                batch_id = [batch_id]
+            else:
+                batch_id = []
+
+            # Prepare GraphQL mutation payload
+            notification_payload = {
+                "sender": nana_user_id,
+                "receiver": all_user_id,
+                "Detail": detail,
+                "BatchIDs": [batch_id] if batch_id else [],
+                "origin": "leap"
+            }
+            
+            # Create instance of IpersonaNotificationSchema and call _create_notification
+            from api.llm.ipersona.ipersona_strapi_schemas import IpersonaNotificationSchema
+            notification_schema = IpersonaNotificationSchema(run_stage=run_stage)
+            notification_result = notification_schema._create_notification(notification_payload)
+            
+            if notification_result and 'data' in notification_result and 'createNotification' in notification_result['data']:
+                notification_id = notification_result['data']['createNotification']['data']['id']
+                logger.info(f"Successfully sent notification with ID: {notification_id}")
+                return {"notification_id": notification_id, "status": "success"}
+            else:
+                error_msg = f"Failed to create notification: {notification_result}"
+                logger.error(error_msg)
+                return {"error": error_msg, "status": "failed"}
+                    
+        except Exception as e:
+            error_msg = f"Unexpected error in health check: {str(e)}"
+            logger.error(error_msg)

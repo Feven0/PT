@@ -49,12 +49,12 @@ Use GitHub Copilot Chat or any AI coding agent with the compile prompt:
 
 **Option A: GitHub Copilot Chat**
 ```
-/load compile.prompt.md
+/load specs/compile.prompt.md
 ```
 
 **Option B: Manual instruction**
 ```
-Read the specification in main.md and update the codebase accordingly. 
+Read the specification in specs/main.md and update the codebase accordingly. 
 Focus on [specific feature mentioned in the spec].
 ```
 
@@ -70,7 +70,7 @@ Focus on [specific feature mentioned in the spec].
 As the spec grows, it may become messy. Clean it up:
 
 ```
-/load lint.prompt.md
+/load specs/lint.prompt.md
 ```
 
 This will:
@@ -97,7 +97,7 @@ Add to the "API Endpoints Summary" section:
 **Step 2: Compile**
 
 ```
-Update the application to add the user stats endpoint as described in main.md
+Update the application to add the user stats endpoint as described in specs/main.md
 ```
 
 **Step 3: Test**
@@ -125,7 +125,7 @@ Modify to include sentiment analysis:
 **Step 2: Compile**
 
 ```
-Update the real-time evaluation feature as specified in main.md, 
+Update the real-time evaluation feature as specified in specs/main.md, 
 focusing on adding sentiment analysis.
 ```
 
@@ -166,8 +166,8 @@ focusing on adding sentiment analysis.
 ### GitHub Copilot (VS Code)
 
 Use these commands in GitHub Copilot Chat:
-- `/load compile.prompt.md` - Compile the spec
-- `/load lint.prompt.md` - Clean up the spec
+- `/load specs/compile.prompt.md` - Compile the spec
+- `/load specs/lint.prompt.md` - Clean up the spec
 - `/focus on [feature]` - Focus compilation on specific feature
 
 ### Other AI Coding Agents
@@ -214,4 +214,10 @@ When contributing to this project:
 4. Test thoroughly
 5. Update `main.md` if code changes during implementation
 6. Consider linting with `lint.prompt.md` before committing
+
+
+
+
+
+
 

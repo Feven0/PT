@@ -21,7 +21,9 @@ from api.llm.ipersona.ipersona_strapi_schemas import (
     IpersonaTinderTemplateSchema,
     IpersonaSessionTinderUserReactionSchema,
     IpersonaChallengeDocumentSchema,
-    IpersonaSessionTinderUserJobMatchSchema
+    IpersonaSessionTinderUserJobMatchSchema,
+    IpersonaEvaluationResponseSchema,
+    IpersonaNotificationSchema
 )
 from api.pages.ipersona.models.endpoint_responses import (
     UpdateSessionModeResponse, 
@@ -378,7 +380,10 @@ async def health_check():
         # await sio.emit("processing_update", {"status": "processing cma healt check"})
         sessionId = 1879
         mode = 'Chat'
-        run_stage = 'kaim'
+        run_stage = 'dev'
+        # Fetching data from other services using all_user_id
+        all_user_id = 1959
+
         # updated_mode = util.updating_session_mode(sessionId, mode, run_stage)
         # user_profile_id = 197
         # template_id = 129
@@ -388,18 +393,50 @@ async def health_check():
         #             template_id=129, 
         #             nopp=True, 
         #             dataframe=False
-        #             ) 
+        #   
+        #           ) 
+        # sessionId = "2813"
+        # result = util.overall_evaluation_with_autograde(sessionId, run_stage)
+        # return result
+
+    #     detail = {
+    #             "topic": f"external upload data processing status",
+    #             "where": sessionId,
+    #             "notificationMessage": f"have completed processing the uploaded file",
+    #             "traineeLink": f"/trainee/parrot",
+    #             "staffLink": f"/trainee/parrot",
+    #         }
+            
+
+    #     nana_user_id = "2147"
+    #     all_user_id = "1959"
+    #     batch_id = "7"
+    #     # Prepare GraphQL mutation payload
+    #     notification_payload = {
+    #         "sender": nana_user_id,
+    #         "receiver": all_user_id,
+    #         "Detail": detail,
+    #         "BatchIDs": [batch_id] if batch_id else [],
+    #         "origin": "leap"
+    #     }
         
-        ipersona_session_message = IpersonaSessionMessageSchema(run_stage=run_stage)
-        session =  ipersona_session_message.get_session_msg_by_id(msgId=205, nopp=True, dataframe=False)
+    #     # Create instance of IpersonaNotificationSchema and call _create_notification
+    #     notification_schema = IpersonaNotificationSchema(run_stage=run_stage)
+    #     notification_result = notification_schema._create_notification(notification_payload)
         
-        return session
+    #     if notification_result and 'data' in notification_result and 'createNotification' in notification_result['data']:
+    #         notification_id = notification_result['data']['createNotification']['data']['id']
+    #         logger.info(f"Successfully sent notification with ID: {notification_id}")
+    #         return JSONResponse({"notification_id": notification_id, "status": "success"})
+    #     else:
+    #         error_msg = f"Failed to create notification: {notification_result}"
+    #         logger.error(error_msg)
+    #         return JSONResponse({"error": error_msg, "status": "failed"}, status_code=500)
+                
     except Exception as e:
-        logger.error(f"Error in health check: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Health check failed: {str(e)}"}
-        )
+        error_msg = f"Unexpected error in health check: {str(e)}"
+        logger.error(error_msg)
+        return JSONResponse({"error": error_msg, "status": "failed"}, status_code=500)
 
 @routes.post(
     "/update_session_mode",
@@ -2395,6 +2432,55 @@ async def fetch_user_all_observer(request: pemodel.SessionIdRequestRecieved)-> U
             content={"error": f"Error fetching observers: {str(e)}"}
         )
 
+@routes.post("/fetch_session_overall_evaluation", tags=["Session Endpoints"])
+async def fetch_user_session(request: pemodel.SessionRequestFiltering) :
+    """
+    Fetch overall evaluation data for a specific sessionId.
+
+    Parameters
+    ----------
+    request : pemodel.UserSessionRequestRecieved
+        Object containing:
+        - sessionId: Session ID to fetch overall evaluation data for the session
+
+    Returns
+    -------
+    Union[Union[List, Dict], JSONResponse]
+        Overall Evaluation data for the session
+    """  
+    run_stage = request.run_stage
+    sessionId = request.sessionId
+
+    try:
+        logger.info(f"Fetching overall evaluation data for session ID: {sessionId}")
+
+        # Step 1: Retrieve trainee profile data
+        ipersona_session = IpersonaEvaluationResponseSchema(run_stage=run_stage)
+        observer_data = ipersona_session.filter_by_evaluation_by_session_id(
+            sessionId=sessionId, 
+            nopp=True, 
+            dataframe=False
+        )
+
+        if not observer_data:
+            logger.warn(f"No Overall Evaluation data found for session ID: {sessionId}")
+            return JSONResponse(
+                status_code=404, 
+                content={"message": f"No Overall Evaluation data found for session ID: {sessionId}"}
+            )
+
+        logger.info(f"Overall Evaluation data retrieved for session ID: {sessionId}")
+
+        return observer_data
+
+
+    except Exception as e:
+        logger.error(f"Error processing overall evaluation for session ID: {sessionId} - {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500, 
+            content={"error": f"Error fetching session evaluation: {str(e)}"}
+        )
+   
 @routes.post("/fetch_single_session", tags=["Session Endpoints"])
 async def fetch_single_session(request: pemodel.SessionIdRequestRecieved):
     """

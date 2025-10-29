@@ -2447,6 +2447,104 @@ class IpersonaSessionMessageSchema(LeapBaseClass):
             logger.error(f"Error extracting session message data: {str(e)}")
             return {'error': f"Error extracting session message data: {str(e)}"}
 
+class IpersonaEvaluationResponseSchema(LeapBaseClass):
+    '''
+    Schema Name:
+        IPersonaEvaluationResponse
+    Attributes:
+        i_persona_session: Relation with IPersonaEvaluationResponse
+        attributes: Json	
+    '''
+    def __init__(self, run_stage='', **kwargs) -> None:
+        self.kwargs = copy.deepcopy(kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+
+        
+        self.table_single = kwargs.get('table_single', "")
+        self.table = kwargs.get('table', "")
+        self.data = kwargs.get('data', "")
+        
+        if not self.table_single:
+            self.table_single = "ipersonaEvaluationResponse"
+            
+        if not self.table:
+            self.table = "ipersonaEvaluationResponses"
+            
+        if not self.data:
+            logger.info(f"Using default data schema for {self.table_single} ...")
+            self.data = '''
+                data {
+                    id
+                    attributes {
+                        i_persona_session {
+                            data {
+                                id
+                            }
+                        }
+                        llm_response
+                        %s
+                    }
+                }
+            '''
+        else:
+            logger.info(f"Using passed data schema for {self.table_single} ...")
+     
+            
+        self.type_map = {   
+            "i_persona_session": "ID",
+            "llm_response": "JSON"
+        }
+
+        self.id_names_map = {  }
+         
+        self.data_template = copy.deepcopy(self.data)
+        self.data = self.data%""
+        _ = self.process_extra_data(kwargs.get('extra_data', []), inplace=True)
+    
+    def get_session_observer_by_id(self, sessionId, **kwargs):
+        return self.exists(scol='id', sval=sessionId, op='eq', stype="ID", **kwargs)        
+
+    def filter_by_evaluation_by_session_id(self, sessionId, **kwargs):
+        try:
+            if not sessionId:
+                logger.error("Session ID is missing for observer session filter!")
+                return None
+
+            session_filter = f"""
+                filters: {{
+                    i_persona_session : {{ id: {{ eq: {sessionId} }} }}
+                }}
+            """
+            
+            data_json = self.get_all_objects(filter=session_filter, **kwargs)
+            
+            data = self.get_session_evaluation_data(data_json)
+
+            if data is None:
+                logger.warn(f"No observer session data found for session ID {sessionId}.")
+                return None
+
+            return data
+
+        except Exception as e:
+            logger.error(f"Error filtering by observer session ID: {str(e)}")
+            return {'error': f"Error filtering by observer session ID: {str(e)}"}
+    
+    def get_session_evaluation_data(self, session_json):
+        try:
+            if isinstance(session_json, list) and len(session_json) > 0:
+                for entry in session_json:
+                    if 'data' in entry:
+                        for session in entry.get('data'):                            
+                            return session
+                        
+            logger.warn("No session observer data found in session JSON.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error extracting observer session data: {str(e)}")
+            return {'error': f"Error extracting observer session data: {str(e)}"}
+
 class IpersonaSessionObserverSchema(LeapBaseClass):
     '''
     Schema Name:
@@ -4083,3 +4181,62 @@ class IpersonaSmgCretrionMetricSchema(LeapBaseClass):
         except Exception as e:
             logger.error(f"Error extracting metric data from metric JSON: {str(e)}")
             return {'error': f"Error extracting metric data from metric JSON: {str(e)}"}
+
+class IpersonaNotificationSchema(LeapBaseClass):
+    from typing import Dict, Optional
+    
+    def __init__(self, run_stage='', **kwargs) -> None:
+        self.kwargs = copy.deepcopy(kwargs)
+        super().__init__(run_stage=run_stage, **kwargs)   
+        
+    def _create_notification(self, payload: Dict) -> Optional[Dict]:
+        """
+        Execute the GraphQL mutation to create a notification.
+        
+        Args:
+            payload: The notification payload
+            strapi_client: Instance of StrapiGraphql client
+            
+        Returns:
+            GraphQL response or None if failed
+        """
+        mutation = """
+        mutation createNotification(
+            $sender: ID!
+            $receiver: ID
+            $detail: JSON
+            $batch: [ID]!
+        ) {
+            createNotification(
+                data: {
+                    sender: $sender
+                    receiver: $receiver
+                    Detail: $detail
+                    BatchIDs: $batch
+                }
+            ) {
+                data {
+                    id
+                }
+            }
+        }
+        """
+        
+        variables = {
+            "sender": payload["sender"],
+            "receiver": payload["receiver"],
+            "detail": payload["Detail"],
+            "batch": payload["BatchIDs"]
+        }
+        
+        try:
+            from api.services.strapi_graphql import StrapiGraphql
+            # Send notification via GraphQL
+            strapi = StrapiGraphql(run_stage=self.run_stage)
+            logger.info("Executing notification GraphQL mutation")
+            result = strapi._execute_mutation(mutation, variables)
+            return result
+            
+        except Exception as e:
+            logger.error(f"GraphQL mutation failed for notification: {e}")
+            return None

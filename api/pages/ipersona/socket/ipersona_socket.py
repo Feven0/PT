@@ -125,6 +125,7 @@ audio_wav_storage: Dict[str, bytes] = {}
 
 # Message queue for disconnected clients (legacy SID-based)
 disconnected_message_queue: Dict[str, list] = {}
+sid_message_queue: Dict[str, list] = {}  # Backup queue for SIDs without user_id during reconnect
 
 # Enhanced SID mapping storage using user_id
 USER_ID_TO_SID: Dict[str, str] = {}  # user_id -> current_sid
@@ -312,7 +313,7 @@ def update_sid_mapping(user_id: str, sid: str):
     logger.info(f"[DEBUG][SID_MAPPING] After update - SID_TO_USER_ID: {SID_TO_USER_ID}")
     logger.info(f"[SID_MAPPING] Mapped user {user_id} -> SID {sid}")
 
-def queue_message_for_user(user_id: str, event: str, data: any):
+async def queue_message_for_user(user_id: str, event: str, data: any):
     """Queue message using user_id instead of SID"""
     try:
         logger.info(f"[DEBUG][QUEUE] queue_message_for_user: user_id={user_id}, event={event}")
@@ -547,6 +548,33 @@ async def connect(sid, environ):
         await deliver_queued_messages_for_user(user_id, sid)
         logger.info(f"[CONNECT] User {user_id} connected with SID {sid}")
         
+        # Also deliver any SID-specific queued messages (backup queue for this SID)
+        if sid in sid_message_queue:
+            queued_messages = sid_message_queue[sid]
+            logger.info(f"[DELIVERY] Delivering {len(queued_messages)} SID-queued messages to {sid}")
+            for msg in queued_messages:
+                await safe_emit_or_queue(sid, msg["event"], msg["data"])
+                logger.info(f"[DELIVERY] Delivered queued {msg['event']} to {sid}")
+            del sid_message_queue[sid]
+            logger.info(f"[DELIVERY] Cleared SID message queue for {sid}")
+        
+        # Also check for ANY orphaned SID queues from previous connections without user_id
+        # and deliver them to this user now that we have user_id
+        logger.info(f"[DEBUG][CONNECT] Checking for orphaned SID queues for user {user_id}")
+        orphaned_sids = []
+        for old_sid, messages in sid_message_queue.items():
+            if messages:
+                logger.info(f"[ORPHAN] Found orphaned SID queue: {old_sid} with {len(messages)} messages")
+                orphaned_sids.append((old_sid, messages))
+        
+        for old_sid, messages in orphaned_sids:
+            logger.info(f"[ORPHAN][DELIVERY] Delivering {len(messages)} orphaned messages from SID {old_sid} to user {user_id} via {sid}")
+            for msg in messages:
+                await safe_emit_or_queue(sid, msg["event"], msg["data"])
+                logger.info(f"[ORPHAN][DELIVERY] Delivered orphaned {msg['event']} to user {user_id}")
+            del sid_message_queue[old_sid]
+            logger.info(f"[ORPHAN][DELIVERY] Cleared orphaned SID queue {old_sid}")
+        
         # Debug: Show current mappings after connection
         debug_show_mappings()
     else:
@@ -571,6 +599,16 @@ async def connect(sid):
         logger.info(f"[DELIVERY] Cleared message queue for {sid}")
     else:
         logger.info(f"[DELIVERY] No queued messages for {sid}")
+    
+    # NEW: Also check and deliver SID-specific backup queue
+    if sid in sid_message_queue:
+        queued_messages = sid_message_queue[sid]
+        logger.info(f"[DELIVERY] Delivering {len(queued_messages)} SID backup queued messages to {sid}")
+        for msg in queued_messages:
+            await safe_emit_or_queue(sid, msg["event"], msg["data"])
+            logger.info(f"[DELIVERY] Delivered SID backup queued {msg['event']} to {sid}")
+        del sid_message_queue[sid]
+        logger.info(f"[DELIVERY] Cleared SID backup message queue for {sid}")
     
     # NEW: Also check for user_id based queued messages
     try:
@@ -2737,8 +2775,12 @@ async def safe_emit_or_queue(sid: str, event: str, data: any):
             logger.error(f"[DEBUG][SAFE_EMIT] Error type: {type(e).__name__}")
             # Don't re-raise the exception, just log it and continue
 
-        # No user_id available; skip SID emit per policy and log clearly
-        logger.warn(f"[SAFE_EMIT] Skipping emit of '{event}' for SID {sid}: no user_id available during reconnect window")
+        # No user_id available - QUEUE BY SID as backup during reconnect window
+        logger.info(f"[SAFE_EMIT] No user_id available for SID {sid}, queuing message by SID as backup")
+        if sid not in sid_message_queue:
+            sid_message_queue[sid] = []
+        sid_message_queue[sid].append({"event": event, "data": data})
+        logger.info(f"[QUEUE] Queued message for SID {sid} (no user_id). Queue size: {len(sid_message_queue[sid])}")
 
 # New function for direct user_id usage
 async def emit_to_user(user_id: str, event: str, data: any):
@@ -2747,7 +2789,7 @@ async def emit_to_user(user_id: str, event: str, data: any):
     await safe_emit_or_queue_by_user_id(user_id, event, data)
 
 # Enhanced queue_message_for_client to work with both systems
-def queue_message_for_client(sid: str, event: str, data: any):
+async def queue_message_for_client(sid: str, event: str, data: any):
     """Enhanced function that queues by user_id if available, otherwise by SID"""
     logger.info(f"[DEBUG][QUEUE_CLIENT] queue_message_for_client called: sid={sid}, event={event}")
     
@@ -2756,7 +2798,7 @@ def queue_message_for_client(sid: str, event: str, data: any):
     
     if user_id:
         logger.info(f"[DEBUG][QUEUE_CLIENT] Using user_id based queuing for user: {user_id}")
-        queue_message_for_user(user_id, event, data)
+        await queue_message_for_user(user_id, event, data)
     else:
         # Fallback to original SID-based queuing (PRESERVE EXISTING)
         logger.info(f"[DEBUG][QUEUE_CLIENT] No user_id found, using SID fallback for: {sid}")

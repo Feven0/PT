@@ -38,8 +38,7 @@ class StrapiGraphql():
         self.token = get_auth(ssmkey,
                             envvar='STRAPI_TOKEN',
                             fconfig=lambda_friendly_path(f'.env/{root}.json'))
-         
- 
+        
         # define headers
         if self.token:                        
             self.headers = {"Authorization": f"Bearer {self.token}"}
@@ -1107,3 +1106,62 @@ class StrapiGraphql():
         # print(self.Select_from_table(query, variables=variables))
         response = self.Select_from_table(query, variables=variables)
         return response
+
+    def _execute_mutation(self, query, variables):
+        """Execute a GraphQL mutation with enhanced error handling and consistent return format"""
+        try:
+            # Validate that all required variables are present and not None
+            if not variables:
+                logger.error('No variables provided for mutation')
+                return {'errors': ['No variables provided for mutation']}
+            
+            logger.debug(f"Executing mutation with variables: {json.dumps(variables, indent=2, default=str)}")
+            
+            # Execute the mutation using the Strapi GraphQL client
+            result = self.insert_table(query, variables)
+            
+            # Enhanced error checking
+            if result is None:
+                logger.error('Mutation returned None response from Strapi')
+                return {'errors': ['Mutation returned None response from Strapi']}
+            
+            # Handle string responses by parsing JSON (consistent with insert_table behavior)
+            if isinstance(result, str):
+                try:
+                    result = json.loads(result)
+                    logger.debug("Successfully parsed JSON string response")
+                except json.JSONDecodeError as e:
+                    error_msg = f"Failed to parse JSON response: {e}. Raw response: {result}"
+                    logger.error(error_msg)
+                    return {'errors': [error_msg]}
+            
+            # Check if result is a dictionary and contains expected structure
+            if isinstance(result, dict):
+                # Check for GraphQL errors first
+                if 'errors' in result and result['errors']:
+                    logger.error(f"GraphQL errors: {result['errors']}")
+                    return result  # Return as-is to match class behavior
+                
+                # Check if 'data' exists and is not None
+                if 'data' not in result:
+                    error_msg = "No 'data' field in response"
+                    logger.error(error_msg)
+                    return {'errors': [error_msg]}
+                
+                if result['data'] is None:
+                    error_msg = "Response 'data' field is null"
+                    logger.error(error_msg)
+                    return {'errors': [error_msg]}
+                
+                return result
+            else:
+                error_msg = f"Unexpected response type: {type(result)}. Response: {result}"
+                logger.error(error_msg)
+                return {'errors': [error_msg]}
+            
+        except Exception as e:
+            error_msg = f"Exception during mutation execution: {str(e)}"
+            logger.error(error_msg)
+            import traceback
+            traceback.print_exc()
+            return {'errors': [error_msg]}

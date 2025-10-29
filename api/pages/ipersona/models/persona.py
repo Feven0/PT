@@ -20,6 +20,13 @@ class SessionJobRequestRecieved(MyBaseModel):
     sessionId: str
     jbId: str
 
+
+class ChallengeRequestFiltering(MyBaseModel):
+    challenge_id: int
+
+class SessionRequestFiltering(MyBaseModel):
+    sessionId: str
+    
 class OverallRequestRecieved(MyBaseModel):
     all_user_id: int
     job_profile_id: int
@@ -210,10 +217,6 @@ class ExternalRequestRecieved(MyBaseModel):
     generate: bool = False
     external: bool 
     challenge: bool = False
-
-
-class ChallengeRequestFiltering(MyBaseModel):
-    challenge_id: int
 
 class UpdateSessionModeRequestReceieved(MyBaseModel):
     sessionId: int

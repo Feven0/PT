@@ -369,6 +369,8 @@ async def choose_interview_question_new_structure(
             logger.info(f"🔍 [DEBUG] Run stage: {rstage}")
             
             asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, interview_type))
+            asyncio.create_task(overall_evaluation_with_autograde(sessionId, rstage))
+
             logger.info("✅ Started overall calculation in background - socket emission will not be blocked")            
                 
             response = {
@@ -1660,7 +1662,70 @@ async def overall_interview_evaluations_external(
     except Exception as e:
         logger.error(f"Overall evaluation process failed: {str(e)}")
         return {'error': str(e)}    
-                  
+
+
+def overall_evaluation_with_autograde(sessionId: str or int, run_stage: str) -> dict:
+    try:
+        # Debug: Check if file exists before opening
+        import requests
+        
+        # Send to the content-extractor transcription endpoint
+        endpoint_url = "https://autograde.10academy.org/grade/grade-interview-session"
+
+        # Prepare JSON payload (no auth required)
+        payload = {
+            "session_id": str(sessionId),
+            "run_stage": str(run_stage)
+        }
+
+        logger.info("Sending session id to autograde endpoint for overall evaluation...")
+        response = requests.post(endpoint_url, json=payload, timeout=90) 
+
+        # Handle HTTP errors with structured info
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            return {
+                "error": f"HTTP error: {e}",
+                "status_code": response.status_code,
+                "response_text": response.text,
+                "response_json": (response.json() if response.headers.get('content-type','').startswith('application/json') else None),
+            }
+
+        # Parse JSON or return raw text
+        try:
+            result = response.json()
+            
+        except ValueError:
+            return {
+                "error": "Non-JSON response from autograde service",
+                "status_code": response.status_code,
+                "response_text": response.text,
+            }
+
+        # If service indicates failure, bubble up message with hint
+        if isinstance(result, dict) and result.get("success") is False:
+            return {
+                "error": result.get("message") or "Autograde reported failure",
+                "status_code": response.status_code,
+                "service_response": result,
+                "diagnostics": {"endpoint": endpoint_url, "sent_payload": payload},
+            }
+
+        return result
+
+    except requests.exceptions.HTTPError as e:
+        return {
+            "error": f"HTTP error: {e}",
+            "details": e.response.text,
+            "status_code": e.response.status_code
+        }
+
+    except Exception as e:
+        return {
+            "error": f"Unexpected error: {str(e)}",
+            "status_code": 500
+        }                
 #---------------------------------------- Interview Question Clarification ---------------------------------
 async def clarify_question(question: str) -> dict:
     """
