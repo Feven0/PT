@@ -19,7 +19,8 @@ Parrot is a comprehensive AI-driven interview platform that helps:
 ### Key Features
 
 ✅ **Real-time AI Evaluation** - Instant feedback on answers  
-✅ **Multiple STT Services** - AssemblyAI, Whisper, Google Cloud, Gemini  
+✅ **Google Cloud STT (Primary)** - High-accuracy real-time transcription  
+✅ **Multiple STT Services** - Google Cloud, AssemblyAI, Whisper, Gemini  
 ✅ **Admin Analytics** - Comprehensive dashboards and reports  
 ✅ **Template Management** - AI-generated interview templates  
 ✅ **Progress Tracking** - Detailed metrics and visualizations  
@@ -111,8 +112,9 @@ docker-compose up --build
 
 **AI/ML:**
 - OpenAI GPT (primary LLM)
+- Google Cloud Speech-to-Text (primary STT)
 - LiteLLM (multi-provider)
-- 5 STT services
+- 5 STT services (Google Cloud, AssemblyAI, Whisper, OpenAI, Gemini)
 - Sentence Transformers (embeddings)
 - AutoGen (AI agents)
 
@@ -223,7 +225,7 @@ pytest tests/test_s3_connectivity.py -v
 
 **50+ endpoints across 8 categories:**
 
-- **STT**: 4 endpoints (Whisper, Gemini, OpenAI, Google)
+- **STT**: 4 endpoints (**Google Cloud** primary, Whisper, OpenAI, Gemini)
 - **Session Management**: 10 endpoints
 - **Analytics**: 4 endpoints  
 - **Admin**: 14 endpoints
@@ -242,9 +244,10 @@ pytest tests/test_s3_connectivity.py -v
 
 **Client → Server:**
 - `initial connect` - Session setup
-- `audio transcribe whisper` - Whisper STT
-- `audio transcribe google` - Google STT
-- `audio chat sentence` - Real-time interview
+- `audio transcribe google` - **Google Cloud STT (PRIMARY)**
+- `audio chat sentence` - **Real-time interview (uses Google Cloud STT)**
+- `audio transcribe whisper` - Faster Whisper STT (alternative)
+- `audio transcribe` - AssemblyAI (for uploads)
 - `interview chat` - Text chat
 - And more...
 
@@ -271,16 +274,22 @@ pytest tests/test_s3_connectivity.py -v
 
 ## 🤖 AI/ML Services
 
-- **OpenAI GPT** - Primary LLM for evaluations
+### Primary Services
+- **OpenAI GPT** - Primary LLM for evaluations and question generation
+- **Google Cloud Speech-to-Text** - **PRIMARY STT for real-time interviews**
 - **LiteLLM** - Multi-provider LLM gateway
-- **Instructor** - Structured outputs
-- **AssemblyAI** - Professional STT
-- **Faster Whisper** - Local STT
-- **Google Cloud STT** - Enterprise STT
-- **Google Gemini** - AI-powered STT
-- **OpenAI Whisper API** - Cloud STT
-- **Sentence Transformers** - Embeddings for matching
-- **AutoGen** - AI agent framework
+
+### Speech-to-Text (Priority Order)
+1. **Google Cloud STT** (PRIMARY) - Real-time interview transcription
+2. **AssemblyAI** - Batch processing for uploaded files
+3. **Faster Whisper** - Local/offline transcription
+4. **OpenAI Whisper API** - Cloud STT fallback
+5. **Google Gemini** - Alternative AI-powered STT
+
+### Additional AI/ML
+- **Instructor** - Structured outputs from LLMs
+- **Sentence Transformers** - Embeddings for question-answer matching
+- **AutoGen** - AI agent framework for complex workflows
 
 ---
 
@@ -381,7 +390,8 @@ cat specs/main.md
 | **Frontend** | React 18, TypeScript, Vite, Ant Design |
 | **Database** | Strapi CMS (GraphQL API) |
 | **AI/ML** | OpenAI GPT, LiteLLM, Sentence Transformers, AutoGen |
-| **STT** | AssemblyAI, Whisper, Google Cloud, Gemini |
+| **STT (Primary)** | **Google Cloud Speech-to-Text** |
+| **STT (Others)** | AssemblyAI, Faster Whisper, OpenAI Whisper, Gemini |
 | **Storage** | AWS S3, AWS Secrets Manager |
 | **DevOps** | Docker, Docker Compose, Makefile |
 | **Testing** | Pytest, Coverage |

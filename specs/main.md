@@ -1,1236 +1,2595 @@
-# Parrot (iPersona) - AI Interview Platform Specification
+# Parrot (iPersona) - System Requirements Specification
 
-> **📝 Document Type**: Reverse-Engineered Specification
-> 
-> **Status**: Documents existing production application (6+ months development)
-> 
-> **Purpose**: This specification reverse-engineers an existing, fully-functional application that was built starting 6 months ago. It serves as:
-> - **Living documentation** of the current system
-> - **Source of truth** for understanding architecture
-> - **Blueprint** for AI-assisted modifications and enhancements
-> - **Onboarding guide** for new developers
->
-> **Last Updated**: December 2024
+> **Document Type**: Technical Requirements Specification  
+> **Version**: 1.0  
+> **Status**: Normative  
+> **Purpose**: Define requirements for building the Parrot AI Interview Platform from scratch
 
-## Overview
+---
 
-**Parrot** is an AI-driven job interview platform that helps job seekers assess job fit, engage in mock interviews, and receive personalized feedback. The system uses AI to generate interview questions, evaluate candidate responses in real-time, and provide comprehensive performance analysis.
+## Document Conventions
 
-**Current Status**: Production-ready application with 50+ API endpoints, real-time Socket.IO communication, Celery background processing, and comprehensive admin analytics.
+This document uses **RFC 2119** keywords to indicate requirement levels:
 
-### Purpose
+- **MUST** / **REQUIRED** / **SHALL** = Absolute requirement
+- **MUST NOT** / **SHALL NOT** = Absolute prohibition
+- **SHOULD** / **RECOMMENDED** = Strong recommendation, may be ignored with valid reason
+- **SHOULD NOT** / **NOT RECOMMENDED** = Strong discouragement
+- **MAY** / **OPTIONAL** = Truly optional
 
-Parrot enables:
-- **Job seekers**: Practice interviews, get AI-powered feedback, and improve interview skills
-- **HR professionals**: Assess candidates for job openings
-- **Trainees**: Track progress and performance over time
+---
 
-### Technology Stack
+## 1. System Overview
 
-**Backend:**
-- **Framework**: FastAPI (Python 3.12)
-- **Database**: Strapi CMS (GraphQL API)
-- **Task Queue**: Celery with Redis broker
-- **Real-time**: Socket.IO (python-socketio)
-- **Web Server**: Uvicorn (dev), Gunicorn (prod)
+### 1.1 Purpose
 
-**AI & ML Services:**
-- **LLM Providers**: OpenAI GPT models (primary)
-- **LLM Gateway**: LiteLLM (multi-provider support)
-- **Structured Outputs**: Instructor library
-- **Speech-to-Text**: 
-  - AssemblyAI
-  - Faster Whisper (local)
-  - OpenAI Whisper API
-  - Google Cloud Speech-to-Text
-  - Google Gemini
-- **Embeddings**: Sentence Transformers (all-MiniLM-L6-v2)
-- **AI Agents**: AutoGen framework (for complex workflows)
+The system SHALL provide an AI-powered interview practice platform that enables:
+- Job seekers to practice interviews with real-time AI evaluation
+- HR professionals to assess candidates efficiently
+- Trainees to track progress and improve interview skills
 
-**Frontend:**
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **UI Components**: Ant Design (Charts, Forms, Tables)
-- **State Management**: React Context API
-- **Real-time**: Socket.IO Client
-- **Charts**: Recharts, AntD Charts (Radar, Line, Bar, Sankey, Liquid)
+### 1.2 Scope
 
-**Infrastructure:**
-- **Package Manager**: uv (Python), npm/pnpm (Node.js)
-- **Code Quality**: Black, isort, Ruff, MyPy
-- **Security**: Bandit, Safety
-- **Testing**: Pytest, coverage
-- **Containerization**: Docker, Docker Compose
-- **Cloud Services**: AWS S3, AWS Secrets Manager
-- **Storage**: S3 for audio/documents
+The system MUST implement:
+1. Real-time audio transcription and evaluation
+2. Interview session management
+3. Progress tracking and analytics
+4. Template-based interview generation
+5. Background processing for uploaded media
+6. Administrative oversight and reporting
 
-**External Services:**
-- **Content Extraction**: Custom API (https://content-extractor.10academy.org)
-- **Autograde Service**: Custom API (https://autograde.10academy.org)
+### 1.3 System Context
 
-## Database Architecture
-
-### Core Tables (Strapi CMS)
-
-#### ipersona-session
-Stores interview session information
-- `id`: Primary key
-- `user_id`: Foreign key to user
-- `job_profile_id`: Foreign key to job profile
-- `status`: Session status (active, completed, closed)
-- `created_at`, `updated_at`: Timestamps
-- `mode`: Interview mode (mock, real, practice)
-
-#### ipersona-trainee
-User profile/trainee information
-- `id`: Primary key
-- `all_user_id`: Foreign key to main user table
-- `cv`, `resume`, `profile_data`: User documents
-- `competencies`: Skills and competencies
-- Tracks trainee progress and history
-
-#### ipersona-job
-Job profiles and requirements
-- `id`: Primary key
-- `job_title`, `job_description`: Job details
-- `required_competencies`: Required skills
-- `job_profile_id`: Unique identifier
-- Linked to interview templates
-
-#### ipersona-session-message
-Interview conversation messages
-- `id`: Primary key
-- `session_id`: Foreign key to session
-- `sender`: AI or candidate
-- `content`: Message text
-- `audio_path`: Optional audio recording
-- `created_at`: Timestamp
-- Tracks entire interview conversation
-
-#### ipersona-session-observer
-Real-time evaluation of responses
-- `id`: Primary key
-- `session_id`: Foreign key to session
-- `realtime_evaluation`: JSON evaluation data
-- `interview_evaluation`: Final overall evaluation
-- `interview_evaluation_metrics`: Performance metrics
-- `status`: Observer status
-
-#### ipersona-session-overall-observer
-Final interview evaluation
-- `id`: Primary key
-- `session_id`: Foreign key to session
-- `overall_evaluation`: Complete evaluation JSON
-- `interview_metrics`: Comprehensive metrics
-- Calculated after interview completion
-
-#### ipersona-tinder-template
-Interview question templates
-- `id`: Primary key
-- `job_profile_id`: Linked job profile
-- `questions`: Template questions (JSON)
-- `question_type`: Question type
-- Used to generate interview questions
-
-#### ipersona-challenge-document
-Challenge documents and answer templates
-- `id`: Primary key
-- `challenge_id`: Challenge identifier
-- `question_file`, `answer_file`: Uploaded files
-- `template_data`: Template structure
-- For external audio/file processing
-
-## Core Features
-
-### 1. Interview Session Management
-
-#### Create Interview Session
-```python
-POST /api/ipersona/create-user-session
 ```
-- Accepts user authentication token
-- Validates job profile exists
-- Creates session record in Strapi
-- Returns session ID for real-time connection
-
-**Logic:**
-1. Extract user information from token (via Strapi GraphQL)
-2. Verify job_profile_id exists and is valid
-3. Create ipersona-session record with status="start"
-4. Return session details including sessionId
-
-#### Update Session Mode
-```python
-POST /api/ipersona/update-session-mode
-```
-- Updates interview mode (practice, interview, evaluation)
-- Updates session record status
-
-#### Get Session Details
-```python
-GET /api/ipersona/get-session/{session_id}
-```
-- Retrieves full session information
-- Includes messages, evaluations, and status
-
-### 2. AI-Powered Question Generation
-
-#### Generate Interview Questions
-```python
-POST /api/ipersona/generate-interview-question
+[User Browser] <--> [Frontend SPA] <--> [FastAPI Backend] <--> [Strapi CMS]
+                                    |
+                                    |--> [Google Cloud STT]
+                                    |--> [OpenAI GPT]
+                                    |--> [Celery Workers]
+                                    |--> [AWS S3]
 ```
 
-**Process:**
-1. Parse job profile and competencies
-2. Load persona templates based on job type
-3. Call OpenAI GPT with structured prompt
-4. Extract questions from LLM response
-5. Format questions as JSON array
-6. Save to session messages
+---
 
-**Prompt Structure:**
-- Use job description to identify persona (technical, behavioral, soft skills)
-- Generate 5-10 questions covering required competencies
-- Include SFIA framework levels where appropriate
-- Tailor questions to job level (entry, mid, senior)
+## 2. Functional Requirements
 
-### 3. Real-Time Interview with Socket.IO
+### 2.1 Real-Time Interview (FR-001)
 
-#### Connection Flow
-```javascript
-// Client connects via Socket.IO
-socket.io.connect(SERVER_URL, { auth: { token } })
+**FR-001.1: Audio Capture**
 
-// Server authenticates via Strapi
-@sio.on("connect")
-async def connect(sid, environ):
-    # Validate token
-    # Create socket session
-    # Join user to room
+The system SHALL:
+- Accept audio input via WebSocket (Socket.IO)
+- Support audio formats: MP3, WAV, WebM, M4A
+- Process audio chunks in real-time (< 500ms latency)
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN a user is in an active interview session
+WHEN the user sends an audio chunk via Socket.IO
+THEN the system SHALL acknowledge receipt within 100ms
+AND SHALL begin processing within 500ms
 ```
 
-#### Audio Chat Processing
-```javascript
-// Client sends audio chunk
-socket.emit("audio chat sentence", {
-    user_session: { id: sessionId },
-    response: audioBlob,
-    question_text: "question text"
-})
+**FR-001.2: Speech-to-Text Transcription (PRIMARY)**
+
+The system SHALL:
+- Use Google Cloud Speech-to-Text API as the PRIMARY transcription service
+- Support streaming transcription with interim results
+- Provide fallback to Faster Whisper if Google Cloud is unavailable
+- Return transcription confidence scores
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN audio is received via "audio transcribe google" event
+WHEN the audio is valid and clear
+THEN the system SHALL return a transcript within 2 seconds
+AND SHALL include a confidence score (0-1)
+AND SHALL handle languages: English, Spanish, French, German
+
+GIVEN Google Cloud STT is unavailable
+WHEN audio is received for transcription
+THEN the system SHALL automatically fallback to Faster Whisper
+AND SHALL log the fallback event
+AND SHALL complete transcription within 5 seconds
 ```
 
-**Server Processing:**
-1. Receive audio blob
-2. Transcribe audio using Faster Whisper or AssemblyAI
-3. Save transcript to session messages
-4. Perform real-time evaluation
-5. Emit evaluation results back to client
+**FR-001.3: Real-Time AI Evaluation**
 
-```python
-@sio.on("audio chat sentence")
-async def audio_end_point(sid, data):
-    # Extract session_id from data
-    # Get accumulated audio
-    # Transcribe audio
-    # Save message to database
-    # Perform real-time evaluation
-    # Emit results via Socket.IO
+The system SHALL:
+- Evaluate each answer using OpenAI GPT models
+- Provide evaluation within 3 seconds of transcript completion
+- Include: relevance score, communication clarity, engagement level
+- Emit results via Socket.IO to connected client
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN a transcribed answer
+WHEN the system evaluates the response
+THEN it SHALL return evaluation within 3 seconds
+AND SHALL include:
+  - relevance_score (0-100)
+  - clarity (poor/good/excellent)
+  - engagement (poor/good/excellent)
+  - specific_feedback (string)
+AND SHALL emit via "audio_realtime" Socket.IO event
 ```
 
-#### Real-Time Evaluation
+### 2.2 Session Management (FR-002)
 
-**Algorithm: Evaluate Single Response in Real-Time**
+**FR-002.1: Session Creation**
 
-```python
-# Function signature
-def realtime_response_evaluation(run_stage, data, sessionId, interview_type, is_last_response):
+The system SHALL:
+- Create interview sessions with unique identifiers
+- Associate sessions with user profiles, job profiles, or templates
+- Initialize session state (pending/active/completed)
+- Store session metadata (start time, mode, type)
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN a user initiates an interview
+WHEN they select a job profile OR template OR challenge
+THEN the system SHALL create a session record
+AND SHALL assign a unique session ID (UUID)
+AND SHALL set initial status to "pending"
+AND SHALL record the start timestamp
+AND SHALL link to: user_profile_id, job_profile_id OR template_id OR challenge_id
 ```
 
-**Step-by-step process:**
+**FR-002.2: Session State Management**
 
-1. **Determine if final response**
-   - If `is_last_response == True`, log "FINAL RESPONSE EVALUATION" and mark interview as ending
-   - If `is_last_response == False`, treat as normal mid-interview evaluation
+The system SHALL:
+- Track session states: pending, active, paused, completed, failed
+- Allow session resume after disconnection
+- Prevent duplicate sessions for same user+job combination
+- Auto-close sessions after 2 hours of inactivity
 
-2. **Fetch the previous question from database**
-   - Query `ipersona-session-message` table filtered by `session_id = sessionId` 
-   - Filter by `sender = 'ai'` to get the assistant's last message
-   - Extract question text from `last_assistant_response`
+**Acceptance Criteria:**
+```gherkin
+GIVEN an active interview session
+WHEN the user disconnects
+THEN the system SHALL mark session as "paused"
+AND SHALL queue any pending messages
+AND SHALL allow reconnection within 30 minutes
 
-3. **Build evaluation prompt**
-   - Read base prompt template from `prompts/ipersona/realtime_evaluation.txt`
-   - If `is_last_response == True`, use `prompts/ipersona/closing_question_realtime_evaluation.txt` instead
-   - Replace placeholders in prompt with:
-     - Previous question text
-     - Candidate's response from `data['user_session']`
-     - Job requirements from `data['job_profile']`
-     - Interview type from `interview_type` parameter
-   
-4. **Load persona context**
-   - Extract `persona` from `data['user_session']['attributes']['attributes']`
-   - Prepend persona to the prompt content for role-specific evaluation
-
-5. **Call OpenAI GPT for evaluation**
-   - Use `gpt.openai_gpt_assistant_without_streaming(content)`
-   - Pass the complete prompt with persona context
-   - Wait for LLM response (no streaming)
-
-6. **Parse JSON response**
-   - Call `extract_json(llm_response, quite=False)`
-   - Validate JSON structure
-   - Extract `realtime_evaluation` field from response
-
-7. **Handle errors**
-   - If exception occurs, log error with `logger.error()`
-   - Return `{'error': str(e)}`
-   - Do not crash - allow interview to continue
-
-8. **Return evaluation data**
-   - Return dictionary with structure:
-     ```json
-     {
-       "realtime_evaluation": "Overall assessment text...",
-       "score": 85,
-       "feedback": "Strengths and weaknesses",
-       "competencies": {...}
-     }
-     ```
-
-**Evaluation Criteria (Embedded in Prompt):**
-- Relevance to question: Does the answer directly address what was asked?
-- Technical accuracy: Are technical details correct?
-- Communication clarity: Is the answer clear and well-structured?
-- Competency demonstration: Which competencies from job description are shown?
-- SFIA level assessment: What SFIA level does this response demonstrate?
-
-**Database Operations:**
-- Read: Query `ipersona-session-message` to fetch last question
-- Read: Retrieve job profile and competencies from `data` parameter
-- No write operations in this function (done separately by caller)
-
-**Integration Points:**
-- Input: Receives `data` dictionary with user_session, job_profile, candidate response
-- Output: Returns evaluation JSON that will be emitted via Socket.IO
-- Triggered: After each candidate audio response is transcribed
-
-#### Session State Management
-- Track chat_count (current question number)
-- Track total_questions for interview
-- Detect when interview is complete
-- Trigger overall evaluation when all questions answered
-
-### 4. External Audio/File Processing
-
-#### Process Uploaded Audio File
-```python
-POST /api/ipersona/audio_upload_external_celery
+GIVEN a paused session
+WHEN the user reconnects with same session_id
+THEN the system SHALL restore session to "active"
+AND SHALL deliver all queued messages
+AND SHALL resume from last question
 ```
 
-**Celery Task Flow:**
-1. Accept audio file upload
-2. Save to temporary storage
-3. Queue Celery task (background processing)
-4. Return task_id immediately
-5. Client polls for status
+### 2.3 Speech-to-Text Services (FR-003)
 
-**Background Processing:**
-```python
-@celery_app.task(name="process_upload_external_audio")
-def process_upload_external_audio_task(audio_path, job_profile_id, ...):
-    # 1. Transcribe audio using AssemblyAI
-    transcript = transcriber.transcribe(audio_path)
-    
-    # 2. Analyze transcription with LLM
-    prompt = build_external_audio_analysis_prompt(transcript, job_profile)
-    analysis = gpt.openai_gpt_assistant_without_streaming(prompt)
-    
-    # 3. Extract JSON response
-    evaluation_data = extract_json(analysis)
-    
-    # 4. Save to database
-    save_evaluation(evaluation_data)
-    
-    # 5. Emit completion event via Socket.IO
-    emit_task_completion(session_id, evaluation_data)
+**FR-003.1: Google Cloud STT (PRIMARY)**
+
+The system MUST:
+- Integrate Google Cloud Speech-to-Text API
+- Use streaming recognition for real-time audio
+- Support single-utterance recognition for short audio
+- Handle audio encoding: LINEAR16, FLAC, MP3, WEBM_OPUS
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN a valid Google Cloud API key is configured
+WHEN audio is sent via "audio transcribe google" Socket.IO event
+THEN the system SHALL:
+  - Stream audio to Google Cloud STT API
+  - Return interim results every 1-2 seconds
+  - Provide final transcript when speech ends
+  - Include confidence score and language code
+AND SHALL handle errors gracefully
+AND SHALL fallback if API returns 4xx/5xx errors
 ```
 
-#### Process Dual Audio Files (Question + Answer)
-```python
-POST /api/ipersona/files_upload_external_celery
+**FR-003.2: Alternative STT Services**
+
+The system SHOULD provide alternative STT services:
+1. **Faster Whisper** (local, fallback)
+   - MUST run on local CPU/GPU
+   - MUST support languages: en, es, fr, de, zh
+   - SHOULD complete transcription within 5 seconds
+
+2. **OpenAI Whisper API** (cloud fallback)
+   - MUST use OpenAI Whisper API endpoint
+   - SHOULD be used if Google Cloud fails
+   - MUST handle file uploads up to 25MB
+
+3. **AssemblyAI** (batch processing)
+   - MUST be used for uploaded audio files
+   - SHOULD provide speaker diarization
+   - MUST support asynchronous processing
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN the primary STT service (Google Cloud) fails
+WHEN audio needs transcription
+THEN the system SHALL try services in this order:
+  1. Faster Whisper (local)
+  2. OpenAI Whisper API
+  3. AssemblyAI
+AND SHALL log which service was used
+AND SHALL complete transcription within 10 seconds (any service)
 ```
-- Accept two files: Question file and Answer file
-- Transcribe both files
-- Match questions with answers using semantic similarity
-- Generate comprehensive evaluation
-- Save results to database
 
-**Question-Answer Matching:**
-Uses structured matching system (see `../STRUCTURED_MATCHING_SYSTEM.md`):
-1. Parse questions from template
-2. Segment answer transcript intelligently
-3. Generate embeddings for questions and answers
-4. Compute similarity matrix
-5. Match questions to answers with threshold filtering
-6. Return matched pairs
+### 2.4 AI Evaluation Engine (FR-004)
 
-### 5. Overall Interview Evaluation
+**FR-004.1: Real-Time Question-Answer Evaluation**
 
-#### Trigger Overall Evaluation
-```python
-async def overall_interview_evaluations(run_stage, sessionId, ...):
-    """Generate final evaluation after interview completes"""
-```
+The system SHALL evaluate each answer in real-time using the `realtime_evaluation.txt` prompt.
 
-**Process:**
-1. Retrieve all session messages
-2. Build complete interview history
-3. Load job profile and competencies
-4. Call OpenAI GPT with overall_evaluation prompt
-5. Extract evaluation JSON
-6. Calculate performance metrics
-7. Save to ipersona-session-overall-observer
+**Implementation Details:**
+- **Prompt Location**: `/api/modules/prompts/ipersona/realtime_evaluation.txt`
+- **LLM Function**: `gpt.openai_gpt_assistant_without_streaming()`
+- **Evaluation Focus**: ONLY answer relevance to the specific question asked
+- **JSON Extraction**: Uses `util.extract_json()` with `json_repair` fallback for malformed responses
 
-**Evaluation Output:**
+**Evaluation Criteria (from actual prompt):**
+1. **Answer Relevance** (Focus ONLY on whether response addresses the specific content of the question)
+   - 90-100%: Highly relevant, answers question directly
+   - 70-89%: Mostly relevant with some unrelated elements
+   - 50-69%: Partially addresses with many irrelevant aspects
+   - Below 50%: Mostly irrelevant, does not directly answer
+
+**Required Output Structure:**
 ```json
 {
-  "overall_evaluation": {
-    "strengths": [...],
-    "weaknesses": [...],
-    "recommendations": [...],
-    "fit_score": 85,
-    "competencies_evaluated": {
-      "skill_name": "SFIA_level"
+    "realtime_evaluation": {
+        "overall": {
+            "relevance": "strong|medium|weak",
+            "feedback": "evaluation focusing ONLY on relevance to asked question"
+        },
+        "answer_relevancy": [
+            {
+                "level": "0-100",
+                "reason": "justification for relevance level"
+            }
+        ]
     }
-  },
-  "interview_metrics": {
-    "average_response_time": "...",
-    "communication_score": 90,
-    "technical_score": 85,
-    "overall_score": 88
+}
+```
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN a question "{question}" and candidate response "{candidate_response}"
+WHEN the system evaluates via `/api/pages/ipersona/socket/ipersona_socket.py::_evaluate_answer_live()`
+THEN it SHALL:
+  1. Load the realtime_evaluation.txt prompt
+  2. Replace {question} and {candidate_response} placeholders
+  3. Call OpenAI GPT with the formatted prompt
+  4. Extract JSON from the response using util.extract_json()
+  5. Return structured evaluation within 3 seconds
+  6. Emit via "audio_realtime" Socket.IO event with evaluation data
+AND evaluation SHALL use non-gender-specific pronouns ('you', 'your')
+AND SHALL NOT assess overall response quality, ONLY relevance
+
+GIVEN malformed JSON in LLM response
+WHEN util.extract_json() processes the response
+THEN it SHALL:
+  - Use json_repair library to fix common JSON errors
+  - Strip markdown code blocks (```json ... ```)
+  - Handle escaped quotes and newlines
+  - Return None if JSON is irreparable
+```
+
+**FR-004.2: Overall Interview Evaluation with SFIA Competency Framework**
+
+The system SHALL generate comprehensive evaluation after interview completion using the `overall_evaluation.txt` prompt.
+
+**Implementation Details:**
+- **Prompt Location**: `/api/modules/prompts/ipersona/overall_evaluation.txt`
+- **LLM Function**: `gpt.openai_gpt_assistant_without_streaming()`
+- **Framework**: SFIA 7-level competency framework (Skills Framework for the Information Age)
+- **History Context**: Entire interview conversation history (`{history}` placeholder)
+- **Triggered By**: `POST /api/ipersona/close_session` endpoint
+
+**SFIA Competency Levels (from actual prompt):**
+- **Level 1 - Fellow**: Works under close direction, minimal influence, routine activities
+- **Level 2 - Assist**: Works under routine direction, limited discretion
+- **Level 3 - Apply**: Works under general direction, sometimes complex work
+- **Level 4 - Enable**: Substantial personal responsibility, complex technical activities
+- **Level 5 - Ensure, advise**: Broad direction, fully responsible for objectives
+- **Level 6 - Initiate, influence**: Defined authority, influences policy and strategy
+- **Level 7 - Set strategy, inspire, mobilise**: Authority over all aspects, highest leadership
+
+**Required Output Structure:**
+```json
+{
+    "overall_evaluation": {
+        "evaluation": "comprehensive summary of candidate performance",
+        "recommendation": [
+            {
+                "title": "Resources",
+                "resource": "specific course/book/community site description",
+                "type": "Online Course|Book|Community|Certification",
+                "link": "www.example.com"
+            }
+        ],
+        "competency": [
+            {
+                "name": "competency name from job description",
+                "sfia_level": "1-7 based on demonstrated performance"
+            }
+        ]
+    }
+}
+```
+
+**Evaluation Requirements (from actual prompt):**
+1. Provide comprehensive evaluation of candidate's performance throughout the interview
+2. Assess how well the candidate would fit the role
+3. Be honest and constructive to help candidate become interview-ready
+4. Offer specific feedback for future interview improvement
+5. Provide recommendations to improve skills for the job role
+6. Evaluate candidate's competencies using SFIA 7-level framework
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN a completed interview session
+WHEN overall evaluation is triggered
+THEN the system SHALL:
+  - Calculate average relevance score
+  - Identify competency areas (technical, communication, problem-solving)
+  - Generate score distribution (poor/good/excellent percentages)
+  - Provide overall rating (1-5 stars)
+  - Store evaluation in database
+AND SHALL complete within 10 seconds
+```
+
+### 2.5 Background Processing (FR-005)
+
+**FR-005.1: File Upload Processing**
+
+The system SHALL:
+- Accept audio/video file uploads (max 100MB)
+- Process uploads asynchronously via Celery
+- Provide status updates via Socket.IO or polling
+- Store processed files in AWS S3
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN a user uploads an audio file
+WHEN the file is received by the API
+THEN the system SHALL:
+  - Validate file type and size
+  - Create a Celery task for processing
+  - Return task_id immediately (< 1 second)
+  - Store file temporarily for processing
+  - Update Redis with task status
+
+GIVEN a Celery task is processing an upload
+WHEN processing progresses
+THEN the system SHALL:
+  - Update Redis status every 5 seconds
+  - Emit Socket.IO events if user connected
+  - Upload final file to S3
+  - Delete temporary files after processing
+```
+
+**FR-005.2: Question-Answer Matching**
+
+The system SHALL:
+- Match uploaded question files with answer files
+- Use embedding-based similarity matching (primary)
+- Use LLM-based matching as fallback
+- Generate matched pairs with confidence scores
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN separate question and answer files
+WHEN the matching process runs
+THEN the system SHALL:
+  - Extract questions from question file
+  - Extract answers from answer file
+  - Generate embeddings for both using Sentence Transformers
+  - Calculate cosine similarity matrix
+  - Match questions to answers with highest similarity (>0.6)
+  - Return matched pairs with relevance_score
+AND SHALL complete within 30 seconds for 50 questions
+AND SHALL fallback to LLM matching if embedding service fails
+```
+
+### 2.6 Template Management (FR-006)
+
+**FR-006.1: Interview Template Creation**
+
+The system SHALL:
+- Allow creation of interview templates
+- Support manual question entry
+- Support AI-generated questions from job descriptions
+- Store templates with metadata (title, description, sections)
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN a user wants to create a template
+WHEN they provide job description and parameters
+THEN the system SHALL:
+  - Use OpenAI GPT to generate relevant questions
+  - Organize questions into sections (technical, behavioral, etc.)
+  - Include ideal answers for each question
+  - Store template in database
+  - Return template_id
+AND SHALL generate 10-20 questions within 15 seconds
+```
+
+### 2.7 Progress Tracking (FR-007)
+
+**FR-007.1: User Progress Analytics**
+
+The system SHALL:
+- Track performance metrics over time
+- Calculate progress trends (improving/declining/stable)
+- Visualize competency radar charts
+- Track per-job/challenge/template progress
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN a user has completed multiple interview sessions
+WHEN progress analytics are requested
+THEN the system SHALL return:
+  - Overall performance score (0-100) per session
+  - Competency breakdown over time
+  - Communication skills trends (clarity, engagement)
+  - Session count and completion rate
+  - Time spent per session
+AND SHALL calculate rolling averages (last 5 sessions)
+```
+
+---
+
+## 3. Non-Functional Requirements
+
+### 3.1 Performance (NFR-001)
+
+**NFR-001.1: Response Times**
+
+The system SHALL meet these performance targets:
+
+| Operation | Target | Maximum |
+|-----------|--------|---------|
+| Socket.IO connection | < 500ms | 1s |
+| STT transcription (Google) | < 2s | 5s |
+| AI evaluation | < 3s | 10s |
+| API endpoint response | < 1s | 3s |
+| File upload acknowledgment | < 1s | 2s |
+| Database query (simple) | < 100ms | 500ms |
+
+**NFR-001.2: Throughput**
+
+The system SHALL support:
+- 100 concurrent interview sessions
+- 1000 API requests per minute
+- 50 file uploads per minute
+- 20 Celery tasks processed concurrently
+
+### 3.2 Reliability (NFR-002)
+
+**NFR-002.1: Availability**
+
+The system SHALL:
+- Maintain 99.5% uptime (excluding planned maintenance)
+- Implement health checks on all services
+- Provide graceful degradation when services fail
+- Auto-recover from transient failures
+
+**NFR-002.2: Data Integrity**
+
+The system SHALL:
+- Store all interview data persistently
+- Implement transaction boundaries for critical operations
+- Validate all inputs before storage
+- Prevent data loss during failures
+
+### 3.3 Security (NFR-003)
+
+**NFR-003.1: Authentication & Authorization**
+
+The system SHALL:
+- Require authentication for all protected endpoints
+- Use token-based authentication (JWT or similar)
+- Implement role-based access control (trainee, admin, staff)
+- Expire sessions after inactivity (30 minutes)
+
+**NFR-003.2: Data Protection**
+
+The system SHALL:
+- Encrypt sensitive data at rest (S3, database)
+- Use TLS 1.2+ for all network communication
+- Sanitize all user inputs to prevent injection attacks
+- Store API keys in secure secret management (AWS Secrets Manager)
+
+**NFR-003.3: Privacy**
+
+The system SHALL:
+- Allow users to delete their data
+- Not store audio permanently without consent
+- Anonymize analytics data
+- Comply with data retention policies
+
+### 3.4 Scalability (NFR-004)
+
+The system SHALL:
+- Scale horizontally (add more workers/instances)
+- Use Redis for distributed caching
+- Implement connection pooling for database
+- Support CDN for static assets
+
+### 3.5 Maintainability (NFR-005)
+
+The system SHALL:
+- Log all errors with stack traces
+- Implement structured logging (JSON format)
+- Provide comprehensive API documentation (OpenAPI)
+- Include health check endpoints
+- Follow PEP 8 style guidelines (Python)
+
+---
+
+## 4. API Contracts
+
+### 4.1 Socket.IO Events
+
+**Implementation File**: `/api/pages/ipersona/socket/ipersona_socket.py`
+**Socket.IO Server**: `python-socketio` with `async_mode='asgi'`
+**Namespace**: Default namespace `/`
+
+#### 4.1.1 Client → Server Events
+
+**Event: `initial connect`** (CONNECTION ESTABLISHMENT)
+
+**Purpose**: Establish WebSocket connection and initialize session context.
+
+**Payload:**
+```json
+{
+  "user_id": "string (all_user_id)",
+  "session_id": "string (optional, for reconnection)",
+  "run_stage": "dev|stage|prod"
+}
+```
+
+**Implementation Requirements:**
+```python
+@sio.on('initial connect')
+async def handle_initial_connect(sid, data):
+    user_id = data.get('user_id')
+    session_id = data.get('session_id')
+    run_stage = data.get('run_stage', 'dev')
+    
+    # Store SID → user_id mapping in Redis
+    # Key: f"sid_to_user:{sid}" → user_id
+    # Expiry: 30 minutes
+    
+    # Store user_id → SID mapping in memory (sid_user_map)
+    sid_user_map[user_id] = sid
+    
+    # If reconnecting, deliver queued messages
+    # Check: user_message_queue[user_id] and sid_message_queue[sid]
+```
+
+**Requirements:**
+- The system SHALL store bidirectional SID ↔ user_id mapping
+- The system SHALL persist mapping in Redis with 30-minute TTL
+- The system SHALL deliver queued messages on reconnection
+- The system SHALL emit `connection_confirmed` event to client
+
+---
+
+**Event: `audio transcribe google`** (PRIMARY REAL-TIME TRANSCRIPTION)
+
+**Purpose**: Stream audio chunks for Google Cloud Speech-to-Text transcription.
+
+**Payload:**
+```json
+{
+  "audio": "base64_encoded_pcm16_audio_data",
+  "session_id": "uuid",
+  "language": "en-US",
+  "user_id": "string",
+  "format": "pcm16|webm|mp3"
+}
+```
+
+**Implementation Requirements:**
+```python
+@sio.on('audio transcribe google')
+async def handle_google_transcribe(sid, data):
+    audio_b64 = data.get('audio')
+    session_id = data.get('session_id')
+    language = data.get('language', 'en-US')
+    
+    # Decode base64 audio
+    audio_bytes = base64.b64decode(audio_b64)
+    
+    # Route to Google Cloud STT V2 streaming
+    # File: google_stt_v2.py
+    # Class: GoogleStreamingSTTV2
+    
+    # Send audio chunk to streaming recognizer
+    # Receive interim and final results
+    
+    # Emit transcript via 'transcription_result' event
+```
+
+**Requirements:**
+- The system SHALL validate `session_id` exists and is active
+- The system SHALL decode base64 audio data (handle padding errors)
+- The system SHALL use Google Cloud STT V2 API for streaming recognition
+- The system SHALL emit interim results via `transcription_interim` event
+- The system SHALL emit final transcript via `transcription_result` event within 2 seconds
+- The system SHALL fallback to Faster Whisper if Google Cloud fails
+- The system SHALL log transcription errors with SID and session_id
+- The system SHALL handle errors and emit `transcription_error`
+
+**Event: `audio chat sentence`** (REAL-TIME INTERVIEW - PRIMARY FLOW)
+
+**Purpose**: Process complete audio sentence during live interview, transcribe, evaluate, and provide real-time feedback.
+
+**Payload:**
+```json
+{
+  "audio": "base64_encoded_audio_data",
+  "session_id": "uuid",
+  "user_id": "string",
+  "question_id": "string",
+  "run_stage": "dev|stage|prod"
+}
+```
+
+**Complete Implementation Flow:**
+```python
+@sio.on('audio chat sentence')
+async def handle_audio_chat_sentence(sid, data):
+    # Step 1: Validate session
+    session_id = data.get('session_id')
+    user_id = data.get('user_id')
+    session = IpersonaSessionSchema().exists_session_id(session_id)
+    
+    # Step 2: Decode and save audio temporarily
+    audio_bytes = base64.b64decode(data['audio'])
+    temp_path = f"/tmp/audio_{session_id}_{timestamp}.mp3"
+    
+    # Step 3: Transcribe using Google Cloud STT (PRIMARY)
+    transcript = await transcribe_with_google_cloud(audio_bytes)
+    # FALLBACK: If Google fails, use Faster Whisper
+    if transcript.get('error'):
+        transcript = transcribe_with_faster_whisper(temp_path)
+    
+    # Step 4: Retrieve current question from session
+    session_data = IpersonaSessionSchema().filter_by_session_id(session_id)
+    current_question = session_data['attributes']['message'][-1]['question']
+    
+    # Step 5: Perform real-time AI evaluation
+    # Prompt: /api/modules/prompts/ipersona/realtime_evaluation.txt
+    evaluation_prompt = load_prompt('realtime_evaluation.txt')
+    evaluation_prompt = evaluation_prompt.replace('{question}', current_question)
+    evaluation_prompt = evaluation_prompt.replace('{candidate_response}', transcript['text'])
+    
+    evaluation_response = await gpt.openai_gpt_assistant_without_streaming(evaluation_prompt)
+    evaluation_json = util.extract_json(evaluation_response)
+    
+    # Step 6: Save message to database
+    message_data = {
+        "question": current_question,
+        "answer": transcript['text'],
+        "realtime_evaluation": evaluation_json,
+        "timestamp": datetime.now().isoformat()
+    }
+    IpersonaSessionMessageSchema().save_message(session_id, message_data)
+    
+    # Step 7: Emit real-time feedback to client
+    await sio.emit('audio_realtime', {
+        "transcript": transcript['text'],
+        "evaluation": evaluation_json,
+        "question_id": data.get('question_id')
+    }, room=sid)
+    
+    # Step 8: Update session status
+    await sio.emit('realtime_status', {
+        "status": "evaluated",
+        "session_id": session_id
+    }, room=sid)
+```
+
+**Requirements:**
+- The system SHALL complete the entire flow within 5 seconds
+- The system SHALL transcribe using Google Cloud STT as PRIMARY service
+- The system SHALL fallback to Faster Whisper if Google Cloud fails
+- The system SHALL evaluate answer using `realtime_evaluation.txt` prompt
+- The system SHALL save transcript + evaluation to `ipersona-session` message array
+- The system SHALL emit `audio_realtime` event with evaluation results
+- The system SHALL emit `realtime_status` event with status updates
+- The system SHALL handle base64 decoding errors gracefully
+- The system SHALL log all steps with session_id and SID for debugging
+- The system SHALL use non-blocking async operations throughout
+
+---
+
+### 4.2 Background Tasks (Celery)
+
+**Implementation File**: `/api/services/celery/audio_tasks.py`
+**Broker**: Redis (`redis://localhost:6379/0`)
+**Result Backend**: Redis
+**Worker Command**: `celery -A api.services.celery.celery_app worker --loglevel=info`
+
+#### 4.2.1 Task: `process_upload_external_audio_task`
+
+**Purpose**: Process uploaded audio/document files asynchronously for interview evaluation.
+
+**Function Signature:**
+```python
+@celery_app.task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    time_limit=600  # 10 minutes
+)
+def process_upload_external_audio_task(
+    self,
+    filename: str,
+    content_type: str,
+    audio_path: str,
+    job_profile_id: int,
+    challenge_id: int,
+    template_id: int,
+    all_user_id: str,
+    external: bool,
+    run_stage: str,
+    user_sid: str = None
+):
+```
+
+**Implementation Flow:**
+```python
+# Step 1: Determine active task identifier
+task_type, task_id = _get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
+# Returns: ("job", job_id) OR ("challenge", challenge_id) OR ("template", template_id)
+
+# Step 2: Set Redis status
+redis_key = f"parrot_celery_tasks:audio_status:{task_type}:{task_id}"
+redis.set(redis_key, {"status": "processing", "message": ""})
+
+# Step 3: Process based on content type
+if "audio" in content_type or "video" in content_type:
+    # 3a. Convert to MP3 if needed
+    if original_format not in ["mpeg", "mp3"]:
+        audio_bytes = util.convert_to_mp3(audio_bytes, original_format)
+    
+    # 3b. Upload to S3
+    s3_url = s3_client.upload_bytes_and_get_url(
+        bucket='tenx-parrot-assets',
+        contents=audio_bytes,
+        key=f"audio/{filename}"
+    )
+    
+    # 3c. Transcribe using external content-extractor service
+    result = audio_transcription_logics(filename, audio_path, content_type)
+    # Endpoint: https://content-extractor.10academy.org/content-extractor/audio_transcript
+    # Uses: Google Gemini 2.5-flash model
+    
+    transcript = result.get("content")
+    
+    # 3d. AI-Powered Content Validation
+    validation = ai_validate_interview_content(transcript)
+    # Uses: OpenAI GPT to detect if content is valid interview Q&A
+    # Checks: Has questions AND answers, not just questions
+    # Thresholds: >= 3 question indicators + 0 answer indicators = INVALID
+    
+    if not validation.get('valid'):
+        redis.set(redis_key, {
+            "status": "failed",
+            "message": f"Invalid interview content: {validation['reason']}"
+        })
+        # Save notification to database
+        save_notification(all_user_id, run_stage, f"Invalid interview content: {validation['reason']}")
+        return "Invalid interview content"
+    
+elif "text" in content_type or "pdf" in content_type:
+    # 3e. Upload document to S3
+    s3_url = s3_client.upload_bytes_and_get_url(
+        bucket='tenx-parrot-assets',
+        contents=file_bytes,
+        key=f"documents/{filename}"
+    )
+    
+    # 3f. Extract text using content-extractor
+    result = content_extraction_logics(filename, file_bytes, content_type)
+    # Endpoint: https://content-extractor.10academy.org/content-extractor/extract
+    
+    transcript = result.get("content")
+    
+    # 3g. Validate extracted content
+    validation = ai_validate_interview_content(transcript)
+
+# Step 4: Generate AI evaluation
+external_audio_prompt = file_reader('prompts/external_audio_analysis.txt')
+external_audio_prompt = external_audio_prompt.replace('{transcription}', transcript)
+evaluation_response = gpt.openai_gpt_assistant_without_streaming(external_audio_prompt)
+evaluation_json = util.extract_json(evaluation_response)
+
+# Step 5: Create session in database
+session = util.create_session(
+    run_stage, mode, template, external, challenge,
+    all_user_id, tinder_user_profile_id, job_profile_id,
+    template_id, challenge_id, message, upload_metadata
+)
+
+# Step 6: Save messages to session
+strapi.save_messages_to_db(evaluation_json, session['id'])
+
+# Step 7: Run overall evaluation in separate thread
+def run_overall():
+    loop = asyncio.new_event_loop()
+    overall = loop.run_until_complete(
+        overall_interview_evaluations_external(
+            run_stage, evaluation_json, 'External', session['id'],
+            all_user_id, tinder_user_profile_id, job_profile_id,
+            challenge_id, template_id, 'job_interview_config'
+        )
+    )
+    
+    # Step 8: Update Redis with success
+    redis.set(redis_key, {
+        "status": "done",
+        "message": "Chat Saved Successfully",
+        "chat": saved,
+        "overall": overall
+    })
+    
+    # Step 9: Save success notification
+    save_notification(all_user_id, run_stage, "Uploaded file analysis completed successfully!")
+
+threading.Thread(target=run_overall).start()
+```
+
+**Requirements:**
+- The task SHALL timeout after 10 minutes (600 seconds)
+- The task SHALL retry up to 3 times on failure with 60-second delays
+- The task SHALL update Redis status at each major step
+- The task SHALL validate interview content using AI before processing
+- The task SHALL convert all audio/video to MP3 format
+- The task SHALL upload all files to S3 bucket `tenx-parrot-assets`
+- The task SHALL use external content-extractor service for transcription
+- The task SHALL save notifications to `notifications` table via `IpersonaNotificationSchema`
+- The task SHALL handle Docker vs localhost path normalization
+- The task SHALL compress files exceeding 10MB before transcription
+
+**Error Handling:**
+- Base64 decoding errors → Return error immediately
+- S3 upload failures → Retry 3 times, then fail task
+- Transcription timeouts → Retry with exponential backoff (5min, 10min, 20min)
+- Content validation failures → Save error notification, mark Redis as failed
+- Session creation failures → Log error, update Redis, re-raise exception
+
+---
+
+**Payload:**
+```json
+{
+  "audio": "base64_encoded_audio_data",
+  "session_id": "uuid",
+  "question_id": "integer",
+  "is_final": boolean
+}
+```
+
+**Requirements:**
+- The system SHALL transcribe using Google Cloud STT
+- The system SHALL evaluate answer using OpenAI GPT
+- The system SHALL emit `audio_realtime` with evaluation
+- The system SHALL save message to database
+- The system SHALL complete within 5 seconds total
+
+#### 4.1.2 Server → Client Events
+
+**Event: `audio_realtime`** (EVALUATION RESULTS)
+
+**Payload:**
+```json
+{
+  "session_id": "uuid",
+  "question_id": integer,
+  "transcript": "string",
+  "evaluation": {
+    "relevance_score": integer,
+    "communication_skills": [...],
+    "performance": [...],
+    "feedback": "string"
   }
 }
 ```
 
-### 6. Speech-to-Text (STT) Services
+### 4.3 Additional Celery Tasks
 
-#### Multiple STT Providers
+**Task: `process_upload_external_files_task`** (Question + Answer Files)
 
-**1. Faster Whisper (Local)**
 ```python
-POST /api/stt/whisper-upload
-```
-- Uses Faster Whisper model (local CPU/GPU)
-- Supports language specification
-- Returns transcript and language detection
-
-**2. Google Gemini Speech-to-Text**
-```python
-POST /api/stt/gemini-upload
-```
-- Uses Google Gemini API for transcription
-- Returns transcript with timestamps
-
-**3. AssemblyAI**
-- Primary transcription service
-- Used for real-time and batch processing
-- Returns transcript with speaker diarization
-
-**Selection Logic:**
-- Use Faster Whisper for local, fast transcription
-- Use AssemblyAI for production, high-accuracy needs
-- Use Google Gemini as fallback
-
-### 7. Authentication & Authorization
-
-#### Authentication Flow
-```python
-# All requests require Bearer token
-Authorization: Bearer {token}
-
-# Middleware validates token
-@app.middleware("http")
-async def check_authentication(request, call_next):
-    # Extract token from Authorization header
-    # Validate token via Strapi GraphQL
-    # Attach user_info to request
-    # Allow/deny request
+@celery_app.task(bind=True)
+def process_upload_external_files_task(
+    self,
+    question_filename, question_content_type, question_audio_path, question_contents,
+    answer_filename, answer_content_type, answer_audio_path, answer_contents,
+    job_profile_id, challenge_id, template_id, session_id, all_user_id, 
+    external, run_stage, user_sid=None
+)
 ```
 
-**Token Validation:**
-1. Extract "Bearer {token}" from headers
-2. Call Strapi GraphQL `get_user_info` query
-3. Verify user exists and is authorized
-4. Store user_info in config.fastapi.user_info
-5. Continue with request or return 403
-
-**Exception:**
-- Socket.IO connections require token in auth parameter
-- Socket.IO connect event validates separately
-
-#### CORS Configuration
-- Allow specific origins from config
-- Support wildcard for development
-- Include credentials in cookies
-
-### 8. Background Task Processing (Celery)
-
-#### Celery Setup
-```python
-# Broker: Redis
-BROKER_URL = "redis://redis.10academy.org:6379/0"
-RESULT_BACKEND = "redis://redis.10academy.org:6379/0"
-
-# Queues
-CELERY_TASK_ROUTES = {
-    'audio_processing': 'audio_queue',
-    'file_processing': 'file_queue'
-}
-```
-
-#### Task Types
-1. **Audio Processing**: `process_upload_external_audio_task`
-2. **File Processing**: `process_upload_external_files_task`
-3. **Answer Processing**: `process_upload_external_answer_file_task`
-4. **Emit Events**: `emit_simple_event_task`
-
-#### Monitoring
-- Flower dashboard: http://localhost:5555
-- Monitor task status and worker health
-- View task history and logs
-- Retry failed tasks
-
-### 9. Socket.IO Real-Time Communication
-
-#### Socket.IO Events (Actual Implementation)
-
-**Client → Server Events:**
-- `initial connect` - Initialize connection and session setup
-- `disconnect` - Client disconnection event
-- `subscribe_to_processing` - Subscribe to Celery background task updates
-- `assemblyai_status` - Check AssemblyAI transcription status
-- `audio transcribe whisper` - Transcribe audio using Faster Whisper
-- `audio transcribe` - Generic audio transcription event
-- `audio transcribe google` - Transcribe using Google Cloud STT
-- `audio chat sentence` - Real-time interview audio response (main event)
-- `interview chat` - Text-based interview chat
-
-**Server → Client Events:**
-- `audio_realtime` - Real-time evaluation results
-- `realtime_status` - Evaluation status (start/end)
-- `task_status` - Background task status updates
-- `processing_update` - File processing status updates
-- `processing_update_success` - Processing completed successfully
-- `processing_update_failed` - Processing failed with error
-- `error` - Error notifications
-- `notification` - General notifications to client
-
-#### Session Management
-```python
-@sio.on("connect")
-async def connect(sid, environ):
-    # Validate auth token
-    session = await sio.get_session(sid)
-    session['user_id'] = user_id
-    session['run_stage'] = run_stage
-    
-    # Join user-specific room
-    await sio.enter_room(sid, user_id)
-    
-    # Deliver queued messages
-    await deliver_queued_messages_for_user(user_id, sid)
-```
-
-#### Message Queuing
-- If client disconnects during processing
-- Queue messages for delivery when client reconnects
-- Prevent message loss during network interruptions
-
-### 10. Structured Question-Answer Matching
-
-See `../STRUCTURED_MATCHING_SYSTEM.md` for detailed specification.
-
-**Key Components:**
-- `QuestionAnswerMatcher`: Main matching engine
-- Uses sentence transformers for embeddings
-- Cosine similarity for matching
-- Configurable thresholds
-- Fallback to LLM-based matching
-
-**Use Case:**
-When processing dual audio files (questions + answers), intelligently match questions to answer segments.
-
-## API Endpoints Summary
-
-**Total Endpoints**: 50+ active endpoints across multiple categories
-
-### Speech-to-Text (STT) Endpoints
-- `POST /api/ipersona/stt/whisper-upload` - Faster Whisper transcription (local)
-- `POST /api/ipersona/stt/gemini-upload` - Google Gemini STT
-- `POST /api/ipersona/stt/openai-upload` - OpenAI Whisper API
-- `POST /api/ipersona/stt/google-upload` - Google Cloud STT
-- `POST /api/ipersona/audio_upload` - Main audio transcription endpoint
-
-### Session Management Endpoints
-- `POST /api/ipersona/clarify` - Request question clarification
-- `POST /api/ipersona/delete_session` - Delete interview session
-- `POST /api/ipersona/close_session` - Close/complete session
-- `POST /api/ipersona/calculate_session_overall_progress` - Calculate progress metrics
-- `POST /api/ipersona/calculate_allstat_progress` - All-time statistics
-- `POST /api/ipersona/fetch_user_session` - Get user's sessions
-- `POST /api/ipersona/fetch_chat_history` - Get conversation history
-- `POST /api/ipersona/fetch_user_all_observer` - Get all evaluations
-- `POST /api/ipersona/fetch_session_overall_evaluation` - Get final evaluation
-- `POST /api/ipersona/fetch_single_session` - Get specific session details
-
-### Engagement & Analytics Endpoints
-- `POST /api/ipersona/engagement_jobs_status` - Job interview engagement metrics
-- `POST /api/ipersona/engagement_challenge_status` - Challenge engagement metrics
-- `POST /api/ipersona/engagement_template_status` - Template usage metrics
-- `POST /api/ipersona/engagement_status` - Overall engagement dashboard
-
-### Admin & Oversight Endpoints
-- `POST /api/ipersona/admin_overview_status` - Admin dashboard overview
-- `POST /api/ipersona/admin_allusers_data` - All users data table
-- `POST /api/ipersona/admin_alljobs_data` - All jobs data table
-- `POST /api/ipersona/admin_allchallenges_data` - All challenges data
-- `POST /api/ipersona/admin_each_job_overview_data` - Per-job analytics
-- `POST /api/ipersona/admin_each_challenge_overview_data` - Per-challenge analytics
-- `POST /api/ipersona/admin_allusers_performance_data` - User performance metrics
-- `POST /api/ipersona/admin_job_by_template_id` - Job by template lookup
-- `POST /api/ipersona/admin_challenge_by_template_id` - Challenge by template
-- `POST /api/ipersona/admin_interview_by_template` - Interview sessions by template
-
-### Template Management Endpoints
-- `POST /api/ipersona/get_all_tinder_templates` - List all templates
-- `POST /api/ipersona/save_tinder_template` - Create new template
-- `POST /api/ipersona/get_tinder_templates` - Get filtered templates
-- `POST /api/ipersona/get_a_template` - Get single template
-- `POST /api/ipersona/update_tinder_template` - Update template
-- `POST /api/ipersona/attach_job_id_to_template` - Link template to job
-- `POST /api/ipersona/create_template_by_llm` - AI-generate template from job description
-
-### Challenge Endpoints
-- `POST /api/ipersona/get_all_challenges` - List all challenges
-- `POST /api/ipersona/get_a_challenge` - Get specific challenge
-
-### Audio Processing with Celery (Background Tasks)
-- `POST /api/ipersona/audio_upload_external` - Upload single audio file (Celery)
-- `POST /api/ipersona/files_upload_external` - Upload question + answer files (Celery)
-- `POST /api/ipersona/answer_file_upload_external` - Upload answer file with template (Celery)
-- `POST /api/ipersona/test_celery_event` - Test Celery + Socket.IO integration
-
-### Health & Testing
-- `GET /api/ipersona/health` - Health check endpoint
-
-## Frontend Application
-
-### Overview
-
-The frontend is a **React 18 + TypeScript** single-page application (SPA) built with **Vite**. It provides:
-- Real-time interview interface with Socket.IO
-- Admin analytics dashboard
-- Audio recording and playback
-- Template management
-- User progress tracking
-
-### Project Structure
-
-```
-frontend/
-├── src/
-│   ├── components/          # Reusable UI components
-│   │   ├── Admin/          # Admin dashboard components
-│   │   │   ├── AdminDashboard.tsx
-│   │   │   ├── AllDataFilterAdmin.tsx
-│   │   │   ├── Dashboard.tsx
-│   │   │   └── StatusDashboardAdmin.tsx
-│   │   ├── Charts/         # Data visualization
-│   │   │   ├── BarChart.tsx
-│   │   │   ├── LineChart.tsx
-│   │   │   ├── RadarChart.tsx
-│   │   │   ├── SankeyChart.tsx
-│   │   │   └── LiquidAntd.tsx
-│   │   ├── AudioChatRecord.tsx
-│   │   ├── InterviewChat.tsx
-│   │   ├── GoogleSTT.tsx
-│   │   ├── TemplateForm.tsx
-│   │   └── ...
-│   ├── context/            # React Context providers
-│   │   ├── context.tsx
-│   │   └── ProcessingContext.tsx
-│   ├── hooks/              # Custom React hooks
-│   │   ├── useWebSocket.tsx
-│   │   ├── useMiddleSocket.tsx
-│   │   └── useProcessingWebSocket.tsx
-│   ├── pages/              # Route pages
-│   │   ├── Jobs.tsx
-│   │   ├── JobDetail.tsx
-│   │   ├── Trainee.tsx
-│   │   └── AssemblyAITest.tsx
-│   ├── routes/
-│   │   └── AppRoutes.tsx
-│   └── Services/
-│       └── Services.tsx
-├── public/
-├── package.json
-├── vite.config.ts
-└── tsconfig.json
-```
-
-### Key Components
-
-**Admin Dashboard:**
-- `AdminDashboard.tsx` - Main admin interface
-- `AllDataFilterAdmin.tsx` - Data filtering and export
-- `StatusDashboardAdmin.tsx` - Real-time status monitoring
-- Multi-tab interface for users, jobs, challenges, templates
-
-**Charts & Visualizations:**
-- `LineChart.tsx` - Progress over time
-- `RadarChart.tsx` - Skill assessment visualization
-- `BarChart.tsx` - Comparative metrics
-- `SankeyChart.tsx` - Flow diagrams
-- `LiquidAntd.tsx` - Progress percentage
-- `PerformanceChart.tsx` - Overall performance
-
-**Interview Components:**
-- `InterviewChat.tsx` - Real-time interview interface
-- `AudioChatRecord.tsx` - Audio recording with real-time transcription
-- `GoogleSTT.tsx` - Google STT integration
-- `Messages.tsx` - Chat message display
-- `RealTimeEvaluation.tsx` - Live evaluation feedback
-
-**Template Management:**
-- `TemplateForm.tsx` - Create/edit templates
-- `UpdateTemplate.tsx` - Modify existing templates
-
-### Socket.IO Integration
-
-**Custom Hooks:**
-```typescript
-// useWebSocket.tsx - Main interview Socket.IO connection
-const { socket, messages, sendMessage } = useWebSocket(sessionId);
-
-// useProcessingWebSocket.tsx - Background task status
-const { status, progress } = useProcessingWebSocket(taskId);
-```
-
-**Events Handled:**
-- `audio_realtime` - Real-time evaluation results
-- `realtime_status` - Evaluation status updates
-- `task_status` - Background task progress
-- `processing_update` - File processing status
-- `notification` - System notifications
-
-### State Management
-
-**Context Providers:**
-- `ProcessingContext` - Global processing state
-- `context.tsx` - Authentication and user state
-
-### Build & Deployment
-
-**Development:**
-```bash
-cd frontend
-npm install
-npm run dev        # Runs on http://localhost:5173
-```
-
-**Production Build:**
-```bash
-npm run build      # Outputs to dist/
-npm run preview    # Preview production build
-```
-
-**Docker:**
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --production
-COPY . .
-RUN npm run build
-CMD ["npm", "run", "preview"]
-```
-
-### API Integration
-
-**Base URL Configuration:**
-```typescript
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:9990';
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:9990';
-```
-
-**Service Layer:**
-```typescript
-// Services/Services.tsx
-export const fetchUserSessions = async (userId) => {
-  const response = await fetch(`${API_BASE}/api/ipersona/fetch_user_session`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ all_user_id: userId })
-  });
-  return response.json();
-};
-```
-
-## Development Infrastructure
-
-### Makefile Automation
-
-The project uses a comprehensive **Makefile** for development workflow automation:
-
-**Environment Setup:**
-```bash
-make uv-install        # Install uv package manager
-make install-deps      # Install Python dependencies
-make setup-backend     # Setup backend environment
-make setup-frontend    # Setup frontend environment
-make setup             # Setup both backend and frontend
-```
-
-**Development:**
-```bash
-make start-backend     # Run FastAPI server (port 9990)
-make start-frontend    # Run Vite dev server (port 5173)
-```
-
-**Code Quality:**
-```bash
-make format            # Format code (black, isort)
-make lint              # Run linters (ruff, mypy)
-make security          # Security checks (bandit, safety)
-```
-
-**Testing:**
-```bash
-make test              # Run all tests
-make test-unit         # Run unit tests only
-make test-integration  # Run integration tests only
-make test-coverage     # Generate coverage report
-make test-watch        # Run tests in watch mode
-```
-
-**Celery Workers:**
-```bash
-make workers           # Start Celery worker
-make work              # Kill existing workers and start fresh
-```
-
-**Cleanup:**
-```bash
-make clean             # Remove build artifacts, caches, etc.
-```
-
-### Testing Infrastructure
-
-**Test Files (`tests/`):**
-- `test_aws_connectivity.py` - AWS service connection tests
-- `test_s3_connectivity.py` - S3 operations tests
-- `test_s3_helper_run.py` - S3 helper function tests
-- `test_speech_to_text.py` - STT integration tests
-- `test_gemini_stt.py` - Google Gemini STT tests
-- `test_google_stt_debug.py` - Google Cloud STT debugging
-- `test_gdrive.py` - Google Drive integration tests
-- `test_gdrive_stt_*.py` - Google Drive STT tests
-- `check_credentials_project.py` - Credential validation
-
-**Test Configuration:**
-```python
-# pytest.ini (implied configuration)
-[pytest]
-testpaths = tests
-python_files = test_*.py
-python_classes = Test*
-python_functions = test_*
-markers =
-    unit: Unit tests
-    integration: Integration tests
-```
-
-**Coverage Reports:**
-```bash
-make test-coverage
-# Outputs:
-# - Terminal report (missing lines highlighted)
-# - HTML report: coverage/index.html
-# - XML report: coverage/coverage.xml
-```
-
-### Docker & Deployment
-
-**Main Dockerfile (Backend):**
-```dockerfile
-FROM python:3.12-slim
-WORKDIR /app
-COPY api/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-ENV STRAPI_STAGE=dev-prod
-EXPOSE 4500
-CMD uvicorn app:app --host 0.0.0.0 --port 4500
-```
-
-**Docker Compose (Celery):**
-```yaml
-# docker-compose-celery.yml
-version: '3.8'
-services:
-  celery-worker:
-    build: .
-    command: celery -A api.services.celery.celery_worker worker -l info
-    depends_on:
-      - redis
-  
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-  
-  flower:
-    build: .
-    command: celery -A api.services.celery.celery_worker flower
-    ports:
-      - "5555:5555"
-    depends_on:
-      - redis
-```
-
-**Build Scripts:**
-- `build.sh` - Main application build script
-- `build-celery.sh` - Celery worker build script
-- `fbuild.sh` - Frontend build script (in frontend/)
-
-**Startup Scripts:**
-- `start_celery.sh` - Start Celery worker
-- `start_celery_worker.sh` - Start Celery worker with logging
-- `monitor_celery.sh` - Monitor Celery tasks
-
-### Documentation
-
-**OpenAPI Specifications (`docs/`):**
-- `openapi.yaml` - Main OpenAPI 3.0 specification
-- `openapi_with_sockets.yaml` - Extended with Socket.IO events
-- `openapi_theneo_ready.yaml` - Formatted for Theneo documentation platform
-
-**Socket.IO Documentation:**
-- `socket_events.md` - Socket.IO event documentation
-- `socket_events_theneo_ready.md` - Formatted for Theneo
-- `socket_events_raw.txt` - Raw event list
-
-**Additional Documentation:**
-- `CELERY_README.md` - Celery setup and usage
-- `STRUCTURED_MATCHING_SYSTEM.md` - Embedding-based matching documentation
-- `specs/` - This specification directory
-
-### Notebooks
-
-**Jupyter Notebooks (`notebooks/`):**
-- `parrot_notebook.ipynb` - Development and testing notebook
-- `check.json` - Validation data
-- `generate.json` - Generation examples
-
-## Configuration
-
-### Environment Variables
-```bash
-# Strapi
-STRAPI_STAGE=dev-prod
-STRAPI_BASE_URL=https://api.example.com
-
-# OpenAI
-OPENAI_API_KEY=sk-...
-OPENAI_PARROT_API_KEY=sk-...
-
-# AssemblyAI
-ASSEMBLYAI_API_KEY=...
-
-# FastAPI
-PORT=9900
-PROJECT_NAME=Parrot Backend
-PROJECT_DESCRIPTION=AI-driven interview platform
-
-# Celery
-CELERY_BROKER_URL=redis://redis.10academy.org:6379/0
-CELERY_RESULT_BACKEND=redis://redis.10academy.org:6379/0
-
-# Whisper
-FW_MODEL=base
-FW_DEVICE=cpu
-FW_COMPUTE_TYPE=int8
-```
-
-### Matching Configuration
-```python
-# api/utils/matching_config.py
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-SIMILARITY_THRESHOLD = 0.3
-RELEVANCE_THRESHOLD = 60
-MIN_ANSWER_LENGTH = 20
-```
-
-## Deployment
-
-### Docker Compose
-```yaml
-services:
-  ipersona:
-    build: .
-    ports:
-      - "9900:9900"
-    environment:
-      - STRAPI_STAGE=dev-prod
-  
-  celery_worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.celery
-    depends_on:
-      - redis
-  
-  flower:
-    image: mher/flower
-    ports:
-      - "5555:5555"
-```
-
-### Startup Commands
-```bash
-# Development
-make dev-start
-
-# Production
-make prod-start
-
-# Celery only
-make celery-start
-
-# Monitor
-make celery-monitor
-```
-
-## Testing
-
-### Test Audio Processing
-```bash
-curl -X POST http://localhost:9900/api/ipersona/audio_upload_external_celery \
-  -F "file=@test_audio.mp3" \
-  -F "target={\"job_profile_id\":123}"
-```
-
-### Test STT
-```bash
-curl -X POST http://localhost:9900/api/stt/whisper-upload \
-  -F "file=@audio.wav"
-```
-
-### Test Socket.IO
-```javascript
-const socket = io('http://localhost:9900', {
-  auth: { token: 'Bearer YOUR_TOKEN' }
-});
-
-socket.on('connect', () => {
-  console.log('Connected');
-});
-
-socket.emit('audio chat sentence', {
-  user_session: { id: 'session_id' },
-  response: audioBlob,
-  question_text: 'Tell me about yourself'
-});
-```
-
-## Development Workflow
-
-1. **Add new feature**: Update spec in `main.md`
-2. **Generate code**: Use AI coding agent to compile spec
-3. **Test**: Run tests and verify functionality
-4. **Deploy**: Use Docker compose for deployment
-
-## Monitoring & Logging
-
-### Logging
-- Uses `LLPackerLogger` for structured logging
-- Logs saved to `logs/` directory with timestamps
-- Log levels: INFO, ERROR, WARN, SUCCESS
-
-### Celery Monitoring
-- Flower dashboard: http://localhost:5555
-- View active tasks, worker status, task history
-- Retry failed tasks
-
-### Health Checks
-- Celery: `make celery-status`
-- API: `curl http://localhost:9900/health`
-
-## Future Enhancements
-
-1. **Multi-language support**: Support interviews in multiple languages
-2. **Video analysis**: Analyze video alongside audio
-3. **Advanced analytics**: Track trends and improvements over time
-4. **Integration with ATS**: Direct integration with applicant tracking systems
-5. **Mobile app**: Native mobile application for interviews
-6. **Custom models**: Fine-tune models on domain-specific data
-7. **A/B testing**: Compare different evaluation approaches
-
-## Error Handling
-
-### Common Errors
-- **401 Unauthorized**: Invalid or missing auth token
-- **403 Forbidden**: User not authorized for resource
-- **404 Not Found**: Session or resource not found
-- **500 Internal Error**: Server-side processing error
-
-### Graceful Degradation
-- STT fallback: If one STT service fails, try another
-- LLM fallback: If structured matching fails, use LLM matching
-- Task retry: Failed Celery tasks automatically retry
-
-## Security
-
-- All endpoints require authentication (except docs)
-- Tokens validated via Strapi GraphQL
-- CORS configured for specific origins
-- Secure file uploads with type validation
-- Redis for secure task queue
+**Purpose**: Process separate question and answer files for interview evaluation.
+
+**Implementation Flow:**
+1. Process question file → Extract questions
+2. Process answer file → Extract answers  
+3. Use **Structured Question-Answer Matching** (embedding-based)
+   - File: `/api/utils/question_answer_matcher.py`
+   - Uses: `SentenceTransformer('all-MiniLM-L6-v2')`
+   - Calculates cosine similarity between question/answer embeddings
+   - Filters matches with relevance_score >= 90
+4. Generate evaluation using matched Q&A pairs
+5. Create session and save to database
+6. Run overall evaluation
 
 ---
 
-## AI Compilation Instructions
+**Task: `process_upload_external_answer_with_template_task`** (Answer File + Template Questions)
 
-**⚠️ IMPORTANT**: This specification documents an **EXISTING** application, not a new one.
-
-This specification serves as **living documentation** for the existing Parrot application. When using AI coding agents:
-
-**To understand the system:**
-```
-Read and explain [the specification](./main.md)
-```
-
-**To make modifications:**
-```
-Update [feature X] according to the specification in ./main.md
-Maintain strict backward compatibility with all existing endpoints
+```python
+@celery_app.task(bind=True)
+def process_upload_external_answer_with_template_task(
+    self,
+    template_questions,  # From database template
+    answer_filename, answer_content_type, answer_audio_path, answer_contents,
+    job_profile_id, challenge_id, template_id, session_id, all_user_id,
+    external, run_stage, user_sid=None
+)
 ```
 
-**To lint/improve the spec:**
+**Purpose**: Process answer file using pre-defined template questions.
+
+**Key Features:**
+- **AI Answer Content Validation** before processing
+  - Checks if answer file contains actual answers (not just questions)
+  - Uses heuristics: count question vs answer indicators
+  - Lenient validation (≥ 6 question indicators + 0 answers = INVALID)
+- Uses **Structured Matching** to pair template questions with transcript answers
+- More accurate than LLM-based matching
+
+---
+
+### 4.4 REST API Endpoints
+
+**Implementation File**: `/api/pages/ipersona/routers/ipersona_routes.py`
+**Base Path**: `/api/ipersona`
+**Framework**: FastAPI with automatic OpenAPI documentation
+
+#### 4.4.1 Health & System Endpoints
+
+**GET /api/ipersona/health**
+
+**Purpose**: System health check and external autograde service integration test.
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN the service is running
+WHEN /health is called
+THEN it SHALL:
+  - Return 200 OK if healthy
+  - Call external autograde endpoint with test session data
+  - Return autograde service status
+  - Log any autograde service failures
 ```
-/load specs/lint.prompt.md
+
+**Response Example:**
+```json
+{
+  "status": "healthy",
+  "autograde_status": "available",
+  "autograde_response": {
+    "success": true,
+    "session_id": "test_session"
+  }
+}
 ```
 
-### How This Spec Was Created
+---
 
-This specification was **reverse-engineered** from a production application:
+#### 4.4.2 Speech-to-Text Endpoints
 
-1. **Application Development**: Started 6 months ago, built organically
-2. **Spec Discovery**: Team learned about spec-driven development in December 2024
-3. **Reverse Engineering**: Comprehensive codebase analysis conducted in December 2024:
-   - **Backend**: Scanned 50+ API endpoints in `ipersona_routes.py`
-   - **Real-time**: Documented 9 Socket.IO events from `ipersona_socket.py`
-   - **Database**: Mapped 8 Strapi CMS tables and relationships
-   - **Tasks**: Identified Celery background task architecture
-   - **AI/ML**: Catalogued 5 STT services, LLM providers, and ML models
-   - **Frontend**: Analyzed React/TypeScript SPA with 30+ components
-   - **Infrastructure**: Documented Makefile, Docker, testing framework
-   - **Dependencies**: Reviewed 137 Python packages in requirements.txt
+**POST /api/ipersona/stt/google-upload**
 
-4. **Documentation Sources Analyzed**:
-   - Source code: 50+ Python files, 30+ TypeScript components
-   - Existing docs: OpenAPI specs, Socket.IO event documentation
-   - Infrastructure: Makefile, Dockerfiles, build scripts
-   - Configuration: Environment variables, service configs
+**Purpose**: Transcribe uploaded audio using Google Cloud STT.
 
-5. **Purpose**: Now serves as authoritative documentation and blueprint for future development
+**Request:**
+```typescript
+{
+  file: File,  // Audio file (multipart/form-data)
+  language?: string  // Optional language code (e.g., "en-US")
+}
+```
 
-### Comprehensive Application Inventory
+**Response:**
+```json
+{
+  "text": "transcribed text",
+  "language": "en-US",
+  "status_code": 200,
+  "message": "Transcript extracted successfully"
+}
+```
 
-**Backend Components:**
-- ✅ 50+ REST API endpoints across 8 categories
-- ✅ 9 Socket.IO real-time events
-- ✅ 8 Strapi CMS database tables
-- ✅ 3 Celery background task types
-- ✅ 5 Speech-to-Text service integrations
-- ✅ 2 external API integrations (content extraction, autograde)
-- ✅ Structured question-answer matching system (embeddings)
+---
 
-**Frontend Components:**
-- ✅ React 18 + TypeScript SPA (Vite)
-- ✅ 30+ React components
-- ✅ 3 custom Socket.IO hooks
-- ✅ 2 Context providers for state management
-- ✅ 8+ chart/visualization components
-- ✅ Admin dashboard with multi-tab analytics
-- ✅ Real-time audio recording and transcription UI
+**POST /api/ipersona/stt/whisper-upload**
 
-**AI/ML Services:**
-- ✅ OpenAI GPT (primary LLM)
-- ✅ LiteLLM (multi-provider gateway)
-- ✅ Instructor (structured outputs)
-- ✅ Sentence Transformers (embeddings)
-- ✅ AutoGen (AI agent framework)
-- ✅ AssemblyAI (STT)
-- ✅ Faster Whisper (local STT)
-- ✅ Google Cloud STT
-- ✅ Google Gemini
-- ✅ OpenAI Whisper API
+**Purpose**: Transcribe audio using Faster Whisper (local).
+
+**Requirements:**
+- SHALL use Faster Whisper model (default: "base")
+- SHALL support languages via ISO 639-1 codes (e.g., "en", "es")
+- SHALL return 400 if language code is invalid
+- SHALL provide hint for valid language codes in error
+
+---
+
+**POST /api/ipersona/stt/openai-upload**
+
+**Purpose**: Transcribe audio using OpenAI Whisper API.
+
+---
+
+**POST /api/ipersona/stt/gemini-upload**
+
+**Purpose**: Transcribe audio using Google Gemini.
+
+---
+
+#### 4.4.3 Session Management Endpoints
+
+**POST /api/ipersona/create_user_session**
+
+**Purpose**: Create new interview session and generate questions.
+
+**Request Payload:**
+```typescript
+{
+  run_stage: "dev" | "stage" | "prod",
+  mode: string,
+  template: boolean,
+  external: boolean,
+  challenge: boolean,
+  generate: boolean,
+  job_profile_id: number | null,
+  all_user_id: string,
+  template_id: number | null,
+  challenge_id: number | null
+}
+```
+
+**Implementation Steps:**
+1. Validate user exists (`IpersonaTraineeSchema.filter_by_alluser_id()`)
+2. Retrieve job/template/challenge data from Strapi
+3. Generate interview questions using LLM if `generate=true`
+4. Create session in database (`util.create_session()`)
+5. Save generated questions to session
+6. Return session ID and questions
+
+**Response:**
+```json
+{
+  "session_id": "uuid",
+  "questions": [...],
+  "status": 200,
+  "message": "Session created successfully"
+}
+```
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN valid user and job/template/challenge IDs
+WHEN create_user_session is called
+THEN it SHALL:
+  - Create unique session with UUID
+  - Generate appropriate questions based on mode
+  - Link session to user profile and job/template/challenge
+  - Return session data within 5 seconds
+  - Set initial status to "pending"
+```
+
+---
+
+**POST /api/ipersona/close_session**
+
+**Purpose**: Mark session as complete and trigger final evaluation.
+
+**Request:**
+```typescript
+{
+  session_id: string,
+  all_user_id: string,
+  run_stage: string
+}
+```
+
+**Implementation:**
+1. Validate session exists
+2. Update session status to "Closed"
+3. Trigger `overall_interview_evaluations()` asynchronously
+4. Calculate progress metrics
+5. Update overall observer records
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN an active session with answered questions
+WHEN close_session is called
+THEN it SHALL:
+  - Mark session as "Closed"
+  - Trigger overall evaluation within 10 seconds
+  - Calculate SFIA competency levels
+  - Generate recommendations
+  - Update progress-over-time metrics
+  - Return overall evaluation results
+```
+
+---
+
+**POST /api/ipersona/delete_session**
+
+**Purpose**: Soft-delete a session (mark as deleted).
+
+---
+
+**POST /api/ipersona/clarify**
+
+**Purpose**: Request AI clarification for an interview question.
+
+---
+
+#### 4.4.4 Data Retrieval Endpoints
+
+**POST /api/ipersona/fetch_user_session**
+
+**Purpose**: Retrieve all interview sessions for a specific user.
+
+**Request:**
+```typescript
+{
+  all_user_id: string,
+  run_stage: string
+}
+```
+
+**Response:**
+```json
+{
+  "sessions": [
+    {
+      "id": "uuid",
+      "status": "Closed",
+      "job_profile": {...},
+      "created_at": "ISO 8601",
+      "message_count": 10
+    }
+  ],
+  "status": 200
+}
+```
+
+---
+
+**POST /api/ipersona/fetch_chat_history**
+
+**Purpose**: Retrieve conversation history for a session.
+
+**Request:**
+```typescript
+{
+  session_id: string
+}
+```
+
+**Response:**
+```json
+{
+  "messages": [
+    {
+      "question": "Tell me about yourself",
+      "answer": "I am a software engineer...",
+      "realtime_evaluation": {...},
+      "timestamp": "ISO 8601"
+    }
+  ],
+  "status": 200
+}
+```
+
+---
+
+**POST /api/ipersona/fetch_user_all_observer**
+
+**Purpose**: Retrieve all evaluation observations for a user.
+
+---
+
+**POST /api/ipersona/fetch_session_overall_evaluation**
+
+**Purpose**: Retrieve final overall evaluation for a completed session.
+
+**Response:**
+```json
+{
+  "overall_evaluation": {
+    "evaluation": "comprehensive summary",
+    "recommendation": [...],
+    "competency": [
+      {"name": "Python", "sfia_level": "4"}
+    ]
+  },
+  "evaluation_metrics": {
+    "overall_performance_score": 85,
+    "communication_skills": [...],
+    "relevancy": [...]
+  },
+  "status": 200
+}
+```
+
+---
+
+#### 4.4.5 Progress & Analytics Endpoints
+
+**POST /api/ipersona/calculate_session_overall_progress**
+
+**Purpose**: Calculate aggregated progress metrics for a user across all sessions.
+
+**Implementation:**
+- Aggregates clarity, confidence, engagement over time
+- Calculates competency progression
+- Formats data for charting (LineChart, RadarChart)
+
+---
+
+**POST /api/ipersona/calculate_allstat_progress**
+
+**Purpose**: Calculate all-time statistics for a user across all job types, challenges, and templates.
+
+---
+
+**POST /api/ipersona/engagement_jobs_status**
+
+**Purpose**: Calculate interview engagement metrics for job-related interviews.
+
+**Response:**
+```json
+{
+  "all_user_id": "string",
+  "jobs": [
+    {
+      "job_profile_id": 123,
+      "total_sessions": 5,
+      "completed_sessions": 3,
+      "average_score": 82,
+      "last_session": "ISO 8601"
+    }
+  ],
+  "cursor": {...},
+  "status": 200
+}
+```
+
+---
+
+**POST /api/ipersona/engagement_challenge_status**
+
+**Purpose**: Calculate engagement metrics for challenge-based interviews.
+
+---
+
+**POST /api/ipersona/engagement_template_status**
+
+**Purpose**: Calculate engagement metrics for template-based interviews.
+
+---
+
+**POST /api/ipersona/engagement_status**
+
+**Purpose**: Overall engagement dashboard data combining all types.
+
+---
+
+#### 4.4.6 Admin Endpoints
+
+**POST /api/ipersona/admin_overview_status**
+
+**Purpose**: Admin dashboard overview with system-wide statistics.
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN an admin user
+WHEN admin_overview_status is called
+THEN it SHALL return:
+  - Total number of users
+  - Total number of sessions
+  - Average performance scores
+  - Recent activity summary
+  - System health metrics
+```
+
+---
+
+**POST /api/ipersona/admin_allusers_data**
+
+**Purpose**: Retrieve data for all users with filtering and pagination.
+
+---
+
+**POST /api/ipersona/admin_alljobs_data**
+
+**Purpose**: Retrieve data for all job profiles with session counts.
+
+---
+
+**POST /api/ipersona/admin_allchallenges_data**
+
+**Purpose**: Retrieve data for all challenges with completion rates.
+
+---
+
+**POST /api/ipersona/admin_each_job_overview_data**
+
+**Purpose**: Detailed analytics for a specific job profile.
+
+---
+
+**POST /api/ipersona/admin_each_challenge_overview_data**
+
+**Purpose**: Detailed analytics for a specific challenge.
+
+---
+
+**POST /api/ipersona/admin_allusers_performance_data**
+
+**Purpose**: Performance metrics across all users for comparison.
+
+---
+
+**POST /api/ipersona/admin_job_by_template_id**
+
+**Purpose**: Retrieve job data filtered by template ID.
+
+---
+
+**POST /api/ipersona/admin_challenge_by_template_id**
+
+**Purpose**: Retrieve challenge data filtered by template ID.
+
+---
+
+**POST /api/ipersona/admin_interview_by_template**
+
+**Purpose**: Retrieve interview sessions filtered by template.
+
+---
+
+#### 4.4.7 Template Management Endpoints
+
+**POST /api/ipersona/get_all_tinder_templates**
+
+**Purpose**: Retrieve all available interview templates.
+
+**Response:**
+```json
+{
+  "templates": [
+    {
+      "id": 1,
+      "name": "Software Engineer Interview",
+      "description": "Standard SWE questions",
+      "questions": [
+        {
+          "question": "...",
+          "ideal_answer": "...",
+          "sectionType": "Technical"
+        }
+      ]
+    }
+  ],
+  "status": 200
+}
+```
+
+---
+
+**POST /api/ipersona/save_tinder_template**
+
+**Purpose**: Create a new interview template.
+
+**Request:**
+```typescript
+{
+  name: string,
+  description: string,
+  questions: Array<{
+    question: string,
+    ideal_answer: string,
+    sectionType: string
+  }>,
+  job_profile_id?: number,
+  run_stage: string
+}
+```
+
+---
+
+**POST /api/ipersona/get_a_template**
+
+**Purpose**: Retrieve a single template by ID.
+
+---
+
+**POST /api/ipersona/update_tinder_template**
+
+**Purpose**: Update an existing template.
+
+---
+
+**POST /api/ipersona/attach_job_id_to_template**
+
+**Purpose**: Link a job profile to a template.
+
+---
+
+**POST /api/ipersona/create_template_by_llm**
+
+**Purpose**: Generate interview template using LLM from job description.
+
+**Request:**
+```typescript
+{
+  context: string,  // Job description
+  run_stage: string
+}
+```
+
+**Implementation:**
+1. Send job description to OpenAI GPT
+2. Generate relevant interview questions
+3. Extract ideal answers
+4. Format as template structure
+5. Save to database
+
+**Acceptance Criteria:**
+```gherkin
+GIVEN a valid job description
+WHEN create_template_by_llm is called
+THEN it SHALL:
+  - Generate minimum 5 relevant questions
+  - Include ideal answers for each question
+  - Categorize questions by type (Technical, Behavioral, etc.)
+  - Return template within 30 seconds
+  - Save template to database
+```
+
+---
+
+#### 4.4.8 Challenge Endpoints
+
+**POST /api/ipersona/get_all_challenges**
+
+**Purpose**: Retrieve all available challenge documents.
+
+---
+
+**POST /api/ipersona/get_a_challenge**
+
+**Purpose**: Retrieve a single challenge by ID.
+
+---
+
+#### 4.4.9 File Upload Endpoints (Celery-backed)
+
+**POST /api/ipersona/audio_upload_external**
+
+**Purpose**: Upload single audio/document file for background processing.
+
+**Request:** `multipart/form-data` with file upload
+
+**Response:**
+```json
+{
+  "task_id": "celery_task_uuid",
+  "status": "processing",
+  "message": "File queued for processing"
+}
+```
+
+**Implementation:**
+1. Save uploaded file to `/tmp` or `/audio` directory
+2. Queue `process_upload_external_audio_task` Celery task
+3. Return task_id immediately
+4. Client polls Redis or receives Socket.IO updates
+
+---
+
+**POST /api/ipersona/files_upload_external**
+
+**Purpose**: Upload separate question and answer files for background processing.
+
+**Requirements:**
+- SHALL accept two file uploads (question_file, answer_file)
+- SHALL queue `process_upload_external_files_task`
+- SHALL use structured matching to pair questions with answers
+
+---
+
+**POST /api/ipersona/answer_file_upload_external**
+
+**Purpose**: Upload answer file with template questions for background processing.
+
+**Requirements:**
+- SHALL accept answer file + template_id
+- SHALL retrieve template questions from database
+- SHALL queue `process_upload_external_answer_with_template_task`
+- SHALL validate answer content contains actual answers (not questions)
+
+---
+
+**POST /api/ipersona/test_celery_event**
+
+**Purpose**: Test Celery and Socket.IO integration.
+
+---
+
+### 4.5 Server-to-Client Socket.IO Events
+
+**Event: `audio_realtime`** (REAL-TIME EVALUATION RESULTS)
+
+**Payload:**
+```json
+{
+  "transcript": "transcribed text",
+  "evaluation": {
+    "overall": {
+      "relevance": "strong",
+      "feedback": "Answer directly addresses the question"
+    },
+    "answer_relevancy": [
+      {"level": "85", "reason": "..."}
+    ]
+  },
+  "question_id": "string"
+}
+```
+
+---
+
+**Event: `realtime_status`** (STATUS UPDATES)
+
+**Payload:**
+```json
+{
+  "status": "evaluated|processing|error",
+  "session_id": "uuid",
+  "message": "optional status message"
+}
+```
+
+---
+
+**Event: `transcription_result`** (FINAL TRANSCRIPT)
+
+**Payload:**
+```json
+{
+  "text": "final transcript",
+  "confidence": 0.95,
+  "language": "en-US"
+}
+```
+
+---
+
+**Event: `transcription_interim`** (INTERIM TRANSCRIPT)
+
+**Payload:**
+```json
+{
+  "text": "partial transcript...",
+  "is_final": false
+}
+```
+
+---
+
+**Event: `transcription_error`** (TRANSCRIPTION FAILURE)
+
+**Payload:**
+```json
+{
+  "error": "error message",
+  "service": "google_cloud_stt",
+  "fallback_attempted": true
+}
+```
+
+---
+
+**Event: `processing_update`** (CELERY TASK STATUS)
+
+**Payload:**
+```json
+{
+  "status": "processing|done|failed",
+  "message": "status message",
+  "progress": 50,  // 0-100
+  "task_type": "audio_processing"
+}
+```
+
+---
+
+**Event: `processing_update_success`** (TASK COMPLETION)
+
+**Payload:**
+```json
+{
+  "status": "Task completed successfully",
+  "result": {...}
+}
+```
+
+---
+
+**Event: `processing_update_failed`** (TASK FAILURE)
+
+**Payload:**
+```json
+{
+  "status": "Task failed",
+  "error": "error message"
+}
+```
+
+---
+
+**Event: `error`** (GENERAL ERROR)
+
+**Payload:**
+```json
+{
+  "error": "error message",
+  "details": "additional context"
+}
+```
+
+---
+
+**Event: `notification`** (SYSTEM NOTIFICATION)
+
+**Payload:**
+```json
+{
+  "type": "info|warning|error|success",
+  "message": "notification message",
+  "timestamp": "ISO 8601"
+}
+```
+
+---
+
+## 5. Data Models (Strapi CMS)
+
+**Implementation File**: `/api/llm/ipersona/ipersona_strapi_schemas.py`
+**Database**: Strapi CMS (GraphQL API)
+**Base Class**: `LeapBaseClass` (provides GraphQL query/mutation helpers)
+
+### 5.1 Core Data Models
+
+#### 5.1.1 `ipersona-session` (IpersonaSessionSchema)
+
+**Table Name**: `iPersonaSessions` (plural), `iPersonaSession` (singular)
+**Schema Class**: `IpersonaSessionSchema`
+**Purpose**: Stores interview session metadata and conversation history
+
+**Strapi GraphQL Structure:**
+```graphql
+type IPersonaSession {
+  id: ID!
+  attributes: IPersonaSessionAttributes!
+}
+
+type IPersonaSessionAttributes {
+  slug: String
+  status: String
+  attributes: JSON  # Contains session data
+  metadata: JSON    # Contains upload_metadata
+  createdAt: DateTime!
+  updatedAt: DateTime
+  
+  # Relations
+  i_persona_observer: IPersonaObserverRelation
+  i_persona_messages: [IPersonaMessageRelation]
+  tinder_job_profile: TinderJobProfileRelation
+  tinder_user_profile: TinderUserProfileRelation
+  tinder_template: TinderTemplateRelation
+  challenge_document: ChallengeDocumentRelation
+}
+```
+
+**`attributes` JSON Structure:**
+```json
+{
+  "session_id": "uuid-string",
+  "mode": "realtime|external_audio|qa_split|answer_only",
+  "template": boolean,
+  "external": boolean,
+  "challenge": boolean,
+  "all_user_id": "string",
+  "tinder_user_profile_id": "integer",
+  "tinder_job_profile_id": "integer|null",
+  "challenge_document_id": "integer|null",
+  "tinder_template_id": "integer|null",
+  "message": [
+    {
+      "question": "string",
+      "answer": "string",
+      "realtime_evaluation": {
+        "overall": {
+          "relevance": "strong|medium|weak",
+          "feedback": "string"
+        },
+        "answer_relevancy": [
+          {
+            "level": "0-100",
+            "reason": "string"
+          }
+        ]
+      },
+      "timestamp": "ISO 8601 datetime"
+    }
+  ],
+  "generated_questions": [],
+  "template_questions": [],
+  "challenge_questions": []
+}
+```
+
+**`metadata` JSON Structure (upload_metadata):**
+```json
+{
+  "mode": "combined_mode|qa_split_mode|answer_only_mode",
+  "source": "uploaded_file",
+  "content": {
+    "url": "s3://bucket/path",
+    "content_type": "audio/mpeg|video/mp4|application/pdf",
+    "original_filename": "string",
+    "duration_secs": "123.45 seconds",
+    "size_bytes": 1234567
+  },
+  "question": {
+    "url": "s3://...",
+    "content_type": "...",
+    "original_filename": "...",
+    "duration_secs": "...",
+    "size_bytes": 123456
+  },
+  "answer": {
+    "url": "s3://...",
+    "content_type": "...",
+    "original_filename": "...",
+    "duration_secs": "...",
+    "size_bytes": 123456
+  }
+}
+```
+
+**GraphQL Mutations:**
+```graphql
+# Create Session
+mutation CreateSession($data: IPersonaSessionInput!) {
+  createIPersonaSession(data: $data) {
+    data {
+      id
+      attributes {
+        slug
+        status
+        attributes
+        createdAt
+      }
+    }
+  }
+}
+
+# Update Session
+mutation UpdateSession($id: ID!, $data: IPersonaSessionInput!) {
+  updateIPersonaSession(id: $id, data: $data) {
+    data {
+      id
+      attributes {
+        status
+        attributes
+        updatedAt
+      }
+    }
+  }
+}
+```
+
+**Schema Methods:**
+```python
+class IpersonaSessionSchema(LeapBaseClass):
+    def exists_session_id(self, sessionId: str) -> bool:
+        """Check if session exists"""
+        
+    def filter_by_observer_id(self, vid: str) -> dict:
+        """Get session by observer ID"""
+        
+    def filter_by_tinder_user_profile_id(self, user_profile_id: int) -> list:
+        """Get all sessions for a user profile"""
+        
+    def filter_by_with_user_job_id(self, user_profile_id: int, job_profile_id: int) -> list:
+        """Get sessions for specific user+job combination"""
+        
+    def filter_by_with_user_template_id(self, user_profile_id: int, template_id: int) -> list:
+        """Get sessions for specific user+template"""
+        
+    def filter_by_with_user_challenge_id(self, user_profile_id: int, challenge_id: int) -> list:
+        """Get sessions for specific user+challenge"""
+        
+    def update_session(self, params: dict) -> dict:
+        """Update session status and attributes"""
+```
+
+**Constraints:**
+- MUST have exactly ONE of: `tinder_job_profile_id`, `tinder_template_id`, `challenge_document_id` (not null)
+- `status` values: "pending", "active", "paused", "External", "Closed", "deleted", "failed"
+- `status` MUST NOT transition from "Closed" to "active"
+- `createdAt` is auto-managed by Strapi (immutable)
+- Session with status "Closed" triggers overall evaluation
+
+**Indexes** (Strapi auto-managed):
+- Primary key on `id`
+- Automatically indexed on relations (foreign keys)
+
+---
+
+#### 5.1.2 `ipersona-session-observer` (IpersonaSessionObserverSchema)
+
+**Table Name**: `iPersonaSessionObservers`
+**Purpose**: Stores detailed AI evaluation results for completed sessions
+
+**GraphQL Structure:**
+```graphql
+type IPersonaSessionObserver {
+  id: ID!
+  attributes: IPersonaSessionObserverAttributes!
+}
+
+type IPersonaSessionObserverAttributes {
+  status: String!
+  attributes: JSON  # Contains evaluation data
+  metadata: JSON
+  createdAt: DateTime!
+  
+  # Relations
+  i_persona_session: IPersonaSessionRelation!
+}
+```
+
+**`attributes` JSON Structure (interview_evaluation):**
+```json
+{
+  "interview_evaluation": {
+    "evaluation": "comprehensive summary of candidate performance",
+    "recommendation": [
+      {
+        "title": "Resources",
+        "resource": "AWS Certified Solutions Architect course",
+        "type": "Online Course",
+        "link": "www.coursera.org"
+      }
+    ],
+    "competency": [
+      {
+        "name": "Cloud Architecture",
+        "sfia_level": "4"
+      },
+      {
+        "name": "Python Programming",
+        "sfia_level": "3"
+      }
+    ],
+    "message": "Poor match"
+  },
+  "interview_evaluation_metrics": {
+    "communication_skills": [
+      {
+        "skill": "clarity",
+        "level": "good",
+        "description": "Answers were clear and well-structured"
+      },
+      {
+        "skill": "engagement",
+        "level": "excellent",
+        "description": "Showed enthusiasm and engagement"
+      }
+    ],
+    "performance": [
+      {
+        "aspect": "Technical Knowledge",
+        "level": "good",
+        "feedback": "Demonstrated solid understanding"
+      }
+    ],
+    "relevancy": [
+      {"question_id": 1, "score": 85},
+      {"question_id": 2, "score": 92}
+    ],
+    "overall_performance_score": 88.5,
+    "rating": "4.5",
+    "competency": [...],
+    "message": "Good match"
+  }
+}
+```
+
+**Schema Methods:**
+```python
+class IpersonaSessionObserverSchema(LeapBaseClass):
+    def save_observer(self, params: dict) -> dict:
+        """Save evaluation observer for a session"""
+        
+    def filter_by_observer_session_id(self, sessionId: str) -> dict:
+        """Get observer data by session ID"""
+```
+
+---
+
+#### 5.1.3 `ipersona-session-overall-observer` (IpersonaSessionOverallObserverSchema)
+
+**Table Name**: `iPersonaSessionOverallObservers`
+**Purpose**: Aggregates evaluation metrics over multiple sessions for progress tracking
+
+**GraphQL Structure:**
+```graphql
+type IPersonaSessionOverallObserver {
+  id: ID!
+  attributes: IPersonaSessionOverallObserverAttributes!
+}
+
+type IPersonaSessionOverallObserverAttributes {
+  attributes: JSON  # Contains aggregated metrics
+  createdAt: DateTime!
+  updatedAt: DateTime
+  
+  # Relations
+  tinder_user_profile: TinderUserProfileRelation!
+  tinder_job_profile: TinderJobProfileRelation
+  challenge_document: ChallengeDocumentRelation
+  tinder_template: TinderTemplateRelation
+  i_persona_observers: [IPersonaObserverRelation]
+}
+```
+
+**`attributes` JSON Structure:**
+```json
+{
+  "overall_confidence": [
+    {"time": "2024-01-15 10:30", "level": "good", "value": 2},
+    {"time": "2024-01-16 14:20", "level": "excellent", "value": 3}
+  ],
+  "overall_clarity": [
+    {"time": "2024-01-15 10:30", "level": "good", "value": 2}
+  ],
+  "overall_engagement": [
+    {"time": "2024-01-15 10:30", "level": "excellent", "value": 3}
+  ],
+  "overall_time_management": [],
+  "overall_competency": [
+    {
+      "time": "2024-01-15 10:30",
+      "competency": [
+        {"name": "Python", "sfia_level": "3"},
+        {"name": "AWS", "sfia_level": "4"}
+      ]
+    }
+  ],
+  "overall_performance": [
+    {"time": "2024-01-15 10:30", "score": 85},
+    {"time": "2024-01-16 14:20", "score": 90}
+  ]
+}
+```
+
+**Schema Methods:**
+```python
+class IpersonaSessionOverallObserverSchema(LeapBaseClass):
+    def filter_by_with_user_and_job_id(self, user_profile_id: int, job_profile_id: int) -> dict:
+        """Get overall progress for user+job"""
+        
+    def filter_by_with_user_and_challenge_id(self, user_profile_id: int, challenge_id: int) -> dict:
+        """Get overall progress for user+challenge"""
+        
+    def filter_by_with_user_and_template_id(self, user_profile_id: int, template_id: int) -> dict:
+        """Get overall progress for user+template"""
+        
+    def save_Session_Overall_Observer(self, params: dict) -> dict:
+        """Create new overall observer record"""
+        
+    def update_session(self, params: dict) -> dict:
+        """Update existing overall observer with new metrics"""
+```
+
+**Update Logic:**
+- Appends new session metrics to existing arrays
+- Maintains chronological order by timestamp
+- Used for charting progress over time in frontend
+
+---
+
+#### 5.1.4 `tinder-user-profile` (IpersonaTraineeSchema)
+
+**Table Name**: `tinderUserProfiles`
+**Purpose**: Stores detailed user profile information for interview candidates
+
+**GraphQL Structure:**
+```graphql
+type TinderUserProfile {
+  id: ID!
+  attributes: TinderUserProfileAttributes!
+}
+
+type TinderUserProfileAttributes {
+  attributes: JSON  # Contains profile data
+  all_users: AllUserRelation  # Link to ipersona-all-user
+}
+```
+
+**`attributes` JSON Structure:**
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "experience": "5 years as Software Engineer",
+  "skills": ["Python", "AWS", "Docker", "React"],
+  "cv_url": "s3://bucket/cv/john_doe.pdf",
+  "education": "BS Computer Science",
+  "location": "San Francisco, CA"
+}
+```
+
+**Schema Methods:**
+```python
+class IpersonaTraineeSchema(LeapBaseClass):
+    def get_trainee_by_id(self, user_profile_id: int) -> dict:
+        """Get trainee profile by ID"""
+        
+    def filter_by_alluser_id(self, all_user_id: str) -> dict:
+        """Get trainee profile by all_user_id"""
+        
+    def save_trainee_user_profile(self, params: dict) -> dict:
+        """Create new trainee profile"""
+```
+
+---
+
+#### 5.1.5 `ipersona-all-user` (IpersonaAllUserSchema)
+
+**Table Name**: `allUsers`
+**Purpose**: Stores basic user account information
+
+**GraphQL Structure:**
+```graphql
+type AllUser {
+  id: ID!
+  attributes: AllUserAttributes!
+}
+
+type AllUserAttributes {
+  email: String!
+  username: String!
+  Batch: String  # Batch/cohort identifier
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+```
+
+**Schema Methods:**
+```python
+class IpersonaAllUserSchema(LeapBaseClass):
+    def get_alluser_by_id(self, all_user_id: str) -> dict:
+        """Get user by all_user_id"""
+```
+
+**Usage in Notifications:**
+- Used to retrieve `Batch` ID for notification targeting
+- Links to `tinder-user-profile` for detailed profile data
+
+---
+
+#### 5.1.6 `tinder-template` (IpersonaTinderTemplateSchema)
+
+**Table Name**: `tinderTemplates`
+**Purpose**: Stores reusable interview question templates
+
+**GraphQL Structure:**
+```graphql
+type TinderTemplate {
+  id: ID!
+  attributes: TinderTemplateAttributes!
+}
+
+type TinderTemplateAttributes {
+  name: String!
+  type: String
+  tag: String
+  description: String
+  attributes: JSON  # Contains questions array
+  metadata: JSON
+  config: JSON
+  tinder_job_profiles: [TinderJobProfileRelation]
+  challenge_documents: [ChallengeDocumentRelation]
+  i_persona_sessions: [IPersonaSessionRelation]
+}
+```
+
+**`attributes` JSON Structure:**
+```json
+{
+  "questions": [
+    {
+      "question": "Tell me about your experience with Python",
+      "ideal_answer": "Candidate should mention specific projects, frameworks, years of experience",
+      "sectionType": "Technical"
+    },
+    {
+      "question": "Describe a challenging team situation",
+      "ideal_answer": "Should demonstrate conflict resolution and communication skills",
+      "sectionType": "Behavioral"
+    }
+  ]
+}
+```
+
+**Schema Methods:**
+```python
+class IpersonaTinderTemplateSchema(LeapBaseClass):
+    def save_session(self, params: dict) -> dict:
+        """Create new template"""
+        
+    def get_template_by_id(self, template_id: int) -> dict:
+        """Get single template"""
+        
+    def get_all_templates(self) -> list:
+        """Get all available templates"""
+        
+    def filter_by_with_job_id(self, job_profile_id: int) -> list:
+        """Get templates linked to a job"""
+        
+    def filter_by_with_challenge_id(self, challenge_id: int) -> list:
+        """Get templates linked to a challenge"""
+        
+    def add_job_profiles_to_template(self, template_id: int, job_profile_ids: list) -> dict:
+        """Link job profiles to template"""
+```
+
+**Template Types:**
+- `type`: "interview" | "assessment" | "practice"
+- `tag`: Category tags for filtering (e.g., "Software Engineering", "Data Science")
+
+---
+
+#### 5.1.7 `tinder-job-profile` (IpersonaJobSchema)
+
+**Table Name**: `tinderJobProfiles`
+**Purpose**: Stores job posting information for interview targeting
+
+**GraphQL Structure:**
+```graphql
+type TinderJobProfile {
+  id: ID!
+  attributes: TinderJobProfileAttributes!
+}
+
+type TinderJobProfileAttributes {
+  title: String!
+  description: String
+  attributes: JSON  # Job requirements, skills, etc.
+  metadata: JSON
+}
+```
+
+**`attributes` JSON Structure:**
+```json
+{
+  "company": "TechCorp Inc.",
+  "location": "Remote",
+  "salary_range": "$120k - $180k",
+  "required_skills": ["Python", "AWS", "Docker"],
+  "preferred_skills": ["Kubernetes", "React"],
+  "experience_level": "Senior (5+ years)",
+  "job_type": "Full-time",
+  "responsibilities": [
+    "Design and implement scalable systems",
+    "Mentor junior developers",
+    "Collaborate with product team"
+  ]
+}
+```
+
+**Schema Methods:**
+```python
+class IpersonaJobSchema(LeapBaseClass):
+    def filter_by_job_id(self, job_profile_id: int) -> dict:
+        """Get job profile by ID"""
+```
+
+---
+
+#### 5.1.8 `challenge-document` (IpersonaChallengeDocumentSchema)
+
+**Table Name**: `challengeDocuments`
+**Purpose**: Stores technical assessment challenges
+
+**GraphQL Structure:**
+```graphql
+type ChallengeDocument {
+  id: ID!
+  attributes: ChallengeDocumentAttributes!
+}
+
+type ChallengeDocumentAttributes {
+  Title: String!
+  subtitle: String
+  challenge_sections: [ChallengeSectionRelation]
+  tinder_templates: [TinderTemplateRelation]
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+```
+
+**Challenge Section Structure:**
+```json
+{
+  "id": 1,
+  "attributes": {
+    "content": "Build a REST API that...",
+    "difficulty": "Medium",
+    "time_limit": "60 minutes",
+    "evaluation_criteria": [
+      "Code quality",
+      "Test coverage",
+      "API design"
+    ]
+  }
+}
+```
+
+**Schema Methods:**
+```python
+class IpersonaChallengeDocumentSchema(LeapBaseClass):
+    def get_challenge_by_id(self, challengeId: int) -> dict:
+        """Get challenge by ID"""
+        
+    def get_all_challenges(self) -> list:
+        """Get all available challenges"""
+```
+
+---
+
+#### 5.1.9 `ipersona-session-message` (IpersonaSessionMessageSchema)
+
+**Table Name**: `iPersonaSessionMessages`
+**Purpose**: Stores individual messages within interview sessions (alternative to embedded messages in session)
+
+**GraphQL Structure:**
+```graphql
+type IPersonaSessionMessage {
+  id: ID!
+  attributes: IPersonaSessionMessageAttributes!
+}
+
+type IPersonaSessionMessageAttributes {
+  attributes: JSON  # Contains question, answer, evaluation
+  i_persona_session: IPersonaSessionRelation!
+  createdAt: DateTime!
+}
+```
+
+**`attributes` JSON Structure:**
+```json
+{
+  "question": "Tell me about yourself",
+  "answer": "I am a software engineer with 5 years of experience...",
+  "realtime_evaluation": {
+    "overall": {
+      "relevance": "strong",
+      "feedback": "Direct and relevant answer"
+    },
+    "answer_relevancy": [
+      {"level": "90", "reason": "Addressed question comprehensively"}
+    ]
+  },
+  "timestamp": "2024-12-10T14:30:00Z"
+}
+```
+
+**Schema Methods:**
+```python
+class IpersonaSessionMessageSchema(LeapBaseClass):
+    def filter_by_session_id(self, sessionId: str) -> list:
+        """Get all messages for a session"""
+        
+    def save_message(self, params: dict) -> dict:
+        """Save new message to session"""
+        
+    def update_session_message(self, params: dict) -> dict:
+        """Update existing message"""
+```
+
+---
+
+#### 5.1.10 `notifications` (IpersonaNotificationSchema)
+
+**Table Name**: `notifications`
+**Purpose**: Stores system notifications for users
+
+**GraphQL Structure:**
+```graphql
+type Notification {
+  id: ID!
+  attributes: NotificationAttributes!
+}
+
+type NotificationAttributes {
+  sender: String!  # User ID of sender
+  receiver: String!  # User ID of receiver
+  Detail: JSON!  # Notification details
+  BatchIDs: [String]  # Batch targeting
+  origin: String!  # "leap" or other origin
+  read: Boolean
+  createdAt: DateTime!
+}
+```
+
+**`Detail` JSON Structure:**
+```json
+{
+  "topic": "external upload data processing status",
+  "where": "",
+  "notificationMessage": "Uploaded file analysis completed successfully!",
+  "traineeLink": "#",
+  "staffLink": "#"
+}
+```
+
+**Schema Methods:**
+```python
+class IpersonaNotificationSchema(LeapBaseClass):
+    def _create_notification(self, params: dict) -> dict:
+        """Create new notification"""
+```
+
+**Used By:**
+- `AudioUtils.save_notification()` for Celery task status notifications
+- Success/failure notifications for file processing
+- Real-time updates for background tasks
+
+---
+
+### 5.2 Data Model Relationships
+
+**Key Relationships:**
+1. `ipersona-session` → `tinder-user-profile` (many-to-one)
+2. `ipersona-session` → `tinder-job-profile` OR `tinder-template` OR `challenge-document` (exclusive, many-to-one)
+3. `ipersona-session` → `ipersona-session-observer` (one-to-one)
+4. `ipersona-session-observer` → `ipersona-session-overall-observer` (many-to-one)
+5. `tinder-user-profile` → `ipersona-all-user` (many-to-one)
+6. `tinder-template` → `tinder-job-profile` (many-to-many)
+7. `tinder-template` → `challenge-document` (many-to-many)
+
+**Constraint:** A session MUST have exactly ONE of:
+- `tinder_job_profile_id` (job interview)
+- `tinder_template_id` (template-based interview)
+- `challenge_document_id` (challenge assessment)
+
+---
+
+## 6. Business Rules
+
+### 6.1 Interview Session Rules
+
+**BR-001**: A user MAY have only one active session per job/challenge/template at a time
+**BR-002**: A session SHALL timeout after 2 hours of inactivity
+**BR-003**: A completed session SHALL NOT be reopened
+**BR-004**: Evaluation SHALL only occur for sessions with at least 1 answered question
+
+### 6.2 Transcription Service Selection
+
+**BR-101**: Google Cloud STT SHALL be attempted first for all real-time transcription
+**BR-102**: If Google Cloud STT fails, system SHALL fallback to Faster Whisper
+**BR-103**: AssemblyAI SHALL be used for uploaded audio files only
+**BR-104**: The system SHALL log which STT service was used for each transcription
+
+### 6.3 Scoring Rules
+
+**BR-201**: Relevance scores SHALL be integers from 0 to 100
+**BR-202**: Overall performance score SHALL be the average of all question scores
+**BR-203**: Competency levels SHALL be: poor (0-40), good (41-70), excellent (71-100)
+
+---
+
+## 7. Error Handling
+
+### 7.1 Error Response Format
+
+The system SHALL return errors in this format:
+
+```json
+{
+  "error": "string (error message)",
+  "error_code": "string (ERROR_CODE)",
+  "details": "string (optional details)",
+  "timestamp": "ISO 8601 timestamp",
+  "request_id": "uuid"
+}
+```
+
+### 7.2 Error Scenarios
+
+**STT Service Failure:**
+```gherkin
+GIVEN Google Cloud STT is unavailable
+WHEN transcription is requested
+THEN the system SHALL fallback to Faster Whisper
+AND SHALL log error with level: WARNING
+AND SHALL continue processing
+```
+
+**Session Not Found:**
+```gherkin
+GIVEN a session_id that doesn't exist
+WHEN an operation references that session
+THEN the system SHALL return HTTP 404
+AND SHALL return error_code "SESSION_NOT_FOUND"
+```
+
+**Invalid Audio Format:**
+```gherkin
+GIVEN an uploaded file is not valid audio
+WHEN file is processed
+THEN the system SHALL return HTTP 400
+AND SHALL return error_code "INVALID_AUDIO_FORMAT"
+AND SHALL specify supported formats in details
+```
+
+---
+
+## 8. Acceptance Criteria Summary
+
+### 8.1 Core User Journeys
+
+**UC-001: Complete Real-Time Interview**
+```gherkin
+GIVEN a user has selected a job profile
+WHEN they start an interview
+THEN they SHALL:
+  - Connect via Socket.IO successfully
+  - Receive interview questions in sequence
+  - Send audio responses
+  - Receive real-time transcription
+  - Receive real-time evaluation
+  - Complete interview and see overall score
+AND the entire flow SHALL complete without errors
+AND responses SHALL be evaluated within 5 seconds each
+```
+
+**UC-002: Upload and Process Interview Recording**
+```gherkin
+GIVEN a user has a recorded interview audio file
+WHEN they upload the file
+THEN the system SHALL:
+  - Accept the upload immediately
+  - Return a task_id
+  - Process file in background
+  - Transcribe all audio
+  - Evaluate all answers
+  - Generate overall evaluation
+  - Notify user when complete
+AND SHALL complete within 5 minutes for 30-minute audio
+```
+
+---
+
+## 9. Implementation Requirements
+
+### 9.1 Technology Stack
+
+The system SHALL be implemented using:
+
+**Backend:**
+- Python 3.12+
+- FastAPI framework
+- Socket.IO (python-socketio)
+- Celery with Redis broker
+- SQLAlchemy ORM (if using local database)
+
+**Primary Services:**
+- **Google Cloud Speech-to-Text** (PRIMARY STT)
+- OpenAI GPT API (PRIMARY LLM)
+- Strapi CMS (database/backend)
+- AWS S3 (file storage)
+
+**Alternative/Fallback Services:**
+- Faster Whisper (local STT fallback)
+- OpenAI Whisper API (cloud STT fallback)
+- AssemblyAI (batch processing STT)
+
+**Frontend:**
+- React 18+ with TypeScript
+- Vite build tool
+- Socket.IO client
+- Ant Design components
 
 **Infrastructure:**
-- ✅ FastAPI backend (Python 3.12)
-- ✅ Celery + Redis task queue
-- ✅ Docker containerization
-- ✅ Docker Compose orchestration
-- ✅ AWS S3 storage integration
-- ✅ AWS Secrets Manager
-- ✅ Comprehensive Makefile automation
+- Redis (caching, task queue)
+- Docker (containerization)
+- AWS infrastructure
 
-**Development Tools:**
-- ✅ uv package manager
-- ✅ Pytest testing framework
-- ✅ Coverage reporting
-- ✅ Black code formatter
-- ✅ isort import sorter
-- ✅ Ruff linter
-- ✅ MyPy type checker
-- ✅ Bandit security scanner
-- ✅ Safety dependency checker
+### 9.2 Code Quality Requirements
 
-**Testing:**
-- ✅ 11 integration test files
-- ✅ AWS/S3 connectivity tests
-- ✅ STT service integration tests
-- ✅ Google Drive integration tests
-- ✅ Credential validation tests
+The implementation SHALL:
+- Follow PEP 8 style guide (Python)
+- Achieve minimum 70% test coverage
+- Use type hints throughout Python code
+- Use TypeScript (no `any` types) for frontend
+- Pass all linters (Ruff, MyPy, ESLint)
+- Include docstrings for all public functions/classes
 
-**Documentation:**
-- ✅ 3 OpenAPI specification versions
-- ✅ Socket.IO event documentation
-- ✅ Celery setup guide
-- ✅ Structured matching system docs
-- ✅ This comprehensive specification
+---
 
-**File Statistics:**
-- Total Python files: 100+
-- Total TypeScript files: 50+
-- Total API endpoints: 50+
-- Total Socket.IO events: 9
-- Total dependencies: 137 Python packages
-- Lines of spec documentation: 1100+
+## 10. Validation & Testing
 
-### Using This Spec Going Forward
+### 10.1 Test Requirements
 
-**For New Features:**
-1. Update `main.md` with new feature specification
-2. Use AI agent with `compile.prompt.md` to implement
-3. Test thoroughly
-4. Update spec if implementation differs
+The implementation SHALL include:
 
-**For Bug Fixes:**
-1. Document expected behavior in spec
-2. Fix code to match spec
-3. Update spec if original behavior was incorrect
+**Unit Tests:**
+- All business logic functions
+- All data transformation functions
+- All validation functions
+- Minimum 80% code coverage
 
-**For Onboarding:**
-- Read `main.md` to understand entire system architecture
-- Reference specific sections for detailed feature understanding
+**Integration Tests:**
+- All API endpoints
+- Database operations
+- External service integrations (mocked)
+- Socket.IO event handlers
+
+**End-to-End Tests:**
+- Complete interview flow (real-time)
+- File upload and processing flow
+- Template creation and usage
+- Progress tracking calculations
+
+### 10.2 Performance Testing
+
+The system SHALL be tested for:
+- Load testing (100 concurrent users)
+- Stress testing (identify breaking point)
+- Latency testing (verify response times)
+- Throughput testing (requests per minute)
+
+---
+
+## Document Control
+
+**Version**: 1.0  
+**Created**: December 2024  
+**Status**: NORMATIVE  
+**Compliance**: RFC 2119
+
+**Revision History:**
+- v1.0 (2024-12): Initial specification
+
+---
+
+**END OF SPECIFICATION**
+

@@ -86,10 +86,11 @@ logger = LLPackerLogger(os.path.basename(__file__))
 redis_client = None
 if REDIS_AVAILABLE:
     try:
+        # Use central config credentials (no env vars)
         redis_client = redis.Redis(
-            host=os.getenv('REDIS_HOST', 'localhost'),
-            port=int(os.getenv('REDIS_PORT', '6379')),
-            db=int(os.getenv('REDIS_DB', '0')),
+            host=config.cache.REDIS_HOST,
+            port=config.cache.REDIS_PORT,
+            password=getattr(config.cache, 'REDIS_PASSWORD', None),
             decode_responses=True,
             socket_connect_timeout=5,
             socket_timeout=5
@@ -118,6 +119,38 @@ ASSEMBLYAI_SOFT_CAP = int(os.getenv("ASSEMBLYAI_SOFT_CAP", "75"))
 USE_GOOGLE_STT_V1 = os.getenv("USE_GOOGLE_STT_V1", "false").lower() == "true"
 
 # Start periodic cleanup task when first audio endpoint is called
+
+# ===== Idempotency helpers for finalize flow and emits =====
+_EVENT_SENT_MEMORY: Set[str] = set()
+_SESSION_COMPLETED_MEMORY: Set[str] = set()
+
+def _once_set(key: str, ttl_seconds: int = 86400) -> bool:
+    """Atomically set a key once. Returns True if this is the first time.
+    Uses Redis when available, otherwise per-process memory.
+    """
+    try:
+        if redis_client:
+            # SET key 1 NX EX ttl
+            ok = redis_client.set(key, "1", nx=True, ex=ttl_seconds)
+            return bool(ok)
+        # Fallback to memory
+        if key in _EVENT_SENT_MEMORY or key in _SESSION_COMPLETED_MEMORY:
+            return False
+        # Store in a unified set; callers should namespace keys
+        _EVENT_SENT_MEMORY.add(key)
+        return True
+    except Exception as e:
+        logger.warn(f"[IDEMPOTENCY] Failed to set once key={key}: {e}")
+        # Best-effort: prevent duplicate by treating as already set
+        return False
+
+def _has_key(key: str) -> bool:
+    try:
+        if redis_client:
+            return redis_client.exists(key) == 1
+        return key in _EVENT_SENT_MEMORY or key in _SESSION_COMPLETED_MEMORY
+    except Exception:
+        return True
 cleanup_task_started = False
 fw_model: Any = None
 gemini_last_ts: Dict[str, float] = {}
@@ -364,7 +397,8 @@ async def queue_message_for_user(user_id: str, event: str, data: any):
 async def safe_emit_or_queue_by_user_id(user_id: str, event: str, data: any):
     """Send to user with SID validation - only emit to actually active SIDs"""
     try:
-        logger.info(f"[DEBUG][EMIT] safe_emit_or_queue_by_user_id: user_id={user_id}, event={event}")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        logger.info(f"[EMIT][{timestamp}] Attempting to emit '{event}' to user {user_id}")
 
         # Validate inputs
         if not user_id or not isinstance(user_id, str):
@@ -377,9 +411,10 @@ async def safe_emit_or_queue_by_user_id(user_id: str, event: str, data: any):
 
         # Get active SIDs for this user (copy to avoid modification during iteration)
         active_sids = USER_ID_ACTIVE_SIDS.get(user_id, set()).copy()
+        logger.info(f"[EMIT][ACTIVE_SIDS] User {user_id} has {len(active_sids)} active SIDs: {active_sids}")
         
         if not active_sids:
-            logger.info(f"[DEBUG][EMIT] No active SIDs for user {user_id}, queuing message")
+            logger.info(f"[EMIT][QUEUE] No active SIDs for user {user_id}, queuing message '{event}'")
             await queue_message_for_user(user_id, event, data)
             return
 
@@ -389,19 +424,23 @@ async def safe_emit_or_queue_by_user_id(user_id: str, event: str, data: any):
         for sid in active_sids:
             try:
                 # Check if SID is still active in Socket.IO's internal tracking
-                if sid in sio.manager.rooms.get('/', {}):
+                socketio_rooms = sio.manager.rooms.get('/', {})
+                sid_exists = sid in socketio_rooms
+                logger.info(f"[EMIT][SID_CHECK] SID {sid} exists in socketio manager: {sid_exists}")
+                
+                if sid_exists:
                     await sio.emit(event, data, room=sid)
-                    logger.info(f"[SOCKET EMIT] {event} sent to active SID {sid} for user {user_id}")
+                    logger.info(f"[EMIT][SUCCESS] '{event}' sent to SID {sid} for user {user_id}")
                     message_sent = True
                 else:
                     # SID is dead, remove from our tracking
                     USER_ID_ACTIVE_SIDS[user_id].discard(sid)
-                    logger.info(f"[CLEANUP] Removed dead SID {sid} from user {user_id}")
+                    logger.info(f"[EMIT][CLEANUP] Removed dead SID {sid} from user {user_id}")
             except Exception as e:
                 # SID is dead, remove from our tracking
                 USER_ID_ACTIVE_SIDS[user_id].discard(sid)
-                logger.error(f"[CLEANUP] Removed dead SID {sid} due to error: {e}")
-                logger.error(f"[CLEANUP] Error type: {type(e).__name__}")
+                logger.error(f"[EMIT][CLEANUP] Removed dead SID {sid} due to error: {e}")
+                logger.error(f"[EMIT][CLEANUP] Error type: {type(e).__name__}")
 
         # If no SIDs were successfully used, queue the message
         if not message_sent:
@@ -463,25 +502,29 @@ async def deliver_queued_messages_for_user(user_id: str, sid: str):
     
     # Deliver messages
     total_messages = len(queued_messages)
-    logger.info(f"[DEBUG][DELIVERY] Total messages to deliver: {total_messages}")
     
     if queued_messages:
-        logger.info(f"[DELIVERY] Delivering {total_messages} queued messages to user {user_id}")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        logger.info(f"[DELIVERY][{timestamp}] Delivering {total_messages} queued messages to user {user_id} via SID {sid}")
         
         for i, msg in enumerate(queued_messages):
             try:
-                logger.info(f"[DEBUG][DELIVERY] Delivering message {i+1}/{total_messages}: {msg.get('event', 'unknown_event')}")
+                event_name = msg.get('event', 'unknown_event')
+                logger.info(f"[DELIVERY][{i+1}/{total_messages}] Delivering '{event_name}' to user {user_id}")
                 await safe_emit_or_queue(sid, msg["event"], msg["data"])
-                logger.info(f"[DELIVERY] Delivered queued {msg['event']} to user {user_id}")
+                logger.info(f"[DELIVERY][SUCCESS] Delivered '{event_name}' to user {user_id}")
             except Exception as e:
-                logger.error(f"[DELIVERY] Failed to deliver message: {e}")
+                logger.error(f"[DELIVERY][FAILED] Failed to deliver message {i+1}: {e}")
     else:
         logger.info(f"[DELIVERY] No queued messages for user {user_id}")
 
 # -------------------------- Google Cloud STT Streaming -------------------------- #
 @sio.event
 async def connect(sid, environ):
-    logger.info(f"####### Socket Connected with SID: {sid} #######")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+    logger.info(f"{'='*80}")
+    logger.info(f"[CONNECT][{timestamp}] NEW CONNECTION - SID: {sid}")
+    logger.info(f"{'='*80}")
     logger.info(f"[DEBUG][CONNECT] Full environ: {environ}")
     
     # CRITICAL: Check if this is the SID we're expecting
@@ -530,11 +573,16 @@ async def connect(sid, environ):
     
     # NEW: Handle user_id mapping if provided
     if user_id:
-        logger.info(f"[DEBUG][CONNECT] Processing user_id mapping for user: {user_id}")
+        logger.info(f"[CONNECT][USER_MAPPING] Processing user_id mapping for user: {user_id}")
+        old_sid = USER_ID_TO_SID.get(user_id)
+        if old_sid and old_sid != sid:
+            logger.info(f"[CONNECT][RECONNECTION] User {user_id} reconnecting: OLD SID={old_sid} -> NEW SID={sid}")
+        else:
+            logger.info(f"[CONNECT][NEW_SESSION] User {user_id} - First connection with SID={sid}")
         update_sid_mapping(user_id, sid)
         # Also join a room with user_id for user-based targeting
         await sio.enter_room(sid, f"user_{user_id}")
-        logger.info(f"[DEBUG][CONNECT] Joined user room: user_{user_id}")
+        logger.info(f"[CONNECT][ROOM] Joined user room: user_{user_id}")
         # Track active SIDs per user
         try:
             if user_id not in USER_ID_ACTIVE_SIDS:
@@ -627,7 +675,10 @@ async def connect(sid):
 
 @sio.on("disconnect")
 async def disconnect(sid):
-    logger.info(f"Client disconnected with SID: {sid}")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+    logger.info(f"{'='*80}")
+    logger.info(f"[DISCONNECT][{timestamp}] CLIENT DISCONNECTED - SID: {sid}")
+    logger.info(f"{'='*80}")
     # Mark SID inactive
     try:
         ACTIVE_SIDS.discard(sid)
@@ -637,7 +688,7 @@ async def disconnect(sid):
     # Get user_id for this SID
     user_id = get_user_id_from_sid(sid)
     if user_id:
-        logger.info(f"[DEBUG][DISCONNECT] User {user_id} disconnected from SID {sid}")
+        logger.info(f"[DISCONNECT][USER] User {user_id} disconnected from SID {sid}")
         logger.info(f"[DEBUG][DISCONNECT] Current mappings - USER_ID_TO_SID: {USER_ID_TO_SID}")
         logger.info(f"[DEBUG][DISCONNECT] Current mappings - SID_TO_USER_ID: {SID_TO_USER_ID}")
         
@@ -1649,7 +1700,9 @@ async def _audio_transcribe_google_v2(sid: str, audioblob, data=None):
                     })
                     transcript_state["utterance_buffer"] = ""
             
-            await safe_emit_or_queue(sid, "speech_event", {"type": event_type, "sid": sid})
+            # Send the full event payload including accumulated_transcript
+            payload = {"type": event_type, "sid": sid, **event}
+            await safe_emit_or_queue(sid, "speech_event", payload)
         
         # Create config
         config = GoogleSTTV2Config.from_env()
@@ -2092,12 +2145,32 @@ async def audio_end_point(sid, data):
             logger.info(f"🔍 [DEBUG] Response status: {response.get('status', 'None')}")
             logger.info(f"🔍 [DEBUG] Response realtime: {response.get('realtime', 'None')}")
             
+            # Idempotent finalize per session
+            _completion_key = f"session_completed:{sessionId}"
+            if not _once_set(_completion_key):
+                logger.info(f"[FINALIZE][DUPLICATE] Session {sessionId} already finalized. Skipping duplicate finalize.")
+                return
+            
+            logger.info(f"[FINALIZE][PROCEED] Session {sessionId} finalization starting - first time")
+
             message = 'interview over'
             
             # Add small delay to ensure client is still connected
             await asyncio.sleep(0.1)
-            # Safely emit or queue the message
-            await safe_emit_or_queue(sid, "interview done", message)
+            
+            # Check current SID status before emit
+            user_id = get_user_id_from_sid(sid)
+            logger.info(f"[FINALIZE][PRE_EMIT] Session {sessionId}, SID {sid}, User {user_id}")
+            logger.info(f"[FINALIZE][PRE_EMIT] Active SIDs for user {user_id}: {USER_ID_ACTIVE_SIDS.get(user_id, set())}")
+            
+            # Safely emit or queue the message - idempotent per session
+            _event_key = f"event_sent:{sessionId}:interview_done"
+            if _once_set(_event_key):
+                logger.info(f"[FINALIZE][EMIT] Sending 'interview done' for session {sessionId}")
+                await safe_emit_or_queue(sid, "interview done", message)
+                logger.info(f"[FINALIZE][EMIT_COMPLETE] 'interview done' emission complete for session {sessionId}")
+            else:
+                logger.info(f"[FINALIZE][DUPLICATE_EMIT] 'interview done' already sent for session {sessionId}. Skipping duplicate emit.")
             
             # 🔍 DEBUG: Check SID status after interview done
             logger.info(f"🔍 [DEBUG] SID status after 'interview done': {sid in sio.manager.rooms}")
@@ -2582,12 +2655,32 @@ async def interview_endpoint(sid, data):
             else:
                 # Handle interview conclusion
                 try:
+                    logger.info(f"[FINALIZE][CONCLUSION] Interview conclusion handler triggered for session {sessionId}")
+                    # Idempotent finalize per session
+                    _completion_key = f"session_completed:{sessionId}"
+                    if not _once_set(_completion_key):
+                        logger.info(f"[FINALIZE][DUPLICATE] Session {sessionId} already finalized. Skipping duplicate finalize.")
+                        return
+                    
+                    logger.info(f"[FINALIZE][PROCEED] Session {sessionId} conclusion finalization starting - first time")
                     message = 'interview over'
                     
                     # Add small delay to ensure client is still connected
                     await asyncio.sleep(0.1)
-                    # Safely emit or queue the message
-                    await safe_emit_or_queue(sid, "interview done", message)
+                    
+                    # Check current SID status before emit
+                    user_id = get_user_id_from_sid(sid)
+                    logger.info(f"[FINALIZE][PRE_EMIT] Session {sessionId}, SID {sid}, User {user_id}")
+                    logger.info(f"[FINALIZE][PRE_EMIT] Active SIDs for user {user_id}: {USER_ID_ACTIVE_SIDS.get(user_id, set())}")
+                    
+                    # Safely emit or queue the message - idempotent per session
+                    _event_key = f"event_sent:{sessionId}:interview_done"
+                    if _once_set(_event_key):
+                        logger.info(f"[FINALIZE][EMIT] Sending 'interview done' for session {sessionId}")
+                        await safe_emit_or_queue(sid, "interview done", message)
+                        logger.info(f"[FINALIZE][EMIT_COMPLETE] 'interview done' emission complete for session {sessionId}")
+                    else:
+                        logger.info(f"[FINALIZE][DUPLICATE_EMIT] 'interview done' already sent for session {sessionId}. Skipping duplicate emit.")
                     final = 'true'
                     temp_id = normalize_id(data.get('template_id', "null"))
                     challenge_id = normalize_id(data.get('challenge_id', "null"))

@@ -1,390 +1,432 @@
-# Parrot (iPersona) - Spec-Driven Development
+# Parrot System Specification
 
-> **📝 This directory contains the complete specification for the Parrot AI Interview Platform**
+> **📋 NORMATIVE REQUIREMENTS SPECIFICATION**
 
-This is a **reverse-engineered specification** documenting an existing production application built over 6 months. It serves as living documentation and enables spec-driven development going forward.
-
----
-
-## 📚 What's Inside
-
-- **`main.md`** (1,200+ lines) - Complete application specification
-- **`compile.prompt.md`** - AI agent instructions for code generation
-- **`lint.prompt.md`** - Spec optimization instructions
-- **`SPEC_DRIVEN_DEVELOPMENT.md`** - Complete methodology guide
-- **`REVERSE_ENGINEERING_SUMMARY.md`** - How this spec was created
-- **`SECOND_REVIEW_FINDINGS.md`** - Comprehensive review results
+This directory contains the **authoritative technical requirements specification** for the Parrot AI Interview Platform, written as if building the system from scratch.
 
 ---
 
-## 🚀 Quick Start - Running the Application
+## 🎯 Purpose
 
-### Prerequisites
+This is a **TRUE SPECIFICATION** (not documentation):
 
-**Required:**
-- Python 3.12+
-- Node.js 18+ (for frontend)
-- Redis (for Celery)
-- Conda (optional but recommended) OR Python venv
+- ✅ **Prescriptive** (defines what SHALL be built)
+- ✅ **RFC 2119 Compliant** (uses MUST/SHALL/SHOULD/MAY)
+- ✅ **Testable** (includes acceptance criteria)
+- ✅ **Complete** (defines all requirements)
+- ✅ **Normative** (authoritative source of truth)
 
-**Optional:**
-- Docker & Docker Compose (for containerized deployment)
-- uv package manager (recommended for faster installs)
+**Use this to:**
+- Build the system from scratch
+- Validate implementation compliance
+- Generate test cases
+- Understand requirements (not implementation)
 
 ---
 
-### Option 1: Using Conda Environment (Recommended if you have it)
+## 📁 Files
 
-```bash
-# 1. Activate the parrot conda environment
-conda activate parrot
+| File | Purpose | Status |
+|------|---------|--------|
+| **`main.md`** | Master requirements specification | NORMATIVE |
+| **`compile.prompt.md`** | AI agent build instructions | NORMATIVE |
+| **`README.md`** | This file | INFORMATIVE |
 
-# 2. Install/update dependencies
-pip install -r requirements.txt
+---
 
-# 3. Start backend
-make start-backend
-# Backend runs on http://localhost:9990
+## 📖 Reading the Specification
 
-# 4. In another terminal, start frontend for development
-cd frontend
-npm install
-npm run dev
-# Frontend runs on http://localhost:5173
+### Understanding Requirement Levels (RFC 2119)
 
-# 5. Start Celery worker (in new terminal)
-conda activate parrot
-./build-celery.sh dev-prod logs
+| Keyword | Meaning | Compliance |
+|---------|---------|-----------|
+| **MUST** / **SHALL** / **REQUIRED** | Absolute requirement | MANDATORY |
+| **MUST NOT** / **SHALL NOT** | Absolute prohibition | MANDATORY |
+| **SHOULD** / **RECOMMENDED** | Strong recommendation | Can deviate with reason |
+| **SHOULD NOT** / **NOT RECOMMENDED** | Strong discouragement | Can deviate with reason |
+| **MAY** / **OPTIONAL** | Truly optional | OPTIONAL |
+
+**Example:**
+```markdown
+The system SHALL use Google Cloud STT as primary transcription service.
+```
+This means: **You MUST implement this. No exceptions.**
+
+### Understanding Acceptance Criteria
+
+Every feature has acceptance criteria in **Gherkin format**:
+
+```gherkin
+GIVEN [precondition]
+WHEN [action]
+THEN [expected result]
+AND [additional expectations]
+```
+
+**These define how to test the feature.**
+
+**Example:**
+```gherkin
+GIVEN a user sends audio via Socket.IO
+WHEN the audio is processed
+THEN the system SHALL return transcript within 2 seconds
+AND SHALL include confidence score
 ```
 
 ---
 
-### Option 2: Using Python venv + uv (Recommended for new setup)
+## 🏗️ Building from This Spec
+
+### Step 1: Read the Specification
 
 ```bash
-# 6. Activate the virtual environment
-source .venv/bin/activate
-
-# 7. Install/update dependencies
-pip install -r requirements.txt
-
-# 8. Start backend
-make start-backend
-# Backend runs on http://localhost:9990
-
-# 9. Setup and start frontend (in new terminal)
-cd frontend
-npm install
-npm run dev
-# Frontend runs on http://localhost:5173
-
-# 10. Start Celery worker (in new terminal)
-source .venv/bin/activate
-./build-celery.sh dev-prod logs
-```
-
----
-
-### Option 3: Traditional venv (Without uv)
-
-```bash
-# 1. Create virtual environment
-python3.12 -m venv .venv
-
-# 2. Activate environment
-source .venv/bin/activate  # On Linux/Mac
-# .venv\Scripts\activate   # On Windows
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Start backend
-uvicorn app:app --reload --host 0.0.0.0 --port 9990
-# Or use: make start-backend
-
-# 5. Setup frontend (in new terminal)
-cd frontend
-npm install
-npm run dev
-
-# 6. Start Celery (in new terminal)
-source .venv/bin/activate
-celery -A api.services.celery.celery_worker:celery_app worker -l info
-```
-
-## 🛠️ Development Workflow
-
-### Essential Commands (via Makefile)
-
-```bash
-# Setup
-make setup-backend      # Setup backend only
-make setup-frontend     # Setup frontend only
-
-# Running
-make start-backend      # Start FastAPI server (port 9990)
-make start-frontend     # Start Vite dev server (port 5173)
-make workers            # Start Celery worker localhost
-make work               # Kill existing workers and restart
-
-# Code Quality
-make format             # Format code (black, isort)
-make lint               # Run linters (ruff, mypy)
-make security           # Security checks (bandit, safety)
-
-# Testing
-make test               # Run all tests
-make test-unit          # Unit tests only
-make test-integration   # Integration tests only
-make test-coverage      # Generate coverage report
-make test-watch         # Watch mode
-
-# Cleanup
-make clean              # Remove build artifacts and caches
-```
-
-### Without Makefile
-
-```bash
-# Backend
-uvicorn app:app --reload --host 0.0.0.0 --port 9990
-
-# Frontend
-cd frontend && npm run dev
-
-# Celery Worker
-celery -A api.services.celery.celery_worker:celery_app worker -l info
-
-# Tests
-pytest tests/ -v
-
-# Format
-black . && isort .
-
-# Lint
-ruff check . && mypy .
-```
-
----
-
-## 📖 Using the Specification
-
-### Reading the Spec
-
-```bash
-# Read the complete specification
+# Read the complete spec
 cat specs/main.md
 
-# Or open in your editor
+# Or in your editor
 code specs/main.md
 ```
 
-The spec contains:
-- ✅ Complete architecture overview
-- ✅ 50+ API endpoints
-- ✅ 9 Socket.IO events
-- ✅ 8 database tables
-- ✅ Frontend components
-- ✅ AI/ML services integration
-- ✅ Development infrastructure
-- ✅ Deployment guides
-
-### Spec-Driven Development
-
-1. **Understand the System**
-   ```bash
-   # Read the spec to understand current architecture
-   less specs/main.md
-   ```
-
-2. **Make Changes**
-   - Edit `specs/main.md` to describe desired changes
-   - Use AI agent: `/load specs/compile.prompt.md`
-   - Test the changes
-
-3. **Update Documentation**
-   - Keep spec in sync with code
-   - Update when adding features
-
----
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Create `.env` file or configure these:
+### Step 2: Use AI Agent to Build
 
 ```bash
-# Strapi CMS
-STRAPI_STAGE=dev-prod
-STRAPI_BASE_URL=https://your-strapi-api.com
+# In GitHub Copilot Chat or Cursor:
+/load specs/compile.prompt.md
 
-# OpenAI
-OPENAI_API_KEY=sk-...
-
-# AWS
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-AWS_S3_BUCKET=tenx-parrot-assets
-
-# Redis
-REDIS_URL=redis://localhost:6379
-
-# AssemblyAI (optional)
-ASSEMBLYAI_API_KEY=...
-
-# Google Cloud (optional)
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
-
-# However you can your the remove env credential on the hostinger instance as well
+# The AI will build according to requirements in main.md
 ```
 
----
+### Step 3: Validate Compliance
 
-## 📊 Monitoring
+Check that your implementation meets:
 
-### Check Service Status
+1. ✅ All MUST/SHALL requirements implemented
+2. ✅ All acceptance criteria pass
+3. ✅ Performance targets met (Section 3.1)
+4. ✅ Security requirements met (Section 3.3)
+5. ✅ Error handling correct (Section 7)
+
+### Step 4: Test
 
 ```bash
-# Backend health check
-curl http://localhost:9990/api/ipersona/health
+# Run tests
+pytest tests/ -v --cov=api
 
-# Celery monitoring (Flower)
-# Start: celery -A api.services.celery.celery_worker flower
-# Visit: http://localhost:5555
+# Verify acceptance criteria
+pytest tests/acceptance/ -v
 
-# Redis connection
-redis-cli ping  # Should return PONG
+# Performance tests
+pytest tests/performance/ -v
 ```
 
-### Logs
+---
+
+## 📐 Specification Structure
+
+### Section 1: System Overview
+- Purpose, scope, context
+- High-level requirements
+
+### Section 2: Functional Requirements (FR-xxx)
+- What the system MUST do
+- Organized by feature
+- Each with acceptance criteria
+
+**Example:**
+- FR-001: Real-Time Interview
+- FR-002: Session Management
+- FR-003: Speech-to-Text Services
+
+### Section 3: Non-Functional Requirements (NFR-xxx)
+- Performance (NFR-001)
+- Reliability (NFR-002)
+- Security (NFR-003)
+- Scalability (NFR-004)
+- Maintainability (NFR-005)
+
+### Section 4: API Contracts
+- Exact endpoint specifications
+- Request/response formats
+- Socket.IO event contracts
+
+### Section 5: Data Models
+- Database schema requirements
+- Field definitions
+- Constraints and indexes
+
+### Section 6: Business Rules
+- Logic and validation rules
+- Scoring algorithms
+- Service selection logic
+
+### Section 7: Error Handling
+- Error response format
+- Specific error scenarios
+- Recovery procedures
+
+### Section 8: Acceptance Criteria Summary
+- Core user journeys
+- End-to-end scenarios
+
+### Section 9: Implementation Requirements
+- Technology stack (MUST use)
+- Code quality standards
+
+### Section 10: Validation & Testing
+- Test requirements
+- Coverage targets
+
+---
+
+## 🔍 Key Requirements Highlights
+
+### PRIMARY Services (MUST Use)
+
+1. **Google Cloud Speech-to-Text** - Primary STT
+2. **OpenAI GPT** - Primary LLM
+3. **Strapi CMS** - Database backend
+4. **FastAPI** - Backend framework
+5. **Socket.IO** - Real-time communication
+6. **Celery + Redis** - Background processing
+7. **AWS S3** - File storage
+
+### Performance Targets (MUST Meet)
+
+| Operation | Target |
+|-----------|--------|
+| STT transcription | < 2s |
+| AI evaluation | < 3s |
+| API response | < 1s |
+| Socket.IO connection | < 500ms |
+
+### Test Coverage (MUST Achieve)
+
+- Minimum 70% overall coverage
+- 100% coverage for critical paths
+- All acceptance criteria as test cases
+
+---
+
+## ✅ Compliance Checklist
+
+Use this to verify your implementation:
+
+### Functional Requirements
+- [ ] FR-001: Real-time interview flow works
+- [ ] FR-002: Session management complete
+- [ ] FR-003: All STT services integrated (Google primary)
+- [ ] FR-004: AI evaluation working
+- [ ] FR-005: Background processing functional
+- [ ] FR-006: Template management working
+- [ ] FR-007: Progress tracking implemented
+
+### Non-Functional Requirements
+- [ ] NFR-001: All performance targets met
+- [ ] NFR-002: 99.5% uptime capability
+- [ ] NFR-003: Security requirements implemented
+- [ ] NFR-004: Horizontally scalable
+- [ ] NFR-005: Logging and monitoring in place
+
+### API Contracts
+- [ ] All Socket.IO events implemented
+- [ ] All REST endpoints implemented
+- [ ] Request/response formats match spec
+- [ ] Error responses follow format
+
+### Testing
+- [ ] Unit tests ≥ 70% coverage
+- [ ] Integration tests for all endpoints
+- [ ] Acceptance criteria tests passing
+- [ ] Performance tests passing
+
+---
+
+## 🚫 Common Mistakes to Avoid
+
+### ❌ DON'T: Implement differently than specified
+
+**Wrong:**
+```python
+# Spec says: SHALL use Google Cloud STT primary
+# Implementation uses: AssemblyAI primary
+```
+
+**Right:**
+```python
+# Use Google Cloud STT as PRIMARY
+result = await google_stt.transcribe(audio)
+# Fallback to Faster Whisper if Google fails
+```
+
+### ❌ DON'T: Ignore acceptance criteria
+
+**Wrong:**
+```python
+# Just implement transcription without checking:
+# - Response time < 2s
+# - Confidence score included
+# - Error handling
+```
+
+**Right:**
+```python
+# Implement AND test all acceptance criteria
+@pytest.mark.asyncio
+async def test_transcription_meets_acceptance_criteria():
+    # Test: Returns within 2s
+    start = time.time()
+    result = await transcribe(audio)
+    assert time.time() - start < 2.0
+    
+    # Test: Includes confidence
+    assert "confidence" in result
+    assert 0 <= result["confidence"] <= 1
+```
+
+### ❌ DON'T: Skip SHOULD requirements without reason
+
+**Wrong:**
+```python
+# Spec says: SHOULD provide interim results
+# Just skip it
+```
+
+**Right:**
+```python
+# Implement SHOULD unless documented reason
+# OR document why you can't:
+"""
+Non-Compliance: FR-003.1 interim results
+Reason: Google Cloud streaming not yet supported in our plan
+Alternative: Return final results only
+Timeline: Will implement in Q2 2025
+"""
+```
+
+---
+
+## 📝 Difference from `specs-report/`
+
+| Aspect | `specs/` (This folder) | `specs-report/` |
+|--------|----------------------|-----------------|
+| **Type** | Requirements Specification | Technical Documentation |
+| **Tense** | SHALL/MUST (imperative) | IS/HAS (descriptive) |
+| **Purpose** | Define what to build | Explain what exists |
+| **Audience** | Builders, AI agents | Maintainers, learners |
+| **Style** | Prescriptive | Descriptive |
+| **When to use** | Building, modifying | Understanding, onboarding |
+
+**Example:**
+
+**`specs/main.md` (Prescriptive):**
+```markdown
+The system SHALL use Google Cloud Speech-to-Text as the primary 
+transcription service with fallback to Faster Whisper.
+```
+
+**`specs-report/main.md` (Descriptive):**
+```markdown
+The system uses Google Cloud Speech-to-Text as the primary 
+transcription service with fallback to Faster Whisper.
+```
+
+---
+
+## 🎓 How to Use This Spec
+
+### For New Developers
+
+1. Read `main.md` to understand requirements
+2. Don't read code first, read spec first
+3. Build mental model from spec
+4. Then look at implementation
+
+### For AI Agents
 
 ```bash
-# Backend logs (in terminal running make start-backend)
-# Celery logs (in terminal running make workers)
+# Load the compile prompt
+/load specs/compile.prompt.md
 
-# Or check log files
-tail -f celery.log
-tail -f celery_worker.log
-tail -f flower.log
+# AI will build according to main.md
 ```
+
+### For Code Review
+
+1. Check if PR meets spec requirements
+2. Verify acceptance criteria pass
+3. Ensure no MUST/SHALL violations
+
+### For Testing
+
+1. Convert acceptance criteria to test cases
+2. Verify all MUST/SHALL requirements have tests
+3. Check test coverage meets targets
 
 ---
 
-## 📁 Project Structure
+## 📊 Specification Metrics
 
-```
-tenx_ipersona/
-├── api/                  # Backend application
-│   ├── pages/
-│   │   └── ipersona/
-│   │       ├── routers/  # API endpoints
-│   │       └── socket/   # Socket.IO events
-│   ├── services/         # External services
-│   ├── llm/              # AI/ML integration
-│   └── utils/            # Utilities
-├── frontend/             # React application
-│   └── src/
-│       ├── components/   # React components
-│       ├── pages/        # Route pages
-│       └── hooks/        # Custom hooks
-├── specs/                # This directory!
-├── tests/                # Test files
-├── Makefile              # Development automation
-└── requirements.txt      # Python dependencies
-```
+| Metric | Count |
+|--------|-------|
+| Functional Requirements | 7 major sections |
+| Non-Functional Requirements | 5 categories |
+| API Endpoints Specified | 50+ |
+| Socket.IO Events Specified | 9 |
+| Acceptance Criteria | 50+ scenarios |
+| Business Rules | 10+ rules |
+| Data Models | 8 tables |
 
 ---
 
-## 🐛 Troubleshooting
+## 🔄 Keeping Spec Updated
 
-### Backend won't start
-```bash
-# Check Python version
-python --version  # Should be 3.12+
+When adding new features:
 
-# Reinstall dependencies
-rm -rf .venv
-make setup-backend
+1. **Update spec FIRST** (in `specs/main.md`)
+2. Add requirement with FR-xxx or NFR-xxx ID
+3. Include acceptance criteria
+4. Then implement feature
+5. Verify acceptance criteria pass
 
-# Check port availability
-lsof -i :9990  # Kill if occupied
-```
+When spec and code diverge:
 
-### Frontend won't start
-```bash
-# Reinstall dependencies
-cd frontend
-rm -rf node_modules package-lock.json
-npm install
-
-# Check port availability
-lsof -i :5173
-```
-
-### Celery issues
-```bash
-# Check Redis is running
-redis-cli ping
-
-# Kill all Celery processes
-make work  # This kills and restarts
-
-# Or manually
-ps aux | grep celery
-kill -9 <PID>
-```
-
-### Database connection issues
-```bash
-# Check Strapi configuration
-echo $STRAPI_BASE_URL
-echo $STRAPI_STAGE
-
-# Test GraphQL endpoint
-curl $STRAPI_BASE_URL/graphql
-```
+1. **Spec is always right** (normative)
+2. Update code to match spec
+3. OR update spec with documented reason
 
 ---
 
-## 📚 Additional Documentation
+## 🆘 Questions?
 
-- **`main.md`** - Complete specification (1,200+ lines)
-- **`SPEC_DRIVEN_DEVELOPMENT.md`** - Methodology guide
-- **`REVERSE_ENGINEERING_SUMMARY.md`** - How spec was created
-- **`SECOND_REVIEW_FINDINGS.md`** - Comprehensive review
-- **`CELERY_README.md`** (in root) - Celery setup
-- **`STRUCTURED_MATCHING_SYSTEM.md`** (in root) - Embeddings system
-- **`docs/`** - OpenAPI specifications
+**"Is this requirement mandatory?"**
+→ Check keyword: MUST/SHALL = yes, SHOULD = usually, MAY = no
 
----
+**"How do I test this?"**
+→ See acceptance criteria in GIVEN/WHEN/THEN format
 
-## 🆘 Getting Help
+**"Can I use a different approach?"**
+→ Only if spec says SHOULD or MAY, not for MUST/SHALL
 
-1. **Read the spec**: `specs/main.md` - comprehensive documentation
-2. **Check logs**: Backend terminal, Celery logs
-3. **Review tests**: `tests/` directory for examples
-4. **API Documentation**: `docs/openapi.yaml`
+**"Spec doesn't cover X?"**
+→ Add requirement to spec first, then implement
 
 ---
 
-## 🎯 What This Spec Provides
+## 📚 Related Resources
 
-✅ **Living Documentation** - Single source of truth  
-✅ **AI Agent Instructions** - Spec-driven development  
-✅ **Developer Onboarding** - Complete system understanding  
-✅ **Architecture Reference** - All components documented  
-✅ **Future Development** - Blueprint for changes  
+- **Implementation Documentation**: See `specs-report/` folder
+- **GitHub Blog Post**: [Spec-Driven Development](https://github.blog/ai-and-ml/generative-ai/spec-driven-development-using-markdown-as-a-programming-language-when-building-with-ai/)
+- **RFC 2119**: [Key words for use in RFCs](https://www.rfc-editor.org/rfc/rfc2119)
+- **Gherkin**: [Behavior-Driven Development](https://cucumber.io/docs/gherkin/reference/)
 
 ---
 
-**Status**: ✅ Production-ready specification (98% complete)  
-**Last Updated**: December 2024  
-**Application Age**: 6+ months in development  
-**Spec Lines**: 1,200+  
-**Coverage**: Backend + Frontend + Infrastructure + AI/ML
+**Status**: ✅ **NORMATIVE SPECIFICATION**  
+**Version**: 1.0  
+**Compliance**: RFC 2119  
+**Last Updated**: December 2024
 
-
+**This specification defines what MUST be built, not what HAS BEEN built.**
 
 
 

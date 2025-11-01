@@ -1134,7 +1134,7 @@ def fetch_the_last_question(run_stage, data: dict, sessionId) -> dict:
             sort='asc')
         
         logger.info(f"🔍 [FETCH_LAST_QUESTION] session_chathistory type: {type(session_chathistory)}")
-        logger.info(f"🔍 [FETCH_LAST_QUESTION] session_chathistory value: {session_chathistory}")
+        logger.info(f"🔍 [FETCH_LAST_QUESTION] session_chathistory value: {len(session_chathistory)}")
         
         # Check if session_chathistory is valid
         if session_chathistory is None:

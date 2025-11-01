@@ -627,9 +627,11 @@ class AudioUtils:
                                 #     {"status": f"Invalid interview content: {error_reason}"},
                                 #             sid=user_sid,
                                 # )
-                            asyncio.run(self.save_notification(all_user_id, run_stage, f"Invalid interview content: {error_reason}"))
+                            logger.info(f"📢 [NOTIFICATION] Invoking save_notification for all_user_id={all_user_id}, error_reason='{error_reason}'")
+                            self.save_notification(all_user_id, run_stage, f"Invalid interview content: {error_reason}")
+                            logger.info(f"📢 [NOTIFICATION] save_notification invocation completed for all_user_id={all_user_id}")
                         except Exception as emit_exc:
-                            logger.error(f"[EMIT][ERROR] processing_update_failed sid={user_sid} err={emit_exc}")
+                            logger.error(f"❌ [NOTIFICATION][ERROR] Failed to save notification - sid={user_sid} err={emit_exc}", exc_info=True)
                         
                         redis.set(task_redis_key, {
                             "status": "failed",
@@ -677,7 +679,12 @@ class AudioUtils:
                             #     {"status": f"Document processing failed: {str(e)}"},
                             #     sid=user_sid,
                             # )
-                        asyncio.run(self.save_notification(all_user_id, run_stage, f"Document processing failed: {str(e)}"))
+                        try:
+                            logger.info(f"📢 [NOTIFICATION] Invoking save_notification for DOCUMENT PROCESSING FAILED - all_user_id={all_user_id}, error={str(e)}")
+                            self.save_notification(all_user_id, run_stage, f"Document processing failed: {str(e)}")
+                            logger.info(f"📢 [NOTIFICATION] save_notification invocation completed for all_user_id={all_user_id}")
+                        except Exception as emit_exc:
+                            logger.error(f"❌ [NOTIFICATION][ERROR] Failed to save notification - err={emit_exc}", exc_info=True)
                         return f'Document processing failed: {str(e)}'
                     
                     # Extract text content
@@ -921,9 +928,11 @@ class AudioUtils:
                                         #         sid=user_sid,
                                         #     )
                                         # )
-                                    asyncio.run(self.save_notification(all_user_id, run_stage, f"Uploaded file analysis completed successfully!"))
+                                    logger.info(f"📢 [NOTIFICATION] Invoking save_notification for SUCCESS - all_user_id={all_user_id}")
+                                    self.save_notification(all_user_id, run_stage, f"Uploaded file analysis completed successfully!")
+                                    logger.info(f"📢 [NOTIFICATION] save_notification SUCCESS invocation completed for all_user_id={all_user_id}")
                                 except Exception as emit_error:
-                                    logger.error(f"[EMIT][ERROR] processing_update_success sid={user_sid} err={emit_error}")
+                                    logger.error(f"❌ [NOTIFICATION][ERROR] Failed to save SUCCESS notification - sid={user_sid} err={emit_error}", exc_info=True)
                             else:
                                 logger.error("❌ Overall evaluation failed")
                         except Exception as e:
@@ -1128,7 +1137,12 @@ class AudioUtils:
                 #         {"status": f"{error_msg}"},
                 #         sid=user_sid,
                 # )
-                asyncio.run(self.save_notification(all_user_id, run_stage, f"Invalid matcher response: {error_msg}"))
+                try:
+                    logger.info(f"📢 [NOTIFICATION] Invoking save_notification for INVALID MATCHER RESPONSE - all_user_id={all_user_id}")
+                    self.save_notification(all_user_id, run_stage, f"Invalid matcher response: {error_msg}")
+                    logger.info(f"📢 [NOTIFICATION] save_notification invocation completed for all_user_id={all_user_id}")
+                except Exception as emit_exc:
+                    logger.error(f"❌ [NOTIFICATION][ERROR] Failed to save notification - err={emit_exc}", exc_info=True)
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
@@ -1147,9 +1161,11 @@ class AudioUtils:
                         #     {"status": f"{error_msg}"},
                         #     sid=user_sid,
                         # )
-                        asyncio.run(self.save_notification(all_user_id, run_stage, f"All questions unmatched: {error_msg}"))
+                    logger.info(f"📢 [NOTIFICATION] Invoking save_notification for all_user_id={all_user_id}, error_msg='{error_msg}'")
+                    self.save_notification(all_user_id, run_stage, f"All questions unmatched: {error_msg}")
+                    logger.info(f"📢 [NOTIFICATION] save_notification invocation completed for all_user_id={all_user_id}")
                 except Exception as emit_exc:
-                    logger.error(f"[EMIT][ERROR] processing_update_failed sid={user_sid} err={emit_exc}")
+                    logger.error(f"❌ [NOTIFICATION][ERROR] Failed to save notification - sid={user_sid} err={emit_exc}", exc_info=True)
 
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
@@ -1270,10 +1286,12 @@ class AudioUtils:
                                 #             sid=user_sid,
                                 #         )
                                 #     )
-                                asyncio.run(self.save_notification(all_user_id, run_stage, f"Uploaded file analysis completed successfully!"))
+                                logger.info(f"📢 [NOTIFICATION] Invoking save_notification for SUCCESS - all_user_id={all_user_id}")
+                                self.save_notification(all_user_id, run_stage, f"Uploaded file analysis completed successfully!")
+                                logger.info(f"📢 [NOTIFICATION] save_notification SUCCESS invocation completed for all_user_id={all_user_id}")
      
                             except Exception as emit_error:
-                                logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
+                                logger.error(f"❌ [NOTIFICATION][ERROR] Failed to save SUCCESS notification - err={emit_error}", exc_info=True)
                         else:
                             logger.error("❌ Overall evaluation failed")
                             return False
@@ -1397,7 +1415,12 @@ class AudioUtils:
                 #         {"status": f"{error_msg}"},
                 #             sid=user_sid,
                 #     )
-                asyncio.run(self.save_notification(all_user_id, run_stage, f"Answer content validation failed: {error_msg}"))
+                try:
+                    logger.info(f"📢 [NOTIFICATION] Invoking save_notification for ANSWER VALIDATION FAILED - all_user_id={all_user_id}, error_msg='{error_msg}'")
+                    self.save_notification(all_user_id, run_stage, f"Answer content validation failed: {error_msg}")
+                    logger.info(f"📢 [NOTIFICATION] save_notification invocation completed for all_user_id={all_user_id}")
+                except Exception as emit_exc:
+                    logger.error(f"❌ [NOTIFICATION][ERROR] Failed to save notification - err={emit_exc}", exc_info=True)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
                 redis.set(task_redis_key, {
@@ -1484,7 +1507,12 @@ class AudioUtils:
                 #         {"status": f"{error_msg}"},
                 #         sid=user_sid,
                 #     )
-                asyncio.run(self.save_notification(all_user_id, run_stage, f"Invalid matcher response: {error_msg}"))
+                try:
+                    logger.info(f"📢 [NOTIFICATION] Invoking save_notification for INVALID MATCHER RESPONSE - all_user_id={all_user_id}")
+                    self.save_notification(all_user_id, run_stage, f"Invalid matcher response: {error_msg}")
+                    logger.info(f"📢 [NOTIFICATION] save_notification invocation completed for all_user_id={all_user_id}")
+                except Exception as emit_exc:
+                    logger.error(f"❌ [NOTIFICATION][ERROR] Failed to save notification - err={emit_exc}", exc_info=True)
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
                 task_redis_key = self._get_task_redis_key(task_type, task_id)
@@ -1503,9 +1531,11 @@ class AudioUtils:
                     #         {"status": f"{error_msg}"},
                     #                 sid=user_sid,
                     #     )
-                    asyncio.run(self.save_notification(all_user_id, run_stage, f"All questions unmatched: {error_msg}"))
+                    logger.info(f"📢 [NOTIFICATION] Invoking save_notification for ALL QUESTIONS UNMATCHED - all_user_id={all_user_id}, error_msg='{error_msg}'")
+                    self.save_notification(all_user_id, run_stage, f"All questions unmatched: {error_msg}")
+                    logger.info(f"📢 [NOTIFICATION] save_notification invocation completed for all_user_id={all_user_id}")
                 except Exception as emit_exc:
-                    logger.error(f"[EMIT][ERROR] processing_update_failed sid={user_sid} err={emit_exc}")
+                    logger.error(f"❌ [NOTIFICATION][ERROR] Failed to save notification - sid={user_sid} err={emit_exc}", exc_info=True)
 
                 logger.error(error_msg)
                 task_type, task_id = self._get_active_task_id(job_profile_id, challenge_id, template_id, all_user_id)
@@ -1601,9 +1631,11 @@ class AudioUtils:
                                 #             sid=user_sid,
                                 #         )
                                 #     )
-                                asyncio.run(self.save_notification(all_user_id, run_stage, f"Uploaded file analysis completed successfully!"))
+                                logger.info(f"📢 [NOTIFICATION] Invoking save_notification for SUCCESS - all_user_id={all_user_id}")
+                                self.save_notification(all_user_id, run_stage, f"Uploaded file analysis completed successfully!")
+                                logger.info(f"📢 [NOTIFICATION] save_notification SUCCESS invocation completed for all_user_id={all_user_id}")
                             except Exception as emit_error:
-                                logger.error(f"❌ [DEBUG] Failed to emit success event: {str(emit_error)}")
+                                logger.error(f"❌ [NOTIFICATION][ERROR] Failed to save SUCCESS notification - err={emit_error}", exc_info=True)
                         else:
                             logger.error("❌ Overall evaluation failed")
                     except Exception as e:
@@ -2588,9 +2620,11 @@ class AudioUtils:
             logger.error(f"Process failed: ${str(e)}")
             return f'Error: {str(e)}'  
         
-    async def save_notification(self, all_user_id, run_stage, message):
+    def save_notification(self, all_user_id, run_stage, message):
+        logger.info(f"📢 [NOTIFICATION] save_notification called - all_user_id={all_user_id}, run_stage={run_stage}, message='{message}'")
+        
         try:
-
+            logger.debug(f"📢 [NOTIFICATION] Building notification detail object...")
             detail = {
                     "topic": f"external upload data processing status",
                     "where": f"",
@@ -2600,41 +2634,54 @@ class AudioUtils:
                     "traineeLink": f"#",
                     "staffLink": f"#",
                 }
+            logger.debug(f"📢 [NOTIFICATION] Detail created: {detail}")
                 
+            logger.info(f"📢 [NOTIFICATION] Fetching all_user data for user_id={all_user_id}, run_stage={run_stage}")
             from api.llm.ipersona.ipersona_strapi_schemas import IpersonaAllUserSchema
             ipersona_alluser = IpersonaAllUserSchema(run_stage=run_stage)
             ipersona_alluser_data = ipersona_alluser.get_alluser_by_id(all_user_id=all_user_id, nopp=True, dataframe=False, return_object=True)
+            logger.debug(f"📢 [NOTIFICATION] Retrieved all_user_data: {ipersona_alluser_data}")
 
             nana_user_id = "2147"
             batch_id = ipersona_alluser_data.get('Batch')
+            logger.debug(f"📢 [NOTIFICATION] Extracted batch_id from user data: {batch_id}")
+            
             if batch_id:
                 batch_id = [batch_id]
             else:
                 batch_id = []
+            logger.debug(f"📢 [NOTIFICATION] Processed batch_id list: {batch_id}")
 
             # Prepare GraphQL mutation payload
             notification_payload = {
                 "sender": nana_user_id,
                 "receiver": all_user_id,
                 "Detail": detail,
-                "BatchIDs": [batch_id] if batch_id else [],
+                "BatchIDs": batch_id if batch_id else [],
                 "origin": "leap"
             }
+            logger.info(f"📢 [NOTIFICATION] Created notification payload: sender={nana_user_id}, receiver={all_user_id}, BatchIDs={batch_id if batch_id else []}")
+            logger.debug(f"📢 [NOTIFICATION] Full payload: {notification_payload}")
             
             # Create instance of IpersonaNotificationSchema and call _create_notification
+            logger.info(f"📢 [NOTIFICATION] Initializing IpersonaNotificationSchema with run_stage={run_stage}")
             from api.llm.ipersona.ipersona_strapi_schemas import IpersonaNotificationSchema
             notification_schema = IpersonaNotificationSchema(run_stage=run_stage)
+            
+            logger.info(f"📢 [NOTIFICATION] Calling _create_notification with payload...")
             notification_result = notification_schema._create_notification(notification_payload)
+            logger.debug(f"📢 [NOTIFICATION] Notification result received: {notification_result}")
             
             if notification_result and 'data' in notification_result and 'createNotification' in notification_result['data']:
                 notification_id = notification_result['data']['createNotification']['data']['id']
-                logger.info(f"Successfully sent notification with ID: {notification_id}")
+                logger.info(f"✅ [NOTIFICATION] Successfully sent notification with ID: {notification_id} to user {all_user_id}")
                 return {"notification_id": notification_id, "status": "success"}
             else:
                 error_msg = f"Failed to create notification: {notification_result}"
-                logger.error(error_msg)
+                logger.error(f"❌ [NOTIFICATION] {error_msg}")
                 return {"error": error_msg, "status": "failed"}
                     
         except Exception as e:
-            error_msg = f"Unexpected error in health check: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Unexpected error in save_notification: {str(e)}"
+            logger.error(f"❌ [NOTIFICATION] {error_msg}", exc_info=True)
+            return {"error": error_msg, "status": "failed"}

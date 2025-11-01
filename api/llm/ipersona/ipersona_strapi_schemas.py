@@ -4206,13 +4206,15 @@ class IpersonaNotificationSchema(LeapBaseClass):
             $receiver: ID
             $detail: JSON
             $batch: [ID]!
+            $origin: String!
         ) {
             createNotification(
                 data: {
                     sender: $sender
                     receiver: $receiver
                     Detail: $detail
-                    BatchIDs: $batch
+                    BatchIDs: $batch,
+                    origin: $origin
                 }
             ) {
                 data {
@@ -4226,7 +4228,8 @@ class IpersonaNotificationSchema(LeapBaseClass):
             "sender": payload["sender"],
             "receiver": payload["receiver"],
             "detail": payload["Detail"],
-            "batch": payload["BatchIDs"]
+            "batch": payload["BatchIDs"],
+            "origin": payload["origin"]
         }
         
         try:

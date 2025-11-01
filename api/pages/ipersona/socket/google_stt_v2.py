@@ -285,6 +285,9 @@ class GoogleStreamingSTTV2:
         # Per-epoch accumulation of final transcripts for debugging and restart snapshots
         self._epoch_finals = {0: []}
         self._last_final_text = ""
+        # Track accumulated transcript: all finals + longest interim
+        self._accumulated_finals = []  # List of all final transcripts
+        self._best_interim = ""  # Longest interim transcript
         
     def _get_project_id(self, credentials_path: str) -> str:
         """Extract project ID from credentials"""
@@ -389,6 +392,11 @@ class GoogleStreamingSTTV2:
             self._drain_mode = False
             if self._final_emitted_event.is_set():
                 self._final_emitted_event.clear()
+            # Clear accumulated transcript for new recording session
+            if hasattr(self, '_accumulated_finals'):
+                self._accumulated_finals = []
+            if hasattr(self, '_best_interim'):
+                self._best_interim = ""
         except Exception:
             pass
         self.stream_start_time = time.time()
@@ -468,6 +476,23 @@ class GoogleStreamingSTTV2:
                 )
             # Emit STOP_SNAPSHOT event to frontend so UI can persist final state
             if self.on_speech_event and callable(self.on_speech_event):
+                # Build complete accumulated transcript: all finals + longest interim
+                accumulated_finals = getattr(self, "_accumulated_finals", [])
+                best_interim = getattr(self, "_best_interim", "")
+                
+                # Combine all finals with space, then add interim if exists
+                finals_part = " ".join(accumulated_finals).strip()
+                if best_interim:
+                    accumulated_transcript = f"{finals_part} {best_interim}".strip() if finals_part else best_interim
+                else:
+                    accumulated_transcript = finals_part
+                
+                logger.info(
+                    f"[GOOGLE_STT_V2][STOP][SNAPSHOT_PAYLOAD] sid={self.sid} "
+                    f"accumulated_transcript_length={len(accumulated_transcript)}, "
+                    f"finals_count={len(accumulated_finals)}, "
+                    f"text='{accumulated_transcript[:100]}...'"
+                )
                 await self.on_speech_event(
                     "STOP_SNAPSHOT",
                     {
@@ -475,6 +500,7 @@ class GoogleStreamingSTTV2:
                         "server_time_ms": int(time.time() * 1000),
                         "last_final_text": getattr(self, "_last_final_text", ""),
                         "full_epoch_finals": joined,
+                        "accumulated_transcript": accumulated_transcript,  # Complete transcript: finals + interim
                     },
                 )
         except Exception:
@@ -810,6 +836,27 @@ class GoogleStreamingSTTV2:
                     if self.restart_counter not in self._epoch_finals:
                         self._epoch_finals[self.restart_counter] = []
                     self._epoch_finals[self.restart_counter].append(transcript)
+                    # Add to accumulated finals for complete transcript
+                    if hasattr(self, '_accumulated_finals'):
+                        self._accumulated_finals.append(transcript)
+                        # If interim matches or is covered by this final, clear it to avoid duplication
+                        # Keep interim only if it has different/additional content not in the final
+                        if hasattr(self, '_best_interim') and self._best_interim:
+                            interim_lower = self._best_interim.lower().strip().rstrip('.,!?;:')  # Remove trailing punctuation
+                            final_lower = transcript.lower().strip().rstrip('.,!?;:')
+                            
+                            # Normalize both (remove "..." and trailing dots)
+                            interim_normalized = interim_lower.replace('...', '').replace('.', '')
+                            final_normalized = final_lower.replace('...', '').replace('.', '')
+                            
+                            # If interim is essentially the same as final (or a prefix of it), clear interim
+                            if (interim_normalized == final_normalized or 
+                                final_normalized.startswith(interim_normalized) or
+                                interim_normalized.startswith(final_normalized[:len(final_normalized)//2])):
+                                self._best_interim = ""  # Clear interim that's now finalized
+                            # If interim is shorter and matches start of final, also clear (it's now finalized)
+                            elif len(interim_normalized) < len(final_normalized) and final_normalized.startswith(interim_normalized):
+                                self._best_interim = ""
                 except Exception:
                     pass
                 
@@ -840,6 +887,19 @@ class GoogleStreamingSTTV2:
                 except Exception:
                     pass
             else:
+                # Track the longest interim transcript (Google sends multiple results per response)
+                # Keep the longest one to avoid fragments overwriting full text
+                try:
+                    if hasattr(self, '_best_interim') and len(transcript) > len(self._best_interim):
+                        self._best_interim = transcript
+                        logger.debug(
+                            f"[GOOGLE_STT_V2][INTERIM][UPDATED] sid={self.sid}, "
+                            f"new_length={len(transcript)}, "
+                            f"text='{transcript[:50]}...'"
+                        )
+                except Exception:
+                    pass
+                
                 logger.debug(
                     f"[GOOGLE_STT_V2][INTERIM] sid={self.sid}, "
                     f"text='{transcript[:30]}...', "
@@ -905,6 +965,13 @@ class GoogleStreamingSTTV2:
         # Reset result sequencing for the new epoch
         self.result_seq = 0
         self.utterance_seq = 0
+        # Clear accumulated transcript for new epoch (keep finals from previous epochs)
+        # We'll continue accumulating finals, but reset interim for new epoch
+        try:
+            if hasattr(self, '_best_interim'):
+                self._best_interim = ""
+        except Exception:
+            pass
         # Initialize list for the new epoch
         try:
             if self.restart_counter not in self._epoch_finals:
