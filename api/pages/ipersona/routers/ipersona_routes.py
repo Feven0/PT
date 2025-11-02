@@ -707,7 +707,7 @@ async def close_interview_session(request: pemodel.ClosedDataRequestRecieved):
             request.data,
             status="Closed",
             sessionId=sessionId, 
-            type="Closed")
+            interview_type_param="Closed")
         
         if not response:
             logger.warn("Session evaluation returned empty response")
@@ -727,6 +727,274 @@ async def close_interview_session(request: pemodel.ClosedDataRequestRecieved):
         return JSONResponse(
             status_code=500, 
             content={"error": f"Error closing session: {str(e)}"}
+        )
+
+@routes.post("/reset_closed_session", tags=["Session Endpoints"])
+async def reset_closed_session(request: pemodel.SessionIdRequestRecieved):
+    """
+    Reset a closed session to incomplete status and delete its observer data.
+    
+    When a user wants to continue a closed session, this endpoint:
+    1. Updates the session status from 'Closed' to 'Incomplete'
+    2. Deletes all ipersona_observer records linked to this session
+    
+    This provides a clean slate for the user to continue the session.
+    
+    Parameters
+    ----------
+    request : pemodel.SessionIdRequestRecieved
+        Object containing the session ID to be reset
+        
+    Returns
+    -------
+    JSONResponse
+        Success message or error response
+        
+    Raises
+    ------
+    Exception
+        If any error occurs during the reset process
+    """
+    try:
+        run_stage = request.run_stage
+    except AttributeError:
+        # If request doesn't have run_stage, try to get from request.data or use default
+        try:
+            from api.pages.ipersona.models.model_parrot_basic import default_run_stage
+            run_stage = getattr(request, 'run_stage', None) or default_run_stage
+        except:
+            from api.pages.ipersona.models.model_parrot_basic import default_run_stage
+            run_stage = default_run_stage
+    
+    if not request:
+        logger.error("Request object is missing")
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Request is required"}
+        )
+    
+    try:
+        session_id = request.sessionId
+    except AttributeError:
+        logger.error("sessionId attribute missing from request")
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Session ID is required in request body"}
+        )
+    
+    if not session_id:
+        logger.error(f"Session ID is empty or None. Received: {session_id}, type: {type(session_id)}")
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Session ID is required and cannot be empty"}
+        )
+    
+    # Convert to int if it's a string
+    try:
+        if isinstance(session_id, str):
+            session_id = int(session_id)
+        elif not isinstance(session_id, int):
+            session_id = int(session_id)
+    except (ValueError, TypeError) as e:
+        logger.error(f"Invalid session ID format: {session_id}, type: {type(session_id)}, error: {str(e)}")
+        return JSONResponse(
+            status_code=400,
+            content={"error": f"Invalid session ID format: {session_id}"}
+        )
+        
+    try:
+        logger.info(f"Resetting closed session to incomplete, session ID: {session_id}")
+        
+        # First, verify the session exists and is Closed
+        ipersona_session = IpersonaSessionSchema(run_stage=run_stage)
+        session_data = {
+            "i_persona_session_id": session_id,
+        }
+        
+        # Get the current session to check status
+        current_session = ipersona_session.exists(
+            scol='id', 
+            sval=session_id, 
+            op='eq', 
+            stype="ID", 
+            return_object=True
+        )
+        
+        if not current_session:
+            logger.warn(f"Session not found: {session_id}")
+            return JSONResponse(
+                status_code=404, 
+                content={"error": "Session not found"}
+            )
+        # Extract status from the session data
+        session_status = None
+        if isinstance(current_session, dict):
+            if 'data' in current_session:
+                session_attrs = current_session['data'].get('attributes', {})
+                session_status = session_attrs.get('status')
+            else:
+                session_status = current_session.get('status')
+        elif isinstance(current_session, list):
+            for entry in current_session:
+                session_status = entry.get('status')
+                
+        if session_status != 'Closed':
+            logger.warn(f"Session is not Closed (status: {session_status}), cannot reset")
+            return JSONResponse(
+                status_code=400, 
+                content={"error": f"Session is not Closed (current status: {session_status}). Only Closed sessions can be reset."}
+            )
+        
+        # Delete all observers linked to this session
+        observer_ids = []
+        
+        # Method 1: Use IpersonaManager service (handles pagination properly)
+        try:
+            from api.services.strapi_ipersona import IpersonaManager
+            strapi_service = IpersonaManager(sessionId=session_id, run_stage=run_stage)
+            all_observers = strapi_service.get_observers()
+            if all_observers and isinstance(all_observers, list) and len(all_observers) > 0:
+                logger.info(f"Found {len(all_observers)} observer(s) via IpersonaManager")
+                for obs in all_observers:
+                    if isinstance(obs, dict):
+                        # Observer ID is at top level
+                        if 'id' in obs:
+                            observer_ids.append(obs['id'])
+                        # Check nested structure
+                        elif 'data' in obs and isinstance(obs['data'], dict) and 'id' in obs['data']:
+                            observer_ids.append(obs['data']['id'])
+        except Exception as e:
+            logger.warn(f"Could not fetch observers via IpersonaManager service: {str(e)}")
+        
+        # Method 2: Fallback to schema method if service method failed or found no observers
+        if not observer_ids:
+            try:
+                ipersona_observer = IpersonaSessionObserverSchema(run_stage=run_stage)
+                # Get all observers with pagination, using nopp=True to get raw data
+                session_filter = f"""
+                    filters: {{
+                        i_persona_session : {{ id: {{ eq: {session_id} }} }}
+                    }}
+                """
+                observer_data = ipersona_observer.get_all_objects(
+                    filter=session_filter, 
+                    return_object=True,
+                    nopp=True,
+                    dataframe=False
+                )
+                
+                # Parse the returned data structure
+                if observer_data is not None:
+                    # Handle list of entries
+                    if isinstance(observer_data, list):
+                        for entry in observer_data:
+                            if isinstance(entry, dict):
+                                # Check for 'data' array
+                                if 'data' in entry:
+                                    data_arr = entry['data']
+                                    if isinstance(data_arr, list):
+                                        for obs in data_arr:
+                                            if isinstance(obs, dict) and 'id' in obs:
+                                                obs_id = obs['id']
+                                                if obs_id not in observer_ids:
+                                                    observer_ids.append(obs_id)
+                                    elif isinstance(data_arr, dict) and 'id' in data_arr:
+                                        obs_id = data_arr['id']
+                                        if obs_id not in observer_ids:
+                                            observer_ids.append(obs_id)
+                                # Check if entry itself is an observer
+                                elif 'id' in entry:
+                                    obs_id = entry['id']
+                                    if obs_id not in observer_ids:
+                                        observer_ids.append(obs_id)
+                    # Handle single dict
+                    elif isinstance(observer_data, dict):
+                        # Check for 'data' array in dict
+                        if 'data' in observer_data:
+                            data_arr = observer_data['data']
+                            if isinstance(data_arr, list):
+                                for obs in data_arr:
+                                    if isinstance(obs, dict) and 'id' in obs:
+                                        obs_id = obs['id']
+                                        if obs_id not in observer_ids:
+                                            observer_ids.append(obs_id)
+                            elif isinstance(data_arr, dict) and 'id' in data_arr:
+                                obs_id = data_arr['id']
+                                if obs_id not in observer_ids:
+                                    observer_ids.append(obs_id)
+                        # Check if dict itself has id
+                        elif 'id' in observer_data:
+                            obs_id = observer_data['id']
+                            if obs_id not in observer_ids:
+                                observer_ids.append(obs_id)
+                
+                if observer_ids:
+                    logger.info(f"Found {len(observer_ids)} observer(s) via schema method")
+            except Exception as e2:
+                logger.warn(f"Could not fetch observers via schema method: {str(e2)}")
+        
+        # Delete observers if any found
+        if observer_ids:
+            logger.info(f"Deleting {len(observer_ids)} observer(s) for session {session_id}")
+            ipersona_observer = IpersonaSessionObserverSchema(run_stage=run_stage)
+            deleted_count = 0
+            for obs_id in observer_ids:
+                try:
+                    # Convert to string if needed
+                    obs_id_str = str(obs_id)
+                    delete_result = ipersona_observer.delete_objects_by_id(
+                        [obs_id_str], 
+                        return_object=True,
+                        nopp=True,
+                        dataframe=False
+                    )
+                    if delete_result:
+                        deleted_count += 1
+                        logger.info(f"Successfully deleted observer {obs_id_str}")
+                    else:
+                        logger.warn(f"Delete returned empty result for observer {obs_id_str}")
+                except Exception as e:
+                    logger.warn(f"Could not delete observer {obs_id}: {str(e)}", exc_info=True)
+            logger.info(f"Deleted {deleted_count} out of {len(observer_ids)} observer(s) for session {session_id}")
+        else:
+            logger.info(f"No observers found to delete for session {session_id}")
+        
+        # Update session status to Incomplete
+        update_data = {
+            "i_persona_session_id": session_id,
+            "status": "Incomplete",
+        }
+        
+        updated_session = ipersona_session.update_session(
+            params=update_data, 
+            nopp=True, 
+            dataframe=False, 
+            return_object=True
+        )
+        
+        if not updated_session:
+            logger.warn(f"Session could not be updated: {session_id}")
+            return JSONResponse(
+                status_code=500, 
+                content={"error": "Session could not be updated"}
+            )
+            
+        logger.info(f"Session reset successfully: {session_id} (Closed -> Incomplete)")
+        return JSONResponse(
+            status_code=200, 
+            content={
+                "success": "Session reset successfully",
+                "sessionId": str(session_id),
+                "previous_status": "Closed",
+                "new_status": "Incomplete"
+            }
+        )
+  
+    except Exception as e:
+        logger.error(f"Error resetting session {session_id}: {str(e)}", exc_info=True)
+        return JSONResponse(
+            status_code=500, 
+            content={"error": f"Error resetting session: {str(e)}"}
         )
 
 @routes.post("/calculate_session_overall_progress", tags=["Session Endpoints"])
