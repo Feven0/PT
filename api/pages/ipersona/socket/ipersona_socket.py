@@ -2260,19 +2260,17 @@ async def interview_endpoint(sid, data):
     Returns:
         None: Responses are sent via socket.io events
     """
+    import time
+    import hashlib
+    handler_id = hashlib.md5(f"{sid}_{time.time()}_{str(data)[:100]}".encode()).hexdigest()[:8]
     try:
-        logger.info(f"Received interview request with template_id: {data.get('template_id')}, job: {data.get('job_profile_id', None)}, challenge: {data.get('challenge_id', None)}")
+        sessionId_from_data = data.get('sessionId')
+        sessionId_from_user = data.get('user_session', {}).get('id') if isinstance(data.get('user_session'), dict) else None
+        response_preview = str(data.get('response', ''))[:50] if data.get('response') else 'None'
+        logger.info(f"[HANDLER_ENTRY][{handler_id}] Received interview request - sid={sid}, sessionId(data)={sessionId_from_data}, sessionId(user_session)={sessionId_from_user}, response_preview='{response_preview}', template_id={data.get('template_id')}, job={data.get('job_profile_id', None)}, challenge={data.get('challenge_id', None)}")
         
-        # Get session ID to create unique processing key
+        # Get session ID
         sessionId = data.get('sessionId')
-        if sessionId:
-            processing_key = f"{sid}_{sessionId}_{data.get('response', '')[:50]}"
-            if processing_key in processing_sessions:
-                logger.warn(f"[DUPLICATE] Already processing this interview request: {processing_key}. Ignoring duplicate.")
-                return
-            else:
-                processing_sessions.add(processing_key)
-                logger.info(f"[PROCESSING] Starting interview processing for: {processing_key}")
         
         # Validate input data
         if not isinstance(data, dict):
@@ -2504,35 +2502,49 @@ async def interview_endpoint(sid, data):
                 
                 # Process and emit the assistant's message in chunks
                 
-                is_generator = hasattr(assistant_next_question, '__iter__') and hasattr(assistant_next_question, '__next__')
-               
-                try:
-                    if not is_generator:
-                        logger.warn("Expected list for assistant_next_question, converting to list")
-                        if isinstance(assistant_next_question, str):
-                            assistant_next_question = [assistant_next_question]
-                        else:
-                            assistant_next_question = [str(assistant_next_question)]
-                            
-                    for i, chunk in enumerate(assistant_next_question):
-                        try:
-                            accumulated_message += chunk
-                            message = [{
-                                "content": {
-                                    "chunk_response": chunk
-                                }
-                            }]
-                            # Safely emit or queue the message
-                            logger.info(f"[SOCKET EMIT] Sending interview chat chunk to sid={sid}: chunk_{i+1}, content='{chunk}'")
-                            await safe_emit_or_queue(sid, "interview chat", message)
-                            
-                        except Exception as chunk_error:
-                            logger.error(f"Error processing chunk: {str(chunk_error)}")
-                            # Continue with next chunk despite error
-                    logger.success("All chunks processed successfully", accumulated_message)
-                except Exception as chunks_error:
-                    logger.error(f"Error processing message chunks: {str(chunks_error)}")
-                    # Continue despite chunks processing failure
+                # Check if assistant_next_question is None or empty
+                if assistant_next_question is None:
+                    logger.warn("assistant_next_question is None, skipping chunk processing")
+                else:
+                    is_generator = hasattr(assistant_next_question, '__iter__') and hasattr(assistant_next_question, '__next__')
+                   
+                    try:
+                        # Convert to list if not a generator (for len() support in logging)
+                        if not is_generator:
+                            if isinstance(assistant_next_question, str):
+                                assistant_next_question = [assistant_next_question]
+                            else:
+                                assistant_next_question = [str(assistant_next_question)]
+                        
+                        # Get total count only if it's a list (not a generator)
+                        total_chunks = len(assistant_next_question) if not is_generator else None
+                        chunk_count = 0
+                                
+                        for i, chunk in enumerate(assistant_next_question):
+                            chunk_count = i + 1
+                            try:
+                                accumulated_message += chunk
+                                message = [{
+                                    "content": {
+                                        "chunk_response": chunk
+                                    }
+                                }]
+                                # Safely emit or queue the message
+                                chunk_info = f"chunk_{chunk_count}/{total_chunks}" if total_chunks else f"chunk_{chunk_count}"
+                                logger.info(f"[SOCKET EMIT] Sending interview chat chunk to sid={sid}: {chunk_info}, content='{chunk[:50]}...'")
+                                await safe_emit_or_queue(sid, "interview chat", message)
+                                
+                            except Exception as chunk_error:
+                                logger.error(f"Error processing chunk {chunk_count}: {str(chunk_error)}")
+                                # Continue with next chunk despite error
+                        
+                        # Log completion with chunk count (not len() for generators)
+                        total_info = f"{total_chunks}" if total_chunks else f"{chunk_count}"
+                        logger.info(f"[CHUNKS_COMPLETE] All chunks processed successfully. Total chunks: {total_info}, Full message length: {len(accumulated_message)}")
+                        logger.info(f"[CHUNKS_COMPLETE] Full accumulated message: {accumulated_message[:200]}..." if len(accumulated_message) > 200 else f"[CHUNKS_COMPLETE] Full accumulated message: {accumulated_message}")
+                    except Exception as chunks_error:
+                        logger.error(f"Error processing message chunks: {str(chunks_error)}")
+                        # Continue despite chunks processing failure
 
                 # Calculate and emit time limit
                 try:
@@ -2636,7 +2648,8 @@ async def interview_endpoint(sid, data):
             if chat_count < total_questions + 1:
                 final = 'false'
                 try:
-                    # Save message first and get message ID
+                    # Save unconditionally after chunk emission (align with audio chat behavior)
+                    logger.info(f"[SAVE][{handler_id}] Saving assistant message for sessionId={sessionId}, chat_count={chat_count}")
                     message_id = strapi.step2_insert_message(
                         run_stage, 
                         data, 
@@ -2646,70 +2659,91 @@ async def interview_endpoint(sid, data):
                         final,
                         sessionId,
                         None)  # No audio URL initially
-                    
+                    logger.info(f"[SAVE][{handler_id}] Message saved with ID: {message_id}")
                     # Note: No S3 upload for interview endpoint as it doesn't handle audio
-                        
                 except Exception as insert_message_error:
                     logger.error(f"Failed to insert assistant message: {str(insert_message_error)}")
 
             else:
-                # Handle interview conclusion
+                # 🔍 DEBUG: Interview completion flow starts
+                logger.info(f"🔍 [DEBUG] === INTERVIEW COMPLETION FLOW STARTED ===")
+                logger.info(f"🔍 [DEBUG] SID: {sid}, SessionID: {sessionId}")
+                logger.info(f"🔍 [DEBUG] Chat count: {chat_count}, Total questions: {total_questions}")
+                logger.info(f"🔍 [DEBUG] Response status: {response.get('status', 'None')}")
+                logger.info(f"🔍 [DEBUG] Response realtime: {response.get('realtime', 'None')}")
+                
+                # Idempotent finalize per session (same as audio chat sentence)
+                _completion_key = f"session_completed:{sessionId}"
+                if not _once_set(_completion_key):
+                    logger.info(f"[FINALIZE][DUPLICATE] Session {sessionId} already finalized. Skipping duplicate finalize.")
+                    return
+                
+                logger.info(f"[FINALIZE][PROCEED] Session {sessionId} finalization starting - first time")
+
+                message = 'interview over'
+                
+                # Add small delay to ensure client is still connected
+                await asyncio.sleep(0.1)
+                
+                # Check current SID status before emit
+                user_id = get_user_id_from_sid(sid)
+                logger.info(f"[FINALIZE][PRE_EMIT] Session {sessionId}, SID {sid}, User {user_id}")
+                logger.info(f"[FINALIZE][PRE_EMIT] Active SIDs for user {user_id}: {USER_ID_ACTIVE_SIDS.get(user_id, set())}")
+                
+                # Safely emit or queue the message - idempotent per session (same as audio chat sentence)
+                _event_key = f"event_sent:{sessionId}:interview_done"
+                if _once_set(_event_key):
+                    logger.info(f"[FINALIZE][EMIT] Sending 'interview done' for session {sessionId}")
+                    await safe_emit_or_queue(sid, "interview done", message)
+                    logger.info(f"[FINALIZE][EMIT_COMPLETE] 'interview done' emission complete for session {sessionId}")
+                else:
+                    logger.info(f"[FINALIZE][DUPLICATE_EMIT] 'interview done' already sent for session {sessionId}. Skipping duplicate emit.")
+                
+                # 🔍 DEBUG: Check SID status after interview done
+                logger.info(f"🔍 [DEBUG] SID status after 'interview done': {sid in sio.manager.rooms}")
+                logger.info(f"🔍 [DEBUG] Active SIDs after 'interview done': {list(sio.manager.rooms.keys())}")
+
+                final = 'true'
+                # Always send last_realtime_evaluation regardless of status (same as audio chat sentence)
                 try:
-                    logger.info(f"[FINALIZE][CONCLUSION] Interview conclusion handler triggered for session {sessionId}")
-                    # Idempotent finalize per session
-                    _completion_key = f"session_completed:{sessionId}"
-                    if not _once_set(_completion_key):
-                        logger.info(f"[FINALIZE][DUPLICATE] Session {sessionId} already finalized. Skipping duplicate finalize.")
-                        return
+                    message = [{
+                            "user_type": "assistant",
+                            "content_type": "question",
+                            "content": {
+                                "time_taken": "null",
+                                "time_limit": "null",                        
+                                "chunk_response": '',
+                                "full_response": accumulated_message,
+                                "final": "true",
+                                "realtime_evaluation": response.get("realtime", "null")
+                            }
+                        }]
                     
-                    logger.info(f"[FINALIZE][PROCEED] Session {sessionId} conclusion finalization starting - first time")
-                    message = 'interview over'
+                    # 🔍 DEBUG: Before sending last_realtime_evaluation
+                    logger.info(f"🔍 [DEBUG] === ABOUT TO SEND last_realtime_evaluation ===")
+                    logger.info(f"🔍 [DEBUG] SID: {sid}")
+                    logger.info(f"🔍 [DEBUG] SID exists in rooms: {sid in sio.manager.rooms}")
+                    logger.info(f"🔍 [DEBUG] All active SIDs: {list(sio.manager.rooms.keys())}")
+                    logger.info(f"🔍 [DEBUG] Realtime evaluation: {response.get('realtime', 'null')}")
                     
                     # Add small delay to ensure client is still connected
                     await asyncio.sleep(0.1)
+                    # Safely emit or queue the message
+                    logger.info(f"[DEBUG] last_realtime_evaluation payload: {message}")
+                    await safe_emit_or_queue(sid, "last_realtime_evaluation", message)
                     
-                    # Check current SID status before emit
-                    user_id = get_user_id_from_sid(sid)
-                    logger.info(f"[FINALIZE][PRE_EMIT] Session {sessionId}, SID {sid}, User {user_id}")
-                    logger.info(f"[FINALIZE][PRE_EMIT] Active SIDs for user {user_id}: {USER_ID_ACTIVE_SIDS.get(user_id, set())}")
-                    
-                    # Safely emit or queue the message - idempotent per session
-                    _event_key = f"event_sent:{sessionId}:interview_done"
-                    if _once_set(_event_key):
-                        logger.info(f"[FINALIZE][EMIT] Sending 'interview done' for session {sessionId}")
-                        await safe_emit_or_queue(sid, "interview done", message)
-                        logger.info(f"[FINALIZE][EMIT_COMPLETE] 'interview done' emission complete for session {sessionId}")
-                    else:
-                        logger.info(f"[FINALIZE][DUPLICATE_EMIT] 'interview done' already sent for session {sessionId}. Skipping duplicate emit.")
-                    final = 'true'
-                    temp_id = normalize_id(data.get('template_id', "null"))
-                    challenge_id = normalize_id(data.get('challenge_id', "null"))
+                    # 🔍 DEBUG: After sending last_realtime_evaluation
+                    logger.info(f"🔍 [DEBUG] === last_realtime_evaluation SENT SUCCESSFULLY ===")
+                    logger.info(f"🔍 [DEBUG] SID: {sid}")
+                    logger.info(f"🔍 [DEBUG] SID still exists: {sid in sio.manager.rooms}")
 
-                    if response.get("status") is not None:
-                        try:
-                            message = [{
-                                "user_type": "assistant",
-                                "content_type": "question",
-                                "content": {
-                                    "time_taken": "null",
-                                    "time_limit": "null",                        
-                                    "chunk_response": '',
-                                    "full_response": accumulated_message,
-                                    "final": "true",
-                                    "realtime_evaluation": response.get("realtime", "null")
-                                }
-                            }]
-                            # Add small delay to ensure client is still connected
-                            await asyncio.sleep(0.1)
-                            # Safely emit or queue the message
-                            await safe_emit_or_queue(sid, "last_realtime_evaluation", message)
-                        
-                        except Exception as final_emit_error:
-                            logger.error(f"Failed to emit final evaluation: {str(final_emit_error)}")
-
-                except Exception as conclusion_error:
-                    logger.error(f"Error concluding interview: {str(conclusion_error)}")
-                    return f"Error concluding interview: {str(conclusion_error)}"
+                except Exception as final_emit_error:
+                    logger.error(f"❌ [ERROR] Failed to emit final evaluation: {str(final_emit_error)}")
+                    logger.error(f"❌ [ERROR] SID at error time: {sid}")
+                    logger.error(f"❌ [ERROR] SID exists at error time: {sid in sio.manager.rooms}")
+                
+                # 🔍 DEBUG: Interview completion flow ends
+                logger.info(f"🔍 [DEBUG] === INTERVIEW COMPLETION FLOW COMPLETED ===")
                 
         except Exception as final_step_error:
             logger.error(f"Error in final processing step: {str(final_step_error)}")
@@ -2908,10 +2942,4 @@ async def queue_message_for_client(sid: str, event: str, data: any):
 
 def _pcm16_mono_16k_to_wav_bytes(pcm_bytes: bytes) -> bytes:
     # Backward compatibility wrapper
-    return pcm16_mono_16k_to_wav_bytes(pcm_bytes)
-
-def _is_silent_pcm16(pcm_bytes: bytes, rms_threshold: int = WHISPER_RMS_THRESHOLD) -> bool:
-    # Backward compatibility wrapper
-    return is_silent_pcm16(pcm_bytes, rms_threshold)
-
-
+    return pcm16_mono_16k_to_wav_bytes(pcm_bytes) 

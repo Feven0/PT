@@ -208,7 +208,7 @@ async def choose_interview_question_new_structure(
             chat_count += assistant_count 
             logger.info(f"Number of assistant entries: {chat_count}")
         else:
-            logger.error("Chat is empty.")
+            logger.debug("Chat is empty.")
         
         # Dynamically calculate section question counts
         question_counts = {section['sectionType']: len(section['questions']) for section in collection}
@@ -368,8 +368,38 @@ async def choose_interview_question_new_structure(
             logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {interview_type}")
             logger.info(f"🔍 [DEBUG] Run stage: {rstage}")
             
-            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, interview_type))
-            asyncio.create_task(overall_evaluation_with_autograde(sessionId, rstage))
+            # Start async overall evaluation (coroutine)
+            async_overall_task = asyncio.create_task(
+                overall_interview_evaluations(rstage, data, status, sessionId, interview_type)
+            )
+            
+            def log_async_overall_error(task):
+                """Callback to log exceptions from async overall evaluation task"""
+                try:
+                    task.result()
+                except Exception as e:
+                    logger.error(
+                        f"Background task overall_interview_evaluations failed: {str(e)}",
+                        exc_info=True
+                    )
+            
+            async_overall_task.add_done_callback(log_async_overall_error)
+            
+            # Run sync autograde function in thread executor to avoid blocking
+            loop = asyncio.get_running_loop()
+            executor_future = loop.run_in_executor(None, overall_evaluation_with_autograde, sessionId, rstage)
+            
+            def log_executor_error(future):
+                """Callback to log exceptions from executor future"""
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.error(
+                        f"Background task overall_evaluation_with_autograde failed: {str(e)}",
+                        exc_info=True
+                    )
+            
+            executor_future.add_done_callback(log_executor_error)
 
             logger.info("✅ Started overall calculation in background - socket emission will not be blocked")            
                 
@@ -516,7 +546,12 @@ async def choose_interview_question_challenge_new_structure(
             logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {interview_type}")
             logger.info(f"🔍 [DEBUG] Run stage: {rstage}")
             
-            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, interview_type))
+            # Start async overall evaluation (coroutine)
+            try:
+                asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, interview_type))
+            except Exception as overall_eval_err:
+                logger.error(f"Failed to start overall_interview_evaluations task: {str(overall_eval_err)}")
+            
             logger.info("✅ Started overall calculation in background - socket emission will not be blocked")            
                 
             response = {
@@ -635,7 +670,12 @@ async def helper_func(
             logger.info(f"🔍 [DEBUG] SessionID: {sessionId}, Status: {status}, Type: {interview_type}")
             logger.info(f"🔍 [DEBUG] Run stage: {rstage}")
             
-            asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, interview_type))
+            # Start async overall evaluation (coroutine)
+            try:
+                asyncio.create_task(overall_interview_evaluations(rstage, data, status, sessionId, interview_type))
+            except Exception as overall_eval_err:
+                logger.error(f"Failed to start overall_interview_evaluations task: {str(overall_eval_err)}")
+            
             logger.info("✅ Started overall calculation in background - socket emission will not be blocked")            
                 
         response = {

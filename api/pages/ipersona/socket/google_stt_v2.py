@@ -461,6 +461,21 @@ class GoogleStreamingSTTV2:
             except asyncio.CancelledError:
                 pass
         
+        # Wait for stream task to finish processing all pending responses before taking snapshot
+        # This ensures all interim results are captured in _best_interim
+        if self._stream_task and not self._stream_task.done():
+            try:
+                # Wait up to 2 seconds for stream to finish processing remaining responses
+                await asyncio.wait_for(self._stream_task, timeout=2.0)
+            except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
+                # If timeout or error, cancel and continue - we'll use whatever interim we have
+                if not self._stream_task.done():
+                    self._stream_task.cancel()
+                    try:
+                        await self._stream_task
+                    except (asyncio.CancelledError, Exception):
+                        pass
+        
         # On-stop snapshot: log last-final and full finals list for current epoch
         try:
             curr_epoch = self.restart_counter
@@ -506,8 +521,8 @@ class GoogleStreamingSTTV2:
         except Exception:
             pass
 
-        # Cancel tasks
-        if self._stream_task:
+        # Cancel stream task if still running (should already be done, but ensure cleanup)
+        if self._stream_task and not self._stream_task.done():
             self._stream_task.cancel()
             try:
                 await self._stream_task
