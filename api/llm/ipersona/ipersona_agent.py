@@ -12,6 +12,15 @@ class agents:
         Initialize the AgentManager with necessary configurations and agents.
         Args:
             persona (str): Persona for the agent.
+            model (str): Model to use for the agent.
+            api_key (str): API key to use for the agent.
+            temperature (float): Temperature to use for the agent.
+            timeout (int): Timeout to use for the agent.
+            cache_seed (int): Cache seed to use for the agent.
+            config_list (list): Config list to use for the agent.
+            functions (list): Functions to use for the agent.
+            timeout (int): Timeout to use for the agent.
+            cache_seed (int): Cache seed to use for the agent.
         """
         
         self.default_llm_config = {
