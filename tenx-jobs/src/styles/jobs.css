@@ -1,0 +1,67 @@
+
+.Job_Detail_card_title--text {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 18px;
+  letter-spacing: -0.04em;
+  color: #262626; 
+}
+    
+.job_label--element {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: -0.04em;
+  color: #000000;
+}
+
+.JobView_company--text {
+  font-style: normal;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 18px;
+  letter-spacing: -0.04em;
+  color: #262626;
+}
+
+.JobView_addNewasset--text {
+  font-style: normal;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 18px;
+  letter-spacing: -0.04em;
+  color: #F5222D;
+}
+      
+@page { 
+  size: auto; 
+  margin: 25mm 25mm 25mm 25mm;  
+}
+
+.job-details-container {
+  margin-top: 1rem;
+  background: #fff;
+  margin-bottom: 2rem;
+  padding: 1rem;
+}
+
+.job-detail-asset-title--text {
+  font-size: 1rem;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1.5rem;
+  color: #262626;
+}
+
+@media only screen and (max-width: 500px) {
+  .ant-table-cell-ellipsis {
+    white-space: wrap;
+  }
+
+  .ant-list-split .ant-list-item:last-child {
+    width: 135px !important;
+    padding: 4px;
+  }
+} 

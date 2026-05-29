@@ -1,0 +1,47 @@
+# Essential environment variables that must be set
+# These variables do not have sensible defaults and must be provided
+
+llm:
+  - LLM_PROVIDER: "LLM provider name (e.g., openai, anthropic)"
+  - LLM_API_URL: "Base URL for LLM API endpoint"
+  - LLM_API_TOKEN: "Authentication token for LLM API"
+  - LLM_CONFIG: "JSON string containing provider-specific configuration"
+
+assembly_ai:
+  - ASSEMBLY_AI_API_KEY: "API key for AssemblyAI services"
+  - ASSEMBLY_AI_API_URL: "Base URL for AssemblyAI API"
+
+infrastructure:
+  # AWS S3
+  - AWS_S3_API_KEY: "AWS S3 API key for storage"
+  - AWS_S3_CREDENTIALS: "AWS S3 credentials file path"
+  - AWS_S3_BUCKET_NAME: "AWS S3 bucket name"
+  
+  # Google Drive
+  - GDRIVE_API_KEY: "Google Drive API key"
+  - GDRIVE_CREDENTIALS: "Google Drive service account credentials"
+  
+  # Weaviate
+  - WEAVIATE_API_KEY: "Weaviate API key for vector database"
+  - WEAVIATE_API_URL: "Weaviate instance URL"
+  
+  # Strapi
+  - STRAPI_AUTH_TOKEN: "Authentication token for Strapi CMS"
+  - STRAPI_API_URL: "Base URL for Strapi CMS"
+
+email_notifications:
+  - SMTP_USER: "SMTP username for email notifications"
+  - SMTP_PASS: "SMTP password for email notifications"
+  - EMAIL_SENDER: "Email address to send notifications from"
+  - EMAIL_RECIPIENTS: "Comma-separated list of email recipients"
+
+messaging:
+  - SLACK_WEBHOOK_URL: "Webhook URL for Slack notifications"
+  - TELEGRAM_BOT_TOKEN: "Telegram bot token for notifications"
+  - TELEGRAM_CHAT_ID: "Telegram chat ID for notifications"
+
+webrtc:
+  - WEBRTC_ICE_SERVERS: "JSON array of ICE server configurations"
+
+security:
+  - CORS_ORIGINS: "JSON array of allowed CORS origins" 

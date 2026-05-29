@@ -1,0 +1,41 @@
+.comment-card-container .ant-card-body{
+    height: 40vh;
+    width: 100%;
+    padding: 0 ;
+    overflow-y: auto !important;
+    padding-bottom: 2rem;
+}
+.comment-inputs{
+    border: none;
+    border-radius: 0;
+    background-color: #F0F0F0 !important;
+}
+  
+.comment-inputs:focus{
+    border: none !important;
+    box-shadow: none;
+    border-radius: 0.5rem;
+}
+.asset-form-action-buttons{
+    box-shadow: none !important;
+    background: none !important;
+  }
+  
+.asset-form-action-buttons:hover{
+    background: none !important;
+    color: var(--orange-dark-500) !important;
+    box-shadow: none !important;
+  }
+
+  .reply-input{
+    margin-top: 1rem;
+    background: #F0F0F0;
+    border: 2px whitesmoke solid;
+    border-radius: 0.3rem;
+    width: 100%;
+}
+  
+.reply-input:hover, .reply-input:focus{
+    border-color: #FF4405;
+    border: 2px solid #FF4405;
+}
