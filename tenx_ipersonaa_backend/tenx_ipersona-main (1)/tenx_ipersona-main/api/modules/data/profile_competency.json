@@ -1,0 +1,2438 @@
+{
+  "cv_Nyamusi Moraa.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "3"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "3"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "database",
+        "sfia_level": "2"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "3"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "3"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "3"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "2"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "3"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "3"
+      },
+      {
+        "name": "management",
+        "sfia_level": "3"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "3"
+      }
+    ]
+  },
+  "cv_Joseph Njuguna.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "1"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "1"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "1"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "1"
+      },
+      {
+        "name": "management",
+        "sfia_level": "1"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "1"
+      }
+    ]
+  },
+  "cv_Bethelhem Mebratu.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "1"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "1"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "1"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "1"
+      },
+      {
+        "name": "management",
+        "sfia_level": "1"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "1"
+      }
+    ]
+  },
+  "cv_Daisy Cherono.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "3"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation",
+        "sfia_level": "2"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "database",
+        "sfia_level": "2"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "ai science",
+        "sfia_level": "3"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "2"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "3"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "3"
+      },
+      {
+        "name": "management",
+        "sfia_level": "3"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "3"
+      }
+    ]
+  },
+  "cv_Jabez Kassa.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "3"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "3"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "database",
+        "sfia_level": "2"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "3"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "3"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "3"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "2"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "1"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "1"
+      },
+      {
+        "name": "management",
+        "sfia_level": "1"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "1"
+      }
+    ]
+  },
+  "cv_Abdelrhman Yasir.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "1"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "ai science",
+        "sfia_level": "1"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "1"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "1"
+      },
+      {
+        "name": "management",
+        "sfia_level": "1"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "1"
+      }
+    ]
+  },
+  "cv_Fatai Abdusalam.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "1"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "1"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "1"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "1"
+      },
+      {
+        "name": "management",
+        "sfia_level": "1"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "1"
+      }
+    ]
+  },
+  "cv_Mahbubah Abdulhakim.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "1"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "1"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "2"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "2"
+      },
+      {
+        "name": "management",
+        "sfia_level": "1"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "1"
+      }
+    ]
+  },
+  "cv_Abraham Sahile.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "1"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "1"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "1"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "1"
+      },
+      {
+        "name": "management",
+        "sfia_level": "1"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "1"
+      }
+    ]
+  },
+  "cv_Hillary Kipkemoi.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "4"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "4"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "database",
+        "sfia_level": "2"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "4"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "4"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "4"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "2"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "4"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "4"
+      },
+      {
+        "name": "management",
+        "sfia_level": "4"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "4"
+      }
+    ]
+  },
+  "cv_Tewodros Cheru.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "1"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "2"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "1"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "3"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "2"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "2"
+      },
+      {
+        "name": "management",
+        "sfia_level": "3"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "3"
+      }
+    ]
+  },
+  "cv_Dereje Hinsermu Senbatu.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "3"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "automation",
+        "sfia_level": "3"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "database",
+        "sfia_level": "2"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "ai science",
+        "sfia_level": "3"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "3"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "2"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "3"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "3"
+      },
+      {
+        "name": "management",
+        "sfia_level": "3"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "3"
+      }
+    ]
+  },
+  "cv_Eyerusalem Admassu.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "3"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "ai science",
+        "sfia_level": "3"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "1"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "1"
+      },
+      {
+        "name": "management",
+        "sfia_level": "1"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "1"
+      }
+    ]
+  },
+  "cv_Grace Nyutu.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "2"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "2"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "2"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "2"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "3"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "3"
+      },
+      {
+        "name": "management",
+        "sfia_level": "3"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "3"
+      }
+    ]
+  },
+  "cv_Selamawit Tibebu.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "3"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "2"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "3"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "3"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "2"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "2"
+      },
+      {
+        "name": "management",
+        "sfia_level": "3"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "3"
+      }
+    ]
+  },
+  "cv_Abraham Teka.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "3"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "3"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "database",
+        "sfia_level": "2"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "3"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "4"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "2"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "4"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "4"
+      },
+      {
+        "name": "management",
+        "sfia_level": "4"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "4"
+      }
+    ]
+  },
+  "cv_Getachew Abebe Agegnehu.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "3"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "3"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "2"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "3"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "3"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "2"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "2"
+      },
+      {
+        "name": "management",
+        "sfia_level": "2"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "2"
+      }
+    ]
+  },
+  "cv_Melaku Alehegn.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "2"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "2"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "2"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "2"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "2"
+      },
+      {
+        "name": "management",
+        "sfia_level": "2"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "2"
+      }
+    ]
+  },
+  "cv_Michael George.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "2"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "2"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "2"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "2"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "2"
+      },
+      {
+        "name": "management",
+        "sfia_level": "2"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "2"
+      }
+    ]
+  },
+  "cv_Addisu Alemu.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "1"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "1"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "3"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "3"
+      },
+      {
+        "name": "management",
+        "sfia_level": "1"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "1"
+      }
+    ]
+  },
+  "cv_Sheila Murugi.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "1"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "1"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "1"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "1"
+      },
+      {
+        "name": "management",
+        "sfia_level": "2"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "2"
+      }
+    ]
+  },
+  "cv_Temesgen Gebreabzgi.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "1"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "1"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "1"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "1"
+      },
+      {
+        "name": "management",
+        "sfia_level": "1"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "1"
+      }
+    ]
+  },
+  "cv_Mistir Nigusse.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "3"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "3"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "database",
+        "sfia_level": "2"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "3"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "3"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "3"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "3"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "2"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "4"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "4"
+      },
+      {
+        "name": "management",
+        "sfia_level": "4"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "4"
+      }
+    ]
+  },
+  "cv_Wandera Martin.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "2"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "2"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "2"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "2"
+      },
+      {
+        "name": "management",
+        "sfia_level": "3"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "3"
+      }
+    ]
+  },
+  "cv_Abubeker Shamil.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "4"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "automation",
+        "sfia_level": "4"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "3"
+      },
+      {
+        "name": "database",
+        "sfia_level": "2"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "ai science",
+        "sfia_level": "4"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "4"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "2"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "4"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "4"
+      },
+      {
+        "name": "management",
+        "sfia_level": "4"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "4"
+      }
+    ]
+  },
+  "cv_Henock Dessalegn.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "3"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation",
+        "sfia_level": "2"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "ai science",
+        "sfia_level": "3"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "2"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "3"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "3"
+      },
+      {
+        "name": "management",
+        "sfia_level": "3"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "3"
+      }
+    ]
+  },
+  "cv_Gilbert Tcheugoue Djissitchedjibril.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "1"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "1"
+      },
+      {
+        "name": "automation ",
+        "sfia_level": "1"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "1"
+      },
+      {
+        "name": "database",
+        "sfia_level": "1"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "python programming",
+        "sfia_level": "1"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "1"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "1"
+      },
+      {
+        "name": "web3",
+        "sfia_level": "1"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "1"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "1"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "1"
+      },
+      {
+        "name": "management",
+        "sfia_level": "1"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "1"
+      }
+    ]
+  },
+  "cv_Yohanes Teshome Kebede.json": {
+    "competencies": [
+      {
+        "name": "programming language",
+        "sfia_level": "4"
+      },
+      {
+        "name": "data engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "analytics engineering",
+        "sfia_level": "2"
+      },
+      {
+        "name": "automation",
+        "sfia_level": "4"
+      },
+      {
+        "name": "mathematics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "statistics",
+        "sfia_level": "2"
+      },
+      {
+        "name": "deep learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "machine learning",
+        "sfia_level": "2"
+      },
+      {
+        "name": "database",
+        "sfia_level": "2"
+      },
+      {
+        "name": "software development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "ai science",
+        "sfia_level": "4"
+      },
+      {
+        "name": "bi analytics",
+        "sfia_level": "4"
+      },
+      {
+        "name": "frontend development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "backend development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "full stack development",
+        "sfia_level": "4"
+      },
+      {
+        "name": "deploying genai systems",
+        "sfia_level": "2"
+      },
+      {
+        "name": "collaboration",
+        "sfia_level": "4"
+      },
+      {
+        "name": "communication",
+        "sfia_level": "4"
+      },
+      {
+        "name": "management",
+        "sfia_level": "4"
+      },
+      {
+        "name": "professionalism",
+        "sfia_level": "4"
+      }
+    ]
+  }
+}

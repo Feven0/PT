@@ -1,0 +1,49 @@
+Junior Data Engineer/MLOps 
+Fatai A. ABDUSALAM 
+Phone: + (234) 815 7716 679  |  Email: abdusalamfatai60@gmail.com 
+Github Link: https://github.com/Adekunle5880  
+Linkedin Link: https://www.linkedin.com/in/abdusalamfatai 
+Address: Lagos, Nigeria 
+ 
+ 
+Professional Summary 
+Results-driven Machine Learning Ops Engineer with a proven track record in designing, implementing, and 
+optimizing end-to-end machine learning pipelines. Experienced in deploying and managing machine learning 
+models in production, ensuring scalability, reliability, and seamless integration. Proficient in DevOps practices, 
+CI/CD workflows, and cloud technologies. 
+ 
+Skils & Technologies 
+Machine Learning, Data Analysis, Data Cleaning, Pandas, Numpy, Seaborn, Visualization, Python, SQL, Flask, 
+Power BI, Excel, Microsoft Azure, AWS, Kafka, Spark, Snowflak, Git/Github, Terraform 
+ 
+Work Experience 
+Data Science Tutor: Tethral Technologies LTD. 
+Sept 2023 – Till Date 
+• Training students on how to use python for Data Science and Analysis and build models 
+• Facilitate Data science events 
+ 
+Data Scientist: Freelance 
+June 2020 – Till Date 
+• Built over 8 dashboard for insights and recommendation 
+• Analyzed over 10 project with python, Pandas, numpy, and cufflinks 
+• Built over 5 models for prediction on Machine learning 
+• Managed Infrastructures on Azure and Aws with Terraform 
+• CI/CD integration using Jenkins and Github Actions 
+ 
+Education 
+BSc. Mathematics (Major): University of Lagos – 4.0/5.0 
+Oct. 2017 – July 2023 
+Diploma: WorldQuant University: Python & Machine Learning Honours 
+Sept. 2019 – Sept. 2021 
+ 
+Projects & Publications 
+• Compressive strength prediction: Built and deployed a model that predicts the compressive strength of 
+concretes. Tools: Python, Excel, Tableau, Flask, Html. https://regressionprediction-
+hhvalcbstu2nfxnu5umj6p.streamlit.app/ 
+• A report is to curate an analytically-backed, dance-themed playlist for a company's summer party. I used 
+data analysis and a machine learning model to select the top 50 songs with the highest predicted 
+danceability scores. https://app.datacamp.com/workspace/w/f64ee4e5-9b69-4b4d-8009-d6f4b076a7af 
+ 
+Professional Certification 
+• Azure Fundamental, Microsoft. 
+

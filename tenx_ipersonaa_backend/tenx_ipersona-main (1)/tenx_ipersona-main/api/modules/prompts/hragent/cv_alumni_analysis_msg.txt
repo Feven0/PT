@@ -1,0 +1,10 @@
+Provide a detailed analysis on how a trainee joining 10 Academy can improve their skills based on their CV.
+
+CV: {cv}
+
+Additional Information:
+- Trainee's current CV competency score:
+(target_competency): {target_competency}
+
+- The simulated CV competency score the candidate would assume to achieve if they go through the training program. This is computed by identifying former trainees who started the training in similar level and end up with improved competency levels. Here is the simulated competency levels for the candidate at the end of the training:
+{difference_competency}

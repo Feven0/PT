@@ -1,0 +1,98 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Deploy to ECS Production Version
+
+permissions:
+  id-token: write # required to use OIDC authentication
+  contents: read # required to checkout the code from the repo
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [prod]
+  #pull_request:
+  #  branches: [ main, dev ]
+
+env:
+  #ECS cluster name
+  clustername: ecs-leap-app-cluster
+  #ECS service name used in clustername
+  servicename: ecs-leap-app-service
+  #ECS task name used in servicename
+  taskname: ecs-leap-app-task
+  #ECS container name in taskname
+  containername: leap-app-container
+  #ECR repo name
+  ecrreponame: leap-app
+  #Docker tag
+  tag: latest
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v1
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::070096167435:role/github_actions_role
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.ecrreponame }}
+          IMAGE_TAG: ${{ env.tag }}
+        run: |
+          export branch_name="prod"
+          #"${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}"
+          #
+          export yarntarget="start"          
+          export npmtarget="start"
+          export NODE_ENV="development"
+          export dbname="strapiprod"
+          export dnsprefix='cms'
+          #
+          bash update_config_files.sh
+          #
+          docker build --build-arg NODE_ENV=production -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: Download task definition
+        env:
+          TASK_NAME: ${{ env.taskname }}
+        run: |
+          aws ecs describe-task-definition --task-definition $TASK_NAME --query taskDefinition > task-definition.json
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.containername }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        id: service-def
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.servicename }}
+          cluster: ${{ env.clustername }}
+          wait-for-service-stability: false

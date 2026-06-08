@@ -1,0 +1,60 @@
+Entry-Level AI Engineer
+
+Position Overview:
+We are seeking a talented and motivated Entry-Level AI Engineer to join our Engineering department. As an AI Engineer, you will contribute to the development and implementation of AI-driven solutions that enhance our product offerings. This is an excellent opportunity for recent graduates or early-career professionals to gain hands-on experience in a large, traditional tech company. If you are eager to start your career in artificial intelligence and thrive in a KPI-driven environment, we want to hear from you.
+
+Key Responsibilities:
+Model Development and Implementation:
+
+Assist in the design, development, and deployment of machine learning models and AI algorithms.
+Collaborate with senior engineers to optimize models for performance and scalability.
+Participate in the testing and validation of AI models to ensure accuracy and robustness.
+Data Management and Analysis:
+
+Work with data engineers to collect, preprocess, and analyze datasets.
+Support the development of data pipelines and workflows for model training and deployment.
+Perform exploratory data analysis and basic feature engineering tasks.
+AI System Integration:
+
+Help integrate AI models into existing systems and applications under the guidance of senior engineers.
+Develop APIs and interfaces for AI-driven features in collaboration with software engineers.
+Monitor AI systems and contribute to maintenance and troubleshooting efforts.
+Research and Innovation:
+
+Stay updated with the latest advancements in AI and machine learning.
+Conduct literature reviews and basic experiments to explore new AI techniques.
+Share insights and findings with the team through presentations and reports.
+Collaboration and Communication:
+
+Work closely with cross-functional teams, including product managers, designers, and engineers.
+Communicate AI concepts and results to team members and stakeholders.
+Participate in team meetings and contribute to project planning and decision-making.
+Qualifications:
+Educational Background:
+
+Bachelor’s degree in Computer Science, Data Science, Artificial Intelligence, or a related field.
+Technical Skills:
+
+Proficiency in programming languages such as Python or Java.
+Basic understanding of machine learning frameworks and libraries (e.g., TensorFlow, PyTorch, scikit-learn).
+Familiarity with cloud platforms (e.g., AWS, Azure, Google Cloud) is a plus.
+Experience:
+
+Internship experience or academic projects involving AI and machine learning.
+Hands-on experience with data preprocessing and model evaluation is advantageous.
+Soft Skills:
+
+Strong problem-solving skills and a keen interest in AI and machine learning.
+Excellent communication and teamwork abilities.
+Ability to learn quickly and adapt to new challenges.
+Preferred Qualifications:
+Experience with big data technologies (e.g., Hadoop, Spark) is a plus.
+Familiarity with Agile development methodologies.
+What We Offer:
+Competitive salary and benefits package.
+Professional growth and development opportunities.
+Collaborative and inclusive on-site work environment.
+Access to cutting-edge technologies and resources.
+If you are passionate about AI and eager to kick-start your career in a traditional yet dynamic tech environment, apply now to join our team and contribute to innovative AI projects!
+
+We are an equal opportunity employer. We celebrate diversity and are committed to creating an inclusive environment for all employees.

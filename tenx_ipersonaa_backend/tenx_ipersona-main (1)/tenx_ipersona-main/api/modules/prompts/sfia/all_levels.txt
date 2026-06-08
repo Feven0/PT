@@ -1,0 +1,42 @@
+Level 1 - Fellow
+    Autonomy: Works under close direction. Uses little discretion in attending to enquiries. 
+    Influence: Minimal influence.
+    Complexity: Performs routine activities in a structured environment. Requires assistance in resolving unexpected problems.
+    Business skills: Has sufficient oral and written communication skills for effective engagement with immediate colleagues. Demonstrates an organised approach to work.
+    knowledge: Has a basic generic knowledge appropriate to the area of work. 
+Level 2 - Assist
+    Autonomy: Works under routine direction. Uses limited discretion in resolving issues or enquiries.
+    Influence: Interacts with and may influence immediate colleagues.
+    Complexity: Performs a range of work activities in varied environments. May contribute to routine issue resolution. 
+    Business skills: Has sufficient oral and written communication skills for effective engagement with colleagues and internal users/customers. Demonstrates a rational and organised approach to work.
+    knowledge: Has gained a basic domain knowledge. Demonstrates application of essential generic knowledge typically found in industry bodies of knowledge.
+Level 3 - Apply
+    Autonomy: Works under general direction. Receives specific direction, accepts guidance and has work reviewed at agreed milestones.
+    Influence: Interacts with and influences colleagues.
+    Complexity: Performs a range of work, sometimes complex and non-routine, in a variety of environments. Applies a methodical approach to routine and moderately complex issue definition and resolution. 
+    Business skills: Demonstrates effective oral and written communication skills when engaging on issues with colleagues, users/customers, suppliers and partners. Demonstrates judgement and a systematic approach to work.
+    knowledge: Has sound generic, domain and specialist knowledge necessary to perform effectively in the organisation typically gained from recognised bodies of knowledge and organisational information. 
+Level 4 - Enable
+    Autonomy: Works under general direction within a clear framework of accountability. Exercises substantial personal responsibility and autonomy.
+    Influence: Influences customers, suppliers and partners at account level. Makes decisions which influence the success of projects and team objectives. 
+    Complexity: Work includes a broad range of complex technical or professional activities, in a variety of contexts. Investigates, defines and resolves complex issues.
+    Business skills: Communicates fluently, orally and in writing, and can present complex information to both technical and non-technical audiences when engaging with colleagues, users/customers, suppliers and partners. Demonstrates an awareness of risk and takes an analytical approach to work.
+    knowledge: Has a thorough understanding of recognised generic industry bodies of knowledge and specialist bodies of knowledge as necessary. Has gained a thorough knowledge of the domain of the organisation. 
+Level 5 - Ensure, advise
+    Autonomy: Works under broad direction. Work is often self-initiated. Is fully responsible for meeting allocated technical and/or group objectives. Establishes milestones and has a significant role in the assignment of tasks and/or responsibilities.
+    Influence: Influences organisation, customers, suppliers, partners and peers on the contribution of their own specialism. Makes decisions which impact the success of assigned work, i.e. results, deadlines and budget.
+    Complexity: Implements and executes policies aligned to strategic plans. Performs an extensive range and variety of complex technical and/or professional work activities. 
+    Business skills: Demonstrates leadership in operational management. Take all requirements into account when making proposals.
+    knowledge: Is fully familiar with recognised industry bodies of knowledge both generic and specific, and knowledge of the business, suppliers, partners, competitors and clients. 
+Level 6 - Initiate, influence
+    Autonomy: Has defined authority and accountability for actions and decisions within a significant area of work, including technical, financial and quality aspects. Establishes organisational objectives and assigns responsibilities.
+    Influence: Influences policy and strategy formation. Initiates influential relationships with internal and external customers, suppliers and partners at senior management level, including industry leaders. 
+    Complexity: Contributes to the development and implementation of policy and strategy. Performs highly complex work activities covering technical, financial and quality aspects.
+    Business skills: Demonstrates leadership in organisational management. Communicates authoritatively at all levels across the organisation to both technical and non-technical audiences articulating business objectives.
+    knowledge: Has developed business knowledge of the activities and practices of own organisation and those of suppliers, partners, competitors and clients.
+Level 7 - Set strategy, inspire, mobilise
+    Autonomy: At the highest organisational level, has authority over all aspects of a significant area of work, including policy formation and application.
+    Influence: Inspires the organisation, and influences developments within the industry at the highest levels. 
+    Complexity: Applies the highest level of leadership to the formulation and implementation of strategy. Performs extensive strategic leadership in delivering business value through vision, governance and executive management. 
+    Business skills: Has a full range of strategic management and leadership skills. Communicates persuasively and convincingly across own organisation, industry and government to audiences at all levels.
+    knowledge: Has established a broad and deep business knowledge including the activities and practices of own organisation and a broad knowledge of those of suppliers, partners, competitors and clients. 
